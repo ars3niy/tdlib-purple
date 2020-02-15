@@ -3,11 +3,12 @@ cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 project(TdExample VERSION 1.0 LANGUAGES CXX)
 
 find_package(Td 1.6.0 REQUIRED)
+set(CMAKE_CXX_FLAGS "-DTD_VERSION=\\\"${Td_VERSION}\\\" -Werror")
 
 include(FindPkgConfig)
 pkg_check_modules(Purple REQUIRED purple)
 
-add_executable(td_example td_example.cpp)
+add_library(td_example SHARED td_example.cpp)
 include_directories(td_example ${Purple_INCLUDE_DIRS})
 target_link_libraries(td_example PRIVATE Td::TdStatic ${Purple_LIBRARIES})
 set_property(TARGET td_example PROPERTY CXX_STANDARD 14)
