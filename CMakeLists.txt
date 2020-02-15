@@ -8,7 +8,8 @@ set(CMAKE_CXX_FLAGS "-DTD_VERSION=\\\"${Td_VERSION}\\\" -Werror")
 include(FindPkgConfig)
 pkg_check_modules(Purple REQUIRED purple)
 
-add_library(td_example SHARED td_example.cpp)
+add_library(td_example SHARED tdlib-purple.cpp)
+
 include_directories(td_example ${Purple_INCLUDE_DIRS})
 target_link_libraries(td_example PRIVATE Td::TdStatic ${Purple_LIBRARIES})
 set_property(TARGET td_example PROPERTY CXX_STANDARD 14)
