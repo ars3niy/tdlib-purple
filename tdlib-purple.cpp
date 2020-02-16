@@ -4,11 +4,8 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
+#include "td-client.h"
 #include <purple.h>
-
-#include <td/telegram/Client.h>
-#include <td/telegram/td_api.h>
-#include <td/telegram/td_api.hpp>
 
 #include <cstdint>
 #include <functional>
@@ -317,6 +314,7 @@ class TdExample {
 static int was_main() {
   TdExample example;
   example.loop();
+  return 0;
 }
 
 static const char *tgprpl_list_icon (PurpleAccount *acct, PurpleBuddy *buddy)
@@ -395,13 +393,12 @@ static GHashTable *tgprpl_chat_info_defaults (PurpleConnection *gc, const char *
 
 static void tgprpl_login (PurpleAccount * acct)
 {
-    // Just so that tdlib does get included
-    if ((unsigned long)acct == 1)
-        was_main();
+    PurpleConnection *gc       = purple_account_get_connection (acct);
+    PurpleTdClient   *tdClient = new PurpleTdClient;
 
-    // purple_connection_set_protocol_data (gc, something);
-
-    PurpleConnection *gc = purple_account_get_connection (acct);
+    purple_connection_set_protocol_data (gc, tdClient);
+    purple_connection_set_state (gc, PURPLE_CONNECTING);
+    tdClient->startLogin();
     purple_connection_set_state (gc, PURPLE_CONNECTED);
 
     purple_blist_add_account (acct);
@@ -409,7 +406,7 @@ static void tgprpl_login (PurpleAccount * acct)
 
 static void tgprpl_close (PurpleConnection *gc)
 {
-    // free purple_connection_get_protocol_data (gc);
+    delete static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
 }
 
 static int tgprpl_send_im (PurpleConnection *gc, const char *who, const char *message, PurpleMessageFlags flags)
