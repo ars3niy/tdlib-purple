@@ -11,6 +11,7 @@ pkg_check_modules(Purple REQUIRED purple)
 add_library(td_example SHARED
     tdlib-purple.cpp
     td-client.cpp
+    config.cpp
 )
 
 include_directories(td_example ${Purple_INCLUDE_DIRS})

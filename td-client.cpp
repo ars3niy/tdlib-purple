@@ -1,4 +1,5 @@
 #include "td-client.h"
+#include "config.h"
 #include <purple.h>
 
 class UpdateHandler {
@@ -6,10 +7,13 @@ public:
     UpdateHandler(PurpleTdClient *owner) : m_owner(owner) {}
 
     void operator()(td::td_api::updateAuthorizationState &update_authorization_state) const {
+        purple_debug_misc(config::pluginId, "Incoming update: authorization state\n");
         td::td_api::downcast_call(*update_authorization_state.authorization_state_, *m_owner->m_authUpdateHandler);
     }
 
-    void operator()(auto &update) const {}
+    void operator()(auto &update) const {
+        purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
+    }
 private:
     PurpleTdClient *m_owner;
 };
@@ -19,9 +23,12 @@ public:
     AuthUpdateHandler(PurpleTdClient *owner) : m_owner(owner) {}
 
     void operator()(td::td_api::authorizationStateWaitEncryptionKey &) const {
+        purple_debug_misc(config::pluginId, "Authorization state update: encriytion key requested\n");
     }
 
-    void operator()(auto &update) const {}
+    void operator()(auto &update) const {
+        purple_debug_misc(config::pluginId, "Authorization state update: ignorig ID=%d\n", update.get_id());
+    }
 private:
     PurpleTdClient *m_owner;
 };
@@ -45,10 +52,12 @@ void PurpleTdClient::startLogin()
 void PurpleTdClient::processResponse(td::Client::Response response)
 {
     if (response.object) {
-        if (response.id == 0)
+        if (response.id == 0) {
+            purple_debug_misc(config::pluginId, "Incoming update\n");
             td::td_api::downcast_call(*response.object, *m_updateHandler);
-        else {
+        } else {
             // Response to a request
         }
-    }
+    } else
+        purple_debug_misc(config::pluginId, "Response id %lu timed out or something\n", response.id);
 }

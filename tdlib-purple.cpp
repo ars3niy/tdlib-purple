@@ -4,6 +4,7 @@
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
+#include "config.h"
 #include "td-client.h"
 #include <purple.h>
 
@@ -647,18 +648,6 @@ static GList *tgprpl_actions (PurplePlugin *plugin, gpointer context)
     return (GList *)NULL;
 }
 
-static char PLUGIN_ID[]     = "tdlib-purple";
-
-#define PACKAGE_VERSION "0.0.0"
-#define GIT_COMMIT      "unknown"
-
-static char name[]          = "Telegram (tdlib)";
-static char versionString[] = PACKAGE_VERSION "\n\t\t\tcommit: " GIT_COMMIT "\n\t\t\ttdlib: " TD_VERSION;
-static char summary[]       = "Telegram using tdlib";
-static char desc[]          = "Telegram Protocol Plugin using tdlib";
-static char PLUGIN_AUTHOR[] = "Arseniy Lartsev";
-static char projectUrl[]    = "https://github.com/ars3niy/tdlib-purple";
-
 static PurplePluginInfo plugin_info = {
     PURPLE_PLUGIN_MAGIC,
     PURPLE_MAJOR_VERSION,
@@ -668,13 +657,13 @@ static PurplePluginInfo plugin_info = {
     0,
     NULL,
     PURPLE_PRIORITY_DEFAULT,
-    PLUGIN_ID,
-    name,
-    versionString,
-    summary,
-    _(desc),
-    PLUGIN_AUTHOR,
-    projectUrl,
+    config::pluginId,
+    config::pluginName,
+    config::versionString,
+    config::pluginSummary,
+    _(config::pluginDesc),
+    config::pluginAuthor,
+    config::projectUrl,
     tgprpl_load,    // on load
     NULL,           // on unload
     NULL,           // on destroy
