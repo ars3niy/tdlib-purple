@@ -312,12 +312,6 @@ class TdExample {
   }
 };
 
-static int was_main() {
-  TdExample example;
-  example.loop();
-  return 0;
-}
-
 static const char *tgprpl_list_icon (PurpleAccount *acct, PurpleBuddy *buddy)
 {
     return "telegram";
