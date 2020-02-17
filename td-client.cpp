@@ -37,21 +37,16 @@ PurpleTdClient::PurpleTdClient()
 {
     m_updateHandler     = std::make_unique<UpdateHandler>(this);
     m_authUpdateHandler = std::make_unique<AuthUpdateHandler>(this);
-
-    if (purple_debug_is_verbose())
-        // Log everything
-        // Why not just call setLogVerbosityLevel? No idea!
-        td::Client::execute({0, td::td_api::make_object<td::td_api::setLogVerbosityLevel>(1024)});
-    else if (purple_debug_is_enabled())
-        // Log up to info
-        td::Client::execute({0, td::td_api::make_object<td::td_api::setLogVerbosityLevel>(3)});
-    else
-        // Log up to fatal errors and errors
-        td::Client::execute({0, td::td_api::make_object<td::td_api::setLogVerbosityLevel>(1)});
 }
 
 PurpleTdClient::~PurpleTdClient()
 {
+}
+
+void PurpleTdClient::setLogLevel(int level)
+{
+    // Why not just call setLogVerbosityLevel? No idea!
+    td::Client::execute({0, td::td_api::make_object<td::td_api::setLogVerbosityLevel>(level)});
 }
 
 void PurpleTdClient::startLogin()

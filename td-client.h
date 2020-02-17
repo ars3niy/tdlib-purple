@@ -15,6 +15,7 @@ public:
     PurpleTdClient();
     ~PurpleTdClient();
 
+    static void setLogLevel(int level);
     void startLogin();
 private:
     friend class UpdateHandler;

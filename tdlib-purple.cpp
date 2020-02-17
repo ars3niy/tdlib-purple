@@ -635,6 +635,15 @@ static gboolean tgprpl_load (PurplePlugin *plugin)
 
 static void tgprpl_init (PurplePlugin *plugin)
 {
+    if (purple_debug_is_verbose())
+        // Log everything
+        PurpleTdClient::setLogLevel(1024);
+    else if (purple_debug_is_enabled())
+        // Log up to info
+        PurpleTdClient::setLogLevel(3);
+    else
+        // Log up to fatal errors and errors
+        PurpleTdClient::setLogLevel(1);
 }
 
 static GList *tgprpl_actions (PurplePlugin *plugin, gpointer context)
