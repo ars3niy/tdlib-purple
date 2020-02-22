@@ -11,7 +11,7 @@ public:
         td::td_api::downcast_call(*update_authorization_state.authorization_state_, *m_owner->m_authUpdateHandler);
     }
 
-    void operator()(td::td_api::updateConnectionState &connectionUpdate) {
+    void operator()(td::td_api::updateConnectionState &connectionUpdate) const {
         purple_debug_misc(config::pluginId, "Incoming update: connection state\n");
         if (connectionUpdate.state_ && (connectionUpdate.state_->get_id() == td::td_api::connectionStateReady::ID)) {
             g_idle_add(PurpleTdClient::connectionReady, m_owner);
@@ -282,6 +282,7 @@ int PurpleTdClient::notifyAuthError(gpointer user_data)
 
 int PurpleTdClient::connectionReady(gpointer user_data)
 {
+    purple_debug_misc(config::pluginId, "Connection ready\n");
     PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
 
     purple_connection_set_state (purple_account_get_connection(self->m_account), PURPLE_CONNECTED);
