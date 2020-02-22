@@ -13,9 +13,8 @@ public:
 
     void operator()(td::td_api::updateConnectionState &connectionUpdate) const {
         purple_debug_misc(config::pluginId, "Incoming update: connection state\n");
-        if (connectionUpdate.state_ && (connectionUpdate.state_->get_id() == td::td_api::connectionStateReady::ID)) {
-            g_idle_add(PurpleTdClient::connectionReady, m_owner);
-        }
+        if (connectionUpdate.state_ && (connectionUpdate.state_->get_id() == td::td_api::connectionStateReady::ID))
+            m_owner->connectionReady();
     }
 
     void operator()(auto &update) const {
@@ -280,7 +279,20 @@ int PurpleTdClient::notifyAuthError(gpointer user_data)
     return FALSE; // This idle handler will not be called again
 }
 
-int PurpleTdClient::connectionReady(gpointer user_data)
+void PurpleTdClient::connectionReady()
+{
+    g_idle_add(PurpleTdClient::setPurpleConnectionReady, this);
+
+    // td::td_api::chats response will be preceded by a string of updateNewChat and updateUser for
+    // all chats and contacts, apparently even if td::td_api::getChats has limit_ of like 1
+    // Among updateNewChat updates will be channels forwarded from by someone else, which should not
+    // be included in the list of our chat rooms
+    sendQuery(td::td_api::make_object<td::td_api::getChats>(
+                  nullptr, std::numeric_limits<std::int64_t>::max(), 0, 200),
+              nullptr);
+}
+
+int PurpleTdClient::setPurpleConnectionReady(gpointer user_data)
 {
     purple_debug_misc(config::pluginId, "Connection ready\n");
     PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);

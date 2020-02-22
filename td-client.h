@@ -30,6 +30,7 @@ private:
     using TdErrorPtr    = td::td_api::object_ptr<td::td_api::error>;
     using TdAuthCodePtr = td::td_api::object_ptr<td::td_api::authenticationCodeInfo>;
 
+    // All non-static member functions below are called from the poll thread
     void pollThreadLoop();
     void processResponse(td::Client::Response response);
     void sendTdlibParameters();
@@ -39,9 +40,10 @@ private:
     static void requestCodeCancelled(PurpleTdClient *self);
     void sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler);
 
-    void authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     static int notifyAuthError(gpointer user_data);
-    static int connectionReady(gpointer user_data);
+    void       connectionReady();
+    static int setPurpleConnectionReady(gpointer user_data);
 
     PurpleAccount                      *m_account;
     std::unique_ptr<UpdateHandler>      m_updateHandler;
