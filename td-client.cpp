@@ -11,6 +11,13 @@ public:
         td::td_api::downcast_call(*update_authorization_state.authorization_state_, *m_owner->m_authUpdateHandler);
     }
 
+    void operator()(td::td_api::updateConnectionState &connectionUpdate) {
+        purple_debug_misc(config::pluginId, "Incoming update: connection state\n");
+        if (connectionUpdate.state_ && (connectionUpdate.state_->get_id() == td::td_api::connectionStateReady::ID)) {
+            g_idle_add(PurpleTdClient::connectionReady, m_owner);
+        }
+    }
+
     void operator()(auto &update) const {
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
     }
@@ -35,6 +42,16 @@ public:
     void operator()(td::td_api::authorizationStateWaitPhoneNumber &) const {
         purple_debug_misc(config::pluginId, "Authorization state update: phone number requested\n");
         m_owner->sendPhoneNumber();
+    }
+
+    void operator()(td::td_api::authorizationStateWaitCode &codeState) const {
+        purple_debug_misc(config::pluginId, "Authorization state update: authentication code requested\n");
+        m_owner->m_authCodeInfo = std::move(codeState.code_info_);
+        g_idle_add(PurpleTdClient::requestAuthCode, m_owner);
+    }
+
+    void operator()(td::td_api::authorizationStateReady &) const {
+        purple_debug_misc(config::pluginId, "Authorization state update: ready\n");
     }
 
     void operator()(auto &update) const {
@@ -95,11 +112,17 @@ void PurpleTdClient::processResponse(td::Client::Response response)
             purple_debug_misc(config::pluginId, "Incoming update\n");
             td::td_api::downcast_call(*response.object, *m_updateHandler);
         } else {
-            auto it = m_responseHandlers.find(response.id);
-            if (it != m_responseHandlers.end()) {
-                (this->*(it->second))(response.id, std::move(response.object));
-                m_responseHandlers.erase(it);
+            ResponseCb callback = nullptr;
+            {
+                std::unique_lock<std::mutex> dataLock(m_dataMutex);
+                auto it = m_responseHandlers.find(response.id);
+                if (it != m_responseHandlers.end()) {
+                    callback = it->second;
+                    m_responseHandlers.erase(it);
+                }
             }
+            if (callback)
+                (this->*callback)(response.id, std::move(response.object));
         }
     } else
         purple_debug_misc(config::pluginId, "Response id %lu timed out or something\n", response.id);
@@ -133,24 +156,99 @@ void PurpleTdClient::sendPhoneNumber()
               &PurpleTdClient::authResponse);
 }
 
+static std::string getAuthCodeDesc(const td::td_api::AuthenticationCodeType &codeType)
+{
+    switch (codeType.get_id()) {
+    case td::td_api::authenticationCodeTypeTelegramMessage::ID:
+        return "Telegram message (length: " +
+               std::to_string(static_cast<const td::td_api::authenticationCodeTypeTelegramMessage &>(codeType).length_) +
+               ")";
+    case td::td_api::authenticationCodeTypeSms::ID:
+        return "SMS (length: " +
+               std::to_string(static_cast<const td::td_api::authenticationCodeTypeSms &>(codeType).length_) +
+               ")";
+    case td::td_api::authenticationCodeTypeCall::ID:
+        return "Phone call (length: " +
+               std::to_string(static_cast<const td::td_api::authenticationCodeTypeCall &>(codeType).length_) +
+               ")";
+    case td::td_api::authenticationCodeTypeFlashCall::ID:
+        return "Poor man's phone call (pattern: " +
+               static_cast<const td::td_api::authenticationCodeTypeFlashCall &>(codeType).pattern_ +
+               ")";
+    default:
+        return "Pigeon post";
+    }
+}
+
+int PurpleTdClient::requestAuthCode(gpointer user_data)
+{
+    PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
+    std::string message = "Enter authentication code\n";
+
+    if (self->m_authCodeInfo) {
+        if (self->m_authCodeInfo->type_)
+            message += "Code sent via: " + getAuthCodeDesc(*self->m_authCodeInfo->type_) + "\n";
+        if (self->m_authCodeInfo->next_type_)
+            message += "Next code will be: " + getAuthCodeDesc(*self->m_authCodeInfo->next_type_) + "\n";
+    }
+
+    if (!purple_request_input (purple_account_get_connection(self->m_account),
+                               (char *)"Login code",
+                               message.c_str(),
+                               NULL, // secondary message
+                               NULL, // default value
+                               FALSE, // multiline input
+                               FALSE, // masked input
+                               (char *)"the code",
+                               (char *)"OK", G_CALLBACK(requestCodeEntered),
+                               (char *)"Cancel", G_CALLBACK(requestCodeCancelled),
+                               self->m_account,
+                               NULL, // buddy
+                               NULL, // conversation
+                               self))
+    {
+        purple_connection_set_state (purple_account_get_connection(self->m_account), PURPLE_CONNECTED);
+        PurpleConversation *conv = purple_conversation_new (PURPLE_CONV_TYPE_IM, self->m_account, "Telegram");
+        purple_conversation_write (conv, "Telegram",
+            "Authentication code needs to be entered but this libpurple won't cooperate",
+            (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_SYSTEM), 0);
+    }
+
+    return FALSE; // This idle handler will not be called again
+}
+
+void PurpleTdClient::requestCodeEntered(PurpleTdClient *self, const gchar *code)
+{
+    purple_debug_misc(config::pluginId, "Authentication code entered: '%s'\n", code);
+    self->sendQuery(td::td_api::make_object<td::td_api::checkAuthenticationCode>(code),
+                    &PurpleTdClient::authResponse);
+}
+
+void PurpleTdClient::requestCodeCancelled(PurpleTdClient *self)
+{
+    purple_connection_error(purple_account_get_connection(self->m_account),
+                            "Authentication code required");
+}
+
 void PurpleTdClient::sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler)
 {
     uint64_t queryId = ++m_lastQueryId;
     purple_debug_misc(config::pluginId, "Sending query id %lu\n", (unsigned long)queryId);
-    if (handler)
+    if (handler) {
+        std::unique_lock<std::mutex> dataLock(m_dataMutex);
         m_responseHandlers.emplace(queryId, std::move(handler));
+    }
     m_client->send({queryId, std::move(f)});
 }
 
 void PurpleTdClient::authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     if (object->get_id() == td::td_api::error::ID) {
-        td::tl::unique_ptr<td::td_api::error> error = td::move_tl_object_as<td::td_api::error>(object);
+        td::td_api::object_ptr<td::td_api::error> error = td::move_tl_object_as<td::td_api::error>(object);
         purple_debug_misc(config::pluginId, "Authentication error on query %lu (auth step %d): code %d (%s)\n",
                           (unsigned long)requestId, (int)m_lastAuthState, (int)error->code_,
                           error->message_.c_str());
-        m_authErrorCode = error->code_;
-        m_authError     = std::move(error->message_);
+        m_authError     = std::move(error);
         g_idle_add(notifyAuthError, this);
     } else
         purple_debug_misc(config::pluginId, "Authentication success on query %lu\n", (unsigned long)requestId);
@@ -172,7 +270,22 @@ int PurpleTdClient::notifyAuthError(gpointer user_data)
         message = "Authentication error";
     }
 
-    message += ": code " + std::to_string(self->m_authErrorCode) + " (" + self->m_authError + ")";
+    if (self->m_authError) {
+        message += ": code " + std::to_string(self->m_authError->code_) + " (" +
+                self->m_authError->message_ + ")";
+        self->m_authError.reset();
+    }
+
     purple_connection_error(purple_account_get_connection(self->m_account), message.c_str());
+    return FALSE; // This idle handler will not be called again
+}
+
+int PurpleTdClient::connectionReady(gpointer user_data)
+{
+    PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
+
+    purple_connection_set_state (purple_account_get_connection(self->m_account), PURPLE_CONNECTED);
+    purple_blist_add_account(self->m_account);
+
     return FALSE; // This idle handler will not be called again
 }
