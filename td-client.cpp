@@ -1,16 +1,25 @@
 #include "td-client.h"
 #include "config.h"
 
+static void authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    if (object->get_id() == td::td_api::error::ID) {
+        auto error = td::move_tl_object_as<td::td_api::error>(object);
+        purple_debug_misc(config::pluginId, "Authentication error on query %lu: %s\n", (unsigned long)requestId, td::td_api::to_string(error).c_str());
+    } else
+        purple_debug_misc(config::pluginId, "Authentication success on query %lu\n", (unsigned long)requestId);
+}
+
 class UpdateHandler {
 public:
     UpdateHandler(PurpleTdClient *owner) : m_owner(owner) {}
 
-    void operator() (td::td_api::updateAuthorizationState &update_authorization_state) const {
+    void operator()(td::td_api::updateAuthorizationState &update_authorization_state) const {
         purple_debug_misc(config::pluginId, "Incoming update: authorization state\n");
         td::td_api::downcast_call(*update_authorization_state.authorization_state_, *m_owner->m_authUpdateHandler);
     }
 
-    void operator() (auto &update) const {
+    void operator()(auto &update) const {
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
     }
 private:
@@ -23,11 +32,17 @@ public:
 
     void operator()(td::td_api::authorizationStateWaitEncryptionKey &) const {
         purple_debug_misc(config::pluginId, "Authorization state update: encriytion key requested\n");
+        m_owner->sendQuery(td::td_api::make_object<td::td_api::checkDatabaseEncryptionKey>(""), authResponse);
     }
 
-    void operator() (td::td_api::authorizationStateWaitTdlibParameters &) const {
+    void operator()(td::td_api::authorizationStateWaitTdlibParameters &) const {
         purple_debug_misc(config::pluginId, "Authorization state update: TDLib parameters requested\n");
         m_owner->sendTdlibParameters();
+    }
+
+    void operator()(td::td_api::authorizationStateWaitPhoneNumber &) const {
+        purple_debug_misc(config::pluginId, "Authorization state update: phone number requested\n");
+        m_owner->sendPhoneNumber();
     }
 
     void operator()(auto &update) const {
@@ -98,15 +113,6 @@ void PurpleTdClient::processResponse(td::Client::Response response)
         purple_debug_misc(config::pluginId, "Response id %lu timed out or something\n", response.id);
 }
 
-static void authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
-{
-    if (object->get_id() == td::td_api::error::ID) {
-        auto error = td::move_tl_object_as<td::td_api::error>(object);
-        purple_debug_misc(config::pluginId, "Authentication error on query %lu: %s\n", (unsigned long)requestId, td::td_api::to_string(error).c_str());
-    } else
-        purple_debug_misc(config::pluginId, "Authentication success on query %lu\n", (unsigned long)requestId);
-}
-
 void PurpleTdClient::sendTdlibParameters()
 {
     auto parameters = td::td_api::make_object<td::td_api::tdlibParameters>();
@@ -125,6 +131,13 @@ void PurpleTdClient::sendTdlibParameters()
     parameters->application_version_ = "1.0";
     parameters->enable_storage_optimizer_ = true;
     sendQuery(td::td_api::make_object<td::td_api::setTdlibParameters>(std::move(parameters)),
+              authResponse);
+}
+
+void PurpleTdClient::sendPhoneNumber()
+{
+    const char *number = purple_account_get_username(m_account);
+    sendQuery(td::td_api::make_object<td::td_api::setAuthenticationPhoneNumber>(number, nullptr),
               authResponse);
 }
 

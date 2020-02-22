@@ -30,6 +30,7 @@ private:
     void pollThreadLoop();
     void processResponse(td::Client::Response response);
     void sendTdlibParameters();
+    void sendPhoneNumber();
     void sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler);
 
     PurpleAccount                      *m_account;
