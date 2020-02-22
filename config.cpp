@@ -11,4 +11,5 @@ char pluginDesc[]    = "Telegram Protocol Plugin using tdlib";
 char pluginAuthor[]  = "Arseniy Lartsev";
 char projectUrl[]    = "https://github.com/ars3niy/tdlib-purple";
 
+const char *configSubdir = "tdlib";
 }

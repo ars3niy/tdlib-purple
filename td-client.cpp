@@ -1,6 +1,5 @@
 #include "td-client.h"
 #include "config.h"
-#include <purple.h>
 
 class UpdateHandler {
 public:
@@ -38,8 +37,9 @@ private:
     PurpleTdClient *m_owner;
 };
 
-PurpleTdClient::PurpleTdClient()
+PurpleTdClient::PurpleTdClient(PurpleAccount *acct)
 {
+    m_account           = acct;
     m_updateHandler     = std::make_unique<UpdateHandler>(this);
     m_authUpdateHandler = std::make_unique<AuthUpdateHandler>(this);
 }
@@ -69,6 +69,7 @@ void PurpleTdClient::startLogin()
 
     m_client = std::make_unique<td::Client>();
     if (!m_pollThread.joinable()) {
+        m_lastQueryId = 0;
         m_stopThread = false;
         m_pollThread = std::thread([this]() { pollThreadLoop(); });
     }
@@ -87,12 +88,51 @@ void PurpleTdClient::processResponse(td::Client::Response response)
             purple_debug_misc(config::pluginId, "Incoming update\n");
             td::td_api::downcast_call(*response.object, *m_updateHandler);
         } else {
-            // Response to a request
+            auto it = m_responseHandlers.find(response.id);
+            if (it != m_responseHandlers.end()) {
+                it->second(response.id, std::move(response.object));
+                m_responseHandlers.erase(it);
+            }
         }
     } else
         purple_debug_misc(config::pluginId, "Response id %lu timed out or something\n", response.id);
 }
 
+static void authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    if (object->get_id() == td::td_api::error::ID) {
+        auto error = td::move_tl_object_as<td::td_api::error>(object);
+        purple_debug_misc(config::pluginId, "Authentication error on query %lu: %s\n", (unsigned long)requestId, td::td_api::to_string(error).c_str());
+    } else
+        purple_debug_misc(config::pluginId, "Authentication success on query %lu\n", (unsigned long)requestId);
+}
+
 void PurpleTdClient::sendTdlibParameters()
 {
+    auto parameters = td::td_api::make_object<td::td_api::tdlibParameters>();
+    const char *username = purple_account_get_username(m_account);
+    parameters->database_directory_ = std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+                                      config::configSubdir + G_DIR_SEPARATOR_S + username;
+    purple_debug_misc(config::pluginId, "Account %s using database directory %s\n",
+                      username, parameters->database_directory_.c_str());
+    parameters->use_message_database_ = true;
+    parameters->use_secret_chats_ = true;
+    parameters->api_id_ = 94575;
+    parameters->api_hash_ = "a3406de8d171bb422bb6ddf3bbd800e2";
+    parameters->system_language_code_ = "en";
+    parameters->device_model_ = "Desktop";
+    parameters->system_version_ = "Unknown";
+    parameters->application_version_ = "1.0";
+    parameters->enable_storage_optimizer_ = true;
+    sendQuery(td::td_api::make_object<td::td_api::setTdlibParameters>(std::move(parameters)),
+              authResponse);
+}
+
+void PurpleTdClient::sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler)
+{
+    uint64_t queryId = ++m_lastQueryId;
+    purple_debug_misc(config::pluginId, "Sending query id %lu\n", (unsigned long)queryId);
+    if (handler)
+        m_responseHandlers.emplace(queryId, std::move(handler));
+    m_client->send({queryId, std::move(f)});
 }

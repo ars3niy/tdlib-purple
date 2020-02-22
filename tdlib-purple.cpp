@@ -386,10 +386,10 @@ static GHashTable *tgprpl_chat_info_defaults (PurpleConnection *gc, const char *
     return g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
 }
 
-static void tgprpl_login (PurpleAccount * acct)
+static void tgprpl_login (PurpleAccount *acct)
 {
     PurpleConnection *gc       = purple_account_get_connection (acct);
-    PurpleTdClient   *tdClient = new PurpleTdClient;
+    PurpleTdClient   *tdClient = new PurpleTdClient(acct);
 
     purple_connection_set_protocol_data (gc, tdClient);
     purple_connection_set_state (gc, PURPLE_CONNECTING);

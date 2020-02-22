@@ -12,6 +12,7 @@ extern char pluginDesc[];
 extern char pluginAuthor[];
 extern char projectUrl[];
 
+extern const char *configSubdir;
 }
 
 #endif
