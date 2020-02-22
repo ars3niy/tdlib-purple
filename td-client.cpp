@@ -6,12 +6,12 @@ class UpdateHandler {
 public:
     UpdateHandler(PurpleTdClient *owner) : m_owner(owner) {}
 
-    void operator()(td::td_api::updateAuthorizationState &update_authorization_state) const {
+    void operator() (td::td_api::updateAuthorizationState &update_authorization_state) const {
         purple_debug_misc(config::pluginId, "Incoming update: authorization state\n");
         td::td_api::downcast_call(*update_authorization_state.authorization_state_, *m_owner->m_authUpdateHandler);
     }
 
-    void operator()(auto &update) const {
+    void operator() (auto &update) const {
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
     }
 private:
@@ -24,6 +24,11 @@ public:
 
     void operator()(td::td_api::authorizationStateWaitEncryptionKey &) const {
         purple_debug_misc(config::pluginId, "Authorization state update: encriytion key requested\n");
+    }
+
+    void operator() (td::td_api::authorizationStateWaitTdlibParameters &) const {
+        purple_debug_misc(config::pluginId, "Authorization state update: TDLib parameters requested\n");
+        m_owner->sendTdlibParameters();
     }
 
     void operator()(auto &update) const {
@@ -41,6 +46,9 @@ PurpleTdClient::PurpleTdClient()
 
 PurpleTdClient::~PurpleTdClient()
 {
+    m_stopThread = true;
+    m_client->send({UINT64_MAX, td::td_api::make_object<td::td_api::close>()});
+    m_pollThread.join();
 }
 
 void PurpleTdClient::setLogLevel(int level)
@@ -51,8 +59,25 @@ void PurpleTdClient::setLogLevel(int level)
 
 void PurpleTdClient::startLogin()
 {
+#if !GLIB_CHECK_VERSION(2, 32, 0)
+    // GLib threading system is automaticaly initialized since 2.32.
+    // For earlier versions, it have to be initialized before calling any
+    // Glib or GTK+ functions.
+    if (!g_thread_supported())
+        g_thread_init(NULL);
+#endif
+
     m_client = std::make_unique<td::Client>();
-    processResponse(m_client->receive(1));
+    if (!m_pollThread.joinable()) {
+        m_stopThread = false;
+        m_pollThread = std::thread([this]() { pollThreadLoop(); });
+    }
+}
+
+void PurpleTdClient::pollThreadLoop()
+{
+    while (!m_stopThread)
+        processResponse(m_client->receive(1));
 }
 
 void PurpleTdClient::processResponse(td::Client::Response response)
@@ -66,4 +91,8 @@ void PurpleTdClient::processResponse(td::Client::Response response)
         }
     } else
         purple_debug_misc(config::pluginId, "Response id %lu timed out or something\n", response.id);
+}
+
+void PurpleTdClient::sendTdlibParameters()
+{
 }

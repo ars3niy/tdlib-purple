@@ -394,9 +394,9 @@ static void tgprpl_login (PurpleAccount * acct)
     purple_connection_set_protocol_data (gc, tdClient);
     purple_connection_set_state (gc, PURPLE_CONNECTING);
     tdClient->startLogin();
-    purple_connection_set_state (gc, PURPLE_CONNECTED);
 
-    purple_blist_add_account (acct);
+    //purple_connection_set_state (gc, PURPLE_CONNECTED);
+    //purple_blist_add_account (acct);
 }
 
 static void tgprpl_close (PurpleConnection *gc)
