@@ -25,13 +25,16 @@ private:
     friend class UpdateHandler;
     friend class AuthUpdateHandler;
     using TdObjectPtr = td::td_api::object_ptr<td::td_api::Object>;
-    using ResponseCb  = std::function<void(uint64_t requestId, TdObjectPtr object)>;
+    using ResponseCb  = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
 
     void pollThreadLoop();
     void processResponse(td::Client::Response response);
     void sendTdlibParameters();
     void sendPhoneNumber();
     void sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler);
+
+    void authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    static int notifyAuthError(gpointer user_data);
 
     PurpleAccount                      *m_account;
     std::unique_ptr<UpdateHandler>      m_updateHandler;
@@ -41,6 +44,10 @@ private:
     std::atomic_bool                    m_stopThread;
     uint64_t                            m_lastQueryId;
     std::map<std::uint64_t, ResponseCb> m_responseHandlers;
+
+    int32_t                             m_lastAuthState;
+    int32_t                             m_authErrorCode;
+    std::string                         m_authError;
 };
 
 #endif
