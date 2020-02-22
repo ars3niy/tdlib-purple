@@ -1,24 +1,29 @@
-# TDLib C++ basic usage examples
+# New libpurple plugin for Telegram
 
-TDLib should be prebuilt and installed to local subdirectory `td/`:
+Early prototype, not functional yet.
+
+Implemented so far:
+
+* Logging in with previously registered account
+* Populating contact list (private chats only, no groups, no channels)
+* Some outgoing messages from another client (re-displayed at every login)
+* Unread incoming messages (re-displayed at every login)
+
+TDLib should be prebuilt and installed somewhere (requires C++14):
 ```
 cd <path to TDLib sources>
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=../example/cpp/td ..
-cmake --build . --target install
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
+make install DESTDIR=/path/to/tdlib
 ```
 Also see [building](https://github.com/tdlib/td#building) for additional details on TDLib building.
 
-Then you can build the examples:
+Building this plugin:
 ```
-cd <path to TDLib sources>/example/cpp
 mkdir build
 cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DTd_DIR=<full path to TDLib sources>/example/cpp/td/lib/cmake/Td ..
-cmake --build .
+cmake -DTd_DIR=/path/to/tdlib/usr/local/lib/cmake/Td ..
+make
 ```
-
-Documentation for all available classes and methods can be found at https://core.telegram.org/tdlib/docs.
-
-To run `tdjson_example` you may need to manually copy a `tdjson` shared library from `td/bin` to a directory containing built binaries.
