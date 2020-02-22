@@ -527,8 +527,8 @@ int PurpleTdClient::showUnreadMessages(gpointer user_data)
             purple_debug_misc(config::pluginId, "Need to show %zu unread messages for chat %lld\n",
                               self->m_chatHistoryRequests[i].messages.size(),
                               (long long)self->m_chatHistoryRequests[i].chatId);
-            for (auto it = self->m_chatHistoryRequests[i].messages.begin();
-                 it != self->m_chatHistoryRequests[i].messages.end(); ++it)
+            for (auto it = self->m_chatHistoryRequests[i].messages.rbegin();
+                 it != self->m_chatHistoryRequests[i].messages.rend(); ++it)
             {
                 self->showMessage(*(*it));
             }
