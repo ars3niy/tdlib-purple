@@ -29,6 +29,8 @@ private:
     using ResponseCb    = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
     using TdErrorPtr    = td::td_api::object_ptr<td::td_api::error>;
     using TdAuthCodePtr = td::td_api::object_ptr<td::td_api::authenticationCodeInfo>;
+    using TdUserPtr     = td::td_api::object_ptr<td::td_api::user>;
+    using TdChatPtr     = td::td_api::object_ptr<td::td_api::chat>;
 
     // All non-static member functions below are called from the poll thread
     void pollThreadLoop();
@@ -44,6 +46,10 @@ private:
     static int notifyAuthError(gpointer user_data);
     void       connectionReady();
     static int setPurpleConnectionReady(gpointer user_data);
+    void       updateUser(TdUserPtr user);
+    void       addNewChat(TdChatPtr chat);
+    void       getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    static int updatePurpleChatList(gpointer user_data);
 
     PurpleAccount                      *m_account;
     std::unique_ptr<UpdateHandler>      m_updateHandler;
@@ -53,6 +59,13 @@ private:
     std::atomic_bool                    m_stopThread;
     std::atomic<uint64_t>               m_lastQueryId;
     std::map<std::uint64_t, ResponseCb> m_responseHandlers;
+
+    // Members between here and m_dataMutex can only be modified in the polling thread
+    std::map<int32_t, TdUserPtr>        m_userInfo;
+    std::map<int64_t, TdChatPtr>        m_chatInfo;
+    // m_chatInfo can contain chats that are not in m_activeChats if some other chat contains
+    // messages forwarded from another channel
+    std::vector<int64_t>                m_activeChats;
     std::mutex                          m_dataMutex;
 
     int32_t                             m_lastAuthState = 0;

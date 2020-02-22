@@ -17,6 +17,16 @@ public:
             m_owner->connectionReady();
     }
 
+    void operator()(td::td_api::updateUser &userUpdate) const {
+        purple_debug_misc(config::pluginId, "Incoming update: update user\n");
+        m_owner->updateUser(std::move(userUpdate.user_));
+    }
+
+    void operator()(td::td_api::updateNewChat &newChat) const {
+        purple_debug_misc(config::pluginId, "Incoming update: new chat\n");
+        m_owner->addNewChat(std::move(newChat.chat_));
+    }
+
     void operator()(auto &update) const {
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
     }
@@ -118,7 +128,9 @@ void PurpleTdClient::processResponse(td::Client::Response response)
                 if (it != m_responseHandlers.end()) {
                     callback = it->second;
                     m_responseHandlers.erase(it);
-                }
+                } else
+                    purple_debug_misc(config::pluginId, "Ignoring response to request %llu\n",
+                                      (unsigned long long)response.id);
             }
             if (callback)
                 (this->*callback)(response.id, std::move(response.object));
@@ -285,11 +297,9 @@ void PurpleTdClient::connectionReady()
 
     // td::td_api::chats response will be preceded by a string of updateNewChat and updateUser for
     // all chats and contacts, apparently even if td::td_api::getChats has limit_ of like 1
-    // Among updateNewChat updates will be channels forwarded from by someone else, which should not
-    // be included in the list of our chat rooms
     sendQuery(td::td_api::make_object<td::td_api::getChats>(
                   nullptr, std::numeric_limits<std::int64_t>::max(), 0, 200),
-              nullptr);
+              &PurpleTdClient::getChatsResponse);
 }
 
 int PurpleTdClient::setPurpleConnectionReady(gpointer user_data)
@@ -299,6 +309,90 @@ int PurpleTdClient::setPurpleConnectionReady(gpointer user_data)
 
     purple_connection_set_state (purple_account_get_connection(self->m_account), PURPLE_CONNECTED);
     purple_blist_add_account(self->m_account);
+
+    return FALSE; // This idle handler will not be called again
+}
+
+void PurpleTdClient::updateUser(TdUserPtr user)
+{
+    if (!user) {
+        purple_debug_warning(config::pluginId, "updateUser with null user info\n");
+        return;
+    }
+    purple_debug_misc(config::pluginId, "Update user: %s '%s' '%s'\n", user->phone_number_.c_str(),
+                      user->first_name_.c_str(), user->last_name_.c_str());
+
+    std::unique_lock<std::mutex> dataLock(m_dataMutex);
+    m_userInfo[user->id_] = std::move(user);
+}
+
+void PurpleTdClient::addNewChat(TdChatPtr chat)
+{
+    if (!chat) {
+        purple_debug_warning(config::pluginId, "addNewChat with null chat info\n");
+        return;
+    }
+    purple_debug_misc(config::pluginId, "Add new chat: %s\n", chat->title_.c_str());
+
+    std::unique_lock<std::mutex> dataLock(m_dataMutex);
+    m_chatInfo[chat->id_] = std::move(chat);
+}
+
+void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    purple_debug_misc(config::pluginId, "getChats response to request %llu\n", (unsigned long long)requestId);
+    if (object->get_id() == td::td_api::chats::ID) {
+        td::td_api::object_ptr<td::td_api::chats> chats = td::move_tl_object_as<td::td_api::chats>(object);
+        {
+            std::unique_lock<std::mutex> dataLock(m_dataMutex);
+            m_activeChats = std::move(chats->chat_ids_);
+        }
+        g_idle_add(updatePurpleChatList, this);
+    }
+}
+
+static const char *getPurpleStatusId(const td::td_api::UserStatus &tdStatus)
+{
+    if (tdStatus.get_id() == td::td_api::userStatusOnline::ID)
+        return purple_primitive_get_id_from_type(PURPLE_STATUS_AVAILABLE);
+    else
+        return purple_primitive_get_id_from_type(PURPLE_STATUS_OFFLINE);
+}
+
+int PurpleTdClient::updatePurpleChatList(gpointer user_data)
+{
+    PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
+
+    // Only populate the list from scratch
+    std::unique_lock<std::mutex> dataLock(self->m_dataMutex);
+    for (int64_t chatId: self->m_activeChats) {
+        auto pChatInfo = self->m_chatInfo.find(chatId);
+        if (pChatInfo == self->m_chatInfo.end()) {
+            purple_debug_warning(config::pluginId, "Received unknown chat id %lld\n", (long long)chatId);
+            continue;
+        }
+        const td::td_api::chat &chat = *pChatInfo->second;
+
+        if (chat.type_->get_id() == td::td_api::chatTypePrivate::ID) {
+            const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat.type_);
+            auto pUser = self->m_userInfo.find(privType.user_id_);
+            if (pUser == self->m_userInfo.end()) {
+                purple_debug_warning(config::pluginId, "Received private chat with unknown user id %d\n", (int)privType.user_id_);
+                continue;
+            }
+            const td::td_api::user &user   = *pUser->second;
+            const char             *userId = user.phone_number_.c_str();
+
+            PurpleBuddy *buddy = purple_find_buddy(self->m_account, userId);
+            if (buddy == NULL) {
+                buddy = purple_buddy_new(self->m_account, user.phone_number_.c_str(), chat.title_.c_str());
+                purple_blist_add_buddy(buddy, NULL, NULL, NULL);
+            }
+
+            purple_prpl_got_user_status(self->m_account, user.phone_number_.c_str(),
+                                        getPurpleStatusId(*user.status_), NULL);
+        }
+    }
 
     return FALSE; // This idle handler will not be called again
 }
