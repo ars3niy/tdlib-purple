@@ -467,9 +467,9 @@ void PurpleTdClient::showMessage(const td::td_api::message &message)
         if (user) {
             int flags;
             if (message.is_outgoing_)
-                flags = PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_NO_LOG | PURPLE_MESSAGE_REMOTE_SEND;
+                flags = PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_REMOTE_SEND;
             else
-                flags = PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_NO_LOG;
+                flags = PURPLE_MESSAGE_RECV;
             serv_got_im(purple_account_get_connection(m_account), user->phone_number_.c_str(),
                         text, (PurpleMessageFlags)flags, message.date_);
         }
