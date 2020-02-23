@@ -1,11 +1,5 @@
 #include "td-client.h"
 #include "config.h"
-#include <algorithm>
-
-enum {
-    CHAT_HISTORY_REQUEST_LIMIT  = 50,
-    CHAT_HISTORY_RETREIVE_LIMIT = 100
-};
 
 class UpdateHandler {
 public:
@@ -25,12 +19,14 @@ public:
 
     void operator()(td::td_api::updateUser &userUpdate) const {
         purple_debug_misc(config::pluginId, "Incoming update: update user\n");
-        m_owner->updateUser(std::move(userUpdate.user_));
+        TdAccountData::Lock lock(m_owner->m_data);
+        m_owner->m_data.updateUser(std::move(userUpdate.user_));
     }
 
     void operator()(td::td_api::updateNewChat &newChat) const {
         purple_debug_misc(config::pluginId, "Incoming update: new chat\n");
-        m_owner->addNewChat(std::move(newChat.chat_));
+        TdAccountData::Lock lock(m_owner->m_data);
+        m_owner->m_data.addNewChat(std::move(newChat.chat_));
     }
 
     void operator()(auto &update) const {
@@ -247,23 +243,14 @@ void PurpleTdClient::requestCodeCancelled(PurpleTdClient *self)
                             "Authentication code required");
 }
 
-void PurpleTdClient::retreiveUnreadHistory(int64_t chatId, int64_t lastReadInId, int64_t lastReadOutId)
+void PurpleTdClient::retrieveUnreadHistory(int64_t chatId, int64_t lastReadInId, int64_t lastReadOutId)
 {
     // This is only called once for a given chatId after login
     // m_dataMutex is already locked at the time of the call
-    m_chatHistoryRequests.emplace_back();
-    RequestHistoryState &state = m_chatHistoryRequests.back();
-    state.chatId          = chatId;
-    state.lastReadInId    = lastReadInId;
-    state.lastReadOutId   = lastReadOutId;
-    state.oldestSeenInId  = 0;
-    state.oldestSeenOutId = 0;
-    state.inboxFinished   = false;
-    state.outboxFinished  = false;
 
     auto query = td::td_api::make_object<td::td_api::getChatHistory>(chatId, 0, 0, CHAT_HISTORY_REQUEST_LIMIT, false);
     uint64_t queryId = sendQuery(std::move(query), &PurpleTdClient::chatHistoryResponse);
-    state.queryId = queryId;
+    m_data.addUnreadHistoryRequest(queryId, chatId, lastReadInId, lastReadOutId);
 }
 
 uint64_t PurpleTdClient::sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler)
@@ -339,39 +326,14 @@ int PurpleTdClient::setPurpleConnectionReady(gpointer user_data)
     return FALSE; // This idle handler will not be called again
 }
 
-void PurpleTdClient::updateUser(TdUserPtr user)
-{
-    if (!user) {
-        purple_debug_warning(config::pluginId, "updateUser with null user info\n");
-        return;
-    }
-    purple_debug_misc(config::pluginId, "Update user: %s '%s' '%s'\n", user->phone_number_.c_str(),
-                      user->first_name_.c_str(), user->last_name_.c_str());
-
-    std::unique_lock<std::mutex> dataLock(m_dataMutex);
-    m_userInfo[user->id_] = std::move(user);
-}
-
-void PurpleTdClient::addNewChat(TdChatPtr chat)
-{
-    if (!chat) {
-        purple_debug_warning(config::pluginId, "addNewChat with null chat info\n");
-        return;
-    }
-    purple_debug_misc(config::pluginId, "Add new chat: %s\n", chat->title_.c_str());
-
-    std::unique_lock<std::mutex> dataLock(m_dataMutex);
-    m_chatInfo[chat->id_] = std::move(chat);
-}
-
 void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     purple_debug_misc(config::pluginId, "getChats response to request %llu\n", (unsigned long long)requestId);
     if (object->get_id() == td::td_api::chats::ID) {
         td::td_api::object_ptr<td::td_api::chats> chats = td::move_tl_object_as<td::td_api::chats>(object);
         {
-            std::unique_lock<std::mutex> dataLock(m_dataMutex);
-            m_activeChats = std::move(chats->chat_ids_);
+            TdAccountData::Lock lock(m_data);
+            m_data.setActiveChats(std::move(chats->chat_ids_));
         }
         g_idle_add(updatePurpleChatList, this);
     }
@@ -390,44 +352,35 @@ int PurpleTdClient::updatePurpleChatList(gpointer user_data)
     PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
 
     // Only populate the list from scratch
-    std::unique_lock<std::mutex> dataLock(self->m_dataMutex);
-    for (int64_t chatId: self->m_activeChats) {
-        auto pChatInfo = self->m_chatInfo.find(chatId);
-        if (pChatInfo == self->m_chatInfo.end()) {
-            purple_debug_warning(config::pluginId, "Received unknown chat id %lld\n", (long long)chatId);
-            continue;
+    TdAccountData::Lock lock(self->m_data);
+
+    std::vector<PrivateChat> privateChats;
+    self->m_data.getPrivateChats(privateChats);
+    // lock must be held for as long as references from privateChats elements are used
+
+    for (const PrivateChat &c: privateChats) {
+        const td::td_api::chat &chat   = c.chat;
+        const td::td_api::user &user   = c.user;
+        const char             *userId = user.phone_number_.c_str();
+
+        PurpleBuddy *buddy = purple_find_buddy(self->m_account, userId);
+        if (buddy == NULL) {
+            purple_debug_misc(config::pluginId, "Adding new buddy %s for chat id %lld\n",
+                                chat.title_.c_str(), (long long)chat.id_);
+            buddy = purple_buddy_new(self->m_account, userId, chat.title_.c_str());
+            purple_blist_add_buddy(buddy, NULL, NULL, NULL);
         }
-        const td::td_api::chat &chat = *pChatInfo->second;
 
-        if (chat.type_->get_id() == td::td_api::chatTypePrivate::ID) {
-            const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat.type_);
-            auto pUser = self->m_userInfo.find(privType.user_id_);
-            if (pUser == self->m_userInfo.end()) {
-                purple_debug_warning(config::pluginId, "Received private chat with unknown user id %d\n", (int)privType.user_id_);
-                continue;
-            }
-            const td::td_api::user &user   = *pUser->second;
-            const char             *userId = user.phone_number_.c_str();
+        purple_prpl_got_user_status(self->m_account, userId, getPurpleStatusId(*user.status_), NULL);
 
-            PurpleBuddy *buddy = purple_find_buddy(self->m_account, userId);
-            if (buddy == NULL) {
-                purple_debug_misc(config::pluginId, "Adding new buddy %s for chat id %lld\n",
-                                  chat.title_.c_str(), (long long)chat.id_);
-                buddy = purple_buddy_new(self->m_account, userId, chat.title_.c_str());
-                purple_blist_add_buddy(buddy, NULL, NULL, NULL);
-            }
-
-            purple_prpl_got_user_status(self->m_account, userId, getPurpleStatusId(*user.status_), NULL);
-
-            // TODO unread_count means not read on any client, that's not the right comparison
-            // Instead, need to compare last_read_*box_message_id_ (these are for this client only)
-            // to last message on the chat that server always sends
-            //if (chat.unread_count_ != 0) {
-                purple_debug_misc(config::pluginId, "chat %lld (%s) has %d unread messages, retreiving history\n",
-                                  (long long)chat.id_, chat.title_.c_str(), (int)chat.unread_count_);
-                self->retreiveUnreadHistory(chat.id_, chat.last_read_inbox_message_id_, chat.last_read_outbox_message_id_);
-            //}
-        }
+        // TODO unread_count means not read on any client, that's not the right comparison
+        // Instead, need to compare last_read_*box_message_id_ (these are for this client only)
+        // to last message on the chat that server always sends
+        //if (chat.unread_count_ != 0) {
+            purple_debug_misc(config::pluginId, "chat %lld (%s) has %d unread messages, retreiving history\n",
+                                (long long)chat.id_, chat.title_.c_str(), (int)chat.unread_count_);
+            self->retrieveUnreadHistory(chat.id_, chat.last_read_inbox_message_id_, chat.last_read_outbox_message_id_);
+        //}
     }
 
     return FALSE; // This idle handler will not be called again
@@ -435,107 +388,35 @@ int PurpleTdClient::updatePurpleChatList(gpointer user_data)
 
 void PurpleTdClient::chatHistoryResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    bool finished = false;
-    std::unique_lock<std::mutex> lock(m_dataMutex);
-    auto it = std::find_if(m_chatHistoryRequests.begin(), m_chatHistoryRequests.end(),
-                           [requestId](const RequestHistoryState &state) {
-                               return (state.queryId == requestId);
-                           });
-    if (it == m_chatHistoryRequests.end()) {
-        purple_debug_warning(config::pluginId, "Received history response id %llu doesn't match any RequestHistoryState\n",
-            (unsigned long long)requestId);
-    } else {
-        RequestHistoryState &state = *it;
-        int64_t lastMessageId = 0;
-        if (object->get_id() != td::td_api::messages::ID) {
-            purple_debug_misc(config::pluginId, "Error retreiving unread messages for chat %lld (object id %d) - aborting\n",
-                            (long long)state.chatId, (int)object->get_id());
-            state.inboxFinished = true;
-            state.outboxFinished = true;
-        } else {
-            td::td_api::messages &messages = static_cast<td::td_api::messages &>(*object);
-            purple_debug_misc(config::pluginId, "Received %zu messages for chat %lld\n",
-                              messages.messages_.size(), (long long)state.chatId);
-            for (auto it = messages.messages_.begin(); it != messages.messages_.end(); ++it)
-                if (*it) {
-                    td::td_api::object_ptr<td::td_api::message> message = std::move(*it);
-                    lastMessageId = message->id_;
-                    if (message->is_outgoing_) {
-                        if (!state.outboxFinished) {
-                            purple_debug_misc(config::pluginId, "Retreived outgoing message %lld for chat %lld\n",
-                                              (long long)message->id_, (long long)state.chatId);
-                            state.oldestSeenOutId = message->id_;
-                            state.outboxFinished = (message->id_ == state.lastReadOutId);
-                            if (state.outboxFinished)
-                                purple_debug_misc(config::pluginId, "All unread outgoing messages retreived for chat %lld\n",
-                                                  (long long)state.chatId);
-                            else
-                                state.messages.push_back(std::move(message));
-                        }
-                    } else {
-                        if (!state.inboxFinished) {
-                            purple_debug_misc(config::pluginId, "Retreived incoming message %lld for chat %lld\n",
-                                              (long long)message->id_, (long long)state.chatId);
-                            state.oldestSeenInId = message->id_;
-                            state.inboxFinished = (message->id_ == state.lastReadInId);
-                            if (state.inboxFinished)
-                                purple_debug_misc(config::pluginId, "All unread incoming messages retreived for chat %lld\n",
-                                                  (long long)state.chatId);
-                            else
-                                state.messages.push_back(std::move(message));
-                        }
-                    }
-
-                    if (state.messages.size() >= CHAT_HISTORY_RETREIVE_LIMIT) {
-                        purple_debug_misc(config::pluginId, "Reached unread message limit for chat id %lld\n",
-                                          (long long)state.chatId);
-                        state.outboxFinished = true;
-                        state.inboxFinished = true;
-                    }
-                }
-        }
-        if (lastMessageId == 0) {
-            purple_debug_misc(config::pluginId, "No messages in the batch - aborting\n");
-            state.outboxFinished = true;
-            state.inboxFinished = true;
-        }
-        if (state.inboxFinished && state.outboxFinished) {
-            purple_debug_misc(config::pluginId, "Retreived %zu unread messages for chat %lld\n",
-                state.messages.size(), (long long)state.chatId);
-            finished = true;
-        } else {
-            auto query = td::td_api::make_object<td::td_api::getChatHistory>(
-                state.chatId, lastMessageId, 0, CHAT_HISTORY_REQUEST_LIMIT, false
-            );
-            uint64_t queryId = sendQuery(std::move(query), &PurpleTdClient::chatHistoryResponse);
-            state.queryId = queryId;
-        }
-    }
-
-    lock.unlock();
-    if (finished)
+    int64_t chatId, oldestMessageId;
+    TdAccountData::Lock lock(m_data);
+    ChatHistoryResult result = m_data.handleHistoryResponse(requestId, std::move(object),
+                                                            chatId, oldestMessageId);
+    if (result == ChatHistoryResult::Finished) {
+        lock.unlock(); // Just a small courtesy
         g_idle_add(showUnreadMessages, this);
+    } else if (chatId && oldestMessageId) {
+        auto query = td::td_api::make_object<td::td_api::getChatHistory>(chatId, oldestMessageId, 0,
+                                                                         CHAT_HISTORY_REQUEST_LIMIT,
+                                                                         false);
+        uint64_t newRequestId = sendQuery(std::move(query), &PurpleTdClient::chatHistoryResponse);
+        m_data.addFollowUpHistoryRequest(requestId, newRequestId);
+    }
 }
 
 int PurpleTdClient::showUnreadMessages(gpointer user_data)
 {
     PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
+    std::vector<UnreadChat> chats;
+    TdAccountData::Lock lock(self->m_data);
 
-    std::unique_lock<std::mutex> lock(self->m_dataMutex);
-    for (size_t i = 0; i < self->m_chatHistoryRequests.size(); ) {
-        if (self->m_chatHistoryRequests[i].inboxFinished && self->m_chatHistoryRequests[i].outboxFinished) {
-            purple_debug_misc(config::pluginId, "Need to show %zu unread messages for chat %lld\n",
-                              self->m_chatHistoryRequests[i].messages.size(),
-                              (long long)self->m_chatHistoryRequests[i].chatId);
-            for (auto it = self->m_chatHistoryRequests[i].messages.rbegin();
-                 it != self->m_chatHistoryRequests[i].messages.rend(); ++it)
-            {
-                self->showMessage(*(*it));
-            }
-            self->m_chatHistoryRequests.erase(self->m_chatHistoryRequests.begin()+i);
-        } else
-            i++;
+    self->m_data.getUnreadChatMessages(chats);
+
+    for (const UnreadChat &unreadChat: chats) {
+        for (auto it = unreadChat.messages.rbegin(); it != unreadChat.messages.rend(); ++it)
+            self->showMessage(*(*it));
     }
+
     return FALSE; // This idle handler will not be called again
 }
 
@@ -565,25 +446,23 @@ void PurpleTdClient::showMessage(const td::td_api::message &message)
     }
 
     // m_dataMutex already locked
-    auto pChat = m_chatInfo.find(message.chat_id_);
-    if (pChat == m_chatInfo.end()) {
+    const td::td_api::chat *chat = m_data.getChat(message.chat_id_);
+    if (!chat) {
         purple_debug_warning(config::pluginId, "Received message with unknown chat id %lld\n",
                             (long long)message.chat_id_);
         return;
     }
-    const td::td_api::chat &chat = *pChat->second;
 
-    if (chat.type_->get_id() == td::td_api::chatTypePrivate::ID) {
-        int32_t userId = static_cast<const td::td_api::chatTypePrivate &>(*chat.type_).user_id_;
-        auto pUser = m_userInfo.find(userId);
-        if (pUser != m_userInfo.end()) {
-            const td::td_api::user &user = *pUser->second;
+    if (chat->type_->get_id() == td::td_api::chatTypePrivate::ID) {
+        int32_t userId = static_cast<const td::td_api::chatTypePrivate &>(*chat->type_).user_id_;
+        const td::td_api::user *user = m_data.getUser(userId);
+        if (user) {
             int flags;
             if (message.is_outgoing_)
                 flags = PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_NO_LOG | PURPLE_MESSAGE_REMOTE_SEND;
             else
                 flags = PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_NO_LOG;
-            serv_got_im(purple_account_get_connection(m_account), user.phone_number_.c_str(),
+            serv_got_im(purple_account_get_connection(m_account), user->phone_number_.c_str(),
                         text, (PurpleMessageFlags)flags, message.date_);
         }
     }

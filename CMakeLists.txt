@@ -11,6 +11,7 @@ pkg_check_modules(Purple REQUIRED purple)
 add_library(td-purple SHARED
     tdlib-purple.cpp
     td-client.cpp
+    account-data.cpp
     config.cpp
 )
 
