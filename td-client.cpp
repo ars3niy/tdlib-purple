@@ -412,10 +412,18 @@ int PurpleTdClient::showUnreadMessages(gpointer user_data)
 
     self->m_data.getUnreadChatMessages(chats);
 
-    for (const UnreadChat &unreadChat: chats) {
-        for (auto it = unreadChat.messages.rbegin(); it != unreadChat.messages.rend(); ++it)
-            self->showMessage(*(*it));
-    }
+    for (const UnreadChat &unreadChat: chats)
+        if (!unreadChat.messages.empty()) {
+            td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
+            viewMessagesReq->chat_id_ = unreadChat.chatId;
+            viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
+            for (const auto &pMessage: unreadChat.messages)
+                viewMessagesReq->message_ids_.push_back(pMessage->id_);
+            self->sendQuery(std::move(viewMessagesReq), nullptr);
+
+            for (auto it = unreadChat.messages.rbegin(); it != unreadChat.messages.rend(); ++it)
+                self->showMessage(*(*it));
+        }
 
     return FALSE; // This idle handler will not be called again
 }
