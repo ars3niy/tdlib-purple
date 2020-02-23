@@ -133,6 +133,14 @@ ChatHistoryResult TdAccountData::handleHistoryResponse(uint64_t requestId,
                                               (long long)message->id_, (long long)state.chatId);
                             state.oldestSeenOutId = message->id_;
                             state.outboxFinished = (message->id_ == state.lastReadOutId);
+
+                            // An oddity that happens
+                            if (message->id_ == state.lastReadInId) {
+                                purple_debug_misc(config::pluginId, "last_read_inbox_message_id_ is actually outgoing message - finishing history retrieval\n");
+                                state.inboxFinished = true;
+                                state.outboxFinished = true;
+                            }
+
                             if (state.outboxFinished)
                                 purple_debug_misc(config::pluginId, "All unread outgoing messages retreived for chat %lld\n",
                                                   (long long)state.chatId);
@@ -145,6 +153,14 @@ ChatHistoryResult TdAccountData::handleHistoryResponse(uint64_t requestId,
                                               (long long)message->id_, (long long)state.chatId);
                             state.oldestSeenInId = message->id_;
                             state.inboxFinished = (message->id_ == state.lastReadInId);
+
+                            // An oddity that happens
+                            if (message->id_ == state.lastReadOutId) {
+                                purple_debug_misc(config::pluginId, "last_read_outbox_message_id_ is actually incoming message - finishing history retrieval\n");
+                                state.inboxFinished = true;
+                                state.outboxFinished = true;
+                            }
+
                             if (state.inboxFinished)
                                 purple_debug_misc(config::pluginId, "All unread incoming messages retreived for chat %lld\n",
                                                   (long long)state.chatId);
