@@ -37,6 +37,12 @@ public:
             purple_debug_warning(config::pluginId, "Received null new message\n");
     }
 
+    void operator()(td::td_api::updateUserStatus &updateStatus) const {
+        purple_debug_misc(config::pluginId, "Incoming update: user status\n");
+        if (updateStatus.status_)
+            m_owner->updateUserStatus(updateStatus.user_id_, std::move(updateStatus.status_));
+    }
+
     void operator()(auto &update) const {
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
     }
@@ -345,6 +351,11 @@ static const char *getPurpleStatusId(const td::td_api::UserStatus &tdStatus)
         return purple_primitive_get_id_from_type(PURPLE_STATUS_OFFLINE);
 }
 
+static const char *getPurpleUserName(const td::td_api::user &user)
+{
+    return user.phone_number_.c_str();
+}
+
 int PurpleTdClient::updatePurpleChatList(gpointer user_data)
 {
     PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
@@ -357,19 +368,19 @@ int PurpleTdClient::updatePurpleChatList(gpointer user_data)
     // lock must be held for as long as references from privateChats elements are used
 
     for (const PrivateChat &c: privateChats) {
-        const td::td_api::chat &chat   = c.chat;
-        const td::td_api::user &user   = c.user;
-        const char             *userId = user.phone_number_.c_str();
+        const td::td_api::chat &chat           = c.chat;
+        const td::td_api::user &user           = c.user;
+        const char             *purpleUserName = getPurpleUserName(user);
 
-        PurpleBuddy *buddy = purple_find_buddy(self->m_account, userId);
+        PurpleBuddy *buddy = purple_find_buddy(self->m_account, purpleUserName);
         if (buddy == NULL) {
             purple_debug_misc(config::pluginId, "Adding new buddy %s for chat id %lld\n",
                                 chat.title_.c_str(), (long long)chat.id_);
-            buddy = purple_buddy_new(self->m_account, userId, chat.title_.c_str());
+            buddy = purple_buddy_new(self->m_account, purpleUserName, chat.title_.c_str());
             purple_blist_add_buddy(buddy, NULL, NULL, NULL);
         }
 
-        purple_prpl_got_user_status(self->m_account, userId, getPurpleStatusId(*user.status_), NULL);
+        purple_prpl_got_user_status(self->m_account, purpleUserName, getPurpleStatusId(*user.status_), NULL);
     }
 
     return FALSE; // This idle handler will not be called again
@@ -441,7 +452,7 @@ void PurpleTdClient::showMessage(const td::td_api::message &message)
                 flags = PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_REMOTE_SEND;
             else
                 flags = PURPLE_MESSAGE_RECV;
-            serv_got_im(purple_account_get_connection(m_account), user->phone_number_.c_str(),
+            serv_got_im(purple_account_get_connection(m_account), getPurpleUserName(*user),
                         text, (PurpleMessageFlags)flags, message.date_);
         }
     }
@@ -457,6 +468,7 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
 {
+    TdAccountData::Lock lock(m_data);
     const td::td_api::user *tdUser = m_data.getUserByPhone(buddyName);
     if (tdUser == nullptr) {
         purple_debug_warning(config::pluginId, "No user with phone '%s'\n", buddyName);
@@ -479,4 +491,38 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
 
     // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
     return 0;
+}
+
+void PurpleTdClient::updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status)
+{
+    {
+        TdAccountData::Lock lock(m_data);
+        m_data.updateUserStatus(userId, std::move(status));
+    }
+    g_idle_add(showUpdatedStatus, this);
+}
+
+int PurpleTdClient::showUpdatedStatus(gpointer user_data)
+{
+    PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
+    std::vector<UserUpdate> userUpdates;
+
+    {
+        TdAccountData::Lock lock(self->m_data);
+        self->m_data.getUpdatedUsers(userUpdates);
+    }
+    for (const UserUpdate &updateInfo: userUpdates) {
+        const td::td_api::user *user;
+        {
+            TdAccountData::Lock lock(self->m_data);
+            user = self->m_data.getUser(updateInfo.userId);
+        }
+        if (user == nullptr)
+            continue;
+
+        purple_prpl_got_user_status(self->m_account, getPurpleUserName(*user),
+                                    getPurpleStatusId(*user->status_), NULL);
+    }
+
+    return FALSE; // This idle handler will not be called again
 }

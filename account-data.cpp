@@ -82,6 +82,27 @@ const td::td_api::user *TdAccountData::getUserByPhone(const char *phoneNumber) c
         return pUser->second.get();
 }
 
+void TdAccountData::updateUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status)
+{
+    auto pUser = m_userInfo.find(userId);
+    if (pUser == m_userInfo.end()) {
+        purple_debug_warning(config::pluginId, "Received updateUserStatus with unknown user_id\n");
+        return;
+    }
+
+    pUser->second->status_ = std::move(status);
+    UserUpdate *updateInfo;
+    auto pExisting = std::find_if(m_updatedUsers.begin(), m_updatedUsers.end(),
+                                  [userId](const UserUpdate &upd) { return (upd.userId == userId); });
+    if (pExisting == m_updatedUsers.end()) {
+        m_updatedUsers.emplace_back();
+        updateInfo = &m_updatedUsers.back();
+        updateInfo->userId = userId;
+    } else
+        updateInfo = &(*pExisting);
+    updateInfo->updates.status = true;
+}
+
 void TdAccountData::getPrivateChats(std::vector<PrivateChat> &chats) const
 {
     chats.clear();
@@ -121,6 +142,11 @@ void TdAccountData::getUnreadChatMessages(std::vector<UnreadChat> &chats)
     }
 
     m_newMessages.clear();
+}
+
+void TdAccountData::getUpdatedUsers(std::vector<UserUpdate> userIds)
+{
+    userIds = std::move(m_updatedUsers);
 }
 
 void TdAccountData::addNewMessage(td::td_api::object_ptr<td::td_api::message> message)
