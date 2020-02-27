@@ -29,6 +29,14 @@ public:
         m_owner->m_data.addNewChat(std::move(newChat.chat_));
     }
 
+    void operator()(td::td_api::updateNewMessage &newMessageUpdate) const {
+        purple_debug_misc(config::pluginId, "Incoming update: new message\n");
+        if (newMessageUpdate.message_)
+            m_owner->onIncomingMessage(std::move(newMessageUpdate.message_));
+        else
+            purple_debug_warning(config::pluginId, "Received null new message\n");
+    }
+
     void operator()(auto &update) const {
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
     }
@@ -243,16 +251,6 @@ void PurpleTdClient::requestCodeCancelled(PurpleTdClient *self)
                             "Authentication code required");
 }
 
-void PurpleTdClient::retrieveUnreadHistory(int64_t chatId, int64_t lastReadInId, int64_t lastReadOutId)
-{
-    // This is only called once for a given chatId after login
-    // m_dataMutex is already locked at the time of the call
-
-    auto query = td::td_api::make_object<td::td_api::getChatHistory>(chatId, 0, 0, CHAT_HISTORY_REQUEST_LIMIT, false);
-    uint64_t queryId = sendQuery(std::move(query), &PurpleTdClient::chatHistoryResponse);
-    m_data.addUnreadHistoryRequest(queryId, chatId, lastReadInId, lastReadOutId);
-}
-
 uint64_t PurpleTdClient::sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler)
 {
     uint64_t queryId = ++m_lastQueryId;
@@ -372,36 +370,9 @@ int PurpleTdClient::updatePurpleChatList(gpointer user_data)
         }
 
         purple_prpl_got_user_status(self->m_account, userId, getPurpleStatusId(*user.status_), NULL);
-
-        // TODO unread_count means not read on any client, that's not the right comparison
-        // Instead, need to compare last_read_*box_message_id_ (these are for this client only)
-        // to last message on the chat that server always sends
-        //if (chat.unread_count_ != 0) {
-            purple_debug_misc(config::pluginId, "chat %lld (%s) has %d unread messages, retreiving history\n",
-                                (long long)chat.id_, chat.title_.c_str(), (int)chat.unread_count_);
-            self->retrieveUnreadHistory(chat.id_, chat.last_read_inbox_message_id_, chat.last_read_outbox_message_id_);
-        //}
     }
 
     return FALSE; // This idle handler will not be called again
-}
-
-void PurpleTdClient::chatHistoryResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
-{
-    int64_t chatId, oldestMessageId;
-    TdAccountData::Lock lock(m_data);
-    ChatHistoryResult result = m_data.handleHistoryResponse(requestId, std::move(object),
-                                                            chatId, oldestMessageId);
-    if (result == ChatHistoryResult::Finished) {
-        lock.unlock(); // Just a small courtesy
-        g_idle_add(showUnreadMessages, this);
-    } else if (chatId && oldestMessageId) {
-        auto query = td::td_api::make_object<td::td_api::getChatHistory>(chatId, oldestMessageId, 0,
-                                                                         CHAT_HISTORY_REQUEST_LIMIT,
-                                                                         false);
-        uint64_t newRequestId = sendQuery(std::move(query), &PurpleTdClient::chatHistoryResponse);
-        m_data.addFollowUpHistoryRequest(requestId, newRequestId);
-    }
 }
 
 int PurpleTdClient::showUnreadMessages(gpointer user_data)
@@ -421,8 +392,8 @@ int PurpleTdClient::showUnreadMessages(gpointer user_data)
                 viewMessagesReq->message_ids_.push_back(pMessage->id_);
             self->sendQuery(std::move(viewMessagesReq), nullptr);
 
-            for (auto it = unreadChat.messages.rbegin(); it != unreadChat.messages.rend(); ++it)
-                self->showMessage(*(*it));
+            for (const auto &pMessage: unreadChat.messages)
+                self->showMessage(*pMessage);
         }
 
     return FALSE; // This idle handler will not be called again
@@ -474,4 +445,12 @@ void PurpleTdClient::showMessage(const td::td_api::message &message)
                         text, (PurpleMessageFlags)flags, message.date_);
         }
     }
+}
+
+void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
+{
+    // Pass it to the main thread
+    TdAccountData::Lock lock(m_data);
+    m_data.addNewMessage(std::move(message));
+    g_idle_add(showUnreadMessages, this);
 }

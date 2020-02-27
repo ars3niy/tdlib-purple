@@ -41,7 +41,6 @@ private:
     static int  requestAuthCode(gpointer user_data);
     static void requestCodeEntered(PurpleTdClient *self, const gchar *code);
     static void requestCodeCancelled(PurpleTdClient *self);
-    void     retrieveUnreadHistory(int64_t chatId, int64_t lastReadInId, int64_t lastReadOutId);
     uint64_t sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler);
 
     void       authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
@@ -50,9 +49,9 @@ private:
     static int setPurpleConnectionReady(gpointer user_data);
     void       getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     static int updatePurpleChatList(gpointer user_data);
-    void       chatHistoryResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     static int showUnreadMessages(gpointer user_data);
     void       showMessage(const td::td_api::message &message);
+    void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
 
     PurpleAccount                      *m_account;
     std::unique_ptr<UpdateHandler>      m_updateHandler;
