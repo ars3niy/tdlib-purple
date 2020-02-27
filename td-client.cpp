@@ -454,3 +454,29 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     m_data.addNewMessage(std::move(message));
     g_idle_add(showUnreadMessages, this);
 }
+
+int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
+{
+    const td::td_api::user *tdUser = m_data.getUserByPhone(buddyName);
+    if (tdUser == nullptr) {
+        purple_debug_warning(config::pluginId, "No user with phone '%s'\n", buddyName);
+        return -1;
+    }
+    const td::td_api::chat *tdChat = m_data.getPrivateChatByUserId(tdUser->id_);
+    if (tdChat == nullptr) {
+        purple_debug_warning(config::pluginId, "No chat with user %s\n", tdUser->username_.c_str());
+        return -1;
+    }
+
+    td::td_api::object_ptr<td::td_api::sendMessage> send_message = td::td_api::make_object<td::td_api::sendMessage>();
+    send_message->chat_id_ = tdChat->id_;
+    td::td_api::object_ptr<td::td_api::inputMessageText> message_content = td::td_api::make_object<td::td_api::inputMessageText>();
+    message_content->text_ = td::td_api::make_object<td::td_api::formattedText>();
+    message_content->text_->text_ = message;
+    send_message->input_message_content_ = std::move(message_content);
+
+    sendQuery(std::move(send_message), nullptr);
+
+    // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
+    return 0;
+}

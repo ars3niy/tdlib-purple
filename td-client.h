@@ -23,6 +23,7 @@ public:
 
     static void setLogLevel(int level);
     void startLogin();
+    int sendMessage(const char *buddyName, const char *message);
 private:
     friend class UpdateHandler;
     friend class AuthUpdateHandler;

@@ -1,13 +1,14 @@
 # New libpurple plugin for Telegram
 
-Early prototype, not functional yet.
+## Motivation
 
-Implemented so far:
+telegram-purple seems to miss incoming messages a lot, thus writing new plugin using latest tdlib.
 
-* Logging in with previously registered account
-* Populating contact list (private chats only, no groups, no channels)
-* Some outgoing messages from another client (re-displayed at every login)
-* Unread incoming messages (re-displayed at every login)
+## Functionality
+
+It should be just about usable for private chats.
+
+## Building
 
 TDLib should be prebuilt and installed somewhere (requires C++14):
 ```
@@ -27,3 +28,9 @@ cd build
 cmake -DTd_DIR=/path/to/tdlib/usr/local/lib/cmake/Td ..
 make
 ```
+
+## Installation
+
+Copy the .so to libpurple plugins directory.
+
+It's good to have telegram-purple installed as well since its icon is used at the moment.

@@ -402,11 +402,14 @@ static void tgprpl_login (PurpleAccount *acct)
 static void tgprpl_close (PurpleConnection *gc)
 {
     delete static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    purple_connection_set_protocol_data(gc, NULL);
 }
 
 static int tgprpl_send_im (PurpleConnection *gc, const char *who, const char *message, PurpleMessageFlags flags)
 {
-    return -1;
+    PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    purple_debug_misc(config::pluginId, "tgprpl_send_im to '%s' flags=0x%x\n", who, (unsigned)flags);
+    return tdClient->sendMessage(who, message);
 }
 
 static unsigned int tgprpl_send_typing (PurpleConnection *gc, const char *who, PurpleTypingState typing)

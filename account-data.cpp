@@ -40,9 +40,42 @@ const td::td_api::chat *TdAccountData::getChat(int64_t chatId) const
         return pChatInfo->second.get();
 }
 
+static bool isPrivateChat(const td::td_api::chat &chat, int32_t userId)
+{
+    if (chat.type_->get_id() == td::td_api::chatTypePrivate::ID) {
+        const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat.type_);
+        return (privType.user_id_ == userId);
+    }
+    return false;
+}
+
+const td::td_api::chat *TdAccountData::getPrivateChatByUserId(int32_t userId) const
+{
+    auto pChatInfo = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
+                                  [userId](const ChatInfoMap::value_type &entry) {
+                                      return isPrivateChat(*entry.second, userId);
+                                  });
+    if (pChatInfo == m_chatInfo.end())
+        return nullptr;
+    else
+        return pChatInfo->second.get();
+}
+
 const td::td_api::user *TdAccountData::getUser(int32_t userId) const
 {
     auto pUser = m_userInfo.find(userId);
+    if (pUser == m_userInfo.end())
+        return nullptr;
+    else
+        return pUser->second.get();
+}
+
+const td::td_api::user *TdAccountData::getUserByPhone(const char *phoneNumber) const
+{
+    auto pUser = std::find_if(m_userInfo.begin(), m_userInfo.end(),
+                              [phoneNumber](const UserInfoMap::value_type &entry) {
+                                  return (entry.second->phone_number_ == phoneNumber);
+                              });
     if (pUser == m_userInfo.end())
         return nullptr;
     else

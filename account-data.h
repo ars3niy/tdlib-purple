@@ -46,15 +46,19 @@ public:
     void addNewChat(TdChatPtr chat);
     void setActiveChats(std::vector<std::int64_t> &&chats);
     const td::td_api::chat *getChat(int64_t chatId) const;
+    const td::td_api::chat *getPrivateChatByUserId(int32_t userId) const;
     const td::td_api::user *getUser(int32_t userId) const;
+    const td::td_api::user *getUserByPhone(const char *phoneNumber) const;
     void getPrivateChats(std::vector<PrivateChat> &chats) const;
 
     // This is for showing newly arrived messages
     void addNewMessage(td::td_api::object_ptr<td::td_api::message> message);
     void getUnreadChatMessages(std::vector<UnreadChat> &chats);
 private:
-    std::map<int32_t, TdUserPtr>        m_userInfo;
-    std::map<int64_t, TdChatPtr>        m_chatInfo;
+    using UserInfoMap = std::map<int32_t, TdUserPtr>;
+    using ChatInfoMap = std::map<int64_t, TdChatPtr>;
+    UserInfoMap                         m_userInfo;
+    ChatInfoMap                         m_chatInfo;
     // m_chatInfo can contain chats that are not in m_activeChats if some other chat contains
     // messages forwarded from another channel
     std::vector<int64_t>                m_activeChats;
