@@ -393,6 +393,7 @@ static void tgprpl_login (PurpleAccount *acct)
 
     purple_connection_set_protocol_data (gc, tdClient);
     purple_connection_set_state (gc, PURPLE_CONNECTING);
+    purple_connection_update_progress(gc, "Connecting", 1, 3);
     tdClient->startLogin();
 
     //purple_connection_set_state (gc, PURPLE_CONNECTED);

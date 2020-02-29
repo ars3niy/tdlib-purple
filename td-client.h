@@ -47,9 +47,12 @@ private:
     void       authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     static int notifyAuthError(gpointer user_data);
     void       connectionReady();
-    static int setPurpleConnectionReady(gpointer user_data);
+    static int setPurpleConnectionInProgress(gpointer user_data);
+    static int setPurpleConnectionUpdating(gpointer user_data);
     void       getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    static int updatePurpleChatList(gpointer user_data);
+    // List of chats is requested after connection is ready, and when response is received,
+    // then we report to libpurple that we are connected
+    static int updatePurpleChatListAndReportConnected(gpointer user_data);
     static int showUnreadMessages(gpointer user_data);
     void       showMessage(const td::td_api::message &message);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);

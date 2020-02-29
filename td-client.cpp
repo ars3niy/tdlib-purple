@@ -13,8 +13,14 @@ public:
 
     void operator()(td::td_api::updateConnectionState &connectionUpdate) const {
         purple_debug_misc(config::pluginId, "Incoming update: connection state\n");
-        if (connectionUpdate.state_ && (connectionUpdate.state_->get_id() == td::td_api::connectionStateReady::ID))
-            m_owner->connectionReady();
+        if (connectionUpdate.state_) {
+            if (connectionUpdate.state_->get_id() == td::td_api::connectionStateReady::ID)
+                m_owner->connectionReady();
+            else if (connectionUpdate.state_->get_id() == td::td_api::connectionStateConnecting::ID)
+                g_idle_add(PurpleTdClient::setPurpleConnectionInProgress, m_owner);
+            else if (connectionUpdate.state_->get_id() == td::td_api::connectionStateUpdating::ID)
+                g_idle_add(PurpleTdClient::setPurpleConnectionUpdating, m_owner);
+        }
     }
 
     void operator()(td::td_api::updateUser &userUpdate) const {
@@ -310,8 +316,7 @@ int PurpleTdClient::notifyAuthError(gpointer user_data)
 
 void PurpleTdClient::connectionReady()
 {
-    g_idle_add(PurpleTdClient::setPurpleConnectionReady, this);
-
+    purple_debug_misc(config::pluginId, "Connection ready\n");
     // td::td_api::chats response will be preceded by a string of updateNewChat and updateUser for
     // all chats and contacts, apparently even if td::td_api::getChats has limit_ of like 1
     sendQuery(td::td_api::make_object<td::td_api::getChats>(
@@ -319,13 +324,26 @@ void PurpleTdClient::connectionReady()
               &PurpleTdClient::getChatsResponse);
 }
 
-int PurpleTdClient::setPurpleConnectionReady(gpointer user_data)
+int PurpleTdClient::setPurpleConnectionInProgress(gpointer user_data)
 {
-    purple_debug_misc(config::pluginId, "Connection ready\n");
-    PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
+    purple_debug_misc(config::pluginId, "Connection in progress\n");
+    PurpleTdClient   *self = static_cast<PurpleTdClient *>(user_data);
+    PurpleConnection *gc   = purple_account_get_connection(self->m_account);
 
-    purple_connection_set_state (purple_account_get_connection(self->m_account), PURPLE_CONNECTED);
-    purple_blist_add_account(self->m_account);
+    purple_connection_set_state (gc, PURPLE_CONNECTING);
+    purple_blist_remove_account(self->m_account);
+    purple_connection_update_progress(gc, "Connecting", 1, 3);
+
+    return FALSE; // This idle handler will not be called again
+}
+
+int PurpleTdClient::setPurpleConnectionUpdating(gpointer user_data)
+{
+    purple_debug_misc(config::pluginId, "Updating account status\n");
+    PurpleTdClient   *self = static_cast<PurpleTdClient *>(user_data);
+    PurpleConnection *gc   = purple_account_get_connection(self->m_account);
+
+    purple_connection_update_progress(gc, "Updating status", 2, 3);
 
     return FALSE; // This idle handler will not be called again
 }
@@ -339,7 +357,7 @@ void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr
             TdAccountData::Lock lock(m_data);
             m_data.setActiveChats(std::move(chats->chat_ids_));
         }
-        g_idle_add(updatePurpleChatList, this);
+        g_idle_add(updatePurpleChatListAndReportConnected, this);
     }
 }
 
@@ -356,9 +374,12 @@ static const char *getPurpleUserName(const td::td_api::user &user)
     return user.phone_number_.c_str();
 }
 
-int PurpleTdClient::updatePurpleChatList(gpointer user_data)
+int PurpleTdClient::updatePurpleChatListAndReportConnected(gpointer user_data)
 {
     PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
+
+    purple_connection_set_state (purple_account_get_connection(self->m_account), PURPLE_CONNECTED);
+    purple_blist_add_account(self->m_account);
 
     // Only populate the list from scratch
     TdAccountData::Lock lock(self->m_data);
