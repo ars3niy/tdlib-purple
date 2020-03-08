@@ -62,7 +62,7 @@ public:
     // This is for showing newly arrived messages
     void addNewMessage(td::td_api::object_ptr<td::td_api::message> message);
     void getUnreadChatMessages(std::vector<UnreadChat> &chats);
-    void getUpdatedUsers(std::vector<UserUpdate> userIds);
+    void getUpdatedUsers(std::vector<UserUpdate> updates);
 private:
     using UserInfoMap = std::map<int32_t, TdUserPtr>;
     using ChatInfoMap = std::map<int64_t, TdChatPtr>;
@@ -74,6 +74,8 @@ private:
     std::vector<TdMessagePtr>           m_newMessages;
     std::vector<UserUpdate>             m_updatedUsers;
     std::mutex                          m_dataMutex;
+
+    UserUpdate &addUserUpdate(int32_t userId);
 };
 
 #endif

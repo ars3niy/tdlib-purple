@@ -12,6 +12,7 @@ void TdAccountData::updateUser(TdUserPtr user)
     purple_debug_misc(config::pluginId, "Update user: %s '%s' '%s'\n", user->phone_number_.c_str(),
                       user->first_name_.c_str(), user->last_name_.c_str());
 
+    addUserUpdate(user->id_);
     m_userInfo[user->id_] = std::move(user);
 }
 
@@ -70,16 +71,38 @@ const td::td_api::user *TdAccountData::getUser(int32_t userId) const
         return pUser->second.get();
 }
 
+static bool isPhoneEqual(const std::string &n1, const std::string &n2)
+{
+    const char *s1 = n1.c_str();
+    const char *s2 = n2.c_str();
+    if (*s1 == '+') s1++;
+    if (*s2 == '+') s2++;
+    return !strcmp(s1, s2);
+}
+
 const td::td_api::user *TdAccountData::getUserByPhone(const char *phoneNumber) const
 {
     auto pUser = std::find_if(m_userInfo.begin(), m_userInfo.end(),
                               [phoneNumber](const UserInfoMap::value_type &entry) {
-                                  return (entry.second->phone_number_ == phoneNumber);
+                                  return isPhoneEqual(entry.second->phone_number_, phoneNumber);
                               });
     if (pUser == m_userInfo.end())
         return nullptr;
     else
         return pUser->second.get();
+}
+
+UserUpdate &TdAccountData::addUserUpdate(int32_t userId)
+{
+    auto pExisting = std::find_if(m_updatedUsers.begin(), m_updatedUsers.end(),
+                                  [userId](const UserUpdate &upd) { return (upd.userId == userId); });
+    if (pExisting == m_updatedUsers.end()) {
+        m_updatedUsers.emplace_back();
+        UserUpdate &updateInfo = m_updatedUsers.back();
+        updateInfo.userId = userId;
+        return updateInfo;
+    } else
+        return *pExisting;
 }
 
 void TdAccountData::updateUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status)
@@ -91,16 +114,8 @@ void TdAccountData::updateUserStatus(int32_t userId, td::td_api::object_ptr<td::
     }
 
     pUser->second->status_ = std::move(status);
-    UserUpdate *updateInfo;
-    auto pExisting = std::find_if(m_updatedUsers.begin(), m_updatedUsers.end(),
-                                  [userId](const UserUpdate &upd) { return (upd.userId == userId); });
-    if (pExisting == m_updatedUsers.end()) {
-        m_updatedUsers.emplace_back();
-        updateInfo = &m_updatedUsers.back();
-        updateInfo->userId = userId;
-    } else
-        updateInfo = &(*pExisting);
-    updateInfo->updates.status = true;
+    UserUpdate &updateInfo = addUserUpdate(userId);
+    updateInfo.updates.status = true;
 }
 
 void TdAccountData::getPrivateChats(std::vector<PrivateChat> &chats) const
@@ -144,9 +159,9 @@ void TdAccountData::getUnreadChatMessages(std::vector<UnreadChat> &chats)
     m_newMessages.clear();
 }
 
-void TdAccountData::getUpdatedUsers(std::vector<UserUpdate> userIds)
+void TdAccountData::getUpdatedUsers(std::vector<UserUpdate> updates)
 {
-    userIds = std::move(m_updatedUsers);
+    updates = std::move(m_updatedUsers);
 }
 
 void TdAccountData::addNewMessage(td::td_api::object_ptr<td::td_api::message> message)

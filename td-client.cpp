@@ -25,8 +25,7 @@ public:
 
     void operator()(td::td_api::updateUser &userUpdate) const {
         purple_debug_misc(config::pluginId, "Incoming update: update user\n");
-        TdAccountData::Lock lock(m_owner->m_data);
-        m_owner->m_data.updateUser(std::move(userUpdate.user_));
+        m_owner->updateUser(std::move(userUpdate.user_));
     }
 
     void operator()(td::td_api::updateNewChat &newChat) const {
@@ -404,6 +403,20 @@ int PurpleTdClient::updatePurpleChatListAndReportConnected(gpointer user_data)
         purple_prpl_got_user_status(self->m_account, purpleUserName, getPurpleStatusId(*user.status_), NULL);
     }
 
+    const td::td_api::user *selfInfo = self->m_data.getUserByPhone(purple_account_get_username(self->m_account));
+    if (selfInfo != nullptr) {
+        std::string alias = selfInfo->first_name_ + " " + selfInfo->last_name_;
+        purple_debug_misc(config::pluginId, "Setting own alias to '%s'\n", alias.c_str());
+        purple_account_set_alias(self->m_account, alias.c_str());
+    } else
+        purple_debug_warning(config::pluginId, "Did not receive user information for self (%s) at login\n",
+            purple_account_get_username(self->m_account));
+
+    // TODO: try to have same code handle pre-login and post-login updates
+    // For now, discard accumulated user updates because they have just been handled above
+    std::vector<UserUpdate> updates;
+    self->m_data.getUpdatedUsers(updates);
+
     return FALSE; // This idle handler will not be called again
 }
 
@@ -520,10 +533,20 @@ void PurpleTdClient::updateUserStatus(uint32_t userId, td::td_api::object_ptr<td
         TdAccountData::Lock lock(m_data);
         m_data.updateUserStatus(userId, std::move(status));
     }
-    g_idle_add(showUpdatedStatus, this);
+    g_idle_add(showUserUpdates, this);
 }
 
-int PurpleTdClient::showUpdatedStatus(gpointer user_data)
+void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> user)
+{
+    {
+        TdAccountData::Lock lock(m_data);
+        m_data.updateUser(std::move(user));
+    }
+    if (purple_connection_get_state (purple_account_get_connection(m_account)) == PURPLE_CONNECTED)
+        g_idle_add(showUserUpdates, this);
+}
+
+int PurpleTdClient::showUserUpdates(gpointer user_data)
 {
     PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
     std::vector<UserUpdate> userUpdates;
@@ -541,8 +564,10 @@ int PurpleTdClient::showUpdatedStatus(gpointer user_data)
         if (user == nullptr)
             continue;
 
-        purple_prpl_got_user_status(self->m_account, getPurpleUserName(*user),
-                                    getPurpleStatusId(*user->status_), NULL);
+        if (updateInfo.updates.status)
+            purple_prpl_got_user_status(self->m_account, getPurpleUserName(*user),
+                                        getPurpleStatusId(*user->status_), NULL);
+        // TODO: handle other updates
     }
 
     return FALSE; // This idle handler will not be called again
