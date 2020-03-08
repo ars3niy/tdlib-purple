@@ -490,13 +490,19 @@ void PurpleTdClient::showMessage(const td::td_api::message &message)
         int32_t userId = static_cast<const td::td_api::chatTypePrivate &>(*chat->type_).user_id_;
         const td::td_api::user *user = m_data.getUser(userId);
         if (user) {
-            int flags;
-            if (message.is_outgoing_)
-                flags = PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_REMOTE_SEND;
-            else
-                flags = PURPLE_MESSAGE_RECV;
-            serv_got_im(purple_account_get_connection(m_account), getPurpleUserName(*user),
-                        text, (PurpleMessageFlags)flags, message.date_);
+            const char *who = getPurpleUserName(*user);
+            if (message.is_outgoing_) {
+                // serv_got_im seems to work for messages sent from another client, but not for
+                // echoed messages from this client. Therefore, this (code snippet from facebook plugin).
+                PurpleConversation *conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who, m_account);
+                if (conv == NULL)
+                    conv = purple_conversation_new(PURPLE_CONV_TYPE_IM, m_account, who);
+                purple_conversation_write(conv, purple_account_get_alias(m_account), text,
+                                          PURPLE_MESSAGE_SEND, // TODO: maybe set PURPLE_MESSAGE_REMOTE_SEND when appropriate
+                                          message.date_);
+            } else
+                serv_got_im(purple_account_get_connection(m_account), who, text,
+                            PURPLE_MESSAGE_RECV, message.date_);
         }
     }
 }
