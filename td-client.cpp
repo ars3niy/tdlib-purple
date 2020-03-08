@@ -398,6 +398,15 @@ int PurpleTdClient::updatePurpleChatListAndReportConnected(gpointer user_data)
                                 chat.title_.c_str(), (long long)chat.id_);
             buddy = purple_buddy_new(self->m_account, purpleUserName, chat.title_.c_str());
             purple_blist_add_buddy(buddy, NULL, NULL, NULL);
+        } else {
+            const char *oldName = purple_buddy_get_alias_only(buddy);
+            if (chat.title_ != oldName) {
+                purple_debug_misc(config::pluginId, "Renaming buddy %s '%s' to '%s'\n",
+                                  purpleUserName, oldName, chat.title_.c_str());
+                purple_blist_remove_buddy(buddy);
+                buddy = purple_buddy_new(self->m_account, purpleUserName, chat.title_.c_str());
+                purple_blist_add_buddy(buddy, NULL, NULL, NULL);
+            }
         }
 
         purple_prpl_got_user_status(self->m_account, purpleUserName, getPurpleStatusId(*user.status_), NULL);
