@@ -159,7 +159,7 @@ void TdAccountData::getUnreadChatMessages(std::vector<UnreadChat> &chats)
     m_newMessages.clear();
 }
 
-void TdAccountData::getUpdatedUsers(std::vector<UserUpdate> updates)
+void TdAccountData::getUpdatedUsers(std::vector<UserUpdate> &updates)
 {
     updates = std::move(m_updatedUsers);
 }
