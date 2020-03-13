@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
 project(TdExample VERSION 1.0 LANGUAGES CXX)
 
-find_package(Td 1.6.0 REQUIRED)
+find_package(Td REQUIRED)
 set(CMAKE_CXX_FLAGS "-DTD_VERSION=\\\"${Td_VERSION}\\\" -Wall -Werror")
 
 include(FindPkgConfig)
