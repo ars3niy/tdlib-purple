@@ -48,6 +48,12 @@ public:
             m_owner->updateUserStatus(updateStatus.user_id_, std::move(updateStatus.status_));
     }
 
+    void operator()(td::td_api::updateUserChatAction &updateChatAction) const {
+        purple_debug_misc(config::pluginId, "Incoming update: chat action %d\n",
+            updateChatAction.action_->get_id());
+        m_owner->handleUserChatAction(updateChatAction);
+    }
+
     void operator()(auto &update) const {
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
     }
@@ -586,4 +592,31 @@ int PurpleTdClient::showUserUpdates(gpointer user_data)
     }
 
     return FALSE; // This idle handler will not be called again
+}
+
+void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction)
+{
+    const td::td_api::chat *chat;
+    {
+        TdAccountData::Lock lock(m_data);
+        chat = m_data.getChat(updateChatAction.chat_id_);
+    }
+
+    if (!chat)
+        purple_debug_warning(config::pluginId, "Got user chat action for unknown chat %lld\n",
+                             (long long)updateChatAction.chat_id_);
+    else if (chat->type_->get_id() == td::td_api::chatTypePrivate::ID) {
+        const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat->type_);
+        if (privType.user_id_ != updateChatAction.user_id_)
+            purple_debug_warning(config::pluginId, "Got user action for private chat %lld (with user %d) for another user %d\n",
+                                 (long long)updateChatAction.chat_id_, privType.user_id_, updateChatAction.user_id_);
+        else if (updateChatAction.action_) {
+            if (updateChatAction.action_->get_id() == td::td_api::chatActionTyping::ID)
+                purple_debug_misc(config::pluginId, "User %d is typing\n", updateChatAction.user_id_);
+            else if (updateChatAction.action_->get_id() == td::td_api::chatActionCancel::ID)
+                purple_debug_misc(config::pluginId, "User %d is doing nothing\n", updateChatAction.user_id_);
+        }
+    } else
+        purple_debug_misc(config::pluginId, "Ignoring user chat action for non-private chat %lld\n",
+                          (long long)updateChatAction.chat_id_);
 }

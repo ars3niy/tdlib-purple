@@ -59,6 +59,7 @@ private:
     void       updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void       updateUser(td::td_api::object_ptr<td::td_api::user> user);
     static int showUserUpdates(gpointer user_data);
+    void       handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction);
 
     PurpleAccount                      *m_account;
     std::unique_ptr<UpdateHandler>      m_updateHandler;
