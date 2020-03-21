@@ -162,9 +162,29 @@ void TdAccountData::getUnreadChatMessages(std::vector<UnreadChat> &chats)
 void TdAccountData::getUpdatedUsers(std::vector<UserUpdate> &updates)
 {
     updates = std::move(m_updatedUsers);
+    m_updatedUsers.clear();
 }
 
 void TdAccountData::addNewMessage(td::td_api::object_ptr<td::td_api::message> message)
 {
     m_newMessages.push_back(std::move(message));
+}
+
+void TdAccountData::addUserAction(int32_t userId, bool isTyping)
+{
+    auto pAction = std::find_if(m_userActions.begin(), m_userActions.end(),
+                             [userId](const UserAction &action) { return (action.userId == userId); });
+    if (pAction != m_userActions.end())
+        pAction->isTyping = isTyping;
+    else {
+        m_userActions.emplace_back();
+        m_userActions.back().userId = userId;
+        m_userActions.back().isTyping = isTyping;
+    }
+}
+
+void TdAccountData::getNewUserActions(std::vector<UserAction> &actions)
+{
+    actions = std::move(m_userActions);
+    m_userActions.clear();
 }

@@ -1,6 +1,11 @@
 #include "td-client.h"
 #include "config.h"
 
+enum {
+    // Typing notifications seems to be resent every 5-6 seconds, so 10s timeout hould be appropriate
+    REMOTE_TYPING_NOTICE_TIMEOUT = 10,
+};
+
 class UpdateHandler {
 public:
     UpdateHandler(PurpleTdClient *owner) : m_owner(owner) {}
@@ -609,14 +614,50 @@ void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction
         const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat->type_);
         if (privType.user_id_ != updateChatAction.user_id_)
             purple_debug_warning(config::pluginId, "Got user action for private chat %lld (with user %d) for another user %d\n",
-                                 (long long)updateChatAction.chat_id_, privType.user_id_, updateChatAction.user_id_);
+                                 (long long)updateChatAction.chat_id_, privType.user_id_,
+                                 updateChatAction.user_id_);
         else if (updateChatAction.action_) {
-            if (updateChatAction.action_->get_id() == td::td_api::chatActionTyping::ID)
-                purple_debug_misc(config::pluginId, "User %d is typing\n", updateChatAction.user_id_);
-            else if (updateChatAction.action_->get_id() == td::td_api::chatActionCancel::ID)
-                purple_debug_misc(config::pluginId, "User %d is doing nothing\n", updateChatAction.user_id_);
+            TdAccountData::Lock lock(m_data);
+            if (updateChatAction.action_->get_id() == td::td_api::chatActionCancel::ID) {
+                purple_debug_misc(config::pluginId, "User (id %d) stopped chat action\n",
+                                  updateChatAction.user_id_);
+                m_data.addUserAction(updateChatAction.user_id_, false);
+            } else if (updateChatAction.action_->get_id() == td::td_api::chatActionStartPlayingGame::ID) {
+                purple_debug_misc(config::pluginId, "User (id %d): treating chatActionStartPlayingGame as cancel\n",
+                                  updateChatAction.user_id_);
+                m_data.addUserAction(updateChatAction.user_id_, false);
+            } else {
+                purple_debug_misc(config::pluginId, "User (id %d) started chat action (id %d)\n",
+                                  updateChatAction.user_id_, updateChatAction.action_->get_id());
+                m_data.addUserAction(updateChatAction.user_id_, true);
+            }
+            g_idle_add(PurpleTdClient::showUserChatActions, this);
         }
     } else
         purple_debug_misc(config::pluginId, "Ignoring user chat action for non-private chat %lld\n",
                           (long long)updateChatAction.chat_id_);
+}
+
+int PurpleTdClient::showUserChatActions(gpointer user_data)
+{
+    PurpleTdClient          *self = static_cast<PurpleTdClient *>(user_data);
+    std::vector<UserAction>  actions;
+    TdAccountData::Lock      lock(self->m_data);
+
+    self->m_data.getNewUserActions(actions);
+
+    for (const UserAction &action: actions) {
+        const td::td_api::user *user = self->m_data.getUser(action.userId);
+        if (user) {
+            if (action.isTyping)
+                serv_got_typing(purple_account_get_connection(self->m_account),
+                                getPurpleUserName(*user), REMOTE_TYPING_NOTICE_TIMEOUT,
+                                PURPLE_TYPING);
+            else
+                serv_got_typing_stopped(purple_account_get_connection(self->m_account),
+                                getPurpleUserName(*user));
+        }
+    }
+
+    return FALSE; // This idle handler will not be called again
 }

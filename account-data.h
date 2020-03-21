@@ -31,6 +31,11 @@ struct UnreadChat {
     std::vector<td::td_api::object_ptr<td::td_api::message>> messages;
 };
 
+struct UserAction {
+    int32_t userId;
+    bool    isTyping;
+};
+
 enum class ChatHistoryResult: uint8_t {
     Finished,
     Unfinished,
@@ -58,10 +63,11 @@ public:
     const td::td_api::user *getUserByPhone(const char *phoneNumber) const;
     void updateUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void getPrivateChats(std::vector<PrivateChat> &chats) const;
-
     void addNewMessage(td::td_api::object_ptr<td::td_api::message> message);
     void getUnreadChatMessages(std::vector<UnreadChat> &chats);
     void getUpdatedUsers(std::vector<UserUpdate> &updates);
+    void addUserAction(int32_t userId, bool isTyping);
+    void getNewUserActions(std::vector<UserAction> &actions);
 private:
     using UserInfoMap = std::map<int32_t, TdUserPtr>;
     using ChatInfoMap = std::map<int64_t, TdChatPtr>;
@@ -72,6 +78,7 @@ private:
     std::vector<int64_t>                m_activeChats;
     std::vector<TdMessagePtr>           m_newMessages;
     std::vector<UserUpdate>             m_updatedUsers;
+    std::vector<UserAction>             m_userActions;
     std::mutex                          m_dataMutex;
 
     UserUpdate &addUserUpdate(int32_t userId);
