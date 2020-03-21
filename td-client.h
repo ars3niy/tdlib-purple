@@ -24,6 +24,7 @@ public:
     static void setLogLevel(int level);
     void startLogin();
     int sendMessage(const char *buddyName, const char *message);
+    void addContact(const char *phoneNumber, const char *alias);
 private:
     friend class UpdateHandler;
     friend class AuthUpdateHandler;
@@ -61,6 +62,8 @@ private:
     static int showUserUpdates(gpointer user_data);
     void       handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction);
     static int showUserChatActions(gpointer user_data);
+    void       addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    static int notifyFailedContacts(gpointer user_data);
 
     PurpleAccount                      *m_account;
     std::unique_ptr<UpdateHandler>      m_updateHandler;

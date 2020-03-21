@@ -430,6 +430,8 @@ static void tgprpl_set_status (PurpleAccount *acct, PurpleStatus *status)
 
 static void tgprpl_add_buddy (PurpleConnection *gc, PurpleBuddy *buddy, PurpleGroup *group)
 {
+    PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    tdClient->addContact(buddy->name, buddy->alias);
 }
 
 static void request_delete_contact_ok (void *data, PurpleRequestFields* fields)

@@ -188,3 +188,36 @@ void TdAccountData::getNewUserActions(std::vector<UserAction> &actions)
     actions = std::move(m_userActions);
     m_userActions.clear();
 }
+
+void TdAccountData::addNewContactRequest(uint64_t requestId, const char *phoneNumber)
+{
+    m_addContactRequests.emplace_back();
+    m_addContactRequests.back().requestId = requestId;
+    m_addContactRequests.back().phoneNumber = phoneNumber;
+}
+
+bool TdAccountData::extractContactRequest(uint64_t requestId, std::string &phoneNumber)
+{
+    auto pReq = std::find_if(m_addContactRequests.begin(), m_addContactRequests.end(),
+                             [requestId](const ContactRequest &req) { return (req.requestId == requestId); });
+    if (pReq != m_addContactRequests.end()) {
+        phoneNumber = std::move(pReq->phoneNumber);
+        m_addContactRequests.erase(pReq);
+        return true;
+    }
+
+    return false;
+}
+
+void TdAccountData::addFailedContact(std::string &&phoneNumber, td::td_api::object_ptr<td::td_api::error> &&error)
+{
+    m_failedContacts.emplace_back();
+    m_failedContacts.back().phoneNumber = std::move(phoneNumber);
+    m_failedContacts.back().error = std::move(error);
+}
+
+void TdAccountData::getFailedContacts(std::vector<FailedContact> &failedContacts)
+{
+    failedContacts = std::move(m_failedContacts);
+    m_failedContacts.clear();
+}

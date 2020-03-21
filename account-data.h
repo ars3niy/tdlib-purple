@@ -36,9 +36,9 @@ struct UserAction {
     bool    isTyping;
 };
 
-enum class ChatHistoryResult: uint8_t {
-    Finished,
-    Unfinished,
+struct FailedContact {
+    std::string phoneNumber;
+    td::td_api::object_ptr<td::td_api::error> error;
 };
 
 class TdAccountData {
@@ -68,9 +68,19 @@ public:
     void getUpdatedUsers(std::vector<UserUpdate> &updates);
     void addUserAction(int32_t userId, bool isTyping);
     void getNewUserActions(std::vector<UserAction> &actions);
+    void addNewContactRequest(uint64_t requestId, const char *phoneNumber);
+    bool extractContactRequest(uint64_t requestId, std::string &phoneNumber);
+    void addFailedContact(std::string &&phoneNumber, td::td_api::object_ptr<td::td_api::error> &&error);
+    void getFailedContacts(std::vector<FailedContact> &failedContacts);
 private:
     using UserInfoMap = std::map<int32_t, TdUserPtr>;
     using ChatInfoMap = std::map<int64_t, TdChatPtr>;
+
+    struct ContactRequest {
+        uint64_t    requestId;
+        std::string phoneNumber;
+    };
+
     UserInfoMap                         m_userInfo;
     ChatInfoMap                         m_chatInfo;
     // m_chatInfo can contain chats that are not in m_activeChats if some other chat contains
@@ -79,6 +89,8 @@ private:
     std::vector<TdMessagePtr>           m_newMessages;
     std::vector<UserUpdate>             m_updatedUsers;
     std::vector<UserAction>             m_userActions;
+    std::vector<ContactRequest>         m_addContactRequests;
+    std::vector<FailedContact>          m_failedContacts;
     std::mutex                          m_dataMutex;
 
     UserUpdate &addUserUpdate(int32_t userId);

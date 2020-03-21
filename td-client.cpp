@@ -298,6 +298,11 @@ void PurpleTdClient::authResponse(uint64_t requestId, td::td_api::object_ptr<td:
         purple_debug_misc(config::pluginId, "Authentication success on query %lu\n", (unsigned long)requestId);
 }
 
+static std::string getDisplayedError(const td::td_api::error &error)
+{
+    return "code " + std::to_string(error.code_) + " (" + error.message_ + ")";
+}
+
 int PurpleTdClient::notifyAuthError(gpointer user_data)
 {
     PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
@@ -315,8 +320,7 @@ int PurpleTdClient::notifyAuthError(gpointer user_data)
     }
 
     if (self->m_authError) {
-        message += ": code " + std::to_string(self->m_authError->code_) + " (" +
-                self->m_authError->message_ + ")";
+        message += ": " + getDisplayedError(*self->m_authError);
         self->m_authError.reset();
     }
 
@@ -658,6 +662,75 @@ int PurpleTdClient::showUserChatActions(gpointer user_data)
                                 getPurpleUserName(*user));
         }
     }
+
+    return FALSE; // This idle handler will not be called again
+}
+
+void PurpleTdClient::addContact(const char *phoneNumber, const char *alias)
+{
+    {
+        TdAccountData::Lock lock(m_data);
+        if (m_data.getUserByPhone(phoneNumber)) {
+            purple_debug_info(config::pluginId, "User with phone number %s already exists\n", phoneNumber);
+            return;
+        }
+    }
+
+    td::td_api::object_ptr<td::td_api::contact> contact =
+        td::td_api::make_object<td::td_api::contact>(phoneNumber, alias, "", "", 0);
+    td::td_api::object_ptr<td::td_api::addContact> addContact =
+        td::td_api::make_object<td::td_api::addContact>(std::move(contact), true);
+    uint64_t requestId = sendQuery(std::move(addContact), &PurpleTdClient::addContactResponse);
+
+    {
+        TdAccountData::Lock lock(m_data);
+        m_data.addNewContactRequest(requestId, phoneNumber);
+    }
+}
+
+void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::string         phoneNumber;
+    TdAccountData::Lock lock(m_data);
+    if (! m_data.extractContactRequest(requestId, phoneNumber))
+        return;
+
+    if (object->get_id() == td::td_api::error::ID) {
+        td::td_api::object_ptr<td::td_api::error> error = td::move_tl_object_as<td::td_api::error>(object);
+        purple_debug_misc(config::pluginId, "Failed to add contact (%s): code %d (%s)\n",
+                          phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
+        m_data.addFailedContact(std::move(phoneNumber), std::move(error));
+        g_idle_add(&PurpleTdClient::notifyFailedContacts, this);
+    }
+}
+
+int PurpleTdClient::notifyFailedContacts(gpointer user_data)
+{
+    PurpleTdClient             *self = static_cast<PurpleTdClient *>(user_data);
+    std::vector<FailedContact>  failedContacts;
+    {
+        TdAccountData::Lock lock(self->m_data);
+        self->m_data.getFailedContacts(failedContacts);
+    }
+
+    if (!failedContacts.empty()) {
+        std::string message;
+        for (const FailedContact &contact: failedContacts) {
+            if (!message.empty())
+                message += " ";
+            message += "Failed to add contact (";
+            message += contact.phoneNumber;
+            message += "): ";
+            message += getDisplayedError(*contact.error);
+
+            PurpleBuddy *buddy = purple_find_buddy(self->m_account, contact.phoneNumber.c_str());
+            if (buddy)
+                purple_blist_remove_buddy(buddy);
+        }
+        purple_notify_error(purple_account_get_connection(self->m_account),
+                            "Failed to add contact", message.c_str(), NULL);
+    }
+
 
     return FALSE; // This idle handler will not be called again
 }
