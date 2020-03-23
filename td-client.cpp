@@ -677,14 +677,43 @@ void PurpleTdClient::addContact(const char *phoneNumber, const char *alias)
     }
 
     td::td_api::object_ptr<td::td_api::contact> contact =
-        td::td_api::make_object<td::td_api::contact>(phoneNumber, alias, "", "", 0);
-    td::td_api::object_ptr<td::td_api::addContact> addContact =
-        td::td_api::make_object<td::td_api::addContact>(std::move(contact), true);
-    uint64_t requestId = sendQuery(std::move(addContact), &PurpleTdClient::addContactResponse);
+        td::td_api::make_object<td::td_api::contact>(phoneNumber, "", "", "", 0);
+    td::td_api::object_ptr<td::td_api::importContacts> importReq =
+        td::td_api::make_object<td::td_api::importContacts>();
+    importReq->contacts_.push_back(std::move(contact));
+    uint64_t requestId = sendQuery(std::move(importReq), &PurpleTdClient::importContactResponse);
 
     {
         TdAccountData::Lock lock(m_data);
         m_data.addNewContactRequest(requestId, phoneNumber);
+    }
+}
+
+void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::string         phoneNumber;
+    TdAccountData::Lock lock(m_data);
+    if (! m_data.extractContactRequest(requestId, phoneNumber))
+        return;
+
+    int32_t userId = 0;
+    if (object->get_id() == td::td_api::importedContacts::ID) {
+        td::td_api::object_ptr<td::td_api::importedContacts> reply =
+            td::move_tl_object_as<td::td_api::importedContacts>(object);
+        if (!reply->user_ids_.empty())
+            userId = reply->user_ids_[0];
+    }
+
+    if (userId) {
+        td::td_api::object_ptr<td::td_api::contact> contact =
+            td::td_api::make_object<td::td_api::contact>(phoneNumber, "Beh", "Meh", "", userId);
+        td::td_api::object_ptr<td::td_api::addContact> addContact =
+            td::td_api::make_object<td::td_api::addContact>(std::move(contact), true);
+        uint64_t newRequestId = sendQuery(std::move(addContact), &PurpleTdClient::addContactResponse);
+        m_data.addNewContactRequest(newRequestId, phoneNumber.c_str());
+    } else {
+        m_data.addFailedContact(std::move(phoneNumber), nullptr);
+        g_idle_add(&PurpleTdClient::notifyFailedContacts, this);
     }
 }
 
@@ -695,10 +724,16 @@ void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_p
     if (! m_data.extractContactRequest(requestId, phoneNumber))
         return;
 
-    if (object->get_id() == td::td_api::error::ID) {
-        td::td_api::object_ptr<td::td_api::error> error = td::move_tl_object_as<td::td_api::error>(object);
-        purple_debug_misc(config::pluginId, "Failed to add contact (%s): code %d (%s)\n",
-                          phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
+    if (object->get_id() == td::td_api::ok::ID) {
+        purple_debug_misc(config::pluginId, "TODO: createPrivateChat\n");
+    } else {
+        td::td_api::object_ptr<td::td_api::error> error = nullptr;
+        if (object->get_id() == td::td_api::error::ID) {
+            error = td::move_tl_object_as<td::td_api::error>(object);
+            purple_debug_misc(config::pluginId, "Failed to add contact (%s): code %d (%s)\n",
+                            phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
+        } else
+            purple_debug_warning(config::pluginId, "Strange reply to adding contact\n");
         m_data.addFailedContact(std::move(phoneNumber), std::move(error));
         g_idle_add(&PurpleTdClient::notifyFailedContacts, this);
     }
@@ -721,7 +756,10 @@ int PurpleTdClient::notifyFailedContacts(gpointer user_data)
             message += "Failed to add contact (";
             message += contact.phoneNumber;
             message += "): ";
-            message += getDisplayedError(*contact.error);
+            if (contact.error)
+                message += getDisplayedError(*contact.error);
+            else
+                message += "User not found";
 
             PurpleBuddy *buddy = purple_find_buddy(self->m_account, contact.phoneNumber.c_str());
             if (buddy)

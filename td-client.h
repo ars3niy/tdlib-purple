@@ -62,6 +62,7 @@ private:
     static int showUserUpdates(gpointer user_data);
     void       handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction);
     static int showUserChatActions(gpointer user_data);
+    void       importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     static int notifyFailedContacts(gpointer user_data);
 
