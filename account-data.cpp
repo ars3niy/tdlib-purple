@@ -189,19 +189,21 @@ void TdAccountData::getNewUserActions(std::vector<UserAction> &actions)
     m_userActions.clear();
 }
 
-void TdAccountData::addNewContactRequest(uint64_t requestId, const char *phoneNumber)
+void TdAccountData::addNewContactRequest(uint64_t requestId, const char *phoneNumber, int32_t userId)
 {
     m_addContactRequests.emplace_back();
     m_addContactRequests.back().requestId = requestId;
     m_addContactRequests.back().phoneNumber = phoneNumber;
+    m_addContactRequests.back().userId = userId;
 }
 
-bool TdAccountData::extractContactRequest(uint64_t requestId, std::string &phoneNumber)
+bool TdAccountData::extractContactRequest(uint64_t requestId, std::string &phoneNumber, int32_t &userId)
 {
     auto pReq = std::find_if(m_addContactRequests.begin(), m_addContactRequests.end(),
                              [requestId](const ContactRequest &req) { return (req.requestId == requestId); });
     if (pReq != m_addContactRequests.end()) {
         phoneNumber = std::move(pReq->phoneNumber);
+        userId = pReq->userId;
         m_addContactRequests.erase(pReq);
         return true;
     }

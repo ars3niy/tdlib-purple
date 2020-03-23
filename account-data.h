@@ -68,8 +68,8 @@ public:
     void getUpdatedUsers(std::vector<UserUpdate> &updates);
     void addUserAction(int32_t userId, bool isTyping);
     void getNewUserActions(std::vector<UserAction> &actions);
-    void addNewContactRequest(uint64_t requestId, const char *phoneNumber);
-    bool extractContactRequest(uint64_t requestId, std::string &phoneNumber);
+    void addNewContactRequest(uint64_t requestId, const char *phoneNumber, int32_t userId = 0);
+    bool extractContactRequest(uint64_t requestId, std::string &phoneNumber, int32_t &userId);
     void addFailedContact(std::string &&phoneNumber, td::td_api::object_ptr<td::td_api::error> &&error);
     void getFailedContacts(std::vector<FailedContact> &failedContacts);
 private:
@@ -79,6 +79,7 @@ private:
     struct ContactRequest {
         uint64_t    requestId;
         std::string phoneNumber;
+        int32_t     userId;
     };
 
     UserInfoMap                         m_userInfo;

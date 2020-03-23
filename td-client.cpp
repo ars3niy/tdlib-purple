@@ -692,8 +692,9 @@ void PurpleTdClient::addContact(const char *phoneNumber, const char *alias)
 void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     std::string         phoneNumber;
+    int32_t             dummy;
     TdAccountData::Lock lock(m_data);
-    if (! m_data.extractContactRequest(requestId, phoneNumber))
+    if (! m_data.extractContactRequest(requestId, phoneNumber, dummy))
         return;
 
     int32_t userId = 0;
@@ -710,7 +711,7 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
         td::td_api::object_ptr<td::td_api::addContact> addContact =
             td::td_api::make_object<td::td_api::addContact>(std::move(contact), true);
         uint64_t newRequestId = sendQuery(std::move(addContact), &PurpleTdClient::addContactResponse);
-        m_data.addNewContactRequest(newRequestId, phoneNumber.c_str());
+        m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), userId);
     } else {
         m_data.addFailedContact(std::move(phoneNumber), nullptr);
         g_idle_add(&PurpleTdClient::notifyFailedContacts, this);
@@ -720,20 +721,45 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
 void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     std::string         phoneNumber;
+    int32_t             userId;
     TdAccountData::Lock lock(m_data);
-    if (! m_data.extractContactRequest(requestId, phoneNumber))
+    if (! m_data.extractContactRequest(requestId, phoneNumber, userId))
         return;
 
     if (object->get_id() == td::td_api::ok::ID) {
-        purple_debug_misc(config::pluginId, "TODO: createPrivateChat\n");
+        td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
+            td::td_api::make_object<td::td_api::createPrivateChat>(userId, false);
+        uint64_t newRequestId = sendQuery(std::move(createChat), &PurpleTdClient::createPrivateChatResponse);
+        m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), userId);
     } else {
-        td::td_api::object_ptr<td::td_api::error> error = nullptr;
+        td::td_api::object_ptr<td::td_api::error> error;
         if (object->get_id() == td::td_api::error::ID) {
             error = td::move_tl_object_as<td::td_api::error>(object);
             purple_debug_misc(config::pluginId, "Failed to add contact (%s): code %d (%s)\n",
                             phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
         } else
-            purple_debug_warning(config::pluginId, "Strange reply to adding contact\n");
+            error = td::td_api::make_object<td::td_api::error>(0, "Strange reply to adding contact");
+        m_data.addFailedContact(std::move(phoneNumber), std::move(error));
+        g_idle_add(&PurpleTdClient::notifyFailedContacts, this);
+    }
+}
+
+void PurpleTdClient::createPrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::string         phoneNumber;
+    int32_t             userId;
+    TdAccountData::Lock lock(m_data);
+    if (! m_data.extractContactRequest(requestId, phoneNumber, userId))
+        return;
+
+    if (object->get_id() != td::td_api::chat::ID) {
+        td::td_api::object_ptr<td::td_api::error> error;
+        if (object->get_id() == td::td_api::error::ID) {
+            error = td::move_tl_object_as<td::td_api::error>(object);
+            purple_debug_misc(config::pluginId, "Failed to create private chat (to %s): code %d (%s)\n",
+                            phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
+        } else
+            error = td::td_api::make_object<td::td_api::error>(0, "Strange reply to creating private chat");
         m_data.addFailedContact(std::move(phoneNumber), std::move(error));
         g_idle_add(&PurpleTdClient::notifyFailedContacts, this);
     }
