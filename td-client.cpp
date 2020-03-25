@@ -331,11 +331,8 @@ int PurpleTdClient::notifyAuthError(gpointer user_data)
 void PurpleTdClient::connectionReady()
 {
     purple_debug_misc(config::pluginId, "Connection ready\n");
-    // td::td_api::chats response will be preceded by a string of updateNewChat and updateUser for
-    // all chats and contacts, apparently even if td::td_api::getChats has limit_ of like 1
-    sendQuery(td::td_api::make_object<td::td_api::getChats>(
-                  nullptr, std::numeric_limits<std::int64_t>::max(), 0, 200),
-              &PurpleTdClient::getChatsResponse);
+    // This query ensures an updateUser for every contact
+    sendQuery(td::td_api::make_object<td::td_api::getContacts>(), &PurpleTdClient::getContactsResponse);
 }
 
 int PurpleTdClient::setPurpleConnectionInProgress(gpointer user_data)
@@ -362,6 +359,21 @@ int PurpleTdClient::setPurpleConnectionUpdating(gpointer user_data)
     return FALSE; // This idle handler will not be called again
 }
 
+void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    purple_debug_misc(config::pluginId, "getChats response to request %llu\n", (unsigned long long)requestId);
+    if (object->get_id() == td::td_api::users::ID) {
+        // td::td_api::chats response will be preceded by a string of updateNewChat for all chats
+        // apparently even if td::td_api::getChats has limit_ of like 1
+        sendQuery(td::td_api::make_object<td::td_api::getChats>(
+                      nullptr, std::numeric_limits<std::int64_t>::max(), 0, 200),
+                  &PurpleTdClient::getChatsResponse);
+    } else {
+        m_authError = td::td_api::make_object<td::td_api::error>(0, "Strange response to getContacts");
+        g_idle_add(notifyAuthError, this);
+    }
+}
+
 void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     purple_debug_misc(config::pluginId, "getChats response to request %llu\n", (unsigned long long)requestId);
@@ -372,6 +384,9 @@ void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr
             m_data.setActiveChats(std::move(chats->chat_ids_));
         }
         g_idle_add(updatePurpleChatListAndReportConnected, this);
+    } else {
+        m_authError = td::td_api::make_object<td::td_api::error>(0, "Strange response to getChats");
+        g_idle_add(notifyAuthError, this);
     }
 }
 
@@ -540,7 +555,7 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
     }
     const td::td_api::chat *tdChat = m_data.getPrivateChatByUserId(tdUser->id_);
     if (tdChat == nullptr) {
-        purple_debug_warning(config::pluginId, "No chat with user %s\n", tdUser->username_.c_str());
+        purple_debug_warning(config::pluginId, "No chat with user %s\n", tdUser->phone_number_.c_str());
         return -1;
     }
 

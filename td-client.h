@@ -50,6 +50,7 @@ private:
     void       connectionReady();
     static int setPurpleConnectionInProgress(gpointer user_data);
     static int setPurpleConnectionUpdating(gpointer user_data);
+    void       getContactsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     // List of chats is requested after connection is ready, and when response is received,
     // then we report to libpurple that we are connected
