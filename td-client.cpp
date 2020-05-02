@@ -36,7 +36,7 @@ public:
     void operator()(td::td_api::updateNewChat &newChat) const {
         purple_debug_misc(config::pluginId, "Incoming update: new chat\n");
         TdAccountData::Lock lock(m_owner->m_data);
-        m_owner->m_data.addNewChat(std::move(newChat.chat_));
+        m_owner->m_data.addChat(std::move(newChat.chat_));
     }
 
     void operator()(td::td_api::updateNewMessage &newMessageUpdate) const {
@@ -363,6 +363,11 @@ void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_
 {
     purple_debug_misc(config::pluginId, "getChats response to request %llu\n", (unsigned long long)requestId);
     if (object->get_id() == td::td_api::users::ID) {
+        td::td_api::object_ptr<td::td_api::users> users = td::move_tl_object_as<td::td_api::users>(object);
+        {
+            TdAccountData::Lock lock(m_data);
+            m_data.setContacts(users->user_ids_);
+        }
         // td::td_api::chats response will be preceded by a string of updateNewChat for all chats
         // apparently even if td::td_api::getChats has limit_ of like 1
         sendQuery(td::td_api::make_object<td::td_api::getChats>(
@@ -382,12 +387,41 @@ void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr
         {
             TdAccountData::Lock lock(m_data);
             m_data.setActiveChats(std::move(chats->chat_ids_));
+            m_data.getContactsWithNoChat(m_usersForNewPrivateChats);
         }
-        g_idle_add(updatePurpleChatListAndReportConnected, this);
+        requestMissingPrivateChats();
     } else {
         m_authError = td::td_api::make_object<td::td_api::error>(0, "Strange response to getChats");
         g_idle_add(notifyAuthError, this);
     }
+}
+
+void PurpleTdClient::requestMissingPrivateChats()
+{
+    if (m_usersForNewPrivateChats.empty()) {
+        purple_debug_misc(config::pluginId, "Login sequence complete\n");
+        g_idle_add(updatePurpleChatListAndReportConnected, this);
+    } else {
+        int32_t userId = m_usersForNewPrivateChats.back();
+        m_usersForNewPrivateChats.pop_back();
+        purple_debug_misc(config::pluginId, "Requesting private chat for user id %d\n", (int)userId);
+        td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
+            td::td_api::make_object<td::td_api::createPrivateChat>(userId, false);
+        sendQuery(std::move(createChat), &PurpleTdClient::loginCreatePrivateChatResponse);
+    }
+}
+
+void PurpleTdClient::loginCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    if (object->get_id() != td::td_api::chat::ID) {
+        td::td_api::object_ptr<td::td_api::chat> chat = td::move_tl_object_as<td::td_api::chat>(object);
+        purple_debug_misc(config::pluginId, "Requested private chat received: id %lld\n",
+                          (long long)chat->id_);
+        TdAccountData::Lock lock(m_data);
+        m_data.addChat(std::move(chat));
+    } else
+        purple_debug_misc(config::pluginId, "Failed to get requested private chat\n");
+    requestMissingPrivateChats();
 }
 
 static const char *getPurpleStatusId(const td::td_api::UserStatus &tdStatus)
@@ -744,7 +778,7 @@ void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_p
     if (object->get_id() == td::td_api::ok::ID) {
         td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
             td::td_api::make_object<td::td_api::createPrivateChat>(userId, false);
-        uint64_t newRequestId = sendQuery(std::move(createChat), &PurpleTdClient::createPrivateChatResponse);
+        uint64_t newRequestId = sendQuery(std::move(createChat), &PurpleTdClient::addContactCreatePrivateChatResponse);
         m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), userId);
     } else {
         td::td_api::object_ptr<td::td_api::error> error;
@@ -759,7 +793,7 @@ void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_p
     }
 }
 
-void PurpleTdClient::createPrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     std::string         phoneNumber;
     int32_t             userId;

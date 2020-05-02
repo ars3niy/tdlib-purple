@@ -52,9 +52,13 @@ private:
     static int setPurpleConnectionUpdating(gpointer user_data);
     void       getContactsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       requestMissingPrivateChats();
+    void       loginCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     // List of chats is requested after connection is ready, and when response is received,
     // then we report to libpurple that we are connected
     static int updatePurpleChatListAndReportConnected(gpointer user_data);
+    // Login sequence end
+
     static int showUnreadMessages(gpointer user_data);
     void       showMessage(const td::td_api::message &message);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
@@ -65,7 +69,7 @@ private:
     static int showUserChatActions(gpointer user_data);
     void       importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    void       createPrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     static int notifyFailedContacts(gpointer user_data);
 
     PurpleAccount                      *m_account;
@@ -80,9 +84,11 @@ private:
 
     TdAccountData                       m_data;
 
+    // These data structures are only used in poll thread and therefore don't need to be thread-safe
     int32_t                             m_lastAuthState = 0;
     TdErrorPtr                          m_authError;
     TdAuthCodePtr                       m_authCodeInfo;
+    std::vector<int32_t>                m_usersForNewPrivateChats;
 };
 
 #endif

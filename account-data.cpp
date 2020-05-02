@@ -16,7 +16,7 @@ void TdAccountData::updateUser(TdUserPtr user)
     m_userInfo[user->id_] = std::move(user);
 }
 
-void TdAccountData::addNewChat(TdChatPtr chat)
+void TdAccountData::addChat(TdChatPtr chat)
 {
     if (!chat) {
         purple_debug_warning(config::pluginId, "addNewChat with null chat info\n");
@@ -24,12 +24,37 @@ void TdAccountData::addNewChat(TdChatPtr chat)
     }
     purple_debug_misc(config::pluginId, "Add new chat: %s\n", chat->title_.c_str());
 
+    if (chat->type_->get_id() == td::td_api::chatTypePrivate::ID) {
+        const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat->type_);
+        auto pContact = std::find(m_contactUserIdsNoChat.begin(), m_contactUserIdsNoChat.end(),
+                                  privType.user_id_);
+        if (pContact != m_contactUserIdsNoChat.end()) {
+            purple_debug_misc(config::pluginId, "Private chat (id %lld) now known for user %d\n",
+                              (long long)chat->id_, (int)privType.user_id_);
+            m_contactUserIdsNoChat.erase(pContact);
+        }
+    }
+
     m_chatInfo[chat->id_] = std::move(chat);
+}
+
+void TdAccountData::setContacts(const std::vector<std::int32_t> &userIds)
+{
+    for (int32_t userId: userIds)
+        if (getPrivateChatByUserId(userId) == nullptr) {
+            purple_debug_misc(config::pluginId, "Private chat not yet known for user %d\n", (int)userId);
+            m_contactUserIdsNoChat.push_back(userId);
+        }
 }
 
 void TdAccountData::setActiveChats(std::vector<std::int64_t> &&chats)
 {
     m_activeChats = std::move(chats);
+}
+
+void TdAccountData::getContactsWithNoChat(std::vector<std::int32_t> &userIds)
+{
+    userIds = m_contactUserIdsNoChat;
 }
 
 const td::td_api::chat *TdAccountData::getChat(int64_t chatId) const

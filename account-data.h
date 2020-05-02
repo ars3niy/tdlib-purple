@@ -55,8 +55,10 @@ public:
     };
 
     void updateUser(TdUserPtr user);
-    void addNewChat(TdChatPtr chat);
+    void addChat(TdChatPtr chat); // Updates existing chat if any
+    void setContacts(const std::vector<std::int32_t> &userIds);
     void setActiveChats(std::vector<std::int64_t> &&chats);
+    void getContactsWithNoChat(std::vector<std::int32_t> &userIds);
     const td::td_api::chat *getChat(int64_t chatId) const;
     const td::td_api::chat *getPrivateChatByUserId(int32_t userId) const;
     const td::td_api::user *getUser(int32_t userId) const;
@@ -84,6 +86,9 @@ private:
 
     UserInfoMap                         m_userInfo;
     ChatInfoMap                         m_chatInfo;
+    // List of contacts for which private chat is not known yet. Does not nead to be thread-safe,
+    // but logically kind of belongs here.
+    std::vector<int32_t>                m_contactUserIdsNoChat;
     // m_chatInfo can contain chats that are not in m_activeChats if some other chat contains
     // messages forwarded from another channel
     std::vector<int64_t>                m_activeChats;
