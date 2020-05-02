@@ -72,7 +72,8 @@ public:
 
     void operator()(td::td_api::authorizationStateWaitEncryptionKey &) const {
         purple_debug_misc(config::pluginId, "Authorization state update: encriytion key requested\n");
-        m_owner->sendQuery(td::td_api::make_object<td::td_api::checkDatabaseEncryptionKey>(""), &PurpleTdClient::authResponse);
+        m_owner->m_transceiver.sendQuery(td::td_api::make_object<td::td_api::checkDatabaseEncryptionKey>(""),
+                                         &PurpleTdClient::authResponse);
     }
 
     void operator()(td::td_api::authorizationStateWaitTdlibParameters &) const {
@@ -103,6 +104,7 @@ private:
 };
 
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct)
+:   m_transceiver(this, &PurpleTdClient::processUpdate)
 {
     m_account           = acct;
     m_updateHandler     = std::make_unique<UpdateHandler>(this);
@@ -111,9 +113,6 @@ PurpleTdClient::PurpleTdClient(PurpleAccount *acct)
 
 PurpleTdClient::~PurpleTdClient()
 {
-    m_stopThread = true;
-    m_client->send({UINT64_MAX, td::td_api::make_object<td::td_api::close>()});
-    m_pollThread.join();
 }
 
 void PurpleTdClient::setLogLevel(int level)
@@ -122,53 +121,10 @@ void PurpleTdClient::setLogLevel(int level)
     td::Client::execute({0, td::td_api::make_object<td::td_api::setLogVerbosityLevel>(level)});
 }
 
-void PurpleTdClient::startLogin()
+void PurpleTdClient::processUpdate(TdObjectPtr object)
 {
-#if !GLIB_CHECK_VERSION(2, 32, 0)
-    // GLib threading system is automaticaly initialized since 2.32.
-    // For earlier versions, it have to be initialized before calling any
-    // Glib or GTK+ functions.
-    if (!g_thread_supported())
-        g_thread_init(NULL);
-#endif
-
-    m_client = std::make_unique<td::Client>();
-    if (!m_pollThread.joinable()) {
-        m_lastQueryId = 0;
-        m_stopThread = false;
-        m_pollThread = std::thread([this]() { pollThreadLoop(); });
-    }
-}
-
-void PurpleTdClient::pollThreadLoop()
-{
-    while (!m_stopThread)
-        processResponse(m_client->receive(1));
-}
-
-void PurpleTdClient::processResponse(td::Client::Response response)
-{
-    if (response.object) {
-        if (response.id == 0) {
-            purple_debug_misc(config::pluginId, "Incoming update\n");
-            td::td_api::downcast_call(*response.object, *m_updateHandler);
-        } else {
-            ResponseCb callback = nullptr;
-            {
-                std::unique_lock<std::mutex> dataLock(m_queryMutex);
-                auto it = m_responseHandlers.find(response.id);
-                if (it != m_responseHandlers.end()) {
-                    callback = it->second;
-                    m_responseHandlers.erase(it);
-                } else
-                    purple_debug_misc(config::pluginId, "Ignoring response to request %llu\n",
-                                      (unsigned long long)response.id);
-            }
-            if (callback)
-                (this->*callback)(response.id, std::move(response.object));
-        }
-    } else
-        purple_debug_misc(config::pluginId, "Response id %lu timed out or something\n", response.id);
+    purple_debug_misc(config::pluginId, "Incoming update\n");
+    td::td_api::downcast_call(*object, *m_updateHandler);
 }
 
 void PurpleTdClient::sendTdlibParameters()
@@ -188,15 +144,15 @@ void PurpleTdClient::sendTdlibParameters()
     parameters->system_version_ = "Unknown";
     parameters->application_version_ = "1.0";
     parameters->enable_storage_optimizer_ = true;
-    sendQuery(td::td_api::make_object<td::td_api::setTdlibParameters>(std::move(parameters)),
-              &PurpleTdClient::authResponse);
+    m_transceiver.sendQuery(td::td_api::make_object<td::td_api::setTdlibParameters>(std::move(parameters)),
+                            &PurpleTdClient::authResponse);
 }
 
 void PurpleTdClient::sendPhoneNumber()
 {
     const char *number = purple_account_get_username(m_account);
-    sendQuery(td::td_api::make_object<td::td_api::setAuthenticationPhoneNumber>(number, nullptr),
-              &PurpleTdClient::authResponse);
+    m_transceiver.sendQuery(td::td_api::make_object<td::td_api::setAuthenticationPhoneNumber>(number, nullptr),
+                            &PurpleTdClient::authResponse);
 }
 
 static std::string getAuthCodeDesc(const td::td_api::AuthenticationCodeType &codeType)
@@ -263,26 +219,14 @@ int PurpleTdClient::requestAuthCode(gpointer user_data)
 void PurpleTdClient::requestCodeEntered(PurpleTdClient *self, const gchar *code)
 {
     purple_debug_misc(config::pluginId, "Authentication code entered: '%s'\n", code);
-    self->sendQuery(td::td_api::make_object<td::td_api::checkAuthenticationCode>(code),
-                    &PurpleTdClient::authResponse);
+    self->m_transceiver.sendQuery(td::td_api::make_object<td::td_api::checkAuthenticationCode>(code),
+                                  &PurpleTdClient::authResponse);
 }
 
 void PurpleTdClient::requestCodeCancelled(PurpleTdClient *self)
 {
     purple_connection_error(purple_account_get_connection(self->m_account),
                             "Authentication code required");
-}
-
-uint64_t PurpleTdClient::sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler)
-{
-    uint64_t queryId = ++m_lastQueryId;
-    purple_debug_misc(config::pluginId, "Sending query id %lu\n", (unsigned long)queryId);
-    if (handler) {
-        std::unique_lock<std::mutex> dataLock(m_queryMutex);
-        m_responseHandlers.emplace(queryId, std::move(handler));
-    }
-    m_client->send({queryId, std::move(f)});
-    return queryId;
 }
 
 void PurpleTdClient::authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -332,7 +276,8 @@ void PurpleTdClient::connectionReady()
 {
     purple_debug_misc(config::pluginId, "Connection ready\n");
     // This query ensures an updateUser for every contact
-    sendQuery(td::td_api::make_object<td::td_api::getContacts>(), &PurpleTdClient::getContactsResponse);
+    m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getContacts>(),
+                            &PurpleTdClient::getContactsResponse);
 }
 
 int PurpleTdClient::setPurpleConnectionInProgress(gpointer user_data)
@@ -370,9 +315,9 @@ void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_
         }
         // td::td_api::chats response will be preceded by a string of updateNewChat for all chats
         // apparently even if td::td_api::getChats has limit_ of like 1
-        sendQuery(td::td_api::make_object<td::td_api::getChats>(
-                      nullptr, std::numeric_limits<std::int64_t>::max(), 0, 200),
-                  &PurpleTdClient::getChatsResponse);
+        m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getChats>(
+                                    nullptr, std::numeric_limits<std::int64_t>::max(), 0, 200),
+                                &PurpleTdClient::getChatsResponse);
     } else {
         m_authError = td::td_api::make_object<td::td_api::error>(0, "Strange response to getContacts");
         g_idle_add(notifyAuthError, this);
@@ -407,7 +352,7 @@ void PurpleTdClient::requestMissingPrivateChats()
         purple_debug_misc(config::pluginId, "Requesting private chat for user id %d\n", (int)userId);
         td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
             td::td_api::make_object<td::td_api::createPrivateChat>(userId, false);
-        sendQuery(std::move(createChat), &PurpleTdClient::loginCreatePrivateChatResponse);
+        m_transceiver.sendQuery(std::move(createChat), &PurpleTdClient::loginCreatePrivateChatResponse);
     }
 }
 
@@ -508,7 +453,7 @@ int PurpleTdClient::showUnreadMessages(gpointer user_data)
             viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
             for (const auto &pMessage: unreadChat.messages)
                 viewMessagesReq->message_ids_.push_back(pMessage->id_);
-            self->sendQuery(std::move(viewMessagesReq), nullptr);
+            self->m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
 
             for (const auto &pMessage: unreadChat.messages)
                 self->showMessage(*pMessage);
@@ -600,7 +545,7 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
     message_content->text_->text_ = message;
     send_message->input_message_content_ = std::move(message_content);
 
-    sendQuery(std::move(send_message), nullptr);
+    m_transceiver.sendQuery(std::move(send_message), nullptr);
 
     // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
     return 0;
@@ -730,7 +675,8 @@ void PurpleTdClient::addContact(const char *phoneNumber, const char *alias)
     td::td_api::object_ptr<td::td_api::importContacts> importReq =
         td::td_api::make_object<td::td_api::importContacts>();
     importReq->contacts_.push_back(std::move(contact));
-    uint64_t requestId = sendQuery(std::move(importReq), &PurpleTdClient::importContactResponse);
+    uint64_t requestId = m_transceiver.sendQuery(std::move(importReq),
+                                                 &PurpleTdClient::importContactResponse);
 
     {
         TdAccountData::Lock lock(m_data);
@@ -759,7 +705,8 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
             td::td_api::make_object<td::td_api::contact>(phoneNumber, "Beh", "Meh", "", userId);
         td::td_api::object_ptr<td::td_api::addContact> addContact =
             td::td_api::make_object<td::td_api::addContact>(std::move(contact), true);
-        uint64_t newRequestId = sendQuery(std::move(addContact), &PurpleTdClient::addContactResponse);
+        uint64_t newRequestId = m_transceiver.sendQuery(std::move(addContact),
+                                                        &PurpleTdClient::addContactResponse);
         m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), userId);
     } else {
         m_data.addFailedContact(std::move(phoneNumber), nullptr);
@@ -778,7 +725,8 @@ void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_p
     if (object->get_id() == td::td_api::ok::ID) {
         td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
             td::td_api::make_object<td::td_api::createPrivateChat>(userId, false);
-        uint64_t newRequestId = sendQuery(std::move(createChat), &PurpleTdClient::addContactCreatePrivateChatResponse);
+        uint64_t newRequestId = m_transceiver.sendQuery(std::move(createChat),
+                                                        &PurpleTdClient::addContactCreatePrivateChatResponse);
         m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), userId);
     } else {
         td::td_api::object_ptr<td::td_api::error> error;

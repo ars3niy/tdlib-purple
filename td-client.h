@@ -2,16 +2,8 @@
 #define _TD_CLIENT_H
 
 #include "account-data.h"
+#include "transceiver.h"
 #include <purple.h>
-#include <td/telegram/Client.h>
-#include <td/telegram/td_api.hpp>
-
-#include <memory>
-#include <thread>
-#include <atomic>
-#include <map>
-#include <mutex>
-#include <list>
 
 class UpdateHandler;
 class AuthUpdateHandler;
@@ -22,7 +14,6 @@ public:
     ~PurpleTdClient();
 
     static void setLogLevel(int level);
-    void startLogin();
     int sendMessage(const char *buddyName, const char *message);
     void addContact(const char *phoneNumber, const char *alias);
 private:
@@ -33,18 +24,14 @@ private:
     using TdErrorPtr    = td::td_api::object_ptr<td::td_api::error>;
     using TdAuthCodePtr = td::td_api::object_ptr<td::td_api::authenticationCodeInfo>;
 
-    // All non-static response handling functions are called from the poll thread
-    // Static response handling functions are called from main thread via g_idle_add
-    // Functions sending requests can be called from either thread
-    void pollThreadLoop();
-    void processResponse(td::Client::Response response);
-    void sendTdlibParameters();
-    void sendPhoneNumber();
+    void       processUpdate(TdObjectPtr object);
+
+    // Login sequence start
+    void        sendTdlibParameters();
+    void        sendPhoneNumber();
     static int  requestAuthCode(gpointer user_data);
     static void requestCodeEntered(PurpleTdClient *self, const gchar *code);
     static void requestCodeCancelled(PurpleTdClient *self);
-    uint64_t sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler);
-
     void       authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     static int notifyAuthError(gpointer user_data);
     void       connectionReady();
@@ -75,13 +62,7 @@ private:
     PurpleAccount                      *m_account;
     std::unique_ptr<UpdateHandler>      m_updateHandler;
     std::unique_ptr<AuthUpdateHandler>  m_authUpdateHandler;
-    std::unique_ptr<td::Client>         m_client;
-    std::thread                         m_pollThread;
-    std::atomic_bool                    m_stopThread;
-    std::atomic<uint64_t>               m_lastQueryId;
-    std::map<std::uint64_t, ResponseCb> m_responseHandlers;
-    std::mutex                          m_queryMutex;
-
+    TdTransceiver                       m_transceiver;
     TdAccountData                       m_data;
 
     // These data structures are only used in poll thread and therefore don't need to be thread-safe
