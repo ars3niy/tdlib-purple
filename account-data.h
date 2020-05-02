@@ -18,29 +18,6 @@ struct PrivateChat {
     : chat(chat), user(user) {}
 };
 
-struct UserUpdate {
-    int32_t userId;
-    struct {
-        bool status;
-    } updates;
-};
-
-struct UnreadChat {
-    int64_t chatId;
-    // Messages are in chronological order, hopefully
-    std::vector<td::td_api::object_ptr<td::td_api::message>> messages;
-};
-
-struct UserAction {
-    int32_t userId;
-    bool    isTyping;
-};
-
-struct FailedContact {
-    std::string phoneNumber;
-    td::td_api::object_ptr<td::td_api::error> error;
-};
-
 class TdAccountData {
 public:
     using TdUserPtr    = td::td_api::object_ptr<td::td_api::user>;
@@ -56,17 +33,9 @@ public:
     const td::td_api::chat *getPrivateChatByUserId(int32_t userId) const;
     const td::td_api::user *getUser(int32_t userId) const;
     const td::td_api::user *getUserByPhone(const char *phoneNumber) const;
-    void updateUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void getPrivateChats(std::vector<PrivateChat> &chats) const;
-    void addNewMessage(td::td_api::object_ptr<td::td_api::message> message);
-    void getUnreadChatMessages(std::vector<UnreadChat> &chats);
-    void getUpdatedUsers(std::vector<UserUpdate> &updates);
-    void addUserAction(int32_t userId, bool isTyping);
-    void getNewUserActions(std::vector<UserAction> &actions);
     void addNewContactRequest(uint64_t requestId, const char *phoneNumber, int32_t userId = 0);
     bool extractContactRequest(uint64_t requestId, std::string &phoneNumber, int32_t &userId);
-    void addFailedContact(std::string &&phoneNumber, td::td_api::object_ptr<td::td_api::error> &&error);
-    void getFailedContacts(std::vector<FailedContact> &failedContacts);
 private:
     using UserInfoMap = std::map<int32_t, TdUserPtr>;
     using ChatInfoMap = std::map<int64_t, TdChatPtr>;
@@ -84,13 +53,7 @@ private:
     // m_chatInfo can contain chats that are not in m_activeChats if some other chat contains
     // messages forwarded from another channel
     std::vector<int64_t>                m_activeChats;
-    std::vector<TdMessagePtr>           m_newMessages;
-    std::vector<UserUpdate>             m_updatedUsers;
-    std::vector<UserAction>             m_userActions;
     std::vector<ContactRequest>         m_addContactRequests;
-    std::vector<FailedContact>          m_failedContacts;
-
-    UserUpdate &addUserUpdate(int32_t userId);
 };
 
 #endif

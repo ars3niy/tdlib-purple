@@ -22,9 +22,9 @@ public:
             if (connectionUpdate.state_->get_id() == td::td_api::connectionStateReady::ID)
                 m_owner->connectionReady();
             else if (connectionUpdate.state_->get_id() == td::td_api::connectionStateConnecting::ID)
-                g_idle_add(PurpleTdClient::setPurpleConnectionInProgress, m_owner);
+                m_owner->setPurpleConnectionInProgress();
             else if (connectionUpdate.state_->get_id() == td::td_api::connectionStateUpdating::ID)
-                g_idle_add(PurpleTdClient::setPurpleConnectionUpdating, m_owner);
+                m_owner->setPurpleConnectionUpdating();
         }
     }
 
@@ -88,7 +88,7 @@ public:
     void operator()(td::td_api::authorizationStateWaitCode &codeState) const {
         purple_debug_misc(config::pluginId, "Authorization state update: authentication code requested\n");
         m_owner->m_authCodeInfo = std::move(codeState.code_info_);
-        g_idle_add(PurpleTdClient::requestAuthCode, m_owner);
+        m_owner->requestAuthCode();
     }
 
     void operator()(td::td_api::authorizationStateReady &) const {
@@ -178,19 +178,18 @@ static std::string getAuthCodeDesc(const td::td_api::AuthenticationCodeType &cod
     }
 }
 
-int PurpleTdClient::requestAuthCode(gpointer user_data)
+void PurpleTdClient::requestAuthCode()
 {
-    PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
     std::string message = "Enter authentication code\n";
 
-    if (self->m_authCodeInfo) {
-        if (self->m_authCodeInfo->type_)
-            message += "Code sent via: " + getAuthCodeDesc(*self->m_authCodeInfo->type_) + "\n";
-        if (self->m_authCodeInfo->next_type_)
-            message += "Next code will be: " + getAuthCodeDesc(*self->m_authCodeInfo->next_type_) + "\n";
+    if (m_authCodeInfo) {
+        if (m_authCodeInfo->type_)
+            message += "Code sent via: " + getAuthCodeDesc(*m_authCodeInfo->type_) + "\n";
+        if (m_authCodeInfo->next_type_)
+            message += "Next code will be: " + getAuthCodeDesc(*m_authCodeInfo->next_type_) + "\n";
     }
 
-    if (!purple_request_input (purple_account_get_connection(self->m_account),
+    if (!purple_request_input (purple_account_get_connection(m_account),
                                (char *)"Login code",
                                message.c_str(),
                                NULL, // secondary message
@@ -200,19 +199,17 @@ int PurpleTdClient::requestAuthCode(gpointer user_data)
                                (char *)"the code",
                                (char *)"OK", G_CALLBACK(requestCodeEntered),
                                (char *)"Cancel", G_CALLBACK(requestCodeCancelled),
-                               self->m_account,
+                               m_account,
                                NULL, // buddy
                                NULL, // conversation
-                               self))
+                               this))
     {
-        purple_connection_set_state (purple_account_get_connection(self->m_account), PURPLE_CONNECTED);
-        PurpleConversation *conv = purple_conversation_new (PURPLE_CONV_TYPE_IM, self->m_account, "Telegram");
+        purple_connection_set_state (purple_account_get_connection(m_account), PURPLE_CONNECTED);
+        PurpleConversation *conv = purple_conversation_new (PURPLE_CONV_TYPE_IM, m_account, "Telegram");
         purple_conversation_write (conv, "Telegram",
             "Authentication code needs to be entered but this libpurple won't cooperate",
             (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_SYSTEM), 0);
     }
-
-    return FALSE; // This idle handler will not be called again
 }
 
 void PurpleTdClient::requestCodeEntered(PurpleTdClient *self, const gchar *code)
@@ -235,8 +232,7 @@ void PurpleTdClient::authResponse(uint64_t requestId, td::td_api::object_ptr<td:
         purple_debug_misc(config::pluginId, "Authentication error on query %lu (auth step %d): code %d (%s)\n",
                           (unsigned long)requestId, (int)m_lastAuthState, (int)error->code_,
                           error->message_.c_str());
-        m_authError     = std::move(error);
-        g_idle_add(notifyAuthError, this);
+        notifyAuthError(std::move(error));
     } else
         purple_debug_misc(config::pluginId, "Authentication success on query %lu\n", (unsigned long)requestId);
 }
@@ -246,12 +242,10 @@ static std::string getDisplayedError(const td::td_api::error &error)
     return "code " + std::to_string(error.code_) + " (" + error.message_ + ")";
 }
 
-int PurpleTdClient::notifyAuthError(gpointer user_data)
+void PurpleTdClient::notifyAuthError(td::td_api::object_ptr<td::td_api::error> error)
 {
-    PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
-
     std::string message;
-    switch (self->m_lastAuthState) {
+    switch (m_lastAuthState) {
     case td::td_api::authorizationStateWaitEncryptionKey::ID:
         message = "Error applying database encryption key";
         break;
@@ -262,13 +256,10 @@ int PurpleTdClient::notifyAuthError(gpointer user_data)
         message = "Authentication error";
     }
 
-    if (self->m_authError) {
-        message += ": " + getDisplayedError(*self->m_authError);
-        self->m_authError.reset();
-    }
+    if (error)
+        message += ": " + getDisplayedError(*error);
 
-    purple_connection_error(purple_account_get_connection(self->m_account), message.c_str());
-    return FALSE; // This idle handler will not be called again
+    purple_connection_error(purple_account_get_connection(m_account), message.c_str());
 }
 
 void PurpleTdClient::connectionReady()
@@ -279,28 +270,22 @@ void PurpleTdClient::connectionReady()
                             &PurpleTdClient::getContactsResponse);
 }
 
-int PurpleTdClient::setPurpleConnectionInProgress(gpointer user_data)
+void PurpleTdClient::setPurpleConnectionInProgress()
 {
     purple_debug_misc(config::pluginId, "Connection in progress\n");
-    PurpleTdClient   *self = static_cast<PurpleTdClient *>(user_data);
-    PurpleConnection *gc   = purple_account_get_connection(self->m_account);
+    PurpleConnection *gc = purple_account_get_connection(m_account);
 
     purple_connection_set_state (gc, PURPLE_CONNECTING);
-    purple_blist_remove_account(self->m_account);
+    purple_blist_remove_account(m_account);
     purple_connection_update_progress(gc, "Connecting", 1, 3);
-
-    return FALSE; // This idle handler will not be called again
 }
 
-int PurpleTdClient::setPurpleConnectionUpdating(gpointer user_data)
+void PurpleTdClient::setPurpleConnectionUpdating()
 {
     purple_debug_misc(config::pluginId, "Updating account status\n");
-    PurpleTdClient   *self = static_cast<PurpleTdClient *>(user_data);
-    PurpleConnection *gc   = purple_account_get_connection(self->m_account);
+    PurpleConnection *gc = purple_account_get_connection(m_account);
 
     purple_connection_update_progress(gc, "Updating status", 2, 3);
-
-    return FALSE; // This idle handler will not be called again
 }
 
 void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -314,10 +299,8 @@ void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_
         m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getChats>(
                                     nullptr, std::numeric_limits<std::int64_t>::max(), 0, 200),
                                 &PurpleTdClient::getChatsResponse);
-    } else {
-        m_authError = td::td_api::make_object<td::td_api::error>(0, "Strange response to getContacts");
-        g_idle_add(notifyAuthError, this);
-    }
+    } else
+        notifyAuthError(td::td_api::make_object<td::td_api::error>(0, "Strange response to getContacts"));
 }
 
 void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -328,17 +311,15 @@ void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr
         m_data.setActiveChats(std::move(chats->chat_ids_));
         m_data.getContactsWithNoChat(m_usersForNewPrivateChats);
         requestMissingPrivateChats();
-    } else {
-        m_authError = td::td_api::make_object<td::td_api::error>(0, "Strange response to getChats");
-        g_idle_add(notifyAuthError, this);
-    }
+    } else
+        notifyAuthError(td::td_api::make_object<td::td_api::error>(0, "Strange response to getChats"));
 }
 
 void PurpleTdClient::requestMissingPrivateChats()
 {
     if (m_usersForNewPrivateChats.empty()) {
         purple_debug_misc(config::pluginId, "Login sequence complete\n");
-        g_idle_add(updatePurpleChatListAndReportConnected, this);
+        updatePurpleChatListAndReportConnected();
     } else {
         int32_t userId = m_usersForNewPrivateChats.back();
         m_usersForNewPrivateChats.pop_back();
@@ -374,27 +355,25 @@ static const char *getPurpleUserName(const td::td_api::user &user)
     return user.phone_number_.c_str();
 }
 
-int PurpleTdClient::updatePurpleChatListAndReportConnected(gpointer user_data)
+void PurpleTdClient::updatePurpleChatListAndReportConnected()
 {
-    PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
-
-    purple_connection_set_state (purple_account_get_connection(self->m_account), PURPLE_CONNECTED);
-    purple_blist_add_account(self->m_account);
+    purple_connection_set_state (purple_account_get_connection(m_account), PURPLE_CONNECTED);
+    purple_blist_add_account(m_account);
 
     // Only populate the list from scratch
     std::vector<PrivateChat> privateChats;
-    self->m_data.getPrivateChats(privateChats);
+    m_data.getPrivateChats(privateChats);
 
     for (const PrivateChat &c: privateChats) {
         const td::td_api::chat &chat           = c.chat;
         const td::td_api::user &user           = c.user;
         const char             *purpleUserName = getPurpleUserName(user);
 
-        PurpleBuddy *buddy = purple_find_buddy(self->m_account, purpleUserName);
+        PurpleBuddy *buddy = purple_find_buddy(m_account, purpleUserName);
         if (buddy == NULL) {
             purple_debug_misc(config::pluginId, "Adding new buddy %s for chat id %lld\n",
                                 chat.title_.c_str(), (long long)chat.id_);
-            buddy = purple_buddy_new(self->m_account, purpleUserName, chat.title_.c_str());
+            buddy = purple_buddy_new(m_account, purpleUserName, chat.title_.c_str());
             purple_blist_add_buddy(buddy, NULL, NULL, NULL);
         } else {
             const char *oldName = purple_buddy_get_alias_only(buddy);
@@ -402,52 +381,24 @@ int PurpleTdClient::updatePurpleChatListAndReportConnected(gpointer user_data)
                 purple_debug_misc(config::pluginId, "Renaming buddy %s '%s' to '%s'\n",
                                   purpleUserName, oldName, chat.title_.c_str());
                 purple_blist_remove_buddy(buddy);
-                buddy = purple_buddy_new(self->m_account, purpleUserName, chat.title_.c_str());
+                buddy = purple_buddy_new(m_account, purpleUserName, chat.title_.c_str());
                 purple_blist_add_buddy(buddy, NULL, NULL, NULL);
             }
         }
 
-        purple_prpl_got_user_status(self->m_account, purpleUserName, getPurpleStatusId(*user.status_), NULL);
+        purple_prpl_got_user_status(m_account, purpleUserName, getPurpleStatusId(*user.status_), NULL);
     }
 
-    const td::td_api::user *selfInfo = self->m_data.getUserByPhone(purple_account_get_username(self->m_account));
+    const td::td_api::user *selfInfo = m_data.getUserByPhone(purple_account_get_username(m_account));
     if (selfInfo != nullptr) {
         std::string alias = selfInfo->first_name_ + " " + selfInfo->last_name_;
         purple_debug_misc(config::pluginId, "Setting own alias to '%s'\n", alias.c_str());
-        purple_account_set_alias(self->m_account, alias.c_str());
+        purple_account_set_alias(m_account, alias.c_str());
     } else
         purple_debug_warning(config::pluginId, "Did not receive user information for self (%s) at login\n",
-            purple_account_get_username(self->m_account));
+            purple_account_get_username(m_account));
 
     // TODO: try to have same code handle pre-login and post-login updates
-    // For now, discard accumulated user updates because they have just been handled above
-    std::vector<UserUpdate> updates;
-    self->m_data.getUpdatedUsers(updates);
-
-    return FALSE; // This idle handler will not be called again
-}
-
-int PurpleTdClient::showUnreadMessages(gpointer user_data)
-{
-    PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
-    std::vector<UnreadChat> chats;
-
-    self->m_data.getUnreadChatMessages(chats);
-
-    for (const UnreadChat &unreadChat: chats)
-        if (!unreadChat.messages.empty()) {
-            td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
-            viewMessagesReq->chat_id_ = unreadChat.chatId;
-            viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
-            for (const auto &pMessage: unreadChat.messages)
-                viewMessagesReq->message_ids_.push_back(pMessage->id_);
-            self->m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
-
-            for (const auto &pMessage: unreadChat.messages)
-                self->showMessage(*pMessage);
-        }
-
-    return FALSE; // This idle handler will not be called again
 }
 
 static const char *getText(const td::td_api::message &message)
@@ -505,9 +456,13 @@ void PurpleTdClient::showMessage(const td::td_api::message &message)
 
 void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
 {
-    // Pass it to the main thread
-    m_data.addNewMessage(std::move(message));
-    g_idle_add(showUnreadMessages, this);
+    td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
+    viewMessagesReq->chat_id_ = message->chat_id_;
+    viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
+    viewMessagesReq->message_ids_.push_back(message->id_);
+    m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
+
+    showMessage(*message);
 }
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
@@ -538,36 +493,17 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
 
 void PurpleTdClient::updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status)
 {
-    m_data.updateUserStatus(userId, std::move(status));
-    g_idle_add(showUserUpdates, this);
+    const td::td_api::user *user = m_data.getUser(userId);
+    if (user)
+        purple_prpl_got_user_status(m_account, getPurpleUserName(*user), getPurpleStatusId(*status), NULL);
 }
 
 void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> user)
 {
     m_data.updateUser(std::move(user));
-    if (purple_connection_get_state (purple_account_get_connection(m_account)) == PURPLE_CONNECTED)
-        g_idle_add(showUserUpdates, this);
-}
 
-int PurpleTdClient::showUserUpdates(gpointer user_data)
-{
-    PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
-    std::vector<UserUpdate> userUpdates;
-
-    self->m_data.getUpdatedUsers(userUpdates);
-    for (const UserUpdate &updateInfo: userUpdates) {
-        const td::td_api::user *user;
-        user = self->m_data.getUser(updateInfo.userId);
-        if (user == nullptr)
-            continue;
-
-        if (updateInfo.updates.status)
-            purple_prpl_got_user_status(self->m_account, getPurpleUserName(*user),
-                                        getPurpleStatusId(*user->status_), NULL);
-        // TODO: handle other updates
-    }
-
-    return FALSE; // This idle handler will not be called again
+    // if (purple_connection_get_state (purple_account_get_connection(m_account)) == PURPLE_CONNECTED)
+    //     TODO other updates?
 }
 
 void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction)
@@ -588,44 +524,34 @@ void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction
             if (updateChatAction.action_->get_id() == td::td_api::chatActionCancel::ID) {
                 purple_debug_misc(config::pluginId, "User (id %d) stopped chat action\n",
                                   updateChatAction.user_id_);
-                m_data.addUserAction(updateChatAction.user_id_, false);
+                showUserChatAction(updateChatAction.user_id_, false);
             } else if (updateChatAction.action_->get_id() == td::td_api::chatActionStartPlayingGame::ID) {
                 purple_debug_misc(config::pluginId, "User (id %d): treating chatActionStartPlayingGame as cancel\n",
                                   updateChatAction.user_id_);
-                m_data.addUserAction(updateChatAction.user_id_, false);
+                showUserChatAction(updateChatAction.user_id_, false);
             } else {
                 purple_debug_misc(config::pluginId, "User (id %d) started chat action (id %d)\n",
                                   updateChatAction.user_id_, updateChatAction.action_->get_id());
-                m_data.addUserAction(updateChatAction.user_id_, true);
+                showUserChatAction(updateChatAction.user_id_, true);
             }
-            g_idle_add(PurpleTdClient::showUserChatActions, this);
         }
     } else
         purple_debug_misc(config::pluginId, "Ignoring user chat action for non-private chat %lld\n",
                           (long long)updateChatAction.chat_id_);
 }
 
-int PurpleTdClient::showUserChatActions(gpointer user_data)
+void PurpleTdClient::showUserChatAction(int32_t userId, bool isTyping)
 {
-    PurpleTdClient          *self = static_cast<PurpleTdClient *>(user_data);
-    std::vector<UserAction>  actions;
-
-    self->m_data.getNewUserActions(actions);
-
-    for (const UserAction &action: actions) {
-        const td::td_api::user *user = self->m_data.getUser(action.userId);
-        if (user) {
-            if (action.isTyping)
-                serv_got_typing(purple_account_get_connection(self->m_account),
-                                getPurpleUserName(*user), REMOTE_TYPING_NOTICE_TIMEOUT,
-                                PURPLE_TYPING);
-            else
-                serv_got_typing_stopped(purple_account_get_connection(self->m_account),
-                                getPurpleUserName(*user));
-        }
+    const td::td_api::user *user = m_data.getUser(userId);
+    if (user) {
+        if (isTyping)
+            serv_got_typing(purple_account_get_connection(m_account),
+                            getPurpleUserName(*user), REMOTE_TYPING_NOTICE_TIMEOUT,
+                            PURPLE_TYPING);
+        else
+            serv_got_typing_stopped(purple_account_get_connection(m_account),
+                                    getPurpleUserName(*user));
     }
-
-    return FALSE; // This idle handler will not be called again
 }
 
 void PurpleTdClient::addContact(const char *phoneNumber, const char *alias)
@@ -669,10 +595,8 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
         uint64_t newRequestId = m_transceiver.sendQuery(std::move(addContact),
                                                         &PurpleTdClient::addContactResponse);
         m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), userId);
-    } else {
-        m_data.addFailedContact(std::move(phoneNumber), nullptr);
-        g_idle_add(&PurpleTdClient::notifyFailedContacts, this);
-    }
+    } else
+        notifyFailedContact(std::move(phoneNumber), nullptr);
 }
 
 void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -696,8 +620,7 @@ void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_p
                             phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
         } else
             error = td::td_api::make_object<td::td_api::error>(0, "Strange reply to adding contact");
-        m_data.addFailedContact(std::move(phoneNumber), std::move(error));
-        g_idle_add(&PurpleTdClient::notifyFailedContacts, this);
+        notifyFailedContact(std::move(phoneNumber), std::move(error));
     }
 }
 
@@ -716,38 +639,25 @@ void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td:
                             phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
         } else
             error = td::td_api::make_object<td::td_api::error>(0, "Strange reply to creating private chat");
-        m_data.addFailedContact(std::move(phoneNumber), std::move(error));
-        g_idle_add(&PurpleTdClient::notifyFailedContacts, this);
+        notifyFailedContact(std::move(phoneNumber), std::move(error));
     }
 }
 
-int PurpleTdClient::notifyFailedContacts(gpointer user_data)
+void PurpleTdClient::notifyFailedContact(std::string &&phoneNumber, td::td_api::object_ptr<td::td_api::error> &&error)
 {
-    PurpleTdClient             *self = static_cast<PurpleTdClient *>(user_data);
-    std::vector<FailedContact>  failedContacts;
-    self->m_data.getFailedContacts(failedContacts);
+    std::string message;
+    message += "Failed to add contact (";
+    message += phoneNumber;
+    message += "): ";
+    if (error)
+        message += getDisplayedError(*error);
+    else
+        message += "User not found";
 
-    if (!failedContacts.empty()) {
-        std::string message;
-        for (const FailedContact &contact: failedContacts) {
-            if (!message.empty())
-                message += " ";
-            message += "Failed to add contact (";
-            message += contact.phoneNumber;
-            message += "): ";
-            if (contact.error)
-                message += getDisplayedError(*contact.error);
-            else
-                message += "User not found";
+    PurpleBuddy *buddy = purple_find_buddy(m_account, phoneNumber.c_str());
+    if (buddy)
+        purple_blist_remove_buddy(buddy);
 
-            PurpleBuddy *buddy = purple_find_buddy(self->m_account, contact.phoneNumber.c_str());
-            if (buddy)
-                purple_blist_remove_buddy(buddy);
-        }
-        purple_notify_error(purple_account_get_connection(self->m_account),
-                            "Failed to add contact", message.c_str(), NULL);
-    }
-
-
-    return FALSE; // This idle handler will not be called again
+    purple_notify_error(purple_account_get_connection(m_account),
+                        "Failed to add contact", message.c_str(), NULL);
 }
