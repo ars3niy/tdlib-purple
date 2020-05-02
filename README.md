@@ -43,3 +43,31 @@ make
 Copy the .so to libpurple plugins directory.
 
 It's good to have telegram-purple installed as well since its icon is used at the moment.
+
+## GPL compatibility: building tdlib with OpenSSL 3.0
+
+OpenSSL versions prior to 3.0 branch have license with advertisement clause, making it incompatible with GPL. If this is a concern, a possible solution is to build with OpenSSL 3.0 which uses Apache 2.0 license.
+
+### Building OpenSSL
+
+```
+./config --prefix=/path/to/openssl
+```
+
+Fix OPENSSL_VERSION_TEXT macro in include/openssl/opensslv.h
+
+```
+make
+make install
+rm install/lib/*.so*
+```
+
+### Building tdlib
+
+Same as usual, but with additional cmake argument `-DOPENSSL_ROOT_DIR=/path/to/openssl`
+
+If build fails due to linker errors with dlopen etc. not found then
+
+```
+sed 's/tdnet/tdcore tdnet/' -i benchmark/CMakeLists.txt
+```
