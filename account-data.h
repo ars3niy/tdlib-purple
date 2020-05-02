@@ -47,13 +47,6 @@ public:
     using TdChatPtr    = td::td_api::object_ptr<td::td_api::chat>;
     using TdMessagePtr = td::td_api::object_ptr<td::td_api::message>;
 
-    class Lock: public std::unique_lock<std::mutex> {
-    public:
-        Lock(TdAccountData &data)
-        : std::unique_lock<std::mutex>(data.m_dataMutex)
-        {}
-    };
-
     void updateUser(TdUserPtr user);
     void addChat(TdChatPtr chat); // Updates existing chat if any
     void setContacts(const std::vector<std::int32_t> &userIds);
@@ -86,8 +79,7 @@ private:
 
     UserInfoMap                         m_userInfo;
     ChatInfoMap                         m_chatInfo;
-    // List of contacts for which private chat is not known yet. Does not nead to be thread-safe,
-    // but logically kind of belongs here.
+    // List of contacts for which private chat is not known yet.
     std::vector<int32_t>                m_contactUserIdsNoChat;
     // m_chatInfo can contain chats that are not in m_activeChats if some other chat contains
     // messages forwarded from another channel
@@ -97,7 +89,6 @@ private:
     std::vector<UserAction>             m_userActions;
     std::vector<ContactRequest>         m_addContactRequests;
     std::vector<FailedContact>          m_failedContacts;
-    std::mutex                          m_dataMutex;
 
     UserUpdate &addUserUpdate(int32_t userId);
 };

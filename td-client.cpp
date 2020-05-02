@@ -35,7 +35,6 @@ public:
 
     void operator()(td::td_api::updateNewChat &newChat) const {
         purple_debug_misc(config::pluginId, "Incoming update: new chat\n");
-        TdAccountData::Lock lock(m_owner->m_data);
         m_owner->m_data.addChat(std::move(newChat.chat_));
     }
 
@@ -309,10 +308,7 @@ void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_
     purple_debug_misc(config::pluginId, "getChats response to request %llu\n", (unsigned long long)requestId);
     if (object->get_id() == td::td_api::users::ID) {
         td::td_api::object_ptr<td::td_api::users> users = td::move_tl_object_as<td::td_api::users>(object);
-        {
-            TdAccountData::Lock lock(m_data);
-            m_data.setContacts(users->user_ids_);
-        }
+        m_data.setContacts(users->user_ids_);
         // td::td_api::chats response will be preceded by a string of updateNewChat for all chats
         // apparently even if td::td_api::getChats has limit_ of like 1
         m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getChats>(
@@ -329,11 +325,8 @@ void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr
     purple_debug_misc(config::pluginId, "getChats response to request %llu\n", (unsigned long long)requestId);
     if (object->get_id() == td::td_api::chats::ID) {
         td::td_api::object_ptr<td::td_api::chats> chats = td::move_tl_object_as<td::td_api::chats>(object);
-        {
-            TdAccountData::Lock lock(m_data);
-            m_data.setActiveChats(std::move(chats->chat_ids_));
-            m_data.getContactsWithNoChat(m_usersForNewPrivateChats);
-        }
+        m_data.setActiveChats(std::move(chats->chat_ids_));
+        m_data.getContactsWithNoChat(m_usersForNewPrivateChats);
         requestMissingPrivateChats();
     } else {
         m_authError = td::td_api::make_object<td::td_api::error>(0, "Strange response to getChats");
@@ -362,7 +355,6 @@ void PurpleTdClient::loginCreatePrivateChatResponse(uint64_t requestId, td::td_a
         td::td_api::object_ptr<td::td_api::chat> chat = td::move_tl_object_as<td::td_api::chat>(object);
         purple_debug_misc(config::pluginId, "Requested private chat received: id %lld\n",
                           (long long)chat->id_);
-        TdAccountData::Lock lock(m_data);
         m_data.addChat(std::move(chat));
     } else
         purple_debug_misc(config::pluginId, "Failed to get requested private chat\n");
@@ -390,11 +382,8 @@ int PurpleTdClient::updatePurpleChatListAndReportConnected(gpointer user_data)
     purple_blist_add_account(self->m_account);
 
     // Only populate the list from scratch
-    TdAccountData::Lock lock(self->m_data);
-
     std::vector<PrivateChat> privateChats;
     self->m_data.getPrivateChats(privateChats);
-    // lock must be held for as long as references from privateChats elements are used
 
     for (const PrivateChat &c: privateChats) {
         const td::td_api::chat &chat           = c.chat;
@@ -442,7 +431,6 @@ int PurpleTdClient::showUnreadMessages(gpointer user_data)
 {
     PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
     std::vector<UnreadChat> chats;
-    TdAccountData::Lock lock(self->m_data);
 
     self->m_data.getUnreadChatMessages(chats);
 
@@ -487,7 +475,6 @@ void PurpleTdClient::showMessage(const td::td_api::message &message)
         return;
     }
 
-    // m_dataMutex already locked
     const td::td_api::chat *chat = m_data.getChat(message.chat_id_);
     if (!chat) {
         purple_debug_warning(config::pluginId, "Received message with unknown chat id %lld\n",
@@ -519,14 +506,12 @@ void PurpleTdClient::showMessage(const td::td_api::message &message)
 void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
 {
     // Pass it to the main thread
-    TdAccountData::Lock lock(m_data);
     m_data.addNewMessage(std::move(message));
     g_idle_add(showUnreadMessages, this);
 }
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
 {
-    TdAccountData::Lock lock(m_data);
     const td::td_api::user *tdUser = m_data.getUserByPhone(buddyName);
     if (tdUser == nullptr) {
         purple_debug_warning(config::pluginId, "No user with phone '%s'\n", buddyName);
@@ -553,19 +538,13 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
 
 void PurpleTdClient::updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status)
 {
-    {
-        TdAccountData::Lock lock(m_data);
-        m_data.updateUserStatus(userId, std::move(status));
-    }
+    m_data.updateUserStatus(userId, std::move(status));
     g_idle_add(showUserUpdates, this);
 }
 
 void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> user)
 {
-    {
-        TdAccountData::Lock lock(m_data);
-        m_data.updateUser(std::move(user));
-    }
+    m_data.updateUser(std::move(user));
     if (purple_connection_get_state (purple_account_get_connection(m_account)) == PURPLE_CONNECTED)
         g_idle_add(showUserUpdates, this);
 }
@@ -575,16 +554,10 @@ int PurpleTdClient::showUserUpdates(gpointer user_data)
     PurpleTdClient *self = static_cast<PurpleTdClient *>(user_data);
     std::vector<UserUpdate> userUpdates;
 
-    {
-        TdAccountData::Lock lock(self->m_data);
-        self->m_data.getUpdatedUsers(userUpdates);
-    }
+    self->m_data.getUpdatedUsers(userUpdates);
     for (const UserUpdate &updateInfo: userUpdates) {
         const td::td_api::user *user;
-        {
-            TdAccountData::Lock lock(self->m_data);
-            user = self->m_data.getUser(updateInfo.userId);
-        }
+        user = self->m_data.getUser(updateInfo.userId);
         if (user == nullptr)
             continue;
 
@@ -600,10 +573,7 @@ int PurpleTdClient::showUserUpdates(gpointer user_data)
 void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction)
 {
     const td::td_api::chat *chat;
-    {
-        TdAccountData::Lock lock(m_data);
-        chat = m_data.getChat(updateChatAction.chat_id_);
-    }
+    chat = m_data.getChat(updateChatAction.chat_id_);
 
     if (!chat)
         purple_debug_warning(config::pluginId, "Got user chat action for unknown chat %lld\n",
@@ -615,7 +585,6 @@ void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction
                                  (long long)updateChatAction.chat_id_, privType.user_id_,
                                  updateChatAction.user_id_);
         else if (updateChatAction.action_) {
-            TdAccountData::Lock lock(m_data);
             if (updateChatAction.action_->get_id() == td::td_api::chatActionCancel::ID) {
                 purple_debug_misc(config::pluginId, "User (id %d) stopped chat action\n",
                                   updateChatAction.user_id_);
@@ -640,7 +609,6 @@ int PurpleTdClient::showUserChatActions(gpointer user_data)
 {
     PurpleTdClient          *self = static_cast<PurpleTdClient *>(user_data);
     std::vector<UserAction>  actions;
-    TdAccountData::Lock      lock(self->m_data);
 
     self->m_data.getNewUserActions(actions);
 
@@ -662,12 +630,9 @@ int PurpleTdClient::showUserChatActions(gpointer user_data)
 
 void PurpleTdClient::addContact(const char *phoneNumber, const char *alias)
 {
-    {
-        TdAccountData::Lock lock(m_data);
-        if (m_data.getUserByPhone(phoneNumber)) {
-            purple_debug_info(config::pluginId, "User with phone number %s already exists\n", phoneNumber);
-            return;
-        }
+    if (m_data.getUserByPhone(phoneNumber)) {
+        purple_debug_info(config::pluginId, "User with phone number %s already exists\n", phoneNumber);
+        return;
     }
 
     td::td_api::object_ptr<td::td_api::contact> contact =
@@ -678,17 +643,13 @@ void PurpleTdClient::addContact(const char *phoneNumber, const char *alias)
     uint64_t requestId = m_transceiver.sendQuery(std::move(importReq),
                                                  &PurpleTdClient::importContactResponse);
 
-    {
-        TdAccountData::Lock lock(m_data);
-        m_data.addNewContactRequest(requestId, phoneNumber);
-    }
+    m_data.addNewContactRequest(requestId, phoneNumber);
 }
 
 void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     std::string         phoneNumber;
     int32_t             dummy;
-    TdAccountData::Lock lock(m_data);
     if (! m_data.extractContactRequest(requestId, phoneNumber, dummy))
         return;
 
@@ -718,7 +679,6 @@ void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_p
 {
     std::string         phoneNumber;
     int32_t             userId;
-    TdAccountData::Lock lock(m_data);
     if (! m_data.extractContactRequest(requestId, phoneNumber, userId))
         return;
 
@@ -745,7 +705,6 @@ void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td:
 {
     std::string         phoneNumber;
     int32_t             userId;
-    TdAccountData::Lock lock(m_data);
     if (! m_data.extractContactRequest(requestId, phoneNumber, userId))
         return;
 
@@ -766,10 +725,7 @@ int PurpleTdClient::notifyFailedContacts(gpointer user_data)
 {
     PurpleTdClient             *self = static_cast<PurpleTdClient *>(user_data);
     std::vector<FailedContact>  failedContacts;
-    {
-        TdAccountData::Lock lock(self->m_data);
-        self->m_data.getFailedContacts(failedContacts);
-    }
+    self->m_data.getFailedContacts(failedContacts);
 
     if (!failedContacts.empty()) {
         std::string message;
