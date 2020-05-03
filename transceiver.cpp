@@ -29,9 +29,20 @@ TdTransceiver::~TdTransceiver()
 
 void TdTransceiver::pollThreadLoop()
 {
-    while (!m_stopThread) {
+    while (1) {
         td::Client::Response response = m_client->receive(1);
+        // The destructor sets sends close which results in authorization state update to authorizationStateClosed
+        // which will be received. If that's what's happening, m_stopThread will be set to true, and
+        // the loop must terminate before posting this event into the queue, or else rxCallback will
+        // perform use after free.
+        // TODO: what happens if some other update is received at the same time as the destructor is
+        // called? Is there something important that could get missed?
+        if (m_stopThread)
+            break;
 
+        // TODO: If NOW m_stopThread is set to true by the main thread, looks like there will still
+        // be use after free as rxCallback gets called after the destructor returns. Figure out how
+        // to prevent this.
         if (response.object) {
             {
                 std::unique_lock<std::mutex> lock(m_rxQueueMutex);
