@@ -1,11 +1,10 @@
 namespace config {
 
-#define PACKAGE_VERSION "0.0.0"
-#define GIT_COMMIT      "unknown"
+#define PACKAGE_VERSION "0.1.0"
 
 char pluginId[]      = "tdlib-purple";
 char pluginName[]    = "Telegram (tdlib)";
-char versionString[] = PACKAGE_VERSION "\n\t\t\tcommit: " GIT_COMMIT "\n\t\t\ttdlib: " TD_VERSION;
+char versionString[] = PACKAGE_VERSION GIT_COMMIT ", tdlib " TD_VERSION;
 char pluginSummary[] = "Telegram using tdlib";
 char pluginDesc[]    = "Telegram Protocol Plugin using tdlib";
 char pluginAuthor[]  = "Arseniy Lartsev";
