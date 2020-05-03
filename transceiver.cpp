@@ -62,10 +62,10 @@ TdTransceiver::~TdTransceiver()
     // it to quit, those callbacks will be called after this destructor return (doing nothing, as
     // m_impl->m_owner gets set to NULL), and only then with TdTransceiverImpl instance be destroyed
     m_impl->m_owner = nullptr;
-    {
-        std::unique_lock<std::mutex> lock(m_impl->m_rxMutex);
-        m_impl.reset();
-    }
+
+    // Since poll thread is no longer running, there is no need to lock the mutex before decrementing
+    // shared pointer reference count
+    m_impl.reset();
     purple_debug_misc(config::pluginId, "Destroyed TdTransceiver\n");
 }
 
@@ -125,7 +125,12 @@ int TdTransceiverImpl::rxCallback(gpointer user_data)
         }
     }
 
-    std::unique_lock<std::mutex> lock(self->m_rxMutex);
+    std::unique_lock<std::mutex> lock(self->m_rxMutex, std::defer_lock);
+    // owner=NULL means TdTransceiver has been destroyed, so the poll thread is no longer running
+    // and no mutex lock is needed - in fact, it must be avoided because otherwise unlocking the
+    // mutex after clearing the pointer will be use after free.
+    if (self->m_owner)
+        lock.lock();
     self.reset();
 
     return FALSE; // This idle handler will not be called again
