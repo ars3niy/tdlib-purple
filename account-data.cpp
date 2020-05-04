@@ -140,20 +140,24 @@ void TdAccountData::getPrivateChats(std::vector<const td::td_api::chat *> &chats
     }
 }
 
-void TdAccountData::addNewContactRequest(uint64_t requestId, const char *phoneNumber, int32_t userId)
+void TdAccountData::addNewContactRequest(uint64_t requestId, const char *phoneNumber,
+                                         const char *alias, int32_t userId)
 {
     m_addContactRequests.emplace_back();
     m_addContactRequests.back().requestId = requestId;
     m_addContactRequests.back().phoneNumber = phoneNumber;
+    m_addContactRequests.back().alias = alias;
     m_addContactRequests.back().userId = userId;
 }
 
-bool TdAccountData::extractContactRequest(uint64_t requestId, std::string &phoneNumber, int32_t &userId)
+bool TdAccountData::extractContactRequest(uint64_t requestId, std::string &phoneNumber,
+                                          std::string &alias, int32_t &userId)
 {
     auto pReq = std::find_if(m_addContactRequests.begin(), m_addContactRequests.end(),
                              [requestId](const ContactRequest &req) { return (req.requestId == requestId); });
     if (pReq != m_addContactRequests.end()) {
         phoneNumber = std::move(pReq->phoneNumber);
+        alias = std::move(pReq->alias);
         userId = pReq->userId;
         m_addContactRequests.erase(pReq);
         return true;

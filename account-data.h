@@ -27,8 +27,8 @@ public:
     const td::td_api::user *getUserByPhone(const char *phoneNumber) const;
     const td::td_api::user *getUserByPrivateChat(const td::td_api::chat &chat);
     void getPrivateChats(std::vector<const td::td_api::chat *> &chats) const;
-    void addNewContactRequest(uint64_t requestId, const char *phoneNumber, int32_t userId = 0);
-    bool extractContactRequest(uint64_t requestId, std::string &phoneNumber, int32_t &userId);
+    void addNewContactRequest(uint64_t requestId, const char *phoneNumber, const char *alias, int32_t userId = 0);
+    bool extractContactRequest(uint64_t requestId, std::string &phoneNumber, std::string &alias, int32_t &userId);
 private:
     using UserInfoMap = std::map<int32_t, TdUserPtr>;
     using ChatInfoMap = std::map<int64_t, TdChatPtr>;
@@ -36,6 +36,7 @@ private:
     struct ContactRequest {
         uint64_t    requestId;
         std::string phoneNumber;
+        std::string alias;
         int32_t     userId;
     };
 
