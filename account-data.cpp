@@ -95,18 +95,20 @@ const td::td_api::user *TdAccountData::getUser(int32_t userId) const
         return pUser->second.get();
 }
 
-bool isPhoneEqual(const char *n1, const char *n2)
+static bool isPhoneEqual(const std::string &n1, const std::string &n2)
 {
-    if (*n1 == '+') n1++;
-    if (*n2 == '+') n2++;
-    return !strcmp(n1, n2);
+    const char *s1 = n1.c_str();
+    const char *s2 = n2.c_str();
+    if (*s1 == '+') s1++;
+    if (*s2 == '+') s2++;
+    return !strcmp(s1, s2);
 }
 
 const td::td_api::user *TdAccountData::getUserByPhone(const char *phoneNumber) const
 {
     auto pUser = std::find_if(m_userInfo.begin(), m_userInfo.end(),
                               [phoneNumber](const UserInfoMap::value_type &entry) {
-                                  return isPhoneEqual(entry.second->phone_number_.c_str(), phoneNumber);
+                                  return isPhoneEqual(entry.second->phone_number_, phoneNumber);
                               });
     if (pUser == m_userInfo.end())
         return nullptr;

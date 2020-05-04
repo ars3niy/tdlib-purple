@@ -357,28 +357,11 @@ static const char *getPurpleUserName(const td::td_api::user &user)
     return user.phone_number_.c_str();
 }
 
-static PurpleBuddy *findBuddy(PurpleAccount *account, const char *userName)
-{
-    PurpleBuddy *result  = NULL;
-    GSList      *buddies = purple_find_buddies(account, NULL);
-
-    for (GSList *item = buddies; item != NULL; item = g_slist_next(item)) {
-        PurpleBuddy *buddy = static_cast<PurpleBuddy *>(item->data);
-        if (isPhoneEqual(purple_buddy_get_name(buddy), userName)) {
-            result = buddy;
-            break;
-        }
-    }
-
-    g_slist_free(buddies);
-    return result;
-}
-
 void PurpleTdClient::showPrivateChat(const td::td_api::chat &chat, const td::td_api::user &user)
 {
     const char *purpleUserName = getPurpleUserName(user);
 
-    PurpleBuddy *buddy = findBuddy(m_account, purpleUserName);
+    PurpleBuddy *buddy = purple_find_buddy(m_account, purpleUserName);
     if (buddy == NULL) {
         purple_debug_misc(config::pluginId, "Adding new buddy %s for chat id %lld\n",
                             chat.title_.c_str(), (long long)chat.id_);
