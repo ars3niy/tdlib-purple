@@ -6,32 +6,6 @@ enum {
     REMOTE_TYPING_NOTICE_TIMEOUT = 10,
 };
 
-bool isCanonicalPhoneNumber(const char *s)
-{
-    if (*s == '\0')
-        return false;
-
-    for (const char *c = s; *c; c++)
-        if (!isdigit(*c))
-            return false;
-
-    return true;
-}
-
-bool isPhoneNumber(const char *s)
-{
-    if (*s == '+') s++;
-    return isCanonicalPhoneNumber(s);
-}
-
-const char *getCanonicalPhoneNumber(const char *s)
-{
-    if (*s == '+')
-        return s+1;
-    else
-        return s;
-}
-
 class UpdateHandler {
 public:
     UpdateHandler(PurpleTdClient *owner) : m_owner(owner) {}
@@ -627,6 +601,7 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
             userId = reply->user_ids_[0];
     }
 
+    // For whatever reason, complaining at an earlier stage leads to error message not being shown in pidgin
     if (!isPhoneNumber(phoneNumber.c_str()))
         notifyFailedContact(phoneNumber, "Not a valid phone number");
     else if (userId) {

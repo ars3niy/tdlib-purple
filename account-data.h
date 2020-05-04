@@ -5,6 +5,10 @@
 #include <map>
 #include <mutex>
 
+bool        isCanonicalPhoneNumber(const char *s);
+bool        isPhoneNumber(const char *s);
+const char *getCanonicalPhoneNumber(const char *s);
+
 enum {
     CHAT_HISTORY_REQUEST_LIMIT  = 50,
     CHAT_HISTORY_RETRIEVE_LIMIT = 100

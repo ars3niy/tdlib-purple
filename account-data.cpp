@@ -3,6 +3,41 @@
 #include <purple.h>
 #include <algorithm>
 
+bool isCanonicalPhoneNumber(const char *s)
+{
+    if (*s == '\0')
+        return false;
+
+    for (const char *c = s; *c; c++)
+        if (!isdigit(*c))
+            return false;
+
+    return true;
+}
+
+bool isPhoneNumber(const char *s)
+{
+    if (*s == '+') s++;
+    return isCanonicalPhoneNumber(s);
+}
+
+const char *getCanonicalPhoneNumber(const char *s)
+{
+    if (*s == '+')
+        return s+1;
+    else
+        return s;
+}
+
+static bool isPhoneEqual(const std::string &n1, const std::string &n2)
+{
+    const char *s1 = n1.c_str();
+    const char *s2 = n2.c_str();
+    if (*s1 == '+') s1++;
+    if (*s2 == '+') s2++;
+    return !strcmp(s1, s2);
+}
+
 void TdAccountData::updateUser(TdUserPtr user)
 {
     if (!user) {
@@ -93,15 +128,6 @@ const td::td_api::user *TdAccountData::getUser(int32_t userId) const
         return nullptr;
     else
         return pUser->second.get();
-}
-
-static bool isPhoneEqual(const std::string &n1, const std::string &n2)
-{
-    const char *s1 = n1.c_str();
-    const char *s2 = n2.c_str();
-    if (*s1 == '+') s1++;
-    if (*s2 == '+') s2++;
-    return !strcmp(s1, s2);
 }
 
 const td::td_api::user *TdAccountData::getUserByPhone(const char *phoneNumber) const

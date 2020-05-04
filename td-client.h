@@ -5,10 +5,6 @@
 #include "transceiver.h"
 #include <purple.h>
 
-bool isCanonicalPhoneNumber(const char *s);
-bool isPhoneNumber(const char *s);
-const char *getCanonicalPhoneNumber(const char *s);
-
 class UpdateHandler;
 class AuthUpdateHandler;
 
