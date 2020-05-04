@@ -134,30 +134,22 @@ static void tgprpl_add_buddy (PurpleConnection *gc, PurpleBuddy *buddy, PurpleGr
     // tdClient->addContact(buddy->name, buddy->alias);
 }
 
-static void request_delete_contact_ok (void *data, PurpleRequestFields* fields)
+static void request_delete_contact_on_server_yes (void *data, PurpleRequestFields* fields)
 {
 }
 
-static void request_delete_contact_cancel (void *data, PurpleRequestFields* fields)
+static void request_delete_contact_on_server_no (void *data, PurpleRequestFields* fields)
 {
 }
 
 static void tgprpl_request_delete_contact (PurpleConnection *gc, PurpleBuddy *buddy, PurpleGroup *group)
 {
-    const char *title1 = NULL, *title2 = NULL, *msg = NULL;
-
     g_return_if_fail(buddy);
 
-    title1 = _("Test");
-    title2 = title1;
-    msg = _("Do you want to?");
-
-    if (msg) {
-        purple_request_ok_cancel(gc, title1, title2, msg,
-            0, purple_connection_get_account(gc), "test", NULL,
-            NULL, // user_data
-            request_delete_contact_ok, request_delete_contact_cancel);
-    }
+    purple_request_action(gc, "Remove contact", "Remove contact", "Remove contact on the server?",
+                          0, purple_connection_get_account(gc), NULL, NULL, NULL, 2,
+                          _("_No"), request_delete_contact_on_server_yes,
+                          _("_No"), request_delete_contact_on_server_no);
 }
 
 static void tgprpl_chat_join (PurpleConnection *gc, GHashTable *data)
