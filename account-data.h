@@ -5,6 +5,8 @@
 #include <map>
 #include <mutex>
 
+bool isPhoneEqual(const char *n1, const char *n2);
+
 enum {
     CHAT_HISTORY_REQUEST_LIMIT  = 50,
     CHAT_HISTORY_RETRIEVE_LIMIT = 100
