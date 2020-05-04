@@ -6,6 +6,32 @@ enum {
     REMOTE_TYPING_NOTICE_TIMEOUT = 10,
 };
 
+bool isCanonicalPhoneNumber(const char *s)
+{
+    if (*s == '\0')
+        return false;
+
+    for (const char *c = s; *c; c++)
+        if (!isdigit(*c))
+            return false;
+
+    return true;
+}
+
+bool isPhoneNumber(const char *s)
+{
+    if (*s == '+') s++;
+    return isCanonicalPhoneNumber(s);
+}
+
+const char *getCanonicalPhoneNumber(const char *s)
+{
+    if (*s == '+')
+        return s+1;
+    else
+        return s;
+}
+
 class UpdateHandler {
 public:
     UpdateHandler(PurpleTdClient *owner) : m_owner(owner) {}
@@ -354,7 +380,7 @@ static const char *getPurpleStatusId(const td::td_api::UserStatus &tdStatus)
 
 static const char *getPurpleUserName(const td::td_api::user &user)
 {
-    return user.phone_number_.c_str();
+    return getCanonicalPhoneNumber(user.phone_number_.c_str());
 }
 
 void PurpleTdClient::showPrivateChat(const td::td_api::chat &chat, const td::td_api::user &user)
@@ -372,9 +398,10 @@ void PurpleTdClient::showPrivateChat(const td::td_api::chat &chat, const td::td_
         if (chat.title_ != oldName) {
             purple_debug_misc(config::pluginId, "Renaming buddy %s '%s' to '%s'\n",
                                 purpleUserName, oldName, chat.title_.c_str());
+            PurpleGroup *group = purple_buddy_get_group(buddy);
             purple_blist_remove_buddy(buddy);
             buddy = purple_buddy_new(m_account, purpleUserName, chat.title_.c_str());
-            purple_blist_add_buddy(buddy, NULL, NULL, NULL);
+            purple_blist_add_buddy(buddy, NULL, group, NULL);
         }
     }
 }
@@ -599,7 +626,9 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
             userId = reply->user_ids_[0];
     }
 
-    if (userId) {
+    if (!isPhoneNumber(phoneNumber.c_str()))
+        notifyFailedContact(phoneNumber, "Not a valid phone number");
+    else if (userId) {
         td::td_api::object_ptr<td::td_api::contact> contact =
             td::td_api::make_object<td::td_api::contact>(phoneNumber, "Beh", "Meh", "", userId);
         td::td_api::object_ptr<td::td_api::addContact> addContact =
@@ -608,7 +637,7 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
                                                         &PurpleTdClient::addContactResponse);
         m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), userId);
     } else
-        notifyFailedContact(std::move(phoneNumber), nullptr);
+        notifyFailedContact(phoneNumber, "User not found");
 }
 
 void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -624,16 +653,13 @@ void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_p
         uint64_t newRequestId = m_transceiver.sendQuery(std::move(createChat),
                                                         &PurpleTdClient::addContactCreatePrivateChatResponse);
         m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), userId);
-    } else {
-        td::td_api::object_ptr<td::td_api::error> error;
-        if (object->get_id() == td::td_api::error::ID) {
-            error = td::move_tl_object_as<td::td_api::error>(object);
-            purple_debug_misc(config::pluginId, "Failed to add contact (%s): code %d (%s)\n",
-                            phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
-        } else
-            error = td::td_api::make_object<td::td_api::error>(0, "Strange reply to adding contact");
-        notifyFailedContact(std::move(phoneNumber), std::move(error));
-    }
+    } else if (object->get_id() == td::td_api::error::ID) {
+        td::td_api::object_ptr<td::td_api::error> error = td::move_tl_object_as<td::td_api::error>(object);
+        purple_debug_misc(config::pluginId, "Failed to add contact (%s): code %d (%s)\n",
+                        phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
+        notifyFailedContact(phoneNumber, getDisplayedError(*error));
+    } else
+        notifyFailedContact(phoneNumber, "Strange reply to adding contact");
 }
 
 void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -644,27 +670,23 @@ void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td:
         return;
 
     if (object->get_id() != td::td_api::chat::ID) {
-        td::td_api::object_ptr<td::td_api::error> error;
         if (object->get_id() == td::td_api::error::ID) {
-            error = td::move_tl_object_as<td::td_api::error>(object);
+            td::td_api::object_ptr<td::td_api::error> error = td::move_tl_object_as<td::td_api::error>(object);
             purple_debug_misc(config::pluginId, "Failed to create private chat (to %s): code %d (%s)\n",
                             phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
+            notifyFailedContact(phoneNumber, getDisplayedError(*error));
         } else
-            error = td::td_api::make_object<td::td_api::error>(0, "Strange reply to creating private chat");
-        notifyFailedContact(std::move(phoneNumber), std::move(error));
+            notifyFailedContact(phoneNumber, "Strange reply to creating private chat");
     }
 }
 
-void PurpleTdClient::notifyFailedContact(std::string &&phoneNumber, td::td_api::object_ptr<td::td_api::error> &&error)
+void PurpleTdClient::notifyFailedContact(const std::string &phoneNumber, const std::string &errorMessage)
 {
     std::string message;
     message += "Failed to add contact (";
     message += phoneNumber;
     message += "): ";
-    if (error)
-        message += getDisplayedError(*error);
-    else
-        message += "User not found";
+    message += errorMessage;
 
     PurpleBuddy *buddy = purple_find_buddy(m_account, phoneNumber.c_str());
     if (buddy)

@@ -11,6 +11,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <ctype.h>
 
 static const char *tgprpl_list_icon (PurpleAccount *acct, PurpleBuddy *buddy)
 {
@@ -129,9 +130,17 @@ static void tgprpl_set_status (PurpleAccount *acct, PurpleStatus *status)
 
 static void tgprpl_add_buddy (PurpleConnection *gc, PurpleBuddy *buddy, PurpleGroup *group)
 {
-    // TODO fix and enable
-    // PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
-    // tdClient->addContact(buddy->name, buddy->alias);
+    const char *phoneNumber = purple_buddy_get_name(buddy);
+    if (isPhoneNumber(phoneNumber) && !isCanonicalPhoneNumber(phoneNumber)) {
+        std::string newNumber = getCanonicalPhoneNumber(phoneNumber);
+        std::string alias     = purple_buddy_get_alias(buddy);
+        purple_blist_remove_buddy(buddy);
+        buddy = purple_buddy_new(purple_connection_get_account(gc), newNumber.c_str(), alias.c_str());
+        purple_blist_add_buddy(buddy, NULL, group, NULL);
+    }
+
+    //PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    //tdClient->addContact(purple_buddy_get_name(buddy), purple_buddy_get_alias(buddy));
 }
 
 static void request_delete_contact_on_server_yes (void *data, PurpleRequestFields* fields)

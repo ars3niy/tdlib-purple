@@ -5,6 +5,10 @@
 #include "transceiver.h"
 #include <purple.h>
 
+bool isCanonicalPhoneNumber(const char *s);
+bool isPhoneNumber(const char *s);
+const char *getCanonicalPhoneNumber(const char *s);
+
 class UpdateHandler;
 class AuthUpdateHandler;
 
@@ -55,7 +59,7 @@ private:
     void       importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    void       notifyFailedContact(std::string &&phoneNumber, td::td_api::object_ptr<td::td_api::error> &&error);
+    void       notifyFailedContact(const std::string &phoneNumber, const std::string &errorMessage);
 
     PurpleAccount                      *m_account;
     std::unique_ptr<UpdateHandler>      m_updateHandler;
