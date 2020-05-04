@@ -245,88 +245,90 @@ static GHashTable *tgprpl_get_account_text_table (PurpleAccount *pa)
 static char png[] = "png";
 
 static PurplePluginProtocolInfo prpl_info = {
-    (PurpleProtocolOptions)(OPT_PROTO_NO_PASSWORD | OPT_PROTO_IM_IMAGE),
-    NULL,                    // user_¡splits, initialized in tgprpl_init()
-    NULL,                    // protocol_options, initialized in tgprpl_init()
-    {
-        png,
-        1,                     // min_width
-        1,                     // min_height
-        512,                   // max_width
-        512,                   // max_height
-        64000,                 // max_filesize
-        PURPLE_ICON_SCALE_SEND,
+    .options          = (PurpleProtocolOptions)(OPT_PROTO_NO_PASSWORD | OPT_PROTO_IM_IMAGE),
+    .user_splits      = NULL, // was initialized in tgprpl_init()
+    .protocol_options = NULL, // was initialized in tgprpl_init()
+
+    .icon_spec = {
+        .format       = png,
+        .min_width    = 1,
+        .min_height   = 1,
+        .max_width    = 512,
+        .max_height   = 512,
+        .max_filesize = 64000,
+        .scale_rules  = PURPLE_ICON_SCALE_SEND,
     },
-    tgprpl_list_icon,
-    NULL,
-    NULL,
-    tgprpl_tooltip_text,
-    tgprpl_status_types,
-    tgprpl_blist_node_menu,
-    tgprpl_chat_join_info,
-    tgprpl_chat_info_defaults,
-    tgprpl_login,
-    tgprpl_close,
-    tgprpl_send_im,
-    NULL,                    // set_info
-    tgprpl_send_typing,
-    tgprpl_info_show,
-    tgprpl_set_status,
-    NULL,                    // set_idle
-    NULL,                    // change_passwd
-    tgprpl_add_buddy,
-    NULL,                    // add_buddies
-    tgprpl_request_delete_contact,
-    NULL,                    // remove_buddies
-    NULL,                    // add_permit
-    NULL,                    // add_deny
-    NULL,                    // rem_permit
-    NULL,                    // rem_deny
-    NULL,                    // set_permit_deny
-    tgprpl_chat_join,
-    NULL,                    // reject_chat
-    tgprpl_get_chat_name,
-    tgprpl_chat_invite,
-    NULL,                    // chat_leave
-    NULL,                    // chat_whisper
-    tgprpl_send_chat,
-    NULL,                    // keepalive
-    NULL,                    // register_user
-    NULL,                    // get_cb_info
-    NULL,                    // get_cb_away
-    NULL,                    // alias_buddy
-    NULL,                    // group_buddy
-    NULL,                    // rename_group
-    NULL,                    // buddy_free
-    NULL,                    // convo_closed
-    NULL,                    // normalize
-    NULL,                    // tgprpl_set_buddy_icon
-    NULL,                    // remove_group
-    NULL,
-    NULL,                    // set_chat_topic
-    NULL,                    // find_blist_chat
-    tgprpl_roomlist_get_list,
-    tgprpl_roomlist_cancel,
-    NULL,                    // roomlist_expand_category
-    tgprpl_can_receive_file,
-    tgprpl_send_file,
-    tgprpl_new_xfer,
-    NULL,                    // offline_message
-    NULL,                    // whiteboard_prpl_ops
-    NULL,                    // send_raw
-    NULL,                    // roomlist_room_serialize
-    NULL,                    // unregister_user
-    NULL,                    // send_attention
-    NULL,                    // get_attention_types
-    sizeof(PurplePluginProtocolInfo),
-    tgprpl_get_account_text_table, // get_account_text_table
-    NULL,                    // initiate_media
-    NULL,                    // get_media_caps
-    NULL,                    // get_moods
-    NULL,                    // set_public_alias
-    NULL,                    // get_public_alias
-    NULL,                    // add_buddy_with_invite
-    NULL                     // add_buddies_with_invite
+
+    .list_icon                = tgprpl_list_icon,
+    .list_emblem              = NULL,
+    .status_text              = NULL,
+    .tooltip_text             = tgprpl_tooltip_text,
+    .status_types             = tgprpl_status_types,
+    .blist_node_menu          = tgprpl_blist_node_menu,
+    .chat_info                = tgprpl_chat_join_info,
+    .chat_info_defaults       = tgprpl_chat_info_defaults,
+    .login                    = tgprpl_login,
+    .close                    = tgprpl_close,
+    .send_im                  = tgprpl_send_im,
+    .set_info                 = NULL,
+    .send_typing              = tgprpl_send_typing,
+    .get_info                 = tgprpl_info_show,
+    .set_status               = tgprpl_set_status,
+    .set_idle                 = NULL,
+    .change_passwd            = NULL,
+    .add_buddy                = tgprpl_add_buddy,
+    .add_buddies              = NULL,
+    .remove_buddy             = tgprpl_request_delete_contact,
+    .remove_buddies           = NULL,
+    .add_permit               = NULL,
+    .add_deny                 = NULL,
+    .rem_permit               = NULL,
+    .rem_deny                 = NULL,
+    .set_permit_deny          = NULL,
+    .join_chat                = tgprpl_chat_join,
+    .reject_chat              = NULL,
+    .get_chat_name            = tgprpl_get_chat_name,
+    .chat_invite              = tgprpl_chat_invite,
+    .chat_leave               = NULL,
+    .chat_whisper             = NULL,
+    .chat_send                = tgprpl_send_chat,
+    .keepalive                = NULL,
+    .register_user            = NULL,
+    .get_cb_info              = NULL,
+    .get_cb_away              = NULL,
+    .alias_buddy              = NULL,
+    .group_buddy              = NULL,
+    .rename_group             = NULL,
+    .buddy_free               = NULL,
+    .convo_closed             = NULL,
+    .normalize                = NULL,
+    .set_buddy_icon           = NULL,
+    .remove_group             = NULL,
+    .get_cb_real_name         = NULL,
+    .set_chat_topic           = NULL,
+    .find_blist_chat          = NULL,
+    .roomlist_get_list        = tgprpl_roomlist_get_list,
+    .roomlist_cancel          = tgprpl_roomlist_cancel,
+    .roomlist_expand_category = NULL,
+    .can_receive_file         = tgprpl_can_receive_file,
+    .send_file                = tgprpl_send_file,
+    .new_xfer                 = tgprpl_new_xfer,
+    .offline_message          = NULL,
+    .whiteboard_prpl_ops      = NULL,
+    .send_raw                 = NULL,
+    .roomlist_room_serialize  = NULL,
+    .unregister_user          = NULL,
+    .send_attention           = NULL,
+    .get_attention_types      = NULL,
+    .struct_size              = sizeof(PurplePluginProtocolInfo),
+    .get_account_text_table   = tgprpl_get_account_text_table,
+    .initiate_media           = NULL,
+    .get_media_caps           = NULL,
+    .get_moods                = NULL,
+    .set_public_alias         = NULL,
+    .get_public_alias         = NULL,
+    .add_buddy_with_invite    = NULL,
+    .add_buddies_with_invite  = NULL,
 };
 
 static gboolean tgprpl_load (PurplePlugin *plugin)
