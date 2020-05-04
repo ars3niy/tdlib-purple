@@ -10,14 +10,6 @@ enum {
     CHAT_HISTORY_RETRIEVE_LIMIT = 100
 };
 
-struct PrivateChat {
-    const td::td_api::chat &chat;
-    const td::td_api::user &user;
-
-    PrivateChat(const td::td_api::chat &chat, const td::td_api::user &user)
-    : chat(chat), user(user) {}
-};
-
 class TdAccountData {
 public:
     using TdUserPtr    = td::td_api::object_ptr<td::td_api::user>;
@@ -33,7 +25,8 @@ public:
     const td::td_api::chat *getPrivateChatByUserId(int32_t userId) const;
     const td::td_api::user *getUser(int32_t userId) const;
     const td::td_api::user *getUserByPhone(const char *phoneNumber) const;
-    void getPrivateChats(std::vector<PrivateChat> &chats) const;
+    const td::td_api::user *getUserByPrivateChat(const td::td_api::chat &chat);
+    void getPrivateChats(std::vector<const td::td_api::chat *> &chats) const;
     void addNewContactRequest(uint64_t requestId, const char *phoneNumber, int32_t userId = 0);
     bool extractContactRequest(uint64_t requestId, std::string &phoneNumber, int32_t &userId);
 private:

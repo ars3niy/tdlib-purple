@@ -116,7 +116,16 @@ const td::td_api::user *TdAccountData::getUserByPhone(const char *phoneNumber) c
         return pUser->second.get();
 }
 
-void TdAccountData::getPrivateChats(std::vector<PrivateChat> &chats) const
+const td::td_api::user *TdAccountData::getUserByPrivateChat(const td::td_api::chat &chat)
+{
+    if (chat.type_->get_id() == td::td_api::chatTypePrivate::ID) {
+        const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat.type_);
+        return getUser(privType.user_id_);
+    }
+    return nullptr;
+}
+
+void TdAccountData::getPrivateChats(std::vector<const td::td_api::chat *> &chats) const
 {
     chats.clear();
     for (int64_t chatId: m_activeChats) {
@@ -126,14 +135,8 @@ void TdAccountData::getPrivateChats(std::vector<PrivateChat> &chats) const
             continue;
         }
 
-        if (chat->type_->get_id() == td::td_api::chatTypePrivate::ID) {
-            const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat->type_);
-            const td::td_api::user *user = getUser(privType.user_id_);
-            if (user)
-                chats.emplace_back(*chat, *user);
-            else
-                purple_debug_warning(config::pluginId, "Received private chat with unknown user id %d\n", (int)privType.user_id_);
-        }
+        if (chat->type_->get_id() == td::td_api::chatTypePrivate::ID)
+            chats.push_back(&*chat);
     }
 }
 

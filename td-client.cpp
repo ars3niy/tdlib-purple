@@ -357,38 +357,45 @@ static const char *getPurpleUserName(const td::td_api::user &user)
     return user.phone_number_.c_str();
 }
 
+void PurpleTdClient::showPrivateChat(const td::td_api::chat &chat, const td::td_api::user &user)
+{
+    const char *purpleUserName = getPurpleUserName(user);
+
+    PurpleBuddy *buddy = purple_find_buddy(m_account, purpleUserName);
+    if (buddy == NULL) {
+        purple_debug_misc(config::pluginId, "Adding new buddy %s for chat id %lld\n",
+                            chat.title_.c_str(), (long long)chat.id_);
+        buddy = purple_buddy_new(m_account, purpleUserName, chat.title_.c_str());
+        purple_blist_add_buddy(buddy, NULL, NULL, NULL);
+    } else {
+        const char *oldName = purple_buddy_get_alias_only(buddy);
+        if (chat.title_ != oldName) {
+            purple_debug_misc(config::pluginId, "Renaming buddy %s '%s' to '%s'\n",
+                                purpleUserName, oldName, chat.title_.c_str());
+            purple_blist_remove_buddy(buddy);
+            buddy = purple_buddy_new(m_account, purpleUserName, chat.title_.c_str());
+            purple_blist_add_buddy(buddy, NULL, NULL, NULL);
+        }
+    }
+}
+
 void PurpleTdClient::updatePurpleChatListAndReportConnected()
 {
     purple_connection_set_state (purple_account_get_connection(m_account), PURPLE_CONNECTED);
     purple_blist_add_account(m_account);
 
     // Only populate the list from scratch
-    std::vector<PrivateChat> privateChats;
+    std::vector<const td::td_api::chat *> privateChats;
     m_data.getPrivateChats(privateChats);
 
-    for (const PrivateChat &c: privateChats) {
-        const td::td_api::chat &chat           = c.chat;
-        const td::td_api::user &user           = c.user;
-        const char             *purpleUserName = getPurpleUserName(user);
+    for (const td::td_api::chat *chat: privateChats) {
+        const td::td_api::user *user = m_data.getUserByPrivateChat(*chat);
+        if (!user)
+            continue;
 
-        PurpleBuddy *buddy = purple_find_buddy(m_account, purpleUserName);
-        if (buddy == NULL) {
-            purple_debug_misc(config::pluginId, "Adding new buddy %s for chat id %lld\n",
-                                chat.title_.c_str(), (long long)chat.id_);
-            buddy = purple_buddy_new(m_account, purpleUserName, chat.title_.c_str());
-            purple_blist_add_buddy(buddy, NULL, NULL, NULL);
-        } else {
-            const char *oldName = purple_buddy_get_alias_only(buddy);
-            if (chat.title_ != oldName) {
-                purple_debug_misc(config::pluginId, "Renaming buddy %s '%s' to '%s'\n",
-                                  purpleUserName, oldName, chat.title_.c_str());
-                purple_blist_remove_buddy(buddy);
-                buddy = purple_buddy_new(m_account, purpleUserName, chat.title_.c_str());
-                purple_blist_add_buddy(buddy, NULL, NULL, NULL);
-            }
-        }
-
-        purple_prpl_got_user_status(m_account, purpleUserName, getPurpleStatusId(*user.status_), NULL);
+        showPrivateChat(*chat, *user);
+        purple_prpl_got_user_status(m_account, getPurpleUserName(*user),
+                                    getPurpleStatusId(*user->status_), NULL);
     }
 
     const td::td_api::user *selfInfo = m_data.getUserByPhone(purple_account_get_username(m_account));

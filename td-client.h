@@ -45,6 +45,7 @@ private:
     void       updatePurpleChatListAndReportConnected();
     // Login sequence end
 
+    void       showPrivateChat(const td::td_api::chat &chat, const td::td_api::user &user);
     void       showMessage(const td::td_api::message &message);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
     void       updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
