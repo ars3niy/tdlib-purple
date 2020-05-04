@@ -332,10 +332,12 @@ void PurpleTdClient::requestMissingPrivateChats()
 
 void PurpleTdClient::loginCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    if (object->get_id() != td::td_api::chat::ID) {
+    if (object->get_id() == td::td_api::chat::ID) {
         td::td_api::object_ptr<td::td_api::chat> chat = td::move_tl_object_as<td::td_api::chat>(object);
         purple_debug_misc(config::pluginId, "Requested private chat received: id %lld\n",
                           (long long)chat->id_);
+        // Here the "new" chat already exists in AccountData because there has just been
+        // updateNewChat about this same chat. But do addChat anyway, just in case.
         m_data.addChat(std::move(chat));
     } else
         purple_debug_misc(config::pluginId, "Failed to get requested private chat\n");
