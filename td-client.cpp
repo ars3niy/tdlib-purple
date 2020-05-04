@@ -398,6 +398,9 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
                                     getPurpleStatusId(*user->status_), NULL);
     }
 
+    // Here we could remove buddies for which no private chat exists, meaning they have been remove
+    // from the contact list perhaps in another client
+
     const td::td_api::user *selfInfo = m_data.getUserByPhone(purple_account_get_username(m_account));
     if (selfInfo != nullptr) {
         std::string alias = selfInfo->first_name_ + " " + selfInfo->last_name_;
