@@ -290,7 +290,7 @@ void PurpleTdClient::setPurpleConnectionUpdating()
 
 void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    purple_debug_misc(config::pluginId, "getChats response to request %llu\n", (unsigned long long)requestId);
+    purple_debug_misc(config::pluginId, "getContacts response to request %llu\n", (unsigned long long)requestId);
     if (object->get_id() == td::td_api::users::ID) {
         td::td_api::object_ptr<td::td_api::users> users = td::move_tl_object_as<td::td_api::users>(object);
         m_data.setContacts(users->user_ids_);
