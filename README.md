@@ -50,16 +50,15 @@ OpenSSL versions prior to 3.0 branch have license with advertisement clause, mak
 
 ### Building OpenSSL
 
+Remove quotes and spaces from `RELEASE_DATE` in VERSION.
+
+Replace `OPENSSL_VERSION_NUMBER` definition with `#define OPENSSL_VERSION_NUMBER 0x30000000L` in include/openssl/opensslv.h.in (not always necessary, depending on cmake version).
+
 ```
 ./config --prefix=/path/to/openssl
-```
-
-Fix OPENSSL_VERSION_TEXT macro in include/openssl/opensslv.h
-
-```
 make
 make install
-rm install/lib/*.so*
+rm /path/to/openssl/lib/*.so*
 ```
 
 ### Building tdlib
