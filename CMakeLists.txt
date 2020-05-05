@@ -16,6 +16,8 @@ endif (${UNIX})
 
 include(FindPkgConfig)
 pkg_check_modules(Purple REQUIRED purple)
+pkg_get_variable(PURPLE_PLUGIN_DIR purple plugindir)
+pkg_get_variable(PURPLE_DATA_DIR purple datarootdir)
 
 add_library(td-purple SHARED
     tdlib-purple.cpp
@@ -31,3 +33,8 @@ target_compile_definitions(td-purple PRIVATE
 include_directories(td-purple ${Purple_INCLUDE_DIRS})
 target_link_libraries(td-purple PRIVATE Td::TdStatic ${Purple_LIBRARIES})
 set_property(TARGET td-purple PROPERTY CXX_STANDARD 14)
+
+install(TARGETS td-purple LIBRARY DESTINATION "${PURPLE_PLUGIN_DIR}")
+install(FILES icons/telegram16.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/16" RENAME telegram.png)
+install(FILES icons/telegram22.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/22" RENAME telegram.png)
+install(FILES icons/telegram48.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/48" RENAME telegram.png)
