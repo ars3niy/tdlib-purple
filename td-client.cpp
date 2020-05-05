@@ -360,6 +360,8 @@ static const char *getPurpleUserName(const td::td_api::user &user)
 void PurpleTdClient::showPrivateChat(const td::td_api::chat &chat, const td::td_api::user &user)
 {
     const char *purpleUserName = getPurpleUserName(user);
+    if (*purpleUserName == '\0')
+        return;
 
     PurpleBuddy *buddy = purple_find_buddy(m_account, purpleUserName);
     if (buddy == NULL) {
@@ -430,8 +432,14 @@ static const char *getText(const td::td_api::message &message)
     return nullptr;
 }
 
-void PurpleTdClient::showMessage(const td::td_api::message &message)
+void PurpleTdClient::showMessage(const char *purpleUserName, const td::td_api::message &message)
 {
+    td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
+    viewMessagesReq->chat_id_ = message.chat_id_;
+    viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
+    viewMessagesReq->message_ids_.push_back(message.id_);
+    m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
+
     // Skip unsupported content
     const char *text = getText(message);
     if (text == nullptr) {
@@ -439,10 +447,26 @@ void PurpleTdClient::showMessage(const td::td_api::message &message)
         return;
     }
 
-    const td::td_api::chat *chat = m_data.getChat(message.chat_id_);
+    if (message.is_outgoing_) {
+        // serv_got_im seems to work for messages sent from another client, but not for
+        // echoed messages from this client. Therefore, this (code snippet from facebook plugin).
+        PurpleConversation *conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, purpleUserName, m_account);
+        if (conv == NULL)
+            conv = purple_conversation_new(PURPLE_CONV_TYPE_IM, m_account, purpleUserName);
+        purple_conversation_write(conv, purple_account_get_alias(m_account), text,
+                                  PURPLE_MESSAGE_SEND, // TODO: maybe set PURPLE_MESSAGE_REMOTE_SEND when appropriate
+                                  message.date_);
+    } else
+        serv_got_im(purple_account_get_connection(m_account), purpleUserName, text,
+                    PURPLE_MESSAGE_RECV, message.date_);
+}
+
+void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
+{
+    const td::td_api::chat *chat = m_data.getChat(message->chat_id_);
     if (!chat) {
         purple_debug_warning(config::pluginId, "Received message with unknown chat id %lld\n",
-                            (long long)message.chat_id_);
+                            (long long)message->chat_id_);
         return;
     }
 
@@ -451,31 +475,17 @@ void PurpleTdClient::showMessage(const td::td_api::message &message)
         const td::td_api::user *user = m_data.getUser(userId);
         if (user) {
             const char *who = getPurpleUserName(*user);
-            if (message.is_outgoing_) {
-                // serv_got_im seems to work for messages sent from another client, but not for
-                // echoed messages from this client. Therefore, this (code snippet from facebook plugin).
-                PurpleConversation *conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who, m_account);
-                if (conv == NULL)
-                    conv = purple_conversation_new(PURPLE_CONV_TYPE_IM, m_account, who);
-                purple_conversation_write(conv, purple_account_get_alias(m_account), text,
-                                          PURPLE_MESSAGE_SEND, // TODO: maybe set PURPLE_MESSAGE_REMOTE_SEND when appropriate
-                                          message.date_);
-            } else
-                serv_got_im(purple_account_get_connection(m_account), who, text,
-                            PURPLE_MESSAGE_RECV, message.date_);
+            if (*who == '\0')
+                // A message from someone not yet in the contact list can be like this.
+                // If somehow updateUser with a phone number never follows, this messages will linger
+                // as delayed and never get shown. However, it shouldn't really happen - unless maybe
+                // we go offline just as we receive this message, but frankly that's a problem even
+                // for normal messages. Or who knows, maybe not sending viewMessages will save us then?
+                m_data.addDelayedMessage(userId, std::move(message));
+            else
+                showMessage(who, *message);
         }
     }
-}
-
-void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
-{
-    td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
-    viewMessagesReq->chat_id_ = message->chat_id_;
-    viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
-    viewMessagesReq->message_ids_.push_back(message->id_);
-    m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
-
-    showMessage(*message);
 }
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
@@ -506,17 +516,41 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
 
 void PurpleTdClient::updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status)
 {
-    const td::td_api::user *user = m_data.getUser(userId);
-    if (user)
-        purple_prpl_got_user_status(m_account, getPurpleUserName(*user), getPurpleStatusId(*status), NULL);
+    const td::td_api::user *user     = m_data.getUser(userId);
+    const char             *userName = getPurpleUserName(*user);
+
+    // Empty phone number is possible after someone new adds us to their contact list. If that's the
+    // case, don't call purple_prpl_got_user_status on empty string.
+    if (user && *userName)
+        purple_prpl_got_user_status(m_account, userName, getPurpleStatusId(*status), NULL);
 }
 
 void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> user)
 {
+    bool        hasPhoneNumber = !user->phone_number_.empty();
+    int32_t     userId         = user->id_;
     m_data.updateUser(std::move(user));
 
-    // if (purple_connection_get_state (purple_account_get_connection(m_account)) == PURPLE_CONNECTED)
-    //     TODO other updates?
+    if (hasPhoneNumber) {
+        const td::td_api::user *user = m_data.getUser(userId);
+        const td::td_api::chat *chat = m_data.getPrivateChatByUserId(userId);
+
+        if (purple_connection_get_state (purple_account_get_connection(m_account)) == PURPLE_CONNECTED) {
+            if (user && chat)
+                showPrivateChat(*chat, *user);
+        }
+            
+        std::vector<td::td_api::object_ptr<td::td_api::message>> messages;
+        m_data.extractDelayedMessagesByUser(userId, messages);
+
+        if (!messages.empty()) {
+            if (user) {
+                const char *userName = getPurpleUserName(*user);
+                for (auto &pMessage: messages)
+                    showMessage(userName, *pMessage);
+            }
+        }
+    }
 }
 
 void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction)
