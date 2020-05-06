@@ -109,8 +109,9 @@ void TdTransceiver::pollThreadLoop()
 
 int TdTransceiverImpl::rxCallback(gpointer user_data)
 {
-    std::shared_ptr<TdTransceiverImpl> &self =
-        *static_cast<std::shared_ptr<TdTransceiverImpl> *>(user_data);
+    std::shared_ptr<TdTransceiverImpl> *ppSelf =
+        static_cast<std::shared_ptr<TdTransceiverImpl> *>(user_data);
+    std::shared_ptr<TdTransceiverImpl> &self = *ppSelf;
 
     while (1) {
         td::Client::Response response;
@@ -149,6 +150,7 @@ int TdTransceiverImpl::rxCallback(gpointer user_data)
     if (self->m_owner)
         lock.lock();
     self.reset();
+    delete ppSelf;
 
     return FALSE; // This idle handler will not be called again
 }
