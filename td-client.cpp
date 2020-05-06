@@ -413,8 +413,6 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
     } else
         purple_debug_warning(config::pluginId, "Did not receive user information for self (%s) at login\n",
             purple_account_get_username(m_account));
-
-    // TODO: try to have same code handle pre-login and post-login updates
 }
 
 static const char *getText(const td::td_api::message &message)

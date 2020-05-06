@@ -33,7 +33,7 @@ CommTest::CommTest()
 
 void CommTest::SetUp()
 {
-    account = purple_account_new(phoneNumber.c_str(), NULL);
+    account = purple_account_new(("+" + phoneNumber).c_str(), NULL);
     connection = new PurpleConnection;
     account->gc = connection;
 }
@@ -55,7 +55,7 @@ void CommTest::login()
     tgl.verifyRequest(setTdlibParameters(make_object<tdlibParameters>(
         false,
         std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
-        "tdlib" + G_DIR_SEPARATOR_S + phoneNumber,
+        "tdlib" + G_DIR_SEPARATOR_S + "+" + phoneNumber,
         "",
         false,
         false,
@@ -78,7 +78,7 @@ void CommTest::login()
     tgl.reply(make_object<ok>());
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitPhoneNumber>()));
-    tgl.verifyRequest(setAuthenticationPhoneNumber(phoneNumber, nullptr));
+    tgl.verifyRequest(setAuthenticationPhoneNumber("+" + phoneNumber, nullptr));
     tgl.reply(make_object<ok>());
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
@@ -100,7 +100,7 @@ void CommTest::login()
         selfFirstName,
         selfLastName,
         "",
-        phoneNumber,
+        phoneNumber, // Phone number here without + to make it more interesting
         make_object<userStatusOffline>(),
         nullptr,
         false,
