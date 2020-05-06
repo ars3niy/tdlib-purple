@@ -87,10 +87,17 @@ static GHashTable *tgprpl_chat_info_defaults (PurpleConnection *gc, const char *
     return g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
 }
 
+static ITransceiverBackend *g_testBackend = nullptr;
+
+void tgprpl_set_test_backend(ITransceiverBackend *backend)
+{
+    g_testBackend = backend;
+}
+
 static void tgprpl_login (PurpleAccount *acct)
 {
     PurpleConnection *gc       = purple_account_get_connection (acct);
-    PurpleTdClient   *tdClient = new PurpleTdClient(acct);
+    PurpleTdClient   *tdClient = new PurpleTdClient(acct, g_testBackend);
 
     purple_connection_set_protocol_data (gc, tdClient);
     purple_connection_set_state (gc, PURPLE_CONNECTING);
@@ -361,32 +368,32 @@ static GList *tgprpl_actions (PurplePlugin *plugin, gpointer context)
 }
 
 static PurplePluginInfo plugin_info = {
-    PURPLE_PLUGIN_MAGIC,
-    PURPLE_MAJOR_VERSION,
-    PURPLE_MINOR_VERSION,
-    PURPLE_PLUGIN_PROTOCOL,
-    NULL,
-    0,
-    NULL,
-    PURPLE_PRIORITY_DEFAULT,
-    config::pluginId,
-    config::pluginName,
-    config::versionString,
-    config::pluginSummary,
-    _(config::pluginDesc),
-    config::pluginAuthor,
-    config::projectUrl,
-    tgprpl_load,    // on load
-    NULL,           // on unload
-    NULL,           // on destroy
-    NULL,           // ui specific struct
-    &prpl_info,
-    NULL,           // prefs info
-    tgprpl_actions,
-    NULL,           // reserved
-    NULL,           // reserved
-    NULL,           // reserved
-    NULL            // reserved
+    .magic             = PURPLE_PLUGIN_MAGIC,
+    .major_version     = PURPLE_MAJOR_VERSION,
+    .minor_version     = PURPLE_MINOR_VERSION,
+    .type              = PURPLE_PLUGIN_PROTOCOL,
+    .ui_requirement    = NULL,
+    .flags             = 0,
+    .dependencies      = NULL,
+    .priority          = PURPLE_PRIORITY_DEFAULT,
+    .id                = config::pluginId,
+    .name              = config::pluginName,
+    .version           = config::versionString,
+    .summary           = config::pluginSummary,
+    .description       = _(config::pluginDesc),
+    .author            = config::pluginAuthor,
+    .homepage          = config::projectUrl,
+    .load              = tgprpl_load,
+    .unload            = NULL,
+    .destroy           = NULL,
+    .ui_info           = NULL,
+    .extra_info        = &prpl_info,
+    .prefs_info        = NULL,
+    .actions           = tgprpl_actions,
+    ._purple_reserved1 = NULL,
+    ._purple_reserved2 = NULL,
+    ._purple_reserved3 = NULL,
+    ._purple_reserved4 = NULL,
 };
 
 extern "C" {

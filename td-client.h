@@ -10,7 +10,7 @@ class AuthUpdateHandler;
 
 class PurpleTdClient {
 public:
-    PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend = nullptr);
+    PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend);
     ~PurpleTdClient();
 
     static void setLogLevel(int level);

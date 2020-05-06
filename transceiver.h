@@ -14,7 +14,7 @@ class TdTransceiver;
 
 class ITransceiverBackend {
 public:
-    virtual ~ITransceiverBackend();
+    virtual ~ITransceiverBackend() {}
 
     void         setOwner(TdTransceiver *owner) { m_owner = owner; }
     virtual void send(td::Client::Request &&request) = 0;
