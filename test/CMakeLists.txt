@@ -8,6 +8,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     testsuite.cpp
     test-transceiver.cpp
     libpurple-mock.cpp
+    printout.cpp
 
     ../tdlib-purple.cpp
     ../td-client.cpp

@@ -64,7 +64,7 @@ void purple_account_destroy(PurpleAccount *account)
 {
     free(account->username);
     free(account->alias);
-    free(account);
+    delete account;
 }
 
 void purple_blist_add_account(PurpleAccount *account)
@@ -89,7 +89,7 @@ void purple_blist_remove_buddy(PurpleBuddy *buddy)
     // TODO add event
     free(buddy->name);
     free(buddy->alias);
-    free(buddy);
+    delete buddy;
 }
 
 const char *purple_buddy_get_alias_only(PurpleBuddy *buddy)
@@ -176,7 +176,7 @@ PurpleConversation *purple_conversation_new(PurpleConversationType type,
 void purple_conversation_destroy(PurpleConversation *conv)
 {
     free(conv->name);
-    free(conv);
+    delete conv;
 }
 
 void purple_conversation_write(PurpleConversation *conv, const char *who,
@@ -309,7 +309,7 @@ void purple_xfer_unref(PurpleXfer *xfer)
 {
     if (--xfer->ref == 0) {
         free(xfer->who);
-        free(xfer);
+        delete xfer;
     }
 }
 

@@ -65,8 +65,10 @@ TdTransceiver::TdTransceiver(PurpleTdClient *owner, UpdateCb updateCb, ITranscei
 TdTransceiver::~TdTransceiver()
 {
     m_stopThread = true;
-    m_impl->m_client->send({UINT64_MAX, td::td_api::make_object<td::td_api::close>()});
-    m_pollThread.join();
+    if (!m_testBackend) {
+        m_impl->m_client->send({UINT64_MAX, td::td_api::make_object<td::td_api::close>()});
+        m_pollThread.join();
+    }
 
     // Orphan m_impl - if the background thread generated idle callbacks while we were waiting for
     // it to quit, those callbacks will be called after this destructor return (doing nothing, as

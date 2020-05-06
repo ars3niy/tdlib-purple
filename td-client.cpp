@@ -275,8 +275,9 @@ void PurpleTdClient::setPurpleConnectionInProgress()
     purple_debug_misc(config::pluginId, "Connection in progress\n");
     PurpleConnection *gc = purple_account_get_connection(m_account);
 
+    if (PURPLE_CONNECTION_IS_CONNECTED(gc))
+        purple_blist_remove_account(m_account);
     purple_connection_set_state (gc, PURPLE_CONNECTING);
-    purple_blist_remove_account(m_account);
     purple_connection_update_progress(gc, "Connecting", 1, 3);
 }
 

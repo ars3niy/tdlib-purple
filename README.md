@@ -44,6 +44,14 @@ Copy the .so to libpurple plugins directory.
 
 It's good to have telegram-purple installed as well since its icon is used at the moment.
 
+## Regression test
+
+Build google test library and `make install` it somewhere
+
+Run cmake with '-DGTEST_PATH=/path/to/gtest'
+
+`make run-tests` or `test/tests` or `valgrind test/tests`
+
 ## GPL compatibility: building tdlib with OpenSSL 3.0
 
 OpenSSL versions prior to 3.0 branch have license with advertisement clause, making it incompatible with GPL. If this is a concern, a possible solution is to build with OpenSSL 3.0 which uses Apache 2.0 license.
