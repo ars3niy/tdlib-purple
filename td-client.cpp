@@ -102,8 +102,8 @@ private:
     PurpleTdClient *m_owner;
 };
 
-PurpleTdClient::PurpleTdClient(PurpleAccount *acct)
-:   m_transceiver(this, &PurpleTdClient::processUpdate)
+PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)
+:   m_transceiver(this, &PurpleTdClient::processUpdate, testBackend)
 {
     m_account           = acct;
     m_updateHandler     = std::make_unique<UpdateHandler>(this);

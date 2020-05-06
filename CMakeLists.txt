@@ -38,3 +38,5 @@ install(TARGETS td-purple LIBRARY DESTINATION "${PURPLE_PLUGIN_DIR}")
 install(FILES icons/telegram16.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/16" RENAME telegram.png)
 install(FILES icons/telegram22.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/22" RENAME telegram.png)
 install(FILES icons/telegram48.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/48" RENAME telegram.png)
+
+add_subdirectory(test)

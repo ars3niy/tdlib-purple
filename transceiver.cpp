@@ -7,7 +7,7 @@
 // destroyed.
 class TdTransceiverImpl {
 public:
-    TdTransceiverImpl(PurpleTdClient *owner, TdTransceiver::UpdateCb updateCb);
+    TdTransceiverImpl(PurpleTdClient *owner, TdTransceiver::UpdateCb updateCb, ITransceiverBackend *testBackend);
     ~TdTransceiverImpl();
     static int rxCallback(void *user_data);
 
@@ -24,12 +24,15 @@ public:
     std::map<std::uint64_t, TdTransceiver::ResponseCb> m_responseHandlers;
 };
 
-TdTransceiverImpl::TdTransceiverImpl(PurpleTdClient *owner, TdTransceiver::UpdateCb updateCb)
+TdTransceiverImpl::TdTransceiverImpl(PurpleTdClient *owner, TdTransceiver::UpdateCb updateCb,
+                                     ITransceiverBackend *testBackend
+)
 :   m_owner(owner),
     m_updateCb(updateCb),
     m_lastQueryId(0)
 {
-    m_client = std::make_unique<td::Client>();
+    if (!testBackend)
+        m_client = std::make_unique<td::Client>();
 }
 
 TdTransceiverImpl::~TdTransceiverImpl()
@@ -37,9 +40,17 @@ TdTransceiverImpl::~TdTransceiverImpl()
     purple_debug_misc(config::pluginId, "Destroyed TdTransceiverImpl\n");
 }
 
-TdTransceiver::TdTransceiver(PurpleTdClient *owner, UpdateCb updateCb)
+TdTransceiver::TdTransceiver(PurpleTdClient *owner, UpdateCb updateCb, ITransceiverBackend *testBackend)
 :   m_stopThread(false)
 {
+    m_impl = std::make_shared<TdTransceiverImpl>(owner, updateCb, testBackend);
+    if (testBackend) {
+        m_testBackend = testBackend;
+        m_testBackend->setOwner(this);
+        return;
+    }
+    m_testBackend = nullptr;
+
 #if !GLIB_CHECK_VERSION(2, 32, 0)
     // GLib threading system is automaticaly initialized since 2.32.
     // For earlier versions, it have to be initialized before calling any
@@ -48,7 +59,6 @@ TdTransceiver::TdTransceiver(PurpleTdClient *owner, UpdateCb updateCb)
         g_thread_init(NULL);
 #endif
 
-    m_impl = std::make_shared<TdTransceiverImpl>(owner, updateCb);
     m_pollThread = std::thread([this]() { pollThreadLoop(); });
 }
 
@@ -69,6 +79,12 @@ TdTransceiver::~TdTransceiver()
     purple_debug_misc(config::pluginId, "Destroyed TdTransceiver\n");
 }
 
+void *TdTransceiver::queueResponse(td::Client::Response &&response)
+{
+    m_impl->m_rxQueue.push_back(std::move(response));
+    return new std::shared_ptr<TdTransceiverImpl>(m_impl);
+}
+
 void TdTransceiver::pollThreadLoop()
 {
     // TODO: what happens if some other update is received at the same time as the destructor is
@@ -79,11 +95,10 @@ void TdTransceiver::pollThreadLoop()
         if (response.object) {
             // Passing shared pointer through glib event queue using pointer to pointer seems funky,
             // but it works
-            std::shared_ptr<TdTransceiverImpl> *implRef;
+            void *implRef;
             {
                 std::unique_lock<std::mutex> lock(m_impl->m_rxMutex);
-                m_impl->m_rxQueue.push_back(std::move(response));
-                implRef = new std::shared_ptr<TdTransceiverImpl>(m_impl);
+                implRef = queueResponse(std::move(response));
             }
             g_idle_add(TdTransceiverImpl::rxCallback, implRef);
         }
@@ -142,6 +157,14 @@ uint64_t TdTransceiver::sendQuery(td::td_api::object_ptr<td::td_api::Function> f
     purple_debug_misc(config::pluginId, "Sending query id %lu\n", (unsigned long)queryId);
     if (handler)
         m_impl->m_responseHandlers.emplace(queryId, std::move(handler));
-    m_impl->m_client->send({queryId, std::move(f)});
+    if (m_testBackend)
+        m_testBackend->send({queryId, std::move(f)});
+    else
+        m_impl->m_client->send({queryId, std::move(f)});
     return queryId;
+}
+
+void ITransceiverBackend::receive(td::Client::Response response)
+{
+    TdTransceiverImpl::rxCallback(m_owner->queueResponse(std::move(response)));
 }
