@@ -12,8 +12,10 @@ public:
 
     void operator()(td::td_api::updateAuthorizationState &update_authorization_state) const {
         purple_debug_misc(config::pluginId, "Incoming update: authorization state\n");
-        m_owner->m_lastAuthState = update_authorization_state.authorization_state_->get_id();
-        td::td_api::downcast_call(*update_authorization_state.authorization_state_, *m_owner->m_authUpdateHandler);
+        if (update_authorization_state.authorization_state_) {
+            m_owner->m_lastAuthState = update_authorization_state.authorization_state_->get_id();
+            td::td_api::downcast_call(*update_authorization_state.authorization_state_, *m_owner->m_authUpdateHandler);
+        }
     }
 
     void operator()(td::td_api::updateConnectionState &connectionUpdate) const {
@@ -54,7 +56,7 @@ public:
 
     void operator()(td::td_api::updateUserChatAction &updateChatAction) const {
         purple_debug_misc(config::pluginId, "Incoming update: chat action %d\n",
-            updateChatAction.action_->get_id());
+            updateChatAction.action_ ? updateChatAction.action_->get_id() : 0);
         m_owner->handleUserChatAction(updateChatAction);
     }
 
@@ -463,6 +465,9 @@ void PurpleTdClient::showMessage(const char *purpleUserName, const td::td_api::m
 
 void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
 {
+    if (!message)
+        return;
+
     const td::td_api::chat *chat = m_data.getChat(message->chat_id_);
     if (!chat) {
         purple_debug_warning(config::pluginId, "Received message with unknown chat id %lld\n",
@@ -527,6 +532,11 @@ void PurpleTdClient::updateUserStatus(uint32_t userId, td::td_api::object_ptr<td
 
 void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> user)
 {
+    if (!user) {
+        purple_debug_warning(config::pluginId, "updateUser with null user info\n");
+        return;
+    }
+
     bool        hasPhoneNumber = !user->phone_number_.empty();
     int32_t     userId         = user->id_;
     m_data.updateUser(std::move(user));

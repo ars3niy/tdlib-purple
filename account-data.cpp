@@ -40,10 +40,9 @@ static bool isPhoneEqual(const std::string &n1, const std::string &n2)
 
 void TdAccountData::updateUser(TdUserPtr user)
 {
-    if (!user) {
-        purple_debug_warning(config::pluginId, "updateUser with null user info\n");
+    if (!user)
         return;
-    }
+
     purple_debug_misc(config::pluginId, "Update user: %s '%s' '%s'\n", user->phone_number_.c_str(),
                       user->first_name_.c_str(), user->last_name_.c_str());
 
