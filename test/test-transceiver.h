@@ -9,7 +9,7 @@ class TestTransceiver: public ITransceiverBackend {
 public:
     void send(td::Client::Request &&request) override;
     void verifyRequest(const td::td_api::Function &request);
-    void verifyRequests(const std::vector<td::td_api::Function> &requests);
+    void verifyRequests(std::initializer_list<td::td_api::object_ptr<td::td_api::Function>> requests);
     void verifyNoRequests();
     void update(td::td_api::object_ptr<td::td_api::Object> object);
     void reply(td::td_api::object_ptr<td::td_api::Object> object);
@@ -19,5 +19,29 @@ private:
 
     void verifyRequestImpl(const td::td_api::Function &request);
 };
+
+namespace td {
+namespace td_api {
+
+object_ptr<user> makeUser(std::int32_t id_, std::string const &first_name_,
+                          std::string const &last_name_,
+                          std::string const &phone_number_,
+                          object_ptr<UserStatus> &&status_);
+
+object_ptr<chat> makeChat(std::int64_t id_,
+                          object_ptr<ChatType> &&type_,
+                          std::string const &title_,
+                          object_ptr<message> &&last_message_,
+                          std::int32_t unread_count_,
+                          std::int64_t last_read_inbox_message_id_,
+                          std::int64_t last_read_outbox_message_id_);
+
+object_ptr<message> makeMessage(std::int64_t id_, std::int32_t sender_user_id_, std::int64_t chat_id_,
+                                bool is_outgoing_, std::int32_t date_, object_ptr<MessageContent> &&content_);
+
+object_ptr<messageText> makeTextMessage(const std::string &text);
+
+}
+}
 
 #endif

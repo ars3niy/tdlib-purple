@@ -336,6 +336,7 @@ void purple_xfer_set_cancel_send_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *)
 void serv_got_im(PurpleConnection *gc, const char *who, const char *msg,
 				 PurpleMessageFlags flags, time_t mtime)
 {
+    EVENT(ServGotImEvent, gc, who, msg, flags, mtime);
 }
 
 void serv_got_typing(PurpleConnection *gc, const char *name, int timeout,

@@ -16,12 +16,11 @@ private:
     const std::string selfLastName  = "Newton";
 
     PurplePlugin      purplePlugin;
-    PurpleAccount    *account;
-    PurpleConnection *connection;
-
 protected:
     TestTransceiver      tgl;
     PurpleEventReceiver &prpl = g_purpleEvents;
+    PurpleAccount       *account;
+    PurpleConnection    *connection;
 
     void SetUp() override;
     void TearDown() override;
@@ -104,23 +103,12 @@ void CommTest::login(std::vector<object_ptr<Object>> extraUpdates, object_ptr<us
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
     tgl.verifyRequest(getContacts());
 
-    tgl.update(make_object<updateUser>(make_object<user>(
+    tgl.update(make_object<updateUser>(makeUser(
         selfId,
         selfFirstName,
         selfLastName,
-        "",
         phoneNumber, // Phone number here without + to make it more interesting
-        make_object<userStatusOffline>(),
-        nullptr,
-        false,
-        false,
-        false,
-        false,
-        "",
-        false,
-        true,
-        make_object<userTypeRegular>(),
-        ""
+        make_object<userStatusOffline>()
     )));
     for (object_ptr<Object> &update: extraUpdates)
         tgl.update(std::move(update));
@@ -137,7 +125,74 @@ void CommTest::login(std::vector<object_ptr<Object>> extraUpdates, object_ptr<us
     });
 }
 
-TEST_F(CommTest, login)
+TEST_F(CommTest, Login)
 {
     login({}, make_object<users>(), make_object<chats>());
+}
+
+TEST_F(CommTest, ContactedByNew)
+{
+    login({}, make_object<users>(), make_object<chats>());
+    constexpr int32_t userId    = 100;
+    constexpr int64_t chatId    = 1000;
+    constexpr int64_t messageId = 10000;
+    constexpr int32_t date      = 123456;
+    const std::string phone     = "00001";
+
+    // Seems to happen when they add us to contacts
+    tgl.update(make_object<updateUser>(makeUser(
+        userId,
+        "Gottfried",
+        "Leibniz",
+        "", // No phone number yet
+        make_object<userStatusOffline>()
+    )));
+
+    // They message us
+    tgl.update(make_object<updateNewChat>(makeChat(
+        chatId,
+        make_object<chatTypePrivate>(userId),
+        "Gottfried Leibniz",
+        nullptr, 0, 0, 0
+    )));
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId,
+        userId,
+        chatId,
+        false,
+        date,
+        makeTextMessage("text")
+    )));
+    prpl.verifyNoEvents();
+    tgl.verifyNoRequests();
+
+    // And only now we get phone number (with +, though in reality it's without)
+    tgl.update(make_object<updateUser>(makeUser(
+        userId,
+        "Gottfried",
+        "Leibniz",
+        "+" + phone,
+        make_object<userStatusOffline>()
+    )));
+    prpl.verifyEvents({
+        std::make_unique<AddBuddyEvent>(
+            phone,
+            "Gottfried Leibniz",
+            account,
+            nullptr, nullptr, nullptr
+        ),
+        std::make_unique<ServGotImEvent>(
+            connection,
+            phone,
+            "text",
+            PURPLE_MESSAGE_RECV,
+            date
+        ),
+    });
+    tgl.verifyRequest(viewMessages(
+        chatId,
+        {messageId},
+        true
+    ));
 }
