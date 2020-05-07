@@ -1,7 +1,10 @@
+#include "purple-events.h"
 #include <purple.h>
 #include <stdarg.h>
 
 extern "C" {
+
+#define EVENT(type, ...) g_purpleEvents.addEvent(std::make_unique<type>(__VA_ARGS__))
 
 void purple_debug_misc(const char *category, const char *format, ...)
 {
@@ -49,7 +52,7 @@ void purple_account_set_alias(PurpleAccount *account, const char *alias)
 {
     free(account->alias);
     account->alias = strdup(alias);
-    // TODO add event
+    EVENT(AccountSetAliasEvent, account, alias);
 }
 
 PurpleAccount *purple_account_new(const char *username, const char *protocol_id)
@@ -69,13 +72,13 @@ void purple_account_destroy(PurpleAccount *account)
 
 void purple_blist_add_account(PurpleAccount *account)
 {
-    // TODO add event
+    EVENT(ShowAccountEvent, account);
 }
 
 void purple_blist_add_buddy(PurpleBuddy *buddy, PurpleContact *contact, PurpleGroup *group, PurpleBlistNode *node)
 {
     // TODO add to list
-    // TODO add event
+    EVENT(AddBuddyEvent, buddy->name, buddy->alias, buddy->account, contact, group, node);
 }
 
 void purple_blist_remove_account(PurpleAccount *account)
@@ -150,14 +153,14 @@ void purple_connection_set_protocol_data(PurpleConnection *connection, void *pro
 
 void purple_connection_set_state(PurpleConnection *gc, PurpleConnectionState state)
 {
-    // TODO event
     gc->state = state;
+    EVENT(ConnectionSetStateEvent, gc, state);
 }
 
 void purple_connection_update_progress(PurpleConnection *gc, const char *text,
 									 size_t step, size_t count)
 {
-    // TODO event
+    EVENT(ConnectionUpdateProgressEvent, gc, step, count);
 }
 
 PurpleConversation *purple_conversation_new(PurpleConversationType type,
@@ -238,8 +241,7 @@ void purple_prpl_got_user_status(PurpleAccount *account, const char *name,
 							   const char *status_id, ...)
 {
     PurpleStatusPrimitive type = (PurpleStatusPrimitive)(unsigned long)status_id;
-    // TODO event
-    (void)type;
+    EVENT(UserStatusEvent, account, name, type);
 }
 
 void *purple_request_action(void *handle, const char *title, const char *primary,
@@ -334,7 +336,6 @@ void purple_xfer_set_cancel_send_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *)
 void serv_got_im(PurpleConnection *gc, const char *who, const char *msg,
 				 PurpleMessageFlags flags, time_t mtime)
 {
-    // TODO event
 }
 
 void serv_got_typing(PurpleConnection *gc, const char *name, int timeout,
@@ -347,10 +348,5 @@ void serv_got_typing_stopped(PurpleConnection *gc, const char *name)
 {
     // TODO event
 }
-
-/*
-undefined reference to purple_notify_message
-undefined reference to purple_plugin_register
-*/
 
 };

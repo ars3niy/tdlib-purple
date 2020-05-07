@@ -386,7 +386,6 @@ void PurpleTdClient::showPrivateChat(const td::td_api::chat &chat, const td::td_
 void PurpleTdClient::updatePurpleChatListAndReportConnected()
 {
     purple_connection_set_state (purple_account_get_connection(m_account), PURPLE_CONNECTED);
-    purple_blist_add_account(m_account);
 
     // Only populate the list from scratch
     std::vector<const td::td_api::chat *> privateChats;
@@ -413,6 +412,8 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
     } else
         purple_debug_warning(config::pluginId, "Did not receive user information for self (%s) at login\n",
             purple_account_get_username(m_account));
+
+    purple_blist_add_account(m_account);
 }
 
 static const char *getText(const td::td_api::message &message)

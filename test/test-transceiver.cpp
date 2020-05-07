@@ -29,29 +29,25 @@ void TestTransceiver::verifyRequests(const std::vector<Function> &requests)
     verifyNoRequests();
 }
 
-static void compare(const Function &actual, const Function &expected)
-{
-}
-
 static void compare(const setTdlibParameters &actual, const setTdlibParameters &expected)
 {
-    EXPECT_EQ(expected.parameters_->database_directory_, actual.parameters_->database_directory_);
+    ASSERT_EQ(expected.parameters_->database_directory_, actual.parameters_->database_directory_);
 }
 
 static void compare(const checkDatabaseEncryptionKey &actual, const checkDatabaseEncryptionKey &expected)
 {
-    EXPECT_EQ(expected.encryption_key_, actual.encryption_key_);
+    ASSERT_EQ(expected.encryption_key_, actual.encryption_key_);
 }
 
 static void compare(const setAuthenticationPhoneNumber &actual, const setAuthenticationPhoneNumber &expected)
 {
-    EXPECT_EQ(expected.phone_number_, actual.phone_number_);
-    EXPECT_TRUE((expected.settings_ != nullptr) == (actual.settings_ != nullptr));
+    ASSERT_EQ(expected.phone_number_, actual.phone_number_);
+    ASSERT_TRUE((expected.settings_ != nullptr) == (actual.settings_ != nullptr));
 }
 
 static void compareRequests(const Function &actual, const Function &expected)
 {
-    EXPECT_EQ(expected.get_id(), actual.get_id()) << "Wrong request type: expected " << requestToString(expected);
+    ASSERT_EQ(expected.get_id(), actual.get_id()) << "Wrong request type: expected " << requestToString(expected);
 
 #define C(class) case class::ID: \
     compare(static_cast<const class &>(actual), static_cast<const class &>(expected)); \
@@ -61,15 +57,15 @@ static void compareRequests(const Function &actual, const Function &expected)
         C(setTdlibParameters)
         C(checkDatabaseEncryptionKey)
         C(setAuthenticationPhoneNumber)
-        default:
-            compare(actual, expected);
-            break;
+        case getContacts::ID: break;
+        case getChats::ID: break;
+        default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }
 
 void TestTransceiver::verifyRequestImpl(const Function &request)
 {
-    EXPECT_FALSE(m_requests.empty()) << "Missing request: expected " << requestToString(request);
+    ASSERT_FALSE(m_requests.empty()) << "Missing request: expected " << requestToString(request);
 
     std::cout << "Received request " << m_requests.front().id << ": " << requestToString(*m_requests.front().function) << "\n";
     compareRequests(*m_requests.front().function, request);
@@ -77,7 +73,7 @@ void TestTransceiver::verifyRequestImpl(const Function &request)
 
 void TestTransceiver::verifyNoRequests()
 {
-    EXPECT_TRUE(m_requests.empty()) << "Unexpected request: " << requestToString(*m_requests.front().function);
+    ASSERT_TRUE(m_requests.empty()) << "Unexpected request: " << requestToString(*m_requests.front().function);
 }
 
 void TestTransceiver::update(object_ptr<Object> object)
@@ -88,7 +84,7 @@ void TestTransceiver::update(object_ptr<Object> object)
 
 void TestTransceiver::reply(object_ptr<Object> object)
 {
-    EXPECT_GE(1u, m_lastRequestIds.size()) << "No requests to reply to";
+    ASSERT_FALSE(m_lastRequestIds.empty()) << "No requests to reply to";
     std::cout << "Replying to request " << m_lastRequestIds.front() << ": " << responseToString(*object) << "\n";
     receive({m_lastRequestIds.front(), std::move(object)});
     m_lastRequestIds.erase(m_lastRequestIds.begin());

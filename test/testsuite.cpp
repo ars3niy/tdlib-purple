@@ -1,5 +1,6 @@
 #include "test-transceiver.h"
 #include "tdlib-purple.h"
+#include "purple-events.h"
 #include <gtest/gtest.h>
 
 using namespace td::td_api;
@@ -14,12 +15,14 @@ private:
     const std::string selfFirstName = "Isaac";
     const std::string selfLastName  = "Newton";
 
-    TestTransceiver   tgl;
     PurplePlugin      purplePlugin;
     PurpleAccount    *account;
     PurpleConnection *connection;
 
 protected:
+    TestTransceiver      tgl;
+    PurpleEventReceiver &prpl = g_purpleEvents;
+
     void SetUp() override;
     void TearDown() override;
     void login(std::vector<object_ptr<Object>> extraUpdates, object_ptr<users> getContactsReply,
@@ -42,6 +45,7 @@ void CommTest::SetUp()
 void CommTest::TearDown()
 {
     tgl.verifyNoRequests();
+    prpl.verifyNoEvents();
     if (purple_connection_get_protocol_data(connection))
         ((PurplePluginProtocolInfo *)purplePlugin.info->extra_info)->close(connection);
     delete connection;
@@ -88,11 +92,14 @@ void CommTest::login(std::vector<object_ptr<Object>> extraUpdates, object_ptr<us
 
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
     tgl.verifyNoRequests();
-    // TODO: verify purple_connection_set_state and purple_connection_update_progress
+    prpl.verifyEvents({
+        std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTING),
+        std::make_unique<ConnectionUpdateProgressEvent>(connection, 1, 3)
+    });
 
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateUpdating>()));
     tgl.verifyNoRequests();
-    // TODO: verify purple_connection_update_progress
+    prpl.verifyEvent(ConnectionUpdateProgressEvent(connection, 2, 3));
 
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
     tgl.verifyRequest(getContacts());
@@ -121,8 +128,13 @@ void CommTest::login(std::vector<object_ptr<Object>> extraUpdates, object_ptr<us
     tgl.reply(std::move(getContactsReply));
 
     tgl.verifyRequest(getChats());
+    prpl.verifyNoEvents();
     tgl.reply(std::move(getChatsReply));
-    // TODO: verfy purple_account_set_alias
+    prpl.verifyEvents({
+        std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
+        std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
+        std::make_unique<ShowAccountEvent>(account)
+    });
 }
 
 TEST_F(CommTest, login)
