@@ -420,18 +420,74 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
 
 static const char *getText(const td::td_api::message &message)
 {
-    if (message.content_) {
-        if ((message.content_->get_id() == td::td_api::messageText::ID)) {
+    if (!message.content_)
+        return nullptr;
+
+    switch (message.content_->get_id()) {
+        case td::td_api::messageText::ID: {
             const td::td_api::messageText &text = static_cast<const td::td_api::messageText &>(*message.content_);
             if (text.text_)
                 return text.text_->text_.c_str();
-        } else if ((message.content_->get_id() == td::td_api::messagePhoto::ID)) {
+            break;
+        }
+        case td::td_api::messagePhoto::ID: {
             const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message.content_);
             if (photo.caption_)
                 return photo.caption_->text_.c_str();
+            break;
+        }
+        case td::td_api::messageDocument::ID: {
+            const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message.content_);
+            if (document.caption_)
+                return document.caption_->text_.c_str();
+            break;
         }
     }
+
     return nullptr;
+}
+
+static const char *getNotification(const td::td_api::message &message)
+{
+    if (!message.content_)
+        return nullptr;
+
+    switch (message.content_->get_id()) {
+        case td::td_api::messagePhoto::ID:
+            return "Sent a photo";
+        case td::td_api::messageDocument::ID:
+            return "Sent a file";
+    }
+
+    return nullptr;
+}
+
+static void showMessageText(PurpleAccount *account, const char *purpleUserName, const char *text,
+                            const char *notification, time_t timestamp, bool outgoing)
+{
+    PurpleConversation *conv = NULL;
+
+    if (outgoing) {
+        // serv_got_im seems to work for messages sent from another client, but not for
+        // echoed messages from this client. Therefore, this (code snippet from facebook plugin).
+        conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, purpleUserName, account);
+        if (conv == NULL)
+            conv = purple_conversation_new(PURPLE_CONV_TYPE_IM, account, purpleUserName);
+        if (text)
+            purple_conversation_write(conv, purple_account_get_alias(account), text,
+                                    PURPLE_MESSAGE_SEND, // TODO: maybe set PURPLE_MESSAGE_REMOTE_SEND when appropriate
+                                    timestamp);
+    } else {
+        if (text)
+            serv_got_im(purple_account_get_connection(account), purpleUserName, text,
+                        PURPLE_MESSAGE_RECV, timestamp);
+    }
+
+    if (notification) {
+        if (conv == NULL)
+            conv = purple_conversation_new(PURPLE_CONV_TYPE_IM, account, purpleUserName);
+        purple_conversation_write(conv, nullptr, notification, PURPLE_MESSAGE_SYSTEM, timestamp);
+    }
 }
 
 void PurpleTdClient::showMessage(const char *purpleUserName, const td::td_api::message &message)
@@ -442,25 +498,13 @@ void PurpleTdClient::showMessage(const char *purpleUserName, const td::td_api::m
     viewMessagesReq->message_ids_.push_back(message.id_);
     m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
 
-    // Skip unsupported content
-    const char *text = getText(message);
-    if (text == nullptr) {
-        purple_debug_misc(config::pluginId, "Skipping message: no supported content\n");
-        return;
+    const char *text         = getText(message);
+    const char *notification = getNotification(message);
+    if (!text && !notification)
+        purple_debug_misc(config::pluginId, "No text to show in the message\n");
+    else {
+        showMessageText(m_account, purpleUserName, text, notification, message.date_, message.is_outgoing_);
     }
-
-    if (message.is_outgoing_) {
-        // serv_got_im seems to work for messages sent from another client, but not for
-        // echoed messages from this client. Therefore, this (code snippet from facebook plugin).
-        PurpleConversation *conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, purpleUserName, m_account);
-        if (conv == NULL)
-            conv = purple_conversation_new(PURPLE_CONV_TYPE_IM, m_account, purpleUserName);
-        purple_conversation_write(conv, purple_account_get_alias(m_account), text,
-                                  PURPLE_MESSAGE_SEND, // TODO: maybe set PURPLE_MESSAGE_REMOTE_SEND when appropriate
-                                  message.date_);
-    } else
-        serv_got_im(purple_account_get_connection(m_account), purpleUserName, text,
-                    PURPLE_MESSAGE_RECV, message.date_);
 }
 
 void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
