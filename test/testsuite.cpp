@@ -22,7 +22,8 @@ private:
 protected:
     void SetUp() override;
     void TearDown() override;
-    void login();
+    void login(std::vector<object_ptr<Object>> extraUpdates, object_ptr<users> getContactsReply,
+               object_ptr<chats> getChatsReply);
 };
 
 CommTest::CommTest()
@@ -47,7 +48,8 @@ void CommTest::TearDown()
     purple_account_destroy(account);
 }
 
-void CommTest::login()
+void CommTest::login(std::vector<object_ptr<Object>> extraUpdates, object_ptr<users> getContactsReply,
+                     object_ptr<chats> getChatsReply)
 {
     ((PurplePluginProtocolInfo *)purplePlugin.info->extra_info)->login(account);
 
@@ -113,17 +115,17 @@ void CommTest::login()
         make_object<userTypeRegular>(),
         ""
     )));
+    for (object_ptr<Object> &update: extraUpdates)
+        tgl.update(std::move(update));
     tgl.verifyNoRequests();
-    // TODO: test sending some users and chats
-    tgl.reply(make_object<users>());
+    tgl.reply(std::move(getContactsReply));
 
     tgl.verifyRequest(getChats());
-    // TODO: test sending some chats
-    tgl.reply(make_object<chats>());
+    tgl.reply(std::move(getChatsReply));
     // TODO: verfy purple_account_set_alias
 }
 
 TEST_F(CommTest, login)
 {
-    login();
+    login({}, make_object<users>(), make_object<chats>());
 }
