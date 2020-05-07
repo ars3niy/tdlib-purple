@@ -1,6 +1,15 @@
 #include "purple-events.h"
 #include <purple.h>
 #include <stdarg.h>
+#include <vector>
+#include <gtest/gtest.h>
+
+struct AccountInfo {
+    PurpleAccount              *account;
+    std::vector<PurpleBuddy *>  buddies;
+};
+
+std::vector<AccountInfo> g_accounts;
 
 extern "C" {
 
@@ -60,6 +69,10 @@ PurpleAccount *purple_account_new(const char *username, const char *protocol_id)
     PurpleAccount *account = new PurpleAccount;
     account->username = strdup(username);
     account->alias = nullptr;
+
+    g_accounts.emplace_back();
+    g_accounts.back().account = account;
+
     return account;
 }
 
@@ -67,6 +80,14 @@ void purple_account_destroy(PurpleAccount *account)
 {
     free(account->username);
     free(account->alias);
+
+    auto it = std::find_if(g_accounts.begin(), g_accounts.end(),
+                           [account](const AccountInfo &info) { return (info.account == account); });
+    ASSERT_FALSE(it == g_accounts.end()) << "Destroying unknown account";
+    while (!it->buddies.empty())
+        purple_blist_remove_buddy(it->buddies.back());
+    g_accounts.erase(it);
+
     delete account;
 }
 
@@ -77,7 +98,14 @@ void purple_blist_add_account(PurpleAccount *account)
 
 void purple_blist_add_buddy(PurpleBuddy *buddy, PurpleContact *contact, PurpleGroup *group, PurpleBlistNode *node)
 {
-    // TODO add to list
+    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
+                                 [buddy](const AccountInfo &info) { return (info.account == buddy->account); });
+    ASSERT_FALSE(pAccount == g_accounts.end()) << "Adding buddy with unknown account";
+
+    ASSERT_TRUE(std::find(pAccount->buddies.begin(), pAccount->buddies.end(), buddy) == pAccount->buddies.end())
+        << "Buddy already added to this account";
+    pAccount->buddies.push_back(buddy);
+
     EVENT(AddBuddyEvent, buddy->name, buddy->alias, buddy->account, contact, group, node);
 }
 
@@ -88,8 +116,16 @@ void purple_blist_remove_account(PurpleAccount *account)
 
 void purple_blist_remove_buddy(PurpleBuddy *buddy)
 {
-    // TODO remove from list
-    // TODO add event
+    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
+                                 [buddy](const AccountInfo &info) { return (info.account == buddy->account); });
+    ASSERT_FALSE(pAccount == g_accounts.end()) << "Removing buddy with unknown account";
+
+    auto it = std::find(pAccount->buddies.begin(), pAccount->buddies.end(), buddy);
+    ASSERT_FALSE(it == pAccount->buddies.end()) << "Removing unkown buddy";
+    pAccount->buddies.erase(it);
+
+    EVENT(RemoveBuddyEvent, buddy->account, buddy->name);
+
     free(buddy->name);
     free(buddy->alias);
     delete buddy;
@@ -119,10 +155,11 @@ const char *purple_buddy_get_name(const PurpleBuddy *buddy)
 PurpleBuddy *purple_buddy_new(PurpleAccount *account, const char *name, const char *alias)
 {
     PurpleBuddy *buddy = new PurpleBuddy;
-    // TODO add to list
+
     buddy->account = account;
     buddy->name = strdup(name);
     buddy->alias = strdup(alias);
+
     return buddy;
 }
 

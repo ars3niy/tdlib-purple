@@ -38,6 +38,7 @@ void CommTest::SetUp()
 {
     account = purple_account_new(("+" + phoneNumber).c_str(), NULL);
     connection = new PurpleConnection;
+    connection->state = PURPLE_DISCONNECTED;
     account->gc = connection;
 }
 

@@ -85,6 +85,9 @@ struct HideAccountEvent: PurpleEvent {
 struct RemoveBuddyEvent: PurpleEvent {
     PurpleAccount *account;
     std::string    username;
+
+    RemoveBuddyEvent(PurpleAccount *account, const std::string &username)
+    : PurpleEvent(PurpleEventType::RemoveBuddy), account(account), username(username) {}
 };
 
 struct ConnectionErrorEvent: PurpleEvent {
