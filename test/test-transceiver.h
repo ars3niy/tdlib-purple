@@ -16,6 +16,7 @@ public:
 private:
     std::queue<td::Client::Request> m_requests;
     std::vector<uint64_t>           m_lastRequestIds;
+    uint64_t                        expectedRequestId = 1;
 
     void verifyRequestImpl(const td::td_api::Function &request);
 };

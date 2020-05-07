@@ -6,6 +6,8 @@ using namespace td::td_api;
 
 void TestTransceiver::send(td::Client::Request &&request)
 {
+    ASSERT_EQ(expectedRequestId, request.id);
+    expectedRequestId++;
     m_requests.push(std::move(request));
 }
 
