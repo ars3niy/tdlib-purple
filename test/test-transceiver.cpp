@@ -56,6 +56,15 @@ static void compare(const viewMessages &actual, const viewMessages &expected)
     ASSERT_EQ(expected.force_read_, actual.force_read_);
 }
 
+static void compare(const downloadFile &actual, const downloadFile &expected)
+{
+    ASSERT_EQ(expected.file_id_,     actual.file_id_);
+    ASSERT_EQ(expected.priority_,    actual.priority_);
+    ASSERT_EQ(expected.offset_,      actual.offset_);
+    ASSERT_EQ(expected.limit_,       actual.limit_);
+    ASSERT_EQ(expected.synchronous_, actual.synchronous_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected)
 {
     ASSERT_EQ(expected.get_id(), actual.get_id()) << "Wrong request type: expected " << requestToString(expected);
@@ -71,6 +80,7 @@ static void compareRequests(const Function &actual, const Function &expected)
         case getContacts::ID: break;
         case getChats::ID: break;
         C(viewMessages)
+        C(downloadFile)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

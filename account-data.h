@@ -37,6 +37,9 @@ public:
 
     void         addDelayedMessage(int32_t userId, TdMessagePtr message);
     void         extractDelayedMessagesByUser(int32_t userId, std::vector<TdMessagePtr> &messages);
+
+    void addDownloadRequest(uint64_t requestId, int64_t chatId, int32_t userId, int32_t timestamp, bool outgoing);
+    bool extractDownloadRequest(uint64_t requestId, int64_t &chatId, int32_t &userId, int32_t &timestamp, bool &outgoing);
 private:
     using UserInfoMap = std::map<int32_t, TdUserPtr>;
     using ChatInfoMap = std::map<int64_t, TdChatPtr>;
@@ -53,24 +56,35 @@ private:
         int32_t      userId;
     };
 
+    struct DownloadRequest {
+        uint64_t requestId;
+        int64_t  chatId;
+        int32_t  userId;
+        int32_t  timestamp;
+        bool     outgoing;
+    };
+
     UserInfoMap m_userInfo;
     ChatInfoMap m_chatInfo;
 
     // List of contacts for which private chat is not known yet.
-    std::vector<int32_t>        m_contactUserIdsNoChat;
+    std::vector<int32_t>         m_contactUserIdsNoChat;
 
     // m_chatInfo can contain chats that are not in m_activeChats if some other chat contains
     // messages forwarded from another channel
-    std::vector<int64_t>        m_activeChats;
+    std::vector<int64_t>         m_activeChats;
 
     // Used to remember stuff during asynchronous communication when adding contact
-    std::vector<ContactRequest> m_addContactRequests;
+    std::vector<ContactRequest>  m_addContactRequests;
 
     // When someone completely new writes to us, the first message has been observed to arrive
     // before their phone number is known. Such message with linger here until phone number becomes
     // known, at which point it becomes possible to create libpurple contact and show the message
     // properly
-    std::vector<PendingMessage> m_delayedMessages;
+    std::vector<PendingMessage>  m_delayedMessages;
+
+    // Matching completed downloads to chats they belong to
+    std::vector<DownloadRequest> m_downloadRequests;
 };
 
 #endif

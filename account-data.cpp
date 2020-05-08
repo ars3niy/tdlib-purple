@@ -209,3 +209,34 @@ void TdAccountData::extractDelayedMessagesByUser(int32_t userId, std::vector<TdM
         messages.push_back(std::move(i->message));
     m_delayedMessages.erase(it, m_delayedMessages.end());
 }
+
+void TdAccountData::addDownloadRequest(uint64_t requestId, int64_t chatId, int32_t userId,
+                                       int32_t timestamp, bool outgoing)
+{
+    m_downloadRequests.emplace_back();
+    m_downloadRequests.back().requestId = requestId;
+    m_downloadRequests.back().chatId    = chatId;
+    m_downloadRequests.back().userId    = userId;
+    m_downloadRequests.back().timestamp = timestamp;
+    m_downloadRequests.back().outgoing  = outgoing;
+}
+
+bool TdAccountData::extractDownloadRequest(uint64_t requestId, int64_t &chatId, int32_t &userId,
+                                           int32_t &timestamp, bool &outgoing)
+{
+    auto it = std::find_if(m_downloadRequests.begin(), m_downloadRequests.end(),
+                           [requestId](const DownloadRequest &req) { return (req.requestId == requestId); });
+
+    if (it != m_downloadRequests.end()) {
+        chatId    = it->chatId;
+        userId    = it->userId;
+        timestamp = it->timestamp;
+        outgoing  = it->outgoing;
+        m_downloadRequests.erase(it);
+        return true;
+    } else {
+        purple_debug_warning(config::pluginId, "Unknown file download request id %llu\n",
+                             (unsigned long long)requestId);
+        return false;
+    }
+}

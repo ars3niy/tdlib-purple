@@ -4,6 +4,7 @@
 enum {
     // Typing notifications seems to be resent every 5-6 seconds, so 10s timeout hould be appropriate
     REMOTE_TYPING_NOTICE_TIMEOUT = 10,
+    FILE_DOWNLOAD_PRIORITY       = 1
 };
 
 class UpdateHandler {
@@ -440,6 +441,7 @@ static void showMessageText(PurpleAccount *account, const char *purpleUserName, 
     }
 
     if (notification) {
+        // This code looks like it could have been prettier, but whatever
         if (conv == NULL) {
             conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, purpleUserName, account);
             if (conv == NULL)
@@ -457,11 +459,93 @@ void PurpleTdClient::showTextMessage(const char *purpleUserName, const td::td_ap
                         message.is_outgoing_);
 }
 
-void PurpleTdClient::showPhoto(const char *purpleUserName, const td::td_api::message &message,
+static const td::td_api::file *selectPhotoSize(const td::td_api::messagePhoto &photo)
+{
+    const td::td_api::photoSize *selectedSize = nullptr;
+    if (photo.photo_)
+        for (const auto &newSize: photo.photo_->sizes_)
+            if (newSize && newSize->photo_ && (!selectedSize || (newSize->width_ > selectedSize->width_)))
+                selectedSize = newSize.get();
+
+    if (selectedSize)
+        purple_debug_misc(config::pluginId, "Selected size %dx%d for photo\n",
+                          (int)selectedSize->width_, (int)selectedSize->height_);
+    else
+        purple_debug_warning(config::pluginId, "No file found for a photo\n");
+
+    return selectedSize ? selectedSize->photo_.get() : nullptr;
+}
+
+void PurpleTdClient::showPhotoMessage(const char *purpleUserName, const td::td_api::message &message,
                                const td::td_api::messagePhoto &photo)
 {
+    const td::td_api::file *file = selectPhotoSize(photo);
+
     showMessageText(m_account, purpleUserName, photo.caption_ ? photo.caption_->text_.c_str() : NULL,
-                    "Sent a photo", message.date_, message.is_outgoing_);
+                    file ? "Downloading image" : "Faulty image", message.date_, message.is_outgoing_);
+
+    if (file) {
+        purple_debug_misc(config::pluginId, "Downloading photo (file id %d)\n", (int)file->id_);
+        td::td_api::object_ptr<td::td_api::downloadFile> downloadReq =
+            td::td_api::make_object<td::td_api::downloadFile>();
+        downloadReq->file_id_     = file->id_;
+        downloadReq->priority_    = FILE_DOWNLOAD_PRIORITY;
+        downloadReq->offset_      = 0;
+        downloadReq->limit_       = 0;
+        downloadReq->synchronous_ = true;
+
+        uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq),
+                                                     &PurpleTdClient::messagePhotoDownloadResponse);
+        m_data.addDownloadRequest(requestId, message.chat_id_, message.sender_user_id_,
+                                  message.date_, message.is_outgoing_);
+    }
+}
+
+void PurpleTdClient::messagePhotoDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    int64_t chatId;
+    int32_t userId;
+    int32_t timestamp;
+    bool    outgoing;
+    if (!m_data.extractDownloadRequest(requestId, chatId, userId, timestamp, outgoing))
+        return;
+
+    std::string path;
+
+    if (object->get_id() == td::td_api::file::ID) {
+        const td::td_api::file &file = static_cast<const td::td_api::file &>(*object);
+        if (!file.local_)
+            purple_debug_misc(config::pluginId, "No local file info after downloading photo\n");
+        else if (!file.local_->is_downloading_completed_)
+            purple_debug_misc(config::pluginId, "Photo not completely downloaded\n");
+        else
+            path = file.local_->path_;
+    } else
+        purple_debug_misc(config::pluginId, "Unexpected response to downloading photo: id %d\n",
+                          (int)object->get_id());
+
+    if (!path.empty()) {
+        purple_debug_misc(config::pluginId, "Photo downloaded, path: %s\n", path.c_str());
+        showPhoto(chatId, userId, timestamp, outgoing, path);
+    }
+}
+
+void PurpleTdClient::showPhoto(int64_t chatId, int32_t senderId, int32_t timestamp, bool outgoing,
+                               const std::string &filePath)
+{
+    const td::td_api::chat *chat = m_data.getChat(chatId);
+    if (chat && chat->type_ && (chat->type_->get_id() == td::td_api::chatTypePrivate::ID)) {
+        if (filePath.find('"') != std::string::npos)
+            purple_debug_misc(config::pluginId, "Cannot show photo: file path contains quotes\n");
+        else {
+            const td::td_api::user *user = m_data.getUserByPrivateChat(*chat);
+            if (user) {
+                std::string text = "<img src=\"file://" + filePath + "\">";
+                showMessageText(m_account, getPurpleUserName(*user), text.c_str(), NULL, timestamp,
+                                outgoing);
+            }
+        }
+    }
 }
 
 void PurpleTdClient::showDocument(const char *purpleUserName, const td::td_api::message &message,
@@ -557,7 +641,7 @@ void PurpleTdClient::showMessage(const char *purpleUserName, const td::td_api::m
         }
         case td::td_api::messagePhoto::ID: {
             const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message.content_);
-            showPhoto(purpleUserName, message, photo);
+            showPhotoMessage(purpleUserName, message, photo);
             break;
         }
         case td::td_api::messageDocument::ID: {
@@ -591,7 +675,7 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
         return;
     }
 
-    if (chat->type_->get_id() == td::td_api::chatTypePrivate::ID) {
+    if (chat->type_ && (chat->type_->get_id() == td::td_api::chatTypePrivate::ID)) {
         int32_t userId = static_cast<const td::td_api::chatTypePrivate &>(*chat->type_).user_id_;
         const td::td_api::user *user = m_data.getUser(userId);
         if (user) {
