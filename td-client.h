@@ -55,6 +55,7 @@ private:
 
     void       updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void       updateUser(td::td_api::object_ptr<td::td_api::user> user);
+    void       addChat(td::td_api::object_ptr<td::td_api::chat> chat);
     void       handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction);
     void       showUserChatAction(int32_t userId, bool isTyping);
     void       importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);

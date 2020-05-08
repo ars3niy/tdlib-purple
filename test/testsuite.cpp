@@ -30,8 +30,10 @@ protected:
 
     void SetUp() override;
     void TearDown() override;
-    void login(std::initializer_list<object_ptr<Object>> extraUpdates, object_ptr<users> getContactsReply,
-               object_ptr<chats> getChatsReply,
+    void login(std::initializer_list<object_ptr<Object>> extraUpdates = {},
+               object_ptr<users> getContactsReply = make_object<users>(),
+               object_ptr<chats> getChatsReply = make_object<chats>(),
+               std::initializer_list<std::unique_ptr<PurpleEvent>> postUpdateEvents = {},
                std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents = {});
     void loginWithOneContact();
 
@@ -67,6 +69,7 @@ void CommTest::TearDown()
 
 void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, object_ptr<users> getContactsReply,
                      object_ptr<chats> getChatsReply,
+                     std::initializer_list<std::unique_ptr<PurpleEvent>> postUpdateEvents,
                      std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents)
 {
     ((PurplePluginProtocolInfo *)purplePlugin.info->extra_info)->login(account);
@@ -127,20 +130,21 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     )));
     for (const object_ptr<Object> &update: extraUpdates)
         tgl.update(std::move(const_cast<object_ptr<Object> &>(update))); // Take that!
+    prpl.verifyEvents(std::move(postUpdateEvents));
     tgl.verifyNoRequests();
     tgl.reply(std::move(getContactsReply));
 
     tgl.verifyRequest(getChats());
-    prpl.verifyNoEvents();
+
     tgl.reply(std::move(getChatsReply));
-    if (postLoginEvents.size() == 0)
+    if (postLoginEvents.size() != 0)
+        prpl.verifyEvents(std::move(postLoginEvents));
+    else
         prpl.verifyEvents({
             std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
             std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
             std::make_unique<ShowAccountEvent>(account)
         });
-    else
-        prpl.verifyEvents(std::move(postLoginEvents));
 }
 
 void CommTest::loginWithOneContact()
@@ -150,9 +154,11 @@ void CommTest::loginWithOneContact()
         make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
         make_object<chats>(std::vector<int64_t>(1, chatIds[0])),
         {
-            std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
             std::make_unique<AddBuddyEvent>(userPhones[0], userFirstNames[0] + " " + userLastNames[0],
                                             account, nullptr, nullptr, nullptr),
+        },
+        {
+            std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
             std::make_unique<UserStatusEvent>(account, userPhones[0], PURPLE_STATUS_OFFLINE),
             std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
             std::make_unique<ShowAccountEvent>(account)
@@ -183,12 +189,12 @@ object_ptr<updateNewChat> CommTest::standardPrivateChat(unsigned index)
 
 TEST_F(CommTest, Login)
 {
-    login({}, make_object<users>(), make_object<chats>());
+    login();
 }
 
 TEST_F(CommTest, ContactedByNew)
 {
-    login({}, make_object<users>(), make_object<chats>());
+    login();
     constexpr int64_t messageId = 10000;
     constexpr int32_t date      = 123456;
 
@@ -238,6 +244,46 @@ TEST_F(CommTest, ContactedByNew)
             date
         ),
     });
+    tgl.verifyRequest(viewMessages(
+        chatIds[0],
+        {messageId},
+        true
+    ));
+}
+
+TEST_F(CommTest, ContactedByNew_ImmediatePhoneNumber)
+{
+    login();
+    constexpr int64_t messageId = 10000;
+    constexpr int32_t date      = 123456;
+
+    // Phone number sent right away - this has not been observed in real life
+    tgl.update(standardUpdateUser(0));
+    prpl.verifyNoEvents();
+
+    tgl.update(standardPrivateChat(0));
+    prpl.verifyEvent(AddBuddyEvent(
+        userPhones[0],
+        userFirstNames[0] + " " + userLastNames[0],
+        account,
+        nullptr, nullptr, nullptr
+    ));
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        makeTextMessage("text")
+    )));
+    prpl.verifyEvent(ServGotImEvent(
+        connection,
+        userPhones[0],
+        "text",
+        PURPLE_MESSAGE_RECV,
+        date
+    ));
     tgl.verifyRequest(viewMessages(
         chatIds[0],
         {messageId},

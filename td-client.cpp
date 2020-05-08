@@ -38,7 +38,7 @@ public:
 
     void operator()(td::td_api::updateNewChat &newChat) const {
         purple_debug_misc(config::pluginId, "Incoming update: new chat\n");
-        m_owner->m_data.addChat(std::move(newChat.chat_));
+        m_owner->addChat(std::move(newChat.chat_));
     }
 
     void operator()(td::td_api::updateNewMessage &newMessageUpdate) const {
@@ -373,6 +373,10 @@ void PurpleTdClient::showPrivateChat(const td::td_api::chat &chat, const td::td_
                             chat.title_.c_str(), (long long)chat.id_);
         buddy = purple_buddy_new(m_account, purpleUserName, chat.title_.c_str());
         purple_blist_add_buddy(buddy, NULL, NULL, NULL);
+        // If a new buddy has been added here, it means that there was updateUser with phone number.
+        // This has only been observed to happen if they are messaging us for the first time, or
+        // we've just added them to contacts (perhaps in another client while this one was offline).
+        // In either case, there is no need to for any extra notification about new contact.
     } else {
         const char *oldName = purple_buddy_get_alias_only(buddy);
         if (chat.title_ != oldName) {
@@ -390,18 +394,14 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
 {
     purple_connection_set_state (purple_account_get_connection(m_account), PURPLE_CONNECTED);
 
-    // Only populate the list from scratch
     std::vector<const td::td_api::chat *> privateChats;
     m_data.getPrivateChats(privateChats);
 
     for (const td::td_api::chat *chat: privateChats) {
         const td::td_api::user *user = m_data.getUserByPrivateChat(*chat);
-        if (!user)
-            continue;
-
-        showPrivateChat(*chat, *user);
-        purple_prpl_got_user_status(m_account, getPurpleUserName(*user),
-                                    getPurpleStatusId(*user->status_), NULL);
+        if (user)
+            purple_prpl_got_user_status(m_account, getPurpleUserName(*user),
+                                        getPurpleStatusId(*user->status_), NULL);
     }
 
     // Here we could remove buddies for which no private chat exists, meaning they have been remove
@@ -745,11 +745,10 @@ void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> user)
         const td::td_api::user *user = m_data.getUser(userId);
         const td::td_api::chat *chat = m_data.getPrivateChatByUserId(userId);
 
-        if (purple_connection_get_state (purple_account_get_connection(m_account)) == PURPLE_CONNECTED) {
-            if (user && chat)
-                showPrivateChat(*chat, *user);
-        }
-            
+        // In case updateNewChat came before an updateUser with non-empty phone number
+        if (user && chat)
+            showPrivateChat(*chat, *user);
+
         std::vector<td::td_api::object_ptr<td::td_api::message>> messages;
         m_data.extractDelayedMessagesByUser(userId, messages);
 
@@ -761,6 +760,22 @@ void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> user)
             }
         }
     }
+}
+
+void PurpleTdClient::addChat(td::td_api::object_ptr<td::td_api::chat> chat)
+{
+    if (!chat) {
+        purple_debug_warning(config::pluginId, "updateNewChat with null chat info\n");
+        return;
+    }
+
+    const td::td_api::user *privateChatUser = m_data.getUserByPrivateChat(*chat);
+
+    // If updateNewChat came after an updateUser with non-empty phone number (happens during login)
+    if (privateChatUser && !privateChatUser->phone_number_.empty())
+        showPrivateChat(*chat, *privateChatUser);
+
+    m_data.addChat(std::move(chat));
 }
 
 void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction)

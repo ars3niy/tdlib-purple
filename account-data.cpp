@@ -51,10 +51,8 @@ void TdAccountData::updateUser(TdUserPtr user)
 
 void TdAccountData::addChat(TdChatPtr chat)
 {
-    if (!chat) {
-        purple_debug_warning(config::pluginId, "addNewChat with null chat info\n");
+    if (!chat)
         return;
-    }
     purple_debug_misc(config::pluginId, "Add new chat: %s\n", chat->title_.c_str());
 
     if (chat->type_->get_id() == td::td_api::chatTypePrivate::ID) {
@@ -143,7 +141,7 @@ const td::td_api::user *TdAccountData::getUserByPhone(const char *phoneNumber) c
 
 const td::td_api::user *TdAccountData::getUserByPrivateChat(const td::td_api::chat &chat)
 {
-    if (chat.type_->get_id() == td::td_api::chatTypePrivate::ID) {
+    if (chat.type_ && (chat.type_->get_id() == td::td_api::chatTypePrivate::ID)) {
         const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat.type_);
         return getUser(privType.user_id_);
     }
