@@ -5,8 +5,9 @@
 #include <gtest/gtest.h>
 
 struct AccountInfo {
-    PurpleAccount              *account;
-    std::vector<PurpleBuddy *>  buddies;
+    PurpleAccount                     *account;
+    std::vector<PurpleBuddy *>         buddies;
+    std::vector<PurpleConversation *>  conversations;
 };
 
 std::vector<AccountInfo> g_accounts;
@@ -86,6 +87,8 @@ void purple_account_destroy(PurpleAccount *account)
     ASSERT_FALSE(it == g_accounts.end()) << "Destroying unknown account";
     while (!it->buddies.empty())
         purple_blist_remove_buddy(it->buddies.back());
+    while (!it->conversations.empty())
+        purple_conversation_destroy(it->conversations.back());
     g_accounts.erase(it);
 
     delete account;
@@ -200,21 +203,46 @@ void purple_connection_update_progress(PurpleConnection *gc, const char *text,
     EVENT(ConnectionUpdateProgressEvent, gc, step, count);
 }
 
-PurpleConversation *purple_conversation_new(PurpleConversationType type,
+static PurpleConversation *purple_conversation_new_impl(PurpleConversationType type,
 										PurpleAccount *account,
 										const char *name)
 {
-    // TODO event
-    // TODO add to list
     PurpleConversation *conv = new PurpleConversation;
     conv->type = type;
     conv->account = account;
     conv->name = strdup(name);
+
+    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
+                                 [account](const AccountInfo &info) { return (info.account == account); });
+    EXPECT_FALSE(pAccount == g_accounts.end()) << "Adding conversation with unknown account";
+
+    if (pAccount != g_accounts.end()) {
+        EXPECT_TRUE(purple_find_conversation_with_account(type, name, account) == NULL)
+            << "Conversation with this name already exists to this account";
+        pAccount->conversations.push_back(conv);
+    }
+
     return conv;
+}
+
+PurpleConversation *purple_conversation_new(PurpleConversationType type,
+										PurpleAccount *account,
+										const char *name)
+{
+    EVENT(NewConversationEvent, type, account, name);
+    return purple_conversation_new_impl(type, account, name);
 }
 
 void purple_conversation_destroy(PurpleConversation *conv)
 {
+    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
+                                 [conv](const AccountInfo &info) { return (info.account == conv->account); });
+    ASSERT_FALSE(pAccount == g_accounts.end()) << "Removing conversation with unknown account";
+
+    auto it = std::find(pAccount->conversations.begin(), pAccount->conversations.end(), conv);
+    ASSERT_FALSE(it == pAccount->conversations.end()) << "Removing unkown conversation";
+    pAccount->conversations.erase(it);
+
     free(conv->name);
     delete conv;
 }
@@ -223,7 +251,7 @@ void purple_conversation_write(PurpleConversation *conv, const char *who,
 		const char *message, PurpleMessageFlags flags,
 		time_t mtime)
 {
-    // TODO event
+    EVENT(ConversationWriteEvent, conv->name, who ? who : "", message, flags, mtime);
 }
 
 gboolean purple_debug_is_enabled(void)
@@ -246,7 +274,18 @@ PurpleConversation *purple_find_conversation_with_account(
 		PurpleConversationType type, const char *name,
 		const PurpleAccount *account)
 {
-    // TODO find in list
+    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
+                                 [account](const AccountInfo &info) { return (info.account == account); });
+    EXPECT_FALSE(pAccount == g_accounts.end()) << "Adding conversation with unknown account";
+
+    if (pAccount != g_accounts.end()) {
+        auto it = std::find_if(pAccount->conversations.begin(), pAccount->conversations.end(),
+                               [type, name](PurpleConversation *existing) {
+                                   return !strcmp(existing->name, name) && (existing->type == type);
+                               });
+        if (it != pAccount->conversations.end())
+            return *it;
+    }
     return NULL;
 }
 
@@ -373,6 +412,10 @@ void purple_xfer_set_cancel_send_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *)
 void serv_got_im(PurpleConnection *gc, const char *who, const char *msg,
 				 PurpleMessageFlags flags, time_t mtime)
 {
+    if (purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who, gc->account) == NULL) {
+        std::cout << "Adding conversation\n";
+        purple_conversation_new_impl(PURPLE_CONV_TYPE_IM, gc->account, who);
+    }
     EVENT(ServGotImEvent, gc, who, msg, flags, mtime);
 }
 

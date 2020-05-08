@@ -440,8 +440,11 @@ static void showMessageText(PurpleAccount *account, const char *purpleUserName, 
     }
 
     if (notification) {
-        if (conv == NULL)
-            conv = purple_conversation_new(PURPLE_CONV_TYPE_IM, account, purpleUserName);
+        if (conv == NULL) {
+            conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, purpleUserName, account);
+            if (conv == NULL)
+                conv = purple_conversation_new(PURPLE_CONV_TYPE_IM, account, purpleUserName);
+        }
         purple_conversation_write(conv, nullptr, notification, PURPLE_MESSAGE_SYSTEM, timestamp);
     }
 }

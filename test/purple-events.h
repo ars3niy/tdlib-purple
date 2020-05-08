@@ -15,6 +15,7 @@ public:
     void verifyEvent(const PurpleEvent &event);
     void verifyEvents(std::initializer_list<std::unique_ptr<PurpleEvent>> events);
     void verifyNoEvents();
+    void discardEvents();
 private:
     std::queue<std::unique_ptr<PurpleEvent>> m_events;
 };
@@ -117,6 +118,9 @@ struct NewConversationEvent: PurpleEvent {
     PurpleConversationType  type;
     PurpleAccount          *account;
     std::string             name;
+
+    NewConversationEvent(PurpleConversationType type, PurpleAccount *account, const std::string &name)
+    : PurpleEvent(PurpleEventType::NewConversation), type(type), account(account), name(name) {}
 };
 
 struct ConversationWriteEvent: PurpleEvent {
@@ -125,6 +129,11 @@ struct ConversationWriteEvent: PurpleEvent {
     std::string        message;
     PurpleMessageFlags flags;
     time_t             mtime;
+
+    ConversationWriteEvent(const std::string &conversationName, const std::string &username,
+                           const std::string &message, PurpleMessageFlags flags, time_t mtime)
+    : PurpleEvent(PurpleEventType::ConversationWrite), conversation(conversationName),
+    username(username), message(message), flags(flags), mtime(mtime) {}
 };
 
 struct NotifyMessageEvent: PurpleEvent {

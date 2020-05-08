@@ -190,6 +190,11 @@ void PurpleEventReceiver::verifyNoEvents()
     ASSERT_TRUE(m_events.empty()) << "Unexpected libpurple event: " << m_events.front()->toString();
 }
 
+void PurpleEventReceiver::discardEvents()
+{
+    while (!m_events.empty()) m_events.pop();
+}
+
 std::string PurpleEvent::toString() const
 {
 #define C(type) case PurpleEventType::type: return #type;
