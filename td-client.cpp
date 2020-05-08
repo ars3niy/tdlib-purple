@@ -486,6 +486,55 @@ void PurpleTdClient::showVideo(const char *purpleUserName, const td::td_api::mes
                     description.c_str(), message.date_, message.is_outgoing_);
 }
 
+static std::string messageTypeToString(const td::td_api::MessageContent &content)
+{
+#define C(type) case td::td_api::type::ID: return #type;
+    switch (content.get_id()) {
+    C(messageText)
+    C(messageAnimation)
+    C(messageAudio)
+    C(messageDocument)
+    C(messagePhoto)
+    C(messageExpiredPhoto)
+    C(messageSticker)
+    C(messageVideo)
+    C(messageExpiredVideo)
+    C(messageVideoNote)
+    C(messageVoiceNote)
+    C(messageLocation)
+    C(messageVenue)
+    C(messageContact)
+    C(messageGame)
+    C(messagePoll)
+    C(messageInvoice)
+    C(messageCall)
+    C(messageBasicGroupChatCreate)
+    C(messageSupergroupChatCreate)
+    C(messageChatChangeTitle)
+    C(messageChatChangePhoto)
+    C(messageChatDeletePhoto)
+    C(messageChatAddMembers)
+    C(messageChatJoinByLink)
+    C(messageChatDeleteMember)
+    C(messageChatUpgradeTo)
+    C(messageChatUpgradeFrom)
+    C(messagePinMessage)
+    C(messageScreenshotTaken)
+    C(messageChatSetTtl)
+    C(messageCustomServiceAction)
+    C(messageGameScore)
+    C(messagePaymentSuccessful)
+    C(messagePaymentSuccessfulBot)
+    C(messageContactRegistered)
+    C(messageWebsiteConnected)
+    C(messagePassportDataSent)
+    C(messagePassportDataReceived)
+    C(messageUnsupported)
+    }
+#undef C
+    return "id " + std::to_string(content.get_id());
+}
+
 void PurpleTdClient::showMessage(const char *purpleUserName, const td::td_api::message &message)
 {
     td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
@@ -517,6 +566,12 @@ void PurpleTdClient::showMessage(const char *purpleUserName, const td::td_api::m
             const td::td_api::messageVideo &video = static_cast<const td::td_api::messageVideo &>(*message.content_);
             showVideo(purpleUserName, message, video);
             break;
+        }
+        default: {
+            std::string notice = "Received unsupported message type " +
+                                 messageTypeToString(*message.content_);
+            showMessageText(m_account, purpleUserName, NULL, notice.c_str(), message.date_,
+                            message.is_outgoing_);
         }
     }
 }
