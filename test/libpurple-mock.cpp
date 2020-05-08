@@ -266,7 +266,19 @@ gboolean purple_debug_is_verbose(void)
 
 PurpleBuddy *purple_find_buddy(PurpleAccount *account, const char *name)
 {
-    // TODO get from list
+    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
+                                 [account](const AccountInfo &info) { return (info.account == account); });
+    EXPECT_FALSE(pAccount == g_accounts.end()) << "Looking for buddy with unknown account";
+
+    if (pAccount != g_accounts.end()) {
+        auto it = std::find_if(pAccount->buddies.begin(), pAccount->buddies.end(),
+                               [name](const PurpleBuddy *buddy) {
+                                   return !strcmp(purple_buddy_get_name(buddy), name);
+                               });
+        if (it != pAccount->buddies.end())
+            return *it;
+    }
+
     return NULL;
 }
 

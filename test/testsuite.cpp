@@ -452,3 +452,16 @@ TEST_F(CommTest, Photo)
 
     prpl.verifyEvent(ServGotImEvent(connection, userPhones[0], "<img src=\"file:///path\">", PURPLE_MESSAGE_RECV, date));
 }
+
+TEST_F(CommTest, IgnoredUpdateUserAndNewPrivateChat)
+{
+    loginWithOneContact();
+
+    tgl.update(standardUpdateUser(0));
+    tgl.update(standardPrivateChat(0));
+    tgl.update(standardUpdateUser(0));
+    tgl.update(standardPrivateChat(0));
+
+    tgl.verifyNoRequests();
+    prpl.verifyNoEvents();
+}
