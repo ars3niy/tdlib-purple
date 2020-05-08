@@ -418,50 +418,6 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
     purple_blist_add_account(m_account);
 }
 
-static const char *getText(const td::td_api::message &message)
-{
-    if (!message.content_)
-        return nullptr;
-
-    switch (message.content_->get_id()) {
-        case td::td_api::messageText::ID: {
-            const td::td_api::messageText &text = static_cast<const td::td_api::messageText &>(*message.content_);
-            if (text.text_)
-                return text.text_->text_.c_str();
-            break;
-        }
-        case td::td_api::messagePhoto::ID: {
-            const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message.content_);
-            if (photo.caption_)
-                return photo.caption_->text_.c_str();
-            break;
-        }
-        case td::td_api::messageDocument::ID: {
-            const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message.content_);
-            if (document.caption_)
-                return document.caption_->text_.c_str();
-            break;
-        }
-    }
-
-    return nullptr;
-}
-
-static const char *getNotification(const td::td_api::message &message)
-{
-    if (!message.content_)
-        return nullptr;
-
-    switch (message.content_->get_id()) {
-        case td::td_api::messagePhoto::ID:
-            return "Sent a photo";
-        case td::td_api::messageDocument::ID:
-            return "Sent a file";
-    }
-
-    return nullptr;
-}
-
 static void showMessageText(PurpleAccount *account, const char *purpleUserName, const char *text,
                             const char *notification, time_t timestamp, bool outgoing)
 {
@@ -490,6 +446,46 @@ static void showMessageText(PurpleAccount *account, const char *purpleUserName, 
     }
 }
 
+void PurpleTdClient::showTextMessage(const char *purpleUserName, const td::td_api::message &message,
+                                     const td::td_api::messageText &text)
+{
+    if (text.text_)
+        showMessageText(m_account, purpleUserName, text.text_->text_.c_str(), NULL, message.date_,
+                        message.is_outgoing_);
+}
+
+void PurpleTdClient::showPhoto(const char *purpleUserName, const td::td_api::message &message,
+                               const td::td_api::messagePhoto &photo)
+{
+    showMessageText(m_account, purpleUserName, photo.caption_ ? photo.caption_->text_.c_str() : NULL,
+                    "Sent a photo", message.date_, message.is_outgoing_);
+}
+
+void PurpleTdClient::showDocument(const char *purpleUserName, const td::td_api::message &message,
+                                  const td::td_api::messageDocument &document)
+{
+    std::string description = "Sent a file";
+    if (document.document_)
+        description = description + ": " + document.document_->file_name_ + " [" +
+        document.document_->mime_type_ + "]";
+
+    showMessageText(m_account, purpleUserName, document.caption_ ? document.caption_->text_.c_str() : NULL,
+                    description.c_str(), message.date_, message.is_outgoing_);
+}
+
+void PurpleTdClient::showVideo(const char *purpleUserName, const td::td_api::message &message,
+                               const td::td_api::messageVideo &video)
+{
+    std::string description = "Sent a video";
+    if (video.video_)
+        description = description + ": " + video.video_->file_name_ + " [" +
+        std::to_string(video.video_->width_) + "x" + std::to_string(video.video_->height_) + ", " +
+        std::to_string(video.video_->duration_) + "s]";
+
+    showMessageText(m_account, purpleUserName, video.caption_ ? video.caption_->text_.c_str() : NULL,
+                    description.c_str(), message.date_, message.is_outgoing_);
+}
+
 void PurpleTdClient::showMessage(const char *purpleUserName, const td::td_api::message &message)
 {
     td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
@@ -498,12 +494,30 @@ void PurpleTdClient::showMessage(const char *purpleUserName, const td::td_api::m
     viewMessagesReq->message_ids_.push_back(message.id_);
     m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
 
-    const char *text         = getText(message);
-    const char *notification = getNotification(message);
-    if (!text && !notification)
-        purple_debug_misc(config::pluginId, "No text to show in the message\n");
-    else {
-        showMessageText(m_account, purpleUserName, text, notification, message.date_, message.is_outgoing_);
+    if (!message.content_)
+        return;
+
+    switch (message.content_->get_id()) {
+        case td::td_api::messageText::ID: {
+            const td::td_api::messageText &text = static_cast<const td::td_api::messageText &>(*message.content_);
+            showTextMessage(purpleUserName, message, text);
+            break;
+        }
+        case td::td_api::messagePhoto::ID: {
+            const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message.content_);
+            showPhoto(purpleUserName, message, photo);
+            break;
+        }
+        case td::td_api::messageDocument::ID: {
+            const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message.content_);
+            showDocument(purpleUserName, message, document);
+            break;
+        }
+        case td::td_api::messageVideo::ID: {
+            const td::td_api::messageVideo &video = static_cast<const td::td_api::messageVideo &>(*message.content_);
+            showVideo(purpleUserName, message, video);
+            break;
+        }
     }
 }
 

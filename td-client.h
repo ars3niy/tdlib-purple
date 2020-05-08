@@ -47,6 +47,10 @@ private:
 
     void       showPrivateChat(const td::td_api::chat &chat, const td::td_api::user &user);
     void       showMessage(const char *purpleUserName, const td::td_api::message &message);
+    void       showTextMessage(const char *purpleUserName, const td::td_api::message &message, const td::td_api::messageText &text);
+    void       showPhoto(const char *purpleUserName, const td::td_api::message &message, const td::td_api::messagePhoto &photo);
+    void       showDocument(const char *purpleUserName, const td::td_api::message &message, const td::td_api::messageDocument &document);
+    void       showVideo(const char *purpleUserName, const td::td_api::message &message, const td::td_api::messageVideo &video);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
     void       updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void       updateUser(td::td_api::object_ptr<td::td_api::user> user);
