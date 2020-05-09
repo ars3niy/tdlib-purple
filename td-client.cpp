@@ -707,15 +707,12 @@ void PurpleTdClient::showPhoto(int64_t chatId, const std::string &sender, int32_
                                bool outgoing, const std::string &filePath)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
-    if (chat && chat->type_ && (chat->type_->get_id() == td::td_api::chatTypePrivate::ID)) {
+    if (chat) {
         if (filePath.find('"') != std::string::npos)
             purple_debug_misc(config::pluginId, "Cannot show photo: file path contains quotes\n");
         else {
-            const td::td_api::user *user = m_data.getUserByPrivateChat(*chat);
-            if (user) {
-                std::string text = "<img src=\"file://" + filePath + "\">";
-                showMessageText(*chat, sender, text.c_str(), NULL, timestamp, outgoing);
-            }
+            std::string text = "<img src=\"file://" + filePath + "\">";
+            showMessageText(*chat, sender, text.c_str(), NULL, timestamp, outgoing);
         }
     }
 }

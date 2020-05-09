@@ -122,3 +122,52 @@ TEST_F(GroupChatTest, BasicGroupReceiveText)
     ));
 
 }
+
+TEST_F(GroupChatTest, BasicGroupReceivePhoto)
+{
+    const int32_t date      = 12345;
+    const int64_t messageId = 10001;
+    const int32_t fileId    = 1234;
+    loginWithBasicGroup();
+
+    std::vector<object_ptr<photoSize>> sizes;
+    sizes.push_back(make_object<photoSize>(
+        "whatever",
+        make_object<file>(
+            fileId, 10000, 10000,
+            make_object<localFile>("", true, true, false, false, 0, 0, 0),
+            make_object<remoteFile>("beh", "bleh", false, true, 10000)
+        ),
+        640, 480
+    ));
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId, userIds[0], groupChatId, false, date,
+        make_object<messagePhoto>(
+            make_object<photo>(false, nullptr, std::move(sizes)),
+            make_object<formattedText>("photo", std::vector<object_ptr<textEntity>>()),
+            false
+        )
+    )));
+    tgl.verifyRequests({
+        make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true),
+        make_object<downloadFile>(fileId, 1, 0, 0, true)
+    });
+    prpl.verifyEvents({
+        std::make_unique<ServGotJoinedChatEvent>(connection, 1, "chat" + std::to_string(groupChatId)),
+        std::make_unique<ServGotChatEvent>(connection, 1, userFirstNames[0] + " " + userLastNames[0],
+                                           "photo", PURPLE_MESSAGE_RECV, date),
+        std::make_unique<ConversationWriteEvent>("chat" + std::to_string(groupChatId), "", "Downloading image",
+                                                 PURPLE_MESSAGE_SYSTEM, date)
+    });
+
+    tgl.reply(make_object<ok>());
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    prpl.verifyEvent(ServGotChatEvent(
+        connection, 1, userFirstNames[0] + " " + userLastNames[0], "<img src=\"file:///path\">",
+        PURPLE_MESSAGE_RECV, date
+    ));
+}
