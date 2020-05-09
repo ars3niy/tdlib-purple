@@ -85,7 +85,7 @@ private:
     std::map<int64_t, ChatInfo>        m_chatInfo;
     std::map<int32_t, TdGroupPtr>      m_groups;
     std::map<int32_t, TdSupergroupPtr> m_supergroups;
-    int                                m_lastChatPurpleId;
+    int                                m_lastChatPurpleId = 0;
 
     // List of contacts for which private chat is not known yet.
     std::vector<int32_t>               m_contactUserIdsNoChat;

@@ -304,6 +304,10 @@ static PurpleConversation *purple_conversation_new_impl(PurpleConversationType t
     conv->type = type;
     conv->account = account;
     conv->name = strdup(name);
+    if (conv->type == PURPLE_CONV_TYPE_CHAT) {
+        conv->u.chat = new PurpleConvChat;
+        conv->u.chat->conv = conv;
+    }
 
     auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
                                  [account](const AccountInfo &info) { return (info.account == account); });
@@ -337,6 +341,8 @@ void purple_conversation_destroy(PurpleConversation *conv)
     pAccount->conversations.erase(it);
 
     free(conv->name);
+    if (conv->type == PURPLE_CONV_TYPE_CHAT)
+        delete conv->u.chat;
     delete conv;
 }
 
@@ -562,7 +568,7 @@ void purple_xfer_set_cancel_send_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *)
 void serv_got_chat_in(PurpleConnection *g, int id, const char *who,
 					  PurpleMessageFlags flags, const char *message, time_t mtime)
 {
-    // TODO event
+    EVENT(ServGotChatEvent, g, id, who, message, flags, mtime);
 }
 
 void serv_got_im(PurpleConnection *gc, const char *who, const char *msg,
@@ -578,9 +584,10 @@ void serv_got_im(PurpleConnection *gc, const char *who, const char *msg,
 PurpleConversation *serv_got_joined_chat(PurpleConnection *gc,
 									   int id, const char *name)
 {
-    // TODO create conversation
-    // TODO event
-    return NULL;
+    PurpleConversation *conv = purple_conversation_new_impl(PURPLE_CONV_TYPE_CHAT, gc->account, name);
+    purple_conversation_get_chat_data(conv)->id = id;
+    EVENT(ServGotJoinedChatEvent, gc, id, name);
+    return conv;
 }
 
 void serv_got_typing(PurpleConnection *gc, const char *name, int timeout,

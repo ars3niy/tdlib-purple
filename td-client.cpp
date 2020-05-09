@@ -506,7 +506,7 @@ static PurpleConvChat *getChatConversation(PurpleAccount *account, const td::td_
     PurpleConversation *conv = purple_find_chat(purple_account_get_connection(account), chatPurpleId);
     if (conv == NULL) {
         if (chatPurpleId != 0) {
-            purple_debug_misc("Creating conversation for chat %s (purple id %d)\n",
+            purple_debug_misc(config::pluginId, "Creating conversation for chat %s (purple id %d)\n",
                               chat.title_.c_str(), chatPurpleId);
             serv_got_joined_chat(purple_account_get_connection(account), chatPurpleId, chatName.c_str());
             conv = purple_find_chat(purple_account_get_connection(account), chatPurpleId);

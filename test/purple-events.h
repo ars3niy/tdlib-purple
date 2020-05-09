@@ -27,6 +27,7 @@ enum class PurpleEventType: uint8_t {
     ShowAccount,
     AddBuddy,
     AddChat,
+    RemoveChat,
     HideAccount,
     RemoveBuddy,
     ConnectionError,
@@ -38,7 +39,9 @@ enum class PurpleEventType: uint8_t {
     UserStatus,
     RequestInput,
     JoinChatFailed,
+    ServGotChat,
     ServGotIm,
+    ServGotJoinedChat,
     BuddyTypingStart,
     BuddyTypingStop,
 };
@@ -91,6 +94,9 @@ struct AddChatEvent: PurpleEvent {
                  PurpleGroup *group, PurpleBlistNode *node)
     : PurpleEvent(PurpleEventType::AddChat), name(name), alias(alias), account(account),
       group(group), node(node) {}
+};
+
+struct RemoveChatEvent: public PurpleEvent {
 };
 
 struct HideAccountEvent: PurpleEvent {
@@ -183,6 +189,20 @@ struct JoinChatFailedEvent: PurpleEvent {
     PurpleConnection *connection;
 };
 
+struct ServGotChatEvent: public PurpleEvent {
+    PurpleConnection  *connection;
+    int                id;
+    std::string        username;
+    std::string        message;
+    PurpleMessageFlags flags;
+    time_t             mtime;
+
+    ServGotChatEvent(PurpleConnection *connection, int id, const std::string &username, const std::string &message,
+                   PurpleMessageFlags flags, time_t mtime)
+    : PurpleEvent(PurpleEventType::ServGotChat), connection(connection), id(id), username(username),
+      message(message), flags(flags), mtime(mtime) {}
+};
+
 struct ServGotImEvent: PurpleEvent {
     PurpleConnection  *connection;
     std::string        username;
@@ -194,6 +214,15 @@ struct ServGotImEvent: PurpleEvent {
                    PurpleMessageFlags flags, time_t mtime)
     : PurpleEvent(PurpleEventType::ServGotIm), connection(connection), username(username),
       message(message), flags(flags), mtime(mtime) {}
+};
+
+struct ServGotJoinedChatEvent: public PurpleEvent {
+    PurpleConnection  *connection;
+    int                id;
+    std::string        chatName;
+
+    ServGotJoinedChatEvent(PurpleConnection *connection, int id, const std::string &chatName)
+    : PurpleEvent(PurpleEventType::ServGotJoinedChat), connection(connection), id(id), chatName(chatName) {}
 };
 
 struct BuddyTypingStartEvent: PurpleEvent {

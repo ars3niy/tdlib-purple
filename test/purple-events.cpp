@@ -116,6 +116,16 @@ static void compare(const JoinChatFailedEvent &actual, const JoinChatFailedEvent
     ASSERT_EQ(expected.connection, actual.connection);
 }
 
+static void compare(const ServGotChatEvent &actual, const ServGotChatEvent &expected)
+{
+    ASSERT_EQ(expected.connection, actual.connection);
+    ASSERT_EQ(expected.id, actual.id);
+    ASSERT_EQ(expected.username, actual.username);
+    ASSERT_EQ(expected.message, actual.message);
+    ASSERT_EQ(expected.flags, actual.flags);
+    ASSERT_EQ(expected.mtime, actual.mtime);
+}
+
 static void compare(const ServGotImEvent &actual, const ServGotImEvent &expected)
 {
     ASSERT_EQ(expected.connection, actual.connection);
@@ -123,6 +133,13 @@ static void compare(const ServGotImEvent &actual, const ServGotImEvent &expected
     ASSERT_EQ(expected.message, actual.message);
     ASSERT_EQ(expected.flags, actual.flags);
     ASSERT_EQ(expected.mtime, actual.mtime);
+}
+
+static void compare(const ServGotJoinedChatEvent &actual, const ServGotJoinedChatEvent &expected)
+{
+    ASSERT_EQ(expected.connection, actual.connection);
+    ASSERT_EQ(expected.id, actual.id);
+    ASSERT_EQ(expected.chatName, actual.chatName);
 }
 
 static void compare(const BuddyTypingStartEvent &actual, const BuddyTypingStartEvent &expected)
@@ -164,7 +181,9 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(UserStatus)
         C(RequestInput)
         C(JoinChatFailed)
+        C(ServGotChat)
         C(ServGotIm)
+        C(ServGotJoinedChat)
         C(BuddyTypingStart)
         C(BuddyTypingStop)
         default:
@@ -213,6 +232,7 @@ std::string PurpleEvent::toString() const
     C(ShowAccount)
     C(AddBuddy)
     C(AddChat)
+    C(RemoveChat)
     C(HideAccount)
     C(RemoveBuddy)
     C(ConnectionError)
@@ -224,7 +244,9 @@ std::string PurpleEvent::toString() const
     C(UserStatus)
     C(RequestInput)
     C(JoinChatFailed)
+    C(ServGotChat)
     C(ServGotIm)
+    C(ServGotJoinedChat)
     C(BuddyTypingStart)
     C(BuddyTypingStop)
     }
