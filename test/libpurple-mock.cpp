@@ -58,6 +58,11 @@ PurpleConnection *purple_account_get_connection(const PurpleAccount *account)
     return account->gc;
 }
 
+gboolean purple_account_is_connected(const PurpleAccount *account)
+{
+    return PURPLE_CONNECTION_IS_CONNECTED(account->gc);
+}
+
 void purple_account_set_alias(PurpleAccount *account, const char *alias)
 {
     free(account->alias);
@@ -105,8 +110,13 @@ void purple_blist_add_buddy(PurpleBuddy *buddy, PurpleContact *contact, PurpleGr
                                  [buddy](const AccountInfo &info) { return (info.account == buddy->account); });
     ASSERT_FALSE(pAccount == g_accounts.end()) << "Adding buddy with unknown account";
 
-    ASSERT_TRUE(std::find(pAccount->buddies.begin(), pAccount->buddies.end(), buddy) == pAccount->buddies.end())
-        << "Buddy already added to this account";
+    ASSERT_TRUE(std::find_if(pAccount->buddies.begin(), pAccount->buddies.end(), 
+                             [buddy](const PurpleBuddy *existing) {
+                                 return !strcmp(existing->name, buddy->name);
+                             }) == pAccount->buddies.end())
+        << "Buddy already exists in this account";
+
+    buddy->node.parent = group ? &group->node : NULL;
     pAccount->buddies.push_back(buddy);
 
     EVENT(AddBuddyEvent, buddy->name, buddy->alias, buddy->account, contact, group, node);
@@ -146,8 +156,7 @@ const char *purple_buddy_get_alias(PurpleBuddy *buddy)
 
 PurpleGroup *purple_buddy_get_group(PurpleBuddy *buddy)
 {
-    // TODO get it from somewhere
-    return NULL;
+    return reinterpret_cast<PurpleGroup *>(buddy->node.parent);
 }
 
 const char *purple_buddy_get_name(const PurpleBuddy *buddy)
@@ -162,6 +171,7 @@ PurpleBuddy *purple_buddy_new(PurpleAccount *account, const char *name, const ch
     buddy->account = account;
     buddy->name = strdup(name);
     buddy->alias = strdup(alias);
+    buddy->node.parent = NULL;
 
     return buddy;
 }
@@ -266,6 +276,11 @@ gboolean purple_debug_is_verbose(void)
 
 PurpleBuddy *purple_find_buddy(PurpleAccount *account, const char *name)
 {
+    // purple_blist_find_chat returns NULL if account is not connected, so just in case, assume
+    // purple_find_buddy will do likewise
+    if (!purple_account_is_connected(account))
+        return NULL;
+
     auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
                                  [account](const AccountInfo &info) { return (info.account == account); });
     EXPECT_FALSE(pAccount == g_accounts.end()) << "Looking for buddy with unknown account";

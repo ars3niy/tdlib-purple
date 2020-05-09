@@ -399,9 +399,11 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
 
     for (const td::td_api::chat *chat: privateChats) {
         const td::td_api::user *user = m_data.getUserByPrivateChat(*chat);
-        if (user)
+        if (user) {
+            showPrivateChat(*chat, *user);
             purple_prpl_got_user_status(m_account, getPurpleUserName(*user),
                                         getPurpleStatusId(*user->status_), NULL);
+        }
     }
 
     // Here we could remove buddies for which no private chat exists, meaning they have been remove
@@ -746,7 +748,9 @@ void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> user)
         const td::td_api::chat *chat = m_data.getPrivateChatByUserId(userId);
 
         // In case updateNewChat came before an updateUser with non-empty phone number
-        if (user && chat)
+        // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
+        // user find_buddy either
+        if (user && chat && purple_account_is_connected(m_account))
             showPrivateChat(*chat, *user);
 
         std::vector<td::td_api::object_ptr<td::td_api::message>> messages;
@@ -772,8 +776,13 @@ void PurpleTdClient::addChat(td::td_api::object_ptr<td::td_api::chat> chat)
     const td::td_api::user *privateChatUser = m_data.getUserByPrivateChat(*chat);
 
     // If updateNewChat came after an updateUser with non-empty phone number (happens during login)
-    if (privateChatUser && !privateChatUser->phone_number_.empty())
+    // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
+    // user find_buddy either
+    if (privateChatUser && !privateChatUser->phone_number_.empty() &&
+        purple_account_is_connected(m_account))
+    {
         showPrivateChat(*chat, *privateChatUser);
+    }
 
     m_data.addChat(std::move(chat));
 }
