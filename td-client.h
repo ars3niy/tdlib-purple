@@ -45,7 +45,6 @@ private:
     void       updatePurpleChatListAndReportConnected();
     // Login sequence end
 
-    void       showPrivateChat(const td::td_api::chat &chat, const td::td_api::user &user);
     void       showMessage(const char *purpleUserName, const td::td_api::message &message);
     void       showTextMessage(const char *purpleUserName, const td::td_api::message &message, const td::td_api::messageText &text);
     void       showPhotoMessage(const char *purpleUserName, const td::td_api::message &message, const td::td_api::messagePhoto &photo);
@@ -55,6 +54,12 @@ private:
 
     void       updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void       updateUser(td::td_api::object_ptr<td::td_api::user> user);
+    void       updateGroup(td::td_api::object_ptr<td::td_api::basicGroup> group);
+    void       updateSupergroup(td::td_api::object_ptr<td::td_api::supergroup> group);
+    void       updatePrivateChat(const td::td_api::chat &chat, const td::td_api::user &user);
+    void       updateBasicGroupChat(int32_t groupId);
+    void       updateSupergroupChat(int32_t groupId);
+
     void       addChat(td::td_api::object_ptr<td::td_api::chat> chat);
     void       handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction);
     void       showUserChatAction(int32_t userId, bool isTyping);

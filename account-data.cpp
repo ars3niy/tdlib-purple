@@ -38,22 +38,44 @@ static bool isPhoneEqual(const std::string &n1, const std::string &n2)
     return !strcmp(s1, s2);
 }
 
+int32_t getBasicGroupId(const td::td_api::chat &chat)
+{
+    if (chat.type_ && (chat.type_->get_id() == td::td_api::chatTypeBasicGroup::ID))
+        return static_cast<const td::td_api::chatTypeBasicGroup &>(*chat.type_).basic_group_id_;
+
+    return 0;
+}
+
+int32_t getSupergroupId(const td::td_api::chat &chat)
+{
+    if (chat.type_ && (chat.type_->get_id() == td::td_api::chatTypeSupergroup::ID))
+        return static_cast<const td::td_api::chatTypeSupergroup &>(*chat.type_).supergroup_id_;
+
+    return 0;
+}
+
 void TdAccountData::updateUser(TdUserPtr user)
 {
-    if (!user)
-        return;
+    if (user)
+        m_userInfo[user->id_] = std::move(user);
+}
 
-    purple_debug_misc(config::pluginId, "Update user: %s '%s' '%s'\n", user->phone_number_.c_str(),
-                      user->first_name_.c_str(), user->last_name_.c_str());
+void TdAccountData::updateBasicGroup(TdGroupPtr group)
+{
+    if (group)
+        m_groups[group->id_] = std::move(group);
+}
 
-    m_userInfo[user->id_] = std::move(user);
+void TdAccountData::updateSupergroup(TdSupergroupPtr group)
+{
+    if (group)
+        m_supergroups[group->id_] = std::move(group);
 }
 
 void TdAccountData::addChat(TdChatPtr chat)
 {
     if (!chat)
         return;
-    purple_debug_misc(config::pluginId, "Add new chat: %s\n", chat->title_.c_str());
 
     if (chat->type_->get_id() == td::td_api::chatTypePrivate::ID) {
         const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat->type_);
@@ -109,7 +131,7 @@ static bool isPrivateChat(const td::td_api::chat &chat, int32_t userId)
 const td::td_api::chat *TdAccountData::getPrivateChatByUserId(int32_t userId) const
 {
     auto pChatInfo = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
-                                  [userId](const ChatInfoMap::value_type &entry) {
+                                  [userId](const std::map<int64_t, TdChatPtr>::value_type &entry) {
                                       return isPrivateChat(*entry.second, userId);
                                   });
     if (pChatInfo == m_chatInfo.end())
@@ -130,7 +152,7 @@ const td::td_api::user *TdAccountData::getUser(int32_t userId) const
 const td::td_api::user *TdAccountData::getUserByPhone(const char *phoneNumber) const
 {
     auto pUser = std::find_if(m_userInfo.begin(), m_userInfo.end(),
-                              [phoneNumber](const UserInfoMap::value_type &entry) {
+                              [phoneNumber](const std::map<int32_t, TdUserPtr>::value_type &entry) {
                                   return isPhoneEqual(entry.second->phone_number_, phoneNumber);
                               });
     if (pUser == m_userInfo.end())
@@ -146,6 +168,56 @@ const td::td_api::user *TdAccountData::getUserByPrivateChat(const td::td_api::ch
         return getUser(privType.user_id_);
     }
     return nullptr;
+}
+
+const td::td_api::basicGroup *TdAccountData::getBasicGroup(int32_t groupId) const
+{
+    auto it = m_groups.find(groupId);
+    if (it != m_groups.end())
+        return it->second.get();
+    else
+        return nullptr;
+}
+
+const td::td_api::supergroup *TdAccountData::getSupergroup(int32_t groupId) const
+{
+    auto it = m_supergroups.find(groupId);
+    if (it != m_supergroups.end())
+        return it->second.get();
+    else
+        return nullptr;
+}
+
+const td::td_api::chat *TdAccountData::getBasicGroupChatByGroup(int32_t groupId) const
+{
+    if (groupId == 0)
+        return nullptr;
+
+    auto it = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
+                           [groupId](const std::map<int64_t, TdChatPtr>::value_type &entry) {
+                               return (getBasicGroupId(*entry.second) == groupId);
+                           });
+
+    if (it != m_chatInfo.end())
+        return it->second.get();
+    else
+        return nullptr;
+}
+
+const td::td_api::chat *TdAccountData::getSupergroupChatByGroup(int32_t groupId) const
+{
+    if (groupId == 0)
+        return nullptr;
+
+    auto it = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
+                           [groupId](const std::map<int64_t, TdChatPtr>::value_type &entry) {
+                               return (getSupergroupId(*entry.second) == groupId);
+                           });
+
+    if (it != m_chatInfo.end())
+        return it->second.get();
+    else
+        return nullptr;
 }
 
 void TdAccountData::getPrivateChats(std::vector<const td::td_api::chat *> &chats) const

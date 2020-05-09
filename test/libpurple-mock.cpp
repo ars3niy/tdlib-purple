@@ -176,6 +176,20 @@ PurpleBuddy *purple_buddy_new(PurpleAccount *account, const char *name, const ch
     return buddy;
 }
 
+PurpleChat *purple_chat_new(PurpleAccount *account, const char *alias, GHashTable *components)
+{
+    return NULL;
+}
+
+void purple_blist_add_chat(PurpleChat *chat, PurpleGroup *group, PurpleBlistNode *node)
+{
+}
+
+PurpleChat *purple_blist_find_chat(PurpleAccount *account, const char *name)
+{
+    return NULL;
+}
+
 void purple_connection_error(PurpleConnection *gc, const char *reason)
 {
     // TODO event

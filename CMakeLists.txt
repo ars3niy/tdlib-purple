@@ -24,6 +24,7 @@ add_library(td-purple SHARED
     td-client.cpp
     transceiver.cpp
     account-data.cpp
+    chat-info.cpp
     config.cpp
 )
 

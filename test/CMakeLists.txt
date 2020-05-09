@@ -15,6 +15,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     ../td-client.cpp
     ../transceiver.cpp
     ../account-data.cpp
+    ../chat-info.cpp
     ../config.cpp
 )
 

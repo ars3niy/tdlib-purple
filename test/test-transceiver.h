@@ -12,6 +12,9 @@ public:
     void verifyRequests(std::initializer_list<td::td_api::object_ptr<td::td_api::Function>> requests);
     void verifyNoRequests();
     void update(td::td_api::object_ptr<td::td_api::Object> object);
+
+    // Replies to the first non-replied request from the last verifyRequest(s) batch, or fails the
+    // test case if there is no such request
     void reply(td::td_api::object_ptr<td::td_api::Object> object);
 private:
     std::queue<td::Client::Request> m_requests;
@@ -21,6 +24,8 @@ private:
     void verifyRequestImpl(const td::td_api::Function &request);
 };
 
+// Put the following functions in td::td_api namespace so that tdlib types can be used without
+// namespace in function prototypes, while avoiding "using namespace..." in this header.
 namespace td {
 namespace td_api {
 
