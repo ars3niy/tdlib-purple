@@ -6,7 +6,15 @@ telegram-purple seems to miss incoming messages a lot, thus writing new plugin u
 
 ## Functionality
 
-It should be just about usable for private chats.
+Missing features:
+* Removing contacts
+* Receiving files other than photos
+* Sending any files
+* Sending messages to groups
+* Joining new groups (groups we got added to, or which we joined in some other client, will be shown)
+* Leaving groups
+* List of members in a group
+* User pictures
 
 ## Debugging vs. privacy
 
