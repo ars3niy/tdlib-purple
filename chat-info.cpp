@@ -29,13 +29,13 @@ GList *getChatJoinInfo()
 
 std::string getChatName(const td::td_api::chat &chat)
 {
-    return std::to_string(chat.id_);
+    return "chat" + std::to_string(chat.id_);
 }
 
 GHashTable *getChatComponents(const td::td_api::chat &chat)
 {
     char name[32];
-    snprintf(name, sizeof(name)-1, "%lld", (long long)chat.id_);
+    snprintf(name, sizeof(name)-1, "chat%lld", (long long)chat.id_);
     name[sizeof(name)-1] = '\0';
 
     GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);

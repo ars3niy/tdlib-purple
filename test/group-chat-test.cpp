@@ -35,7 +35,7 @@ void GroupChatTest::loginWithBasicGroup()
         {
             std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
             std::make_unique<AddChatEvent>(
-                std::to_string(groupChatId), groupChatTitle, account, nullptr, nullptr
+                "chat" + std::to_string(groupChatId), groupChatTitle, account, nullptr, nullptr
             ),
             std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
             std::make_unique<ShowAccountEvent>(account)
@@ -59,7 +59,7 @@ TEST_F(GroupChatTest, AddBasicGroupChat)
     )));
 
     prpl.verifyEvent(AddChatEvent(
-        std::to_string(groupChatId), groupChatTitle, account, NULL, NULL
+        "chat" + std::to_string(groupChatId), groupChatTitle, account, NULL, NULL
     ));
 }
 
@@ -70,7 +70,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupChatAtLogin)
     const std::string chatTitle = "Title";
 
     GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
-    g_hash_table_insert(table, (char *)"id", g_strdup(std::to_string(chatId).c_str()));
+    g_hash_table_insert(table, (char *)"id", g_strdup(("chat" + std::to_string(chatId)).c_str()));
     purple_blist_add_chat(purple_chat_new(account, chatTitle.c_str(), table), NULL, NULL);
     prpl.discardEvents();
 
@@ -103,7 +103,7 @@ TEST_F(GroupChatTest, BasicGroupReceiveText)
         true
     ));
     prpl.verifyEvents({
-        std::make_unique<ServGotJoinedChatEvent>(connection, 1, std::to_string(groupChatId)),
+        std::make_unique<ServGotJoinedChatEvent>(connection, 1, "chat" + std::to_string(groupChatId)),
         std::make_unique<ServGotChatEvent>(connection, 1, userFirstNames[0] + " " + userLastNames[0],
                                            "Hello", PURPLE_MESSAGE_RECV, date[0])
     });
@@ -117,7 +117,7 @@ TEST_F(GroupChatTest, BasicGroupReceiveText)
         true
     ));
     prpl.verifyEvent(ConversationWriteEvent(
-        std::to_string(groupChatId), selfFirstName + " " + selfLastName,
+        "chat" + std::to_string(groupChatId), selfFirstName + " " + selfLastName,
         "Reply", PURPLE_MESSAGE_SEND, date[1]
     ));
 
