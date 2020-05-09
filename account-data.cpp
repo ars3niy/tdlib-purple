@@ -220,7 +220,7 @@ const td::td_api::chat *TdAccountData::getSupergroupChatByGroup(int32_t groupId)
         return nullptr;
 }
 
-void TdAccountData::getPrivateChats(std::vector<const td::td_api::chat *> &chats) const
+void TdAccountData::getActiveChats(std::vector<const td::td_api::chat *> &chats) const
 {
     chats.clear();
     for (int64_t chatId: m_activeChats) {
@@ -230,8 +230,7 @@ void TdAccountData::getPrivateChats(std::vector<const td::td_api::chat *> &chats
             continue;
         }
 
-        if (chat->type_->get_id() == td::td_api::chatTypePrivate::ID)
-            chats.push_back(&*chat);
+        chats.push_back(&*chat);
     }
 }
 

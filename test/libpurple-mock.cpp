@@ -239,6 +239,23 @@ void purple_blist_add_chat(PurpleChat *chat, PurpleGroup *group, PurpleBlistNode
 
 PurpleChat *purple_blist_find_chat(PurpleAccount *account, const char *name)
 {
+    // real purple_blist_find_chat does this
+    if (!purple_account_is_connected(account))
+        return NULL;
+
+    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
+                                 [account](const AccountInfo &info) { return (info.account == account); });
+    EXPECT_FALSE(pAccount == g_accounts.end()) << "Searching chat with unknown account";
+
+    if (pAccount != g_accounts.end()) {
+        auto it = std::find_if(pAccount->chats.begin(), pAccount->chats.end(),
+                               [name](const PurpleChat *existing) {
+                                   return !strcmp(getChatName(existing), name);
+                               });
+        if (it != pAccount->chats.end())
+            return *it;
+    }
+
     return NULL;
 }
 

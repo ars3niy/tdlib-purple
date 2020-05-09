@@ -466,16 +466,23 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
 {
     purple_connection_set_state (purple_account_get_connection(m_account), PURPLE_CONNECTED);
 
-    std::vector<const td::td_api::chat *> privateChats;
-    m_data.getPrivateChats(privateChats);
+    std::vector<const td::td_api::chat *> chats;
+    m_data.getActiveChats(chats);
 
-    for (const td::td_api::chat *chat: privateChats) {
+    for (const td::td_api::chat *chat: chats) {
         const td::td_api::user *user = m_data.getUserByPrivateChat(*chat);
         if (user) {
             updatePrivateChat(*chat, *user);
             purple_prpl_got_user_status(m_account, getPurpleUserName(*user),
                                         getPurpleStatusId(*user->status_), NULL);
         }
+
+        int32_t groupId = getBasicGroupId(*chat);
+        if (groupId)
+            updateBasicGroupChat(groupId);
+        groupId = getSupergroupId(*chat);
+        if (groupId)
+            updateSupergroupChat(groupId);
     }
 
     // Here we could remove buddies for which no private chat exists, meaning they have been remove

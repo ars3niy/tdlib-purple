@@ -32,7 +32,7 @@ public:
     void setContacts(const std::vector<std::int32_t> &userIds);
     void setActiveChats(std::vector<std::int64_t> &&chats);
     void getContactsWithNoChat(std::vector<std::int32_t> &userIds);
-    void getPrivateChats(std::vector<const td::td_api::chat *> &chats) const;
+    void getActiveChats(std::vector<const td::td_api::chat *> &chats) const;
 
     const td::td_api::chat       *getChat(int64_t chatId) const;
     const td::td_api::chat       *getPrivateChatByUserId(int32_t userId) const;
