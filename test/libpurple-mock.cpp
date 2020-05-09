@@ -7,10 +7,12 @@
 struct AccountInfo {
     PurpleAccount                     *account;
     std::vector<PurpleBuddy *>         buddies;
+    std::vector<PurpleChat *>          chats;
     std::vector<PurpleConversation *>  conversations;
 };
 
-std::vector<AccountInfo> g_accounts;
+std::vector<AccountInfo>  g_accounts;
+PurplePlugin             *g_plugin;
 
 extern "C" {
 
@@ -94,6 +96,8 @@ void purple_account_destroy(PurpleAccount *account)
         purple_blist_remove_buddy(it->buddies.back());
     while (!it->conversations.empty())
         purple_conversation_destroy(it->conversations.back());
+    while (!it->chats.empty())
+        purple_blist_remove_chat(it->chats.back());
     g_accounts.erase(it);
 
     delete account;
@@ -144,6 +148,22 @@ void purple_blist_remove_buddy(PurpleBuddy *buddy)
     delete buddy;
 }
 
+void purple_blist_remove_chat(PurpleChat *chat)
+{
+    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
+                                 [chat](const AccountInfo &info) { return (info.account == chat->account); });
+    ASSERT_FALSE(pAccount == g_accounts.end()) << "Removing buddy with unknown account";
+
+    auto it = std::find(pAccount->chats.begin(), pAccount->chats.end(), chat);
+    ASSERT_FALSE(it == pAccount->chats.end()) << "Removing unkown chat";
+    pAccount->chats.erase(it);
+
+    // TODO event
+    free(chat->alias);
+    g_hash_table_destroy(chat->components);
+    delete chat;
+}
+
 const char *purple_buddy_get_alias_only(PurpleBuddy *buddy)
 {
     return buddy->alias;
@@ -178,11 +198,43 @@ PurpleBuddy *purple_buddy_new(PurpleAccount *account, const char *name, const ch
 
 PurpleChat *purple_chat_new(PurpleAccount *account, const char *alias, GHashTable *components)
 {
-    return NULL;
+    PurpleChat *chat = new PurpleChat;
+    chat->account = account;
+    chat->alias = strdup(alias);
+    chat->components = components;
+    chat->node.parent = NULL;
+    return chat;
+}
+
+static char *getChatName(const PurpleChat *chat)
+{
+    auto        pluginInfo  = (PurplePluginProtocolInfo *)g_plugin->info->extra_info;
+    GList      *chatInfo    = (pluginInfo)->chat_info(chat->account->gc);
+    const char *componentId = ((proto_chat_entry *)chatInfo->data)->identifier;
+    char       *name        = (char *)g_hash_table_lookup(chat->components, componentId);
+
+    g_list_free_full(chatInfo, g_free);
+    return name;
 }
 
 void purple_blist_add_chat(PurpleChat *chat, PurpleGroup *group, PurpleBlistNode *node)
 {
+    char *name = getChatName(chat);
+
+    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
+                                 [chat](const AccountInfo &info) { return (info.account == chat->account); });
+    ASSERT_FALSE(pAccount == g_accounts.end()) << "Adding chat with unknown account";
+
+    ASSERT_TRUE(std::find_if(pAccount->chats.begin(), pAccount->chats.end(), 
+                             [name](const PurpleChat *existing) {
+                                 return !strcmp(getChatName(existing), name);
+                             }) == pAccount->chats.end())
+        << "Chat already exists in this account";
+
+    chat->node.parent = group ? &group->node : NULL;
+    pAccount->chats.push_back(chat);
+
+    EVENT(AddChatEvent, name, chat->alias, chat->account, group, node);
 }
 
 PurpleChat *purple_blist_find_chat(PurpleAccount *account, const char *name)
@@ -346,6 +398,7 @@ void purple_notify_user_info_add_pair(PurpleNotifyUserInfo *user_info, const cha
 gboolean purple_plugin_register(PurplePlugin *plugin)
 {
     // TODO maybe event
+    g_plugin = plugin;
     return TRUE;
 }
 

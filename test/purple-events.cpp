@@ -30,6 +30,15 @@ static void compare(const AddBuddyEvent &actual, const AddBuddyEvent &expected)
     ASSERT_EQ(expected.node, actual.node);
 }
 
+static void compare(const AddChatEvent &actual, const AddChatEvent &expected)
+{
+    ASSERT_EQ(expected.name, actual.name);
+    ASSERT_EQ(expected.alias, actual.alias);
+    ASSERT_EQ(expected.account, actual.account);
+    ASSERT_EQ(expected.group, actual.group);
+    ASSERT_EQ(expected.node, actual.node);
+}
+
 static void compare(const HideAccountEvent &actual, const HideAccountEvent &expected)
 {
     ASSERT_EQ(expected.account, actual.account);
@@ -143,6 +152,7 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(AccountSetAlias)
         C(ShowAccount)
         C(AddBuddy)
+        C(AddChat)
         C(HideAccount)
         C(RemoveBuddy)
         C(ConnectionError)
@@ -202,6 +212,7 @@ std::string PurpleEvent::toString() const
     C(AccountSetAlias)
     C(ShowAccount)
     C(AddBuddy)
+    C(AddChat)
     C(HideAccount)
     C(RemoveBuddy)
     C(ConnectionError)

@@ -26,6 +26,7 @@ enum class PurpleEventType: uint8_t {
     AccountSetAlias,
     ShowAccount,
     AddBuddy,
+    AddChat,
     HideAccount,
     RemoveBuddy,
     ConnectionError,
@@ -77,6 +78,19 @@ struct AddBuddyEvent: PurpleEvent {
                   PurpleContact *contact, PurpleGroup *group, PurpleBlistNode *node)
     : PurpleEvent(PurpleEventType::AddBuddy), username(username), alias(alias), account(account),
       contact(contact), group(group), node(node) {}
+};
+
+struct AddChatEvent: PurpleEvent {
+    std::string      name;
+    std::string      alias;
+    PurpleAccount   *account;
+    PurpleGroup     *group;
+    PurpleBlistNode *node;
+
+    AddChatEvent(const std::string &name, const std::string &alias, PurpleAccount *account,
+                 PurpleGroup *group, PurpleBlistNode *node)
+    : PurpleEvent(PurpleEventType::AddChat), name(name), alias(alias), account(account),
+      group(group), node(node) {}
 };
 
 struct HideAccountEvent: PurpleEvent {
