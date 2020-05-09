@@ -88,7 +88,14 @@ void TdAccountData::addChat(TdChatPtr chat)
         }
     }
 
-    m_chatInfo[chat->id_] = std::move(chat);
+    auto it = m_chatInfo.find(chat->id_);
+    if (it != m_chatInfo.end())
+        it->second.chat = std::move(chat);
+    else {
+        auto entry = m_chatInfo.emplace(chat->id_, ChatInfo());
+        entry.first->second.chat     = std::move(chat);
+        entry.first->second.purpleId = ++m_lastChatPurpleId;
+    }
 }
 
 void TdAccountData::setContacts(const std::vector<std::int32_t> &userIds)
@@ -116,7 +123,16 @@ const td::td_api::chat *TdAccountData::getChat(int64_t chatId) const
     if (pChatInfo == m_chatInfo.end())
         return nullptr;
     else
-        return pChatInfo->second.get();
+        return pChatInfo->second.chat.get();
+}
+
+int TdAccountData::getPurpleChatId(int64_t tdChatId)
+{
+    auto pChatInfo = m_chatInfo.find(tdChatId);
+    if (pChatInfo == m_chatInfo.end())
+        return 0;
+    else
+        return pChatInfo->second.purpleId;
 }
 
 static bool isPrivateChat(const td::td_api::chat &chat, int32_t userId)
@@ -131,13 +147,13 @@ static bool isPrivateChat(const td::td_api::chat &chat, int32_t userId)
 const td::td_api::chat *TdAccountData::getPrivateChatByUserId(int32_t userId) const
 {
     auto pChatInfo = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
-                                  [userId](const std::map<int64_t, TdChatPtr>::value_type &entry) {
-                                      return isPrivateChat(*entry.second, userId);
+                                  [userId](const std::map<int64_t, ChatInfo>::value_type &entry) {
+                                      return isPrivateChat(*entry.second.chat, userId);
                                   });
     if (pChatInfo == m_chatInfo.end())
         return nullptr;
     else
-        return pChatInfo->second.get();
+        return pChatInfo->second.chat.get();
 }
 
 const td::td_api::user *TdAccountData::getUser(int32_t userId) const
@@ -194,12 +210,12 @@ const td::td_api::chat *TdAccountData::getBasicGroupChatByGroup(int32_t groupId)
         return nullptr;
 
     auto it = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
-                           [groupId](const std::map<int64_t, TdChatPtr>::value_type &entry) {
-                               return (getBasicGroupId(*entry.second) == groupId);
+                           [groupId](const std::map<int64_t, ChatInfo>::value_type &entry) {
+                               return (getBasicGroupId(*entry.second.chat) == groupId);
                            });
 
     if (it != m_chatInfo.end())
-        return it->second.get();
+        return it->second.chat.get();
     else
         return nullptr;
 }
@@ -210,12 +226,12 @@ const td::td_api::chat *TdAccountData::getSupergroupChatByGroup(int32_t groupId)
         return nullptr;
 
     auto it = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
-                           [groupId](const std::map<int64_t, TdChatPtr>::value_type &entry) {
-                               return (getSupergroupId(*entry.second) == groupId);
+                           [groupId](const std::map<int64_t, ChatInfo>::value_type &entry) {
+                               return (getSupergroupId(*entry.second.chat) == groupId);
                            });
 
     if (it != m_chatInfo.end())
-        return it->second.get();
+        return it->second.chat.get();
     else
         return nullptr;
 }
@@ -279,18 +295,18 @@ void TdAccountData::extractDelayedMessagesByUser(int32_t userId, std::vector<TdM
     m_delayedMessages.erase(it, m_delayedMessages.end());
 }
 
-void TdAccountData::addDownloadRequest(uint64_t requestId, int64_t chatId, int32_t userId,
+void TdAccountData::addDownloadRequest(uint64_t requestId, int64_t chatId, const std::string &sender,
                                        int32_t timestamp, bool outgoing)
 {
     m_downloadRequests.emplace_back();
     m_downloadRequests.back().requestId = requestId;
     m_downloadRequests.back().chatId    = chatId;
-    m_downloadRequests.back().userId    = userId;
+    m_downloadRequests.back().sender    = sender;
     m_downloadRequests.back().timestamp = timestamp;
     m_downloadRequests.back().outgoing  = outgoing;
 }
 
-bool TdAccountData::extractDownloadRequest(uint64_t requestId, int64_t &chatId, int32_t &userId,
+bool TdAccountData::extractDownloadRequest(uint64_t requestId, int64_t &chatId, std::string &sender,
                                            int32_t &timestamp, bool &outgoing)
 {
     auto it = std::find_if(m_downloadRequests.begin(), m_downloadRequests.end(),
@@ -298,7 +314,7 @@ bool TdAccountData::extractDownloadRequest(uint64_t requestId, int64_t &chatId, 
 
     if (it != m_downloadRequests.end()) {
         chatId    = it->chatId;
-        userId    = it->userId;
+        sender    = it->sender;
         timestamp = it->timestamp;
         outgoing  = it->outgoing;
         m_downloadRequests.erase(it);

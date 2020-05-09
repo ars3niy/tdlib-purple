@@ -340,11 +340,31 @@ void purple_conversation_destroy(PurpleConversation *conv)
     delete conv;
 }
 
+PurpleConvChat *purple_conversation_get_chat_data(const PurpleConversation *conv)
+{
+    if (conv->type == PURPLE_CONV_TYPE_CHAT)
+        return conv->u.chat;
+
+    return NULL;
+}
+
 void purple_conversation_write(PurpleConversation *conv, const char *who,
 		const char *message, PurpleMessageFlags flags,
 		time_t mtime)
 {
     EVENT(ConversationWriteEvent, conv->name, who ? who : "", message, flags, mtime);
+}
+
+PurpleConversation *purple_conv_chat_get_conversation(const PurpleConvChat *chat)
+{
+    return chat->conv;
+}
+
+void purple_conv_chat_write(PurpleConvChat *chat, const char *who,
+						  const char *message, PurpleMessageFlags flags,
+						  time_t mtime)
+{
+    purple_conversation_write(purple_conv_chat_get_conversation(chat), who, message, flags, mtime);
 }
 
 gboolean purple_debug_is_enabled(void)
@@ -374,6 +394,25 @@ PurpleBuddy *purple_find_buddy(PurpleAccount *account, const char *name)
                                    return !strcmp(purple_buddy_get_name(buddy), name);
                                });
         if (it != pAccount->buddies.end())
+            return *it;
+    }
+
+    return NULL;
+}
+
+PurpleConversation *purple_find_chat(const PurpleConnection *gc, int id)
+{
+    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
+                                 [gc](const AccountInfo &info) { return (info.account == gc->account); });
+    EXPECT_FALSE(pAccount == g_accounts.end()) << "Looking for buddy with unknown account";
+
+    if (pAccount != g_accounts.end()) {
+        auto it = std::find_if(pAccount->conversations.begin(), pAccount->conversations.end(),
+                               [id](const PurpleConversation *conv) {
+                                   return (conv->type == PURPLE_CONV_TYPE_CHAT) &&
+                                          (conv->u.chat->id == id);
+                               });
+        if (it != pAccount->conversations.end())
             return *it;
     }
 
@@ -520,6 +559,12 @@ void purple_xfer_set_cancel_send_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *)
     xfer->ops.cancel_send = fnc;
 }
 
+void serv_got_chat_in(PurpleConnection *g, int id, const char *who,
+					  PurpleMessageFlags flags, const char *message, time_t mtime)
+{
+    // TODO event
+}
+
 void serv_got_im(PurpleConnection *gc, const char *who, const char *msg,
 				 PurpleMessageFlags flags, time_t mtime)
 {
@@ -528,6 +573,14 @@ void serv_got_im(PurpleConnection *gc, const char *who, const char *msg,
         purple_conversation_new_impl(PURPLE_CONV_TYPE_IM, gc->account, who);
     }
     EVENT(ServGotImEvent, gc, who, msg, flags, mtime);
+}
+
+PurpleConversation *serv_got_joined_chat(PurpleConnection *gc,
+									   int id, const char *name)
+{
+    // TODO create conversation
+    // TODO event
+    return NULL;
 }
 
 void serv_got_typing(PurpleConnection *gc, const char *name, int timeout,

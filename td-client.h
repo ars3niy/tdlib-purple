@@ -45,11 +45,16 @@ private:
     void       updatePurpleChatListAndReportConnected();
     // Login sequence end
 
-    void       showMessage(const char *purpleUserName, const td::td_api::message &message);
-    void       showTextMessage(const char *purpleUserName, const td::td_api::message &message, const td::td_api::messageText &text);
-    void       showPhotoMessage(const char *purpleUserName, const td::td_api::message &message, const td::td_api::messagePhoto &photo);
-    void       showDocument(const char *purpleUserName, const td::td_api::message &message, const td::td_api::messageDocument &document);
-    void       showVideo(const char *purpleUserName, const td::td_api::message &message, const td::td_api::messageVideo &video);
+    std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message);
+    void       showMessage(const td::td_api::chat &chat, const td::td_api::message &message);
+    void       showMessageText(const td::td_api::chat &chat, const std::string &sender, const char *text,
+                               const char *notification, time_t timestamp, bool outgoing);
+    void       showMessageTextChat(const td::td_api::chat &chat, const std::string &sender, const char *text,
+                                   const char *notification, time_t timestamp, bool outgoing);
+    void       showTextMessage(const td::td_api::chat &chat, const td::td_api::message &message,const td::td_api::messageText &text);
+    void       showPhotoMessage(const td::td_api::chat &chat, const td::td_api::message &message, const td::td_api::messagePhoto &photo);
+    void       showDocument(const td::td_api::chat &chat, const td::td_api::message &message, const td::td_api::messageDocument &document);
+    void       showVideo(const td::td_api::chat &chat, const td::td_api::message &message, const td::td_api::messageVideo &video);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
 
     void       updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
@@ -69,7 +74,7 @@ private:
     void       notifyFailedContact(const std::string &phoneNumber, const std::string &errorMessage);
 
     void       messagePhotoDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    void       showPhoto(int64_t chatId, int32_t senderId, int32_t timestamp, bool outgoing,
+    void       showPhoto(int64_t chatId, const std::string &sender, int32_t timestamp, bool outgoing,
                          const std::string &filePath);
 
     PurpleAccount                      *m_account;

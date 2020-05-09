@@ -35,6 +35,7 @@ public:
     void getActiveChats(std::vector<const td::td_api::chat *> &chats) const;
 
     const td::td_api::chat       *getChat(int64_t chatId) const;
+    int                           getPurpleChatId(int64_t tdChatId);
     const td::td_api::chat       *getPrivateChatByUserId(int32_t userId) const;
     const td::td_api::user       *getUser(int32_t userId) const;
     const td::td_api::user       *getUserByPhone(const char *phoneNumber) const;
@@ -50,8 +51,8 @@ public:
     void addDelayedMessage(int32_t userId, TdMessagePtr message);
     void extractDelayedMessagesByUser(int32_t userId, std::vector<TdMessagePtr> &messages);
 
-    void addDownloadRequest(uint64_t requestId, int64_t chatId, int32_t userId, int32_t timestamp, bool outgoing);
-    bool extractDownloadRequest(uint64_t requestId, int64_t &chatId, int32_t &userId, int32_t &timestamp, bool &outgoing);
+    void addDownloadRequest(uint64_t requestId, int64_t chatId, const std::string &sender, int32_t timestamp, bool outgoing);
+    bool extractDownloadRequest(uint64_t requestId, int64_t &chatId, std::string &sender, int32_t &timestamp, bool &outgoing);
 private:
     struct ContactRequest {
         uint64_t    requestId;
@@ -66,17 +67,25 @@ private:
     };
 
     struct DownloadRequest {
-        uint64_t requestId;
-        int64_t  chatId;
-        int32_t  userId;
-        int32_t  timestamp;
-        bool     outgoing;
+        uint64_t    requestId;
+        int64_t     chatId;
+        std::string sender;
+        int32_t     timestamp;
+        bool        outgoing;
+    };
+
+    struct ChatInfo {
+        int32_t   purpleId;
+        TdChatPtr chat;
+
+        ChatInfo() : purpleId(0), chat() {}
     };
 
     std::map<int32_t, TdUserPtr>       m_userInfo;
-    std::map<int64_t, TdChatPtr>       m_chatInfo;
+    std::map<int64_t, ChatInfo>        m_chatInfo;
     std::map<int32_t, TdGroupPtr>      m_groups;
     std::map<int32_t, TdSupergroupPtr> m_supergroups;
+    int                                m_lastChatPurpleId;
 
     // List of contacts for which private chat is not known yet.
     std::vector<int32_t>               m_contactUserIdsNoChat;
