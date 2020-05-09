@@ -24,8 +24,6 @@ GList *getChatJoinInfo()
     pce->required = FALSE;
     info = g_list_append (info, pce);
 
-    purple_debug_misc(config::pluginId, "getChatJoinInfo: first field = %s\n",
-                      ((proto_chat_entry *)info->data)->identifier);
     return info;
 }
 
@@ -39,7 +37,6 @@ GHashTable *getChatComponents(const td::td_api::chat &chat)
     char name[32];
     snprintf(name, sizeof(name)-1, "%lld", (long long)chat.id_);
     name[sizeof(name)-1] = '\0';
-    purple_debug_misc(config::pluginId, "Creating chat %s='%s'\n", idKey, name);
 
     GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
     g_hash_table_insert(table, idKey, g_strdup(name));

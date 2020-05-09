@@ -69,9 +69,6 @@ public:
         m_owner->updateSupergroup(std::move(groupUpdate.supergroup_));
     }
 
-    // TODO updateBasicGroup
-    // TODO updateSupergroup
-
     void operator()(auto &update) const {
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
     }
@@ -426,7 +423,6 @@ void PurpleTdClient::updateBasicGroupChat(int32_t groupId)
                           group->id_);
     else {
         std::string  chatName   = getChatName(*chat);
-        purple_debug_misc(config::pluginId, "Looking for purple chat '%s'\n", chatName.c_str());
         PurpleChat  *purpleChat = purple_blist_find_chat(m_account, chatName.c_str());
         if (!purpleChat) {
             purple_debug_misc(config::pluginId, "Adding new chat for basic group %d (%s)\n",
@@ -451,7 +447,6 @@ void PurpleTdClient::updateSupergroupChat(int32_t groupId)
                           group->id_);
     else {
         std::string  chatName   = getChatName(*chat);
-        purple_debug_misc(config::pluginId, "Looking for purple chat '%s'\n", chatName.c_str());
         PurpleChat  *purpleChat = purple_blist_find_chat(m_account, chatName.c_str());
         if (!purpleChat) {
             purple_debug_misc(config::pluginId, "Adding new chat for supergroup %d (%s)\n",
