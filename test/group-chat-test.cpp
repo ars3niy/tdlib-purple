@@ -51,7 +51,7 @@ TEST_F(GroupChatTest, AddBasicGroupChat)
     ));
 }
 
-TEST_F(GroupChatTest, ExistingGroupChatAtLogin)
+TEST_F(GroupChatTest, ExistingBasicGroupChatAtLogin)
 {
     constexpr int32_t groupId   = 700;
     constexpr int64_t chatId    = 7000;
