@@ -2,7 +2,7 @@ namespace config {
 
 #define PACKAGE_VERSION "0.3.0"
 
-char pluginId[]      = "tdlib-purple";
+char pluginId[]      = "telegram-tdlib";
 char pluginName[]    = "Telegram (tdlib)";
 char versionString[] = PACKAGE_VERSION GIT_COMMIT ", tdlib " TD_VERSION;
 char pluginSummary[] = "Telegram using tdlib";
