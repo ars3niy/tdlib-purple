@@ -122,13 +122,15 @@ int TdTransceiverImpl::rxCallback(gpointer user_data)
             response = std::move(self->m_rxQueue.front());
             self->m_rxQueue.erase(self->m_rxQueue.begin());
         }
-        // m_owner will be NULL if this callback is invoked after TdTransceiver destructor
-        if (!self->m_owner)
+        if (!response.object)
+            ; // impossible
+        else if (!self->m_owner)
+            // m_owner will be NULL if this callback is invoked after TdTransceiver destructor
             purple_debug_misc(config::pluginId,
                               "Ignoring response (object id %d) as transceiver is already destroyed\n",
                               (int)response.object->get_id());
         else if (response.id == 0)
-            ((self->m_owner)->*(self->m_updateCb))(std::move(response.object));
+            ((self->m_owner)->*(self->m_updateCb))(*response.object);
         else {
             TdTransceiver::ResponseCb callback = nullptr;
             auto it = self->m_responseHandlers.find(response.id);

@@ -31,7 +31,7 @@ private:
     using TdObjectPtr = td::td_api::object_ptr<td::td_api::Object>;
 public:
     using ResponseCb = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
-    using UpdateCb   = void (PurpleTdClient::*)(TdObjectPtr object);
+    using UpdateCb   = void (PurpleTdClient::*)(td::td_api::Object &object);
 
     TdTransceiver(PurpleTdClient *owner, UpdateCb updateCb, ITransceiverBackend *testBackend);
     virtual ~TdTransceiver();

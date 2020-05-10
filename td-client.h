@@ -5,9 +5,6 @@
 #include "transceiver.h"
 #include <purple.h>
 
-class UpdateHandler;
-class AuthUpdateHandler;
-
 class PurpleTdClient {
 public:
     PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend);
@@ -19,13 +16,12 @@ public:
     bool joinChat(const char *chatName);
     int  sendGroupMessage(int purpleChatId, const char *message);
 private:
-    friend class UpdateHandler;
-    friend class AuthUpdateHandler;
     using TdObjectPtr   = td::td_api::object_ptr<td::td_api::Object>;
     using ResponseCb    = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
     using TdAuthCodePtr = td::td_api::object_ptr<td::td_api::authenticationCodeInfo>;
 
-    void       processUpdate(TdObjectPtr object);
+    void       processUpdate(td::td_api::Object &object);
+    void       processAuthorizationState(td::td_api::AuthorizationState &authState);
 
     // Login sequence start
     void       sendTdlibParameters();
@@ -80,8 +76,6 @@ private:
                          const std::string &filePath);
 
     PurpleAccount                      *m_account;
-    std::unique_ptr<UpdateHandler>      m_updateHandler;
-    std::unique_ptr<AuthUpdateHandler>  m_authUpdateHandler;
     TdTransceiver                       m_transceiver;
     TdAccountData                       m_data;
 

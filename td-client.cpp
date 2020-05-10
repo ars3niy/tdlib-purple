@@ -8,117 +8,10 @@ enum {
     FILE_DOWNLOAD_PRIORITY       = 1
 };
 
-class UpdateHandler {
-public:
-    UpdateHandler(PurpleTdClient *owner) : m_owner(owner) {}
-
-    void operator()(td::td_api::updateAuthorizationState &update_authorization_state) const {
-        purple_debug_misc(config::pluginId, "Incoming update: authorization state\n");
-        if (update_authorization_state.authorization_state_) {
-            m_owner->m_lastAuthState = update_authorization_state.authorization_state_->get_id();
-            td::td_api::downcast_call(*update_authorization_state.authorization_state_, *m_owner->m_authUpdateHandler);
-        }
-    }
-
-    void operator()(td::td_api::updateConnectionState &connectionUpdate) const {
-        purple_debug_misc(config::pluginId, "Incoming update: connection state\n");
-        if (connectionUpdate.state_) {
-            if (connectionUpdate.state_->get_id() == td::td_api::connectionStateReady::ID)
-                m_owner->connectionReady();
-            else if (connectionUpdate.state_->get_id() == td::td_api::connectionStateConnecting::ID)
-                m_owner->setPurpleConnectionInProgress();
-            else if (connectionUpdate.state_->get_id() == td::td_api::connectionStateUpdating::ID)
-                m_owner->setPurpleConnectionUpdating();
-        }
-    }
-
-    void operator()(td::td_api::updateUser &userUpdate) const {
-        m_owner->updateUser(std::move(userUpdate.user_));
-    }
-
-    void operator()(td::td_api::updateNewChat &newChat) const {
-        purple_debug_misc(config::pluginId, "Incoming update: new chat\n");
-        m_owner->addChat(std::move(newChat.chat_));
-    }
-
-    void operator()(td::td_api::updateNewMessage &newMessageUpdate) const {
-        purple_debug_misc(config::pluginId, "Incoming update: new message\n");
-        if (newMessageUpdate.message_)
-            m_owner->onIncomingMessage(std::move(newMessageUpdate.message_));
-        else
-            purple_debug_warning(config::pluginId, "Received null new message\n");
-    }
-
-    void operator()(td::td_api::updateUserStatus &updateStatus) const {
-        purple_debug_misc(config::pluginId, "Incoming update: user status\n");
-        if (updateStatus.status_)
-            m_owner->updateUserStatus(updateStatus.user_id_, std::move(updateStatus.status_));
-    }
-
-    void operator()(td::td_api::updateUserChatAction &updateChatAction) const {
-        purple_debug_misc(config::pluginId, "Incoming update: chat action %d\n",
-            updateChatAction.action_ ? updateChatAction.action_->get_id() : 0);
-        m_owner->handleUserChatAction(updateChatAction);
-    }
-
-    void operator()(td::td_api::updateBasicGroup &groupUpdate) const {
-        m_owner->updateGroup(std::move(groupUpdate.basic_group_));
-    }
-
-    void operator()(td::td_api::updateSupergroup &groupUpdate) const {
-        m_owner->updateSupergroup(std::move(groupUpdate.supergroup_));
-    }
-
-    void operator()(auto &update) const {
-        purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
-    }
-private:
-    PurpleTdClient *m_owner;
-};
-
-class AuthUpdateHandler {
-public:
-    AuthUpdateHandler(PurpleTdClient *owner) : m_owner(owner) {}
-
-    void operator()(td::td_api::authorizationStateWaitEncryptionKey &) const {
-        purple_debug_misc(config::pluginId, "Authorization state update: encriytion key requested\n");
-        m_owner->m_transceiver.sendQuery(td::td_api::make_object<td::td_api::checkDatabaseEncryptionKey>(""),
-                                         &PurpleTdClient::authResponse);
-    }
-
-    void operator()(td::td_api::authorizationStateWaitTdlibParameters &) const {
-        purple_debug_misc(config::pluginId, "Authorization state update: TDLib parameters requested\n");
-        m_owner->sendTdlibParameters();
-    }
-
-    void operator()(td::td_api::authorizationStateWaitPhoneNumber &) const {
-        purple_debug_misc(config::pluginId, "Authorization state update: phone number requested\n");
-        m_owner->sendPhoneNumber();
-    }
-
-    void operator()(td::td_api::authorizationStateWaitCode &codeState) const {
-        purple_debug_misc(config::pluginId, "Authorization state update: authentication code requested\n");
-        m_owner->m_authCodeInfo = std::move(codeState.code_info_);
-        m_owner->requestAuthCode();
-    }
-
-    void operator()(td::td_api::authorizationStateReady &) const {
-        purple_debug_misc(config::pluginId, "Authorization state update: ready\n");
-    }
-
-    void operator()(auto &update) const {
-        purple_debug_misc(config::pluginId, "Authorization state update: ignorig ID=%d\n", update.get_id());
-    }
-private:
-    PurpleTdClient *m_owner;
-};
-
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)
 :   m_transceiver(this, &PurpleTdClient::processUpdate, testBackend)
 {
-    m_account           = acct;
-    m_updateHandler     = std::make_unique<UpdateHandler>(this);
-    m_authUpdateHandler = std::make_unique<AuthUpdateHandler>(this);
+    m_account = acct;
 }
 
 PurpleTdClient::~PurpleTdClient()
@@ -131,10 +24,123 @@ void PurpleTdClient::setLogLevel(int level)
     td::Client::execute({0, td::td_api::make_object<td::td_api::setLogVerbosityLevel>(level)});
 }
 
-void PurpleTdClient::processUpdate(TdObjectPtr object)
+void PurpleTdClient::processUpdate(td::td_api::Object &update)
 {
     purple_debug_misc(config::pluginId, "Incoming update\n");
-    td::td_api::downcast_call(*object, *m_updateHandler);
+
+    switch (update.get_id()) {
+    case td::td_api::updateAuthorizationState::ID: {
+        auto &update_authorization_state = static_cast<td::td_api::updateAuthorizationState &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: authorization state\n");
+        if (update_authorization_state.authorization_state_) {
+            m_lastAuthState = update_authorization_state.authorization_state_->get_id();
+            processAuthorizationState(*update_authorization_state.authorization_state_);
+        }
+        break;
+    }
+
+    case td::td_api::updateConnectionState::ID: {
+        auto &connectionUpdate = static_cast<td::td_api::updateConnectionState &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: connection state\n");
+        if (connectionUpdate.state_) {
+            if (connectionUpdate.state_->get_id() == td::td_api::connectionStateReady::ID)
+                connectionReady();
+            else if (connectionUpdate.state_->get_id() == td::td_api::connectionStateConnecting::ID)
+                setPurpleConnectionInProgress();
+            else if (connectionUpdate.state_->get_id() == td::td_api::connectionStateUpdating::ID)
+                setPurpleConnectionUpdating();
+        }
+        break;
+    }
+
+    case td::td_api::updateUser::ID: {
+        auto &userUpdate = static_cast<td::td_api::updateUser &>(update);
+        updateUser(std::move(userUpdate.user_));
+        break;
+    }
+
+    case td::td_api::updateNewChat::ID: {
+        auto &newChat = static_cast<td::td_api::updateNewChat &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: new chat\n");
+        addChat(std::move(newChat.chat_));
+        break;
+    }
+
+    case td::td_api::updateNewMessage::ID: {
+        auto &newMessageUpdate = static_cast<td::td_api::updateNewMessage &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: new message\n");
+        if (newMessageUpdate.message_)
+            onIncomingMessage(std::move(newMessageUpdate.message_));
+        else
+            purple_debug_warning(config::pluginId, "Received null new message\n");
+        break;
+    }
+
+    case td::td_api::updateUserStatus::ID: {
+        auto &updateStatus = static_cast<td::td_api::updateUserStatus &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: user status\n");
+        if (updateStatus.status_)
+            updateUserStatus(updateStatus.user_id_, std::move(updateStatus.status_));
+        break;
+    }
+
+    case td::td_api::updateUserChatAction::ID: {
+        auto &updateChatAction = static_cast<td::td_api::updateUserChatAction &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: chat action %d\n",
+            updateChatAction.action_ ? updateChatAction.action_->get_id() : 0);
+        handleUserChatAction(updateChatAction);
+        break;
+    }
+
+    case td::td_api::updateBasicGroup::ID: {
+        auto &groupUpdate = static_cast<td::td_api::updateBasicGroup &>(update);
+        updateGroup(std::move(groupUpdate.basic_group_));
+        break;
+    }
+
+    case td::td_api::updateSupergroup::ID: {
+        auto &groupUpdate = static_cast<td::td_api::updateSupergroup &>(update);
+        updateSupergroup(std::move(groupUpdate.supergroup_));
+        break;
+    }
+
+    default:
+        purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
+        break;
+    }
+}
+
+void PurpleTdClient::processAuthorizationState(td::td_api::AuthorizationState &authState)
+{
+    switch (authState.get_id()) {
+    case td::td_api::authorizationStateWaitEncryptionKey::ID:
+        purple_debug_misc(config::pluginId, "Authorization state update: encriytion key requested\n");
+        m_transceiver.sendQuery(td::td_api::make_object<td::td_api::checkDatabaseEncryptionKey>(""),
+                                &PurpleTdClient::authResponse);
+        break;
+
+    case td::td_api::authorizationStateWaitTdlibParameters::ID: 
+        purple_debug_misc(config::pluginId, "Authorization state update: TDLib parameters requested\n");
+        sendTdlibParameters();
+        break;
+
+    case td::td_api::authorizationStateWaitPhoneNumber::ID:
+        purple_debug_misc(config::pluginId, "Authorization state update: phone number requested\n");
+        sendPhoneNumber();
+        break;
+
+    case td::td_api::authorizationStateWaitCode::ID: {
+        auto &codeState = static_cast<td::td_api::authorizationStateWaitCode &>(authState);
+        purple_debug_misc(config::pluginId, "Authorization state update: authentication code requested\n");
+        m_authCodeInfo = std::move(codeState.code_info_);
+        requestAuthCode();
+        break;
+    }
+
+    case td::td_api::authorizationStateReady::ID:
+        purple_debug_misc(config::pluginId, "Authorization state update: ready\n");
+        break;
+    }
 }
 
 void PurpleTdClient::sendTdlibParameters()
