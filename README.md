@@ -57,9 +57,9 @@ To install, copy the .so to libpurple plugins directory, or run `make install`.
 
 Build google test library and `make install` it somewhere
 
-Run cmake with '-DGTEST_PATH=/path/to/gtest'
+Run cmake with `-DGTEST_PATH=/path/to/gtest`
 
-`make run-tests` or `test/tests` or `valgrind test/tests`
+`make run-tests` or `make tests`, `test/tests` or `valgrind test/tests`
 
 ## GPL compatibility: building tdlib with OpenSSL 3.0
 
