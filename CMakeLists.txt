@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 project(TdExample VERSION 1.0 LANGUAGES CXX)
 
 find_package(Td REQUIRED)
-set(CMAKE_CXX_FLAGS "-Wall -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 
 if (${UNIX})
     execute_process(COMMAND git log --pretty=format:%h -n 1 OUTPUT_VARIABLE GIT_COMMIT)
