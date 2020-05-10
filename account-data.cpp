@@ -54,6 +54,12 @@ int32_t getSupergroupId(const td::td_api::chat &chat)
     return 0;
 }
 
+bool isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &status)
+{
+    return status && (status->get_id() != td::td_api::chatMemberStatusLeft::ID) &&
+                     (status->get_id() != td::td_api::chatMemberStatusBanned::ID);
+}
+
 void TdAccountData::updateUser(TdUserPtr user)
 {
     if (user)
@@ -135,6 +141,19 @@ int TdAccountData::getPurpleChatId(int64_t tdChatId)
         return pChatInfo->second.purpleId;
 }
 
+const td::td_api::chat *TdAccountData::getChatByPurpleId(int32_t purpleChatId) const
+{
+    auto pChatInfo = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
+                                  [purpleChatId](const ChatMap::value_type &entry) {
+                                      return (entry.second.purpleId == purpleChatId);
+                                  });
+
+    if (pChatInfo != m_chatInfo.end())
+        return pChatInfo->second.chat.get();
+    else
+        return nullptr;
+}
+
 static bool isPrivateChat(const td::td_api::chat &chat, int32_t userId)
 {
     if (chat.type_->get_id() == td::td_api::chatTypePrivate::ID) {
@@ -147,7 +166,7 @@ static bool isPrivateChat(const td::td_api::chat &chat, int32_t userId)
 const td::td_api::chat *TdAccountData::getPrivateChatByUserId(int32_t userId) const
 {
     auto pChatInfo = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
-                                  [userId](const std::map<int64_t, ChatInfo>::value_type &entry) {
+                                  [userId](const ChatMap::value_type &entry) {
                                       return isPrivateChat(*entry.second.chat, userId);
                                   });
     if (pChatInfo == m_chatInfo.end())
@@ -168,7 +187,7 @@ const td::td_api::user *TdAccountData::getUser(int32_t userId) const
 const td::td_api::user *TdAccountData::getUserByPhone(const char *phoneNumber) const
 {
     auto pUser = std::find_if(m_userInfo.begin(), m_userInfo.end(),
-                              [phoneNumber](const std::map<int32_t, TdUserPtr>::value_type &entry) {
+                              [phoneNumber](const UserMap::value_type &entry) {
                                   return isPhoneEqual(entry.second->phone_number_, phoneNumber);
                               });
     if (pUser == m_userInfo.end())
@@ -210,7 +229,7 @@ const td::td_api::chat *TdAccountData::getBasicGroupChatByGroup(int32_t groupId)
         return nullptr;
 
     auto it = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
-                           [groupId](const std::map<int64_t, ChatInfo>::value_type &entry) {
+                           [groupId](const ChatMap::value_type &entry) {
                                return (getBasicGroupId(*entry.second.chat) == groupId);
                            });
 
@@ -226,7 +245,7 @@ const td::td_api::chat *TdAccountData::getSupergroupChatByGroup(int32_t groupId)
         return nullptr;
 
     auto it = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
-                           [groupId](const std::map<int64_t, ChatInfo>::value_type &entry) {
+                           [groupId](const ChatMap::value_type &entry) {
                                return (getSupergroupId(*entry.second.chat) == groupId);
                            });
 
@@ -234,6 +253,21 @@ const td::td_api::chat *TdAccountData::getSupergroupChatByGroup(int32_t groupId)
         return it->second.chat.get();
     else
         return nullptr;
+}
+
+bool TdAccountData::isGroupChatWithMembership(const td::td_api::chat &chat)
+{
+    int groupId = getBasicGroupId(chat);
+    if (groupId) {
+        const td::td_api::basicGroup *group = getBasicGroup(groupId);
+        return (group && isGroupMember(group->status_));
+    }
+    groupId = getSupergroupId(chat);
+    if (groupId) {
+        const td::td_api::supergroup *group = getSupergroup(groupId);
+        return (group && isGroupMember(group->status_));
+    }
+    return false;
 }
 
 void TdAccountData::getActiveChats(std::vector<const td::td_api::chat *> &chats) const

@@ -17,6 +17,7 @@ public:
     int  sendMessage(const char *buddyName, const char *message);
     void addContact(const char *phoneNumber, const char *alias);
     bool joinChat(const char *chatName);
+    int  sendGroupMessage(int purpleChatId, const char *message);
 private:
     friend class UpdateHandler;
     friend class AuthUpdateHandler;

@@ -65,6 +65,62 @@ static void compare(const downloadFile &actual, const downloadFile &expected)
     ASSERT_EQ(expected.synchronous_, actual.synchronous_);
 }
 
+static void compare(const object_ptr<sendMessageOptions> &actual, const object_ptr<sendMessageOptions> &expected)
+{
+    ASSERT_EQ(nullptr, actual) << "not supported";
+    ASSERT_EQ(nullptr, expected) << "not supported";
+}
+
+static void compare(const object_ptr<ReplyMarkup> &actual, const object_ptr<ReplyMarkup> &expected)
+{
+    ASSERT_EQ(nullptr, actual) << "not supported";
+    ASSERT_EQ(nullptr, expected) << "not supported";
+}
+
+static void compare(const object_ptr<formattedText> &actual, const object_ptr<formattedText> &expected)
+{
+    ASSERT_EQ(expected != nullptr, actual != nullptr);
+    if (!actual) return;
+
+    ASSERT_EQ(expected->text_, actual->text_);
+    ASSERT_TRUE(actual->entities_.empty()) << "not supported";
+    ASSERT_TRUE(expected->entities_.empty()) << "not supported";
+}
+
+static void compare(const inputMessageText &actual,
+                    const inputMessageText &expected)
+{
+    compare(actual.text_, expected.text_);
+    EXPECT_EQ(expected.disable_web_page_preview_, actual.disable_web_page_preview_);
+    EXPECT_EQ(expected.clear_draft_,              actual.clear_draft_);
+}
+
+static void compare(const object_ptr<InputMessageContent> &actual,
+                    const object_ptr<InputMessageContent> &expected)
+{
+    ASSERT_EQ(expected != nullptr, actual != nullptr);
+    if (!actual) return;
+
+    ASSERT_EQ(expected->get_id(), actual->get_id());
+    switch (actual->get_id()) {
+        case inputMessageText::ID:
+            compare(static_cast<const inputMessageText &>(*actual), static_cast<const inputMessageText &>(*expected));
+            break;
+        default:
+            ASSERT_TRUE(false) << "Unsupported input message content";
+    }
+}
+
+static void compare(const sendMessage &actual, const sendMessage &expected)
+{
+    ASSERT_EQ(expected.chat_id_,             actual.chat_id_);
+    ASSERT_EQ(expected.reply_to_message_id_, actual.reply_to_message_id_);
+
+    compare(actual.options_,               expected.options_);
+    compare(actual.reply_markup_,          expected.reply_markup_);
+    compare(actual.input_message_content_, expected.input_message_content_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected)
 {
     ASSERT_EQ(expected.get_id(), actual.get_id()) << "Wrong request type: expected " << requestToString(expected);
@@ -81,6 +137,7 @@ static void compareRequests(const Function &actual, const Function &expected)
         case getChats::ID: break;
         C(viewMessages)
         C(downloadFile)
+        C(sendMessage)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

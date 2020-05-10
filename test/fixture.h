@@ -40,8 +40,9 @@ protected:
                std::initializer_list<object_ptr<Function>> postUpdateRequests = {});
     void loginWithOneContact();
 
-    object_ptr<updateUser>    standardUpdateUser(unsigned index);
-    object_ptr<updateNewChat> standardPrivateChat(unsigned index);
+    object_ptr<updateUser>     standardUpdateUser(unsigned index);
+    object_ptr<updateNewChat>  standardPrivateChat(unsigned index);
+    PurplePluginProtocolInfo  &pluginInfo();
 };
 
 #endif

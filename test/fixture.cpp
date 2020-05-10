@@ -22,7 +22,7 @@ void CommTest::TearDown()
     tgl.verifyNoRequests();
     prpl.verifyNoEvents();
     if (purple_connection_get_protocol_data(connection))
-        ((PurplePluginProtocolInfo *)purplePlugin.info->extra_info)->close(connection);
+        pluginInfo().close(connection);
     delete connection;
     purple_account_destroy(account);
 }
@@ -33,7 +33,7 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
                      std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents,
                      std::initializer_list<object_ptr<Function>> postUpdateRequests)
 {
-    ((PurplePluginProtocolInfo *)purplePlugin.info->extra_info)->login(account);
+    pluginInfo().login(account);
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
     tgl.verifyRequest(setTdlibParameters(make_object<tdlibParameters>(
@@ -146,4 +146,9 @@ object_ptr<updateNewChat> CommTest::standardPrivateChat(unsigned index)
         userFirstNames[0] + " " + userLastNames[0],
         nullptr, 0, 0, 0
     ));
+}
+
+PurplePluginProtocolInfo &CommTest::pluginInfo()
+{
+    return *(PurplePluginProtocolInfo *)purplePlugin.info->extra_info;
 }

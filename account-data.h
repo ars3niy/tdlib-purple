@@ -10,6 +10,7 @@ bool        isPhoneNumber(const char *s);
 const char *getCanonicalPhoneNumber(const char *s);
 int32_t     getBasicGroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeBasicGroup
 int32_t     getSupergroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeSupergroup
+bool        isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &status);
 
 enum {
     CHAT_HISTORY_REQUEST_LIMIT  = 50,
@@ -36,6 +37,7 @@ public:
 
     const td::td_api::chat       *getChat(int64_t chatId) const;
     int                           getPurpleChatId(int64_t tdChatId);
+    const td::td_api::chat       *getChatByPurpleId(int32_t purpleChatId) const;
     const td::td_api::chat       *getPrivateChatByUserId(int32_t userId) const;
     const td::td_api::user       *getUser(int32_t userId) const;
     const td::td_api::user       *getUserByPhone(const char *phoneNumber) const;
@@ -44,6 +46,7 @@ public:
     const td::td_api::supergroup *getSupergroup(int32_t groupId) const;
     const td::td_api::chat       *getBasicGroupChatByGroup(int32_t groupId) const;
     const td::td_api::chat       *getSupergroupChatByGroup(int32_t groupId) const;
+    bool                          isGroupChatWithMembership(const td::td_api::chat &chat);
 
     void addNewContactRequest(uint64_t requestId, const char *phoneNumber, const char *alias, int32_t userId = 0);
     bool extractContactRequest(uint64_t requestId, std::string &phoneNumber, std::string &alias, int32_t &userId);
@@ -81,6 +84,8 @@ private:
         ChatInfo() : purpleId(0), chat() {}
     };
 
+    using ChatMap = std::map<int64_t, ChatInfo>;
+    using UserMap = std::map<int32_t, TdUserPtr>;
     std::map<int32_t, TdUserPtr>       m_userInfo;
     std::map<int64_t, ChatInfo>        m_chatInfo;
     std::map<int32_t, TdGroupPtr>      m_groups;

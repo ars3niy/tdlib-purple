@@ -156,6 +156,11 @@ static void compare(const BuddyTypingStopEvent &actual, const BuddyTypingStopEve
     ASSERT_EQ(expected.username, actual.username);
 }
 
+static void compare(const PresentConversationEvent &actual, const PresentConversationEvent &expected)
+{
+    ASSERT_EQ(expected.name, actual.name);
+}
+
 static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected)
 {
     ASSERT_EQ(expected.type, actual.type) << "Unexpected libpurple event " << actual.toString() <<
@@ -187,6 +192,7 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(ServGotJoinedChat)
         C(BuddyTypingStart)
         C(BuddyTypingStop)
+        C(PresentConversation)
         default:
             ASSERT_TRUE(false) << "Unsupported libpurple event " << actual.toString();
     };

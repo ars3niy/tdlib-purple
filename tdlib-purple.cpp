@@ -168,7 +168,10 @@ static void tgprpl_chat_invite (PurpleConnection *gc, int id, const char *messag
 
 static int tgprpl_send_chat (PurpleConnection *gc, int id, const char *message, PurpleMessageFlags flags)
 {
-    return -1;
+    purple_debug_misc(config::pluginId, "Sending group chat message: purple chat id %d, flags=0x%x\n",
+                      id, (unsigned)flags);
+    PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    return tdClient->sendGroupMessage(id, message);
 }
 
 static PurpleRoomlist *tgprpl_roomlist_get_list (PurpleConnection *gc)

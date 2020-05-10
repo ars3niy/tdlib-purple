@@ -65,9 +65,9 @@ TEST_F(GroupChatTest, AddBasicGroupChat)
 
 TEST_F(GroupChatTest, ExistingBasicGroupChatAtLogin)
 {
-    GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
-    g_hash_table_insert(table, (char *)"id", g_strdup(("chat" + std::to_string(groupChatId)).c_str()));
-    purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), table), NULL, NULL);
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup(("chat" + std::to_string(groupChatId)).c_str()));
+    purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), components), NULL, NULL);
     prpl.discardEvents();
 
     login(
@@ -170,7 +170,7 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
     ));
 }
 
-TEST_F(GroupChatTest, BasicGroupReceiveTextAtLogin)
+TEST_F(GroupChatTest, BasicGroupReceiveMessageAtLogin)
 {
     constexpr int64_t messageId = 10001;
     constexpr int32_t date      = 12345;
@@ -211,4 +211,51 @@ TEST_F(GroupChatTest, BasicGroupReceiveTextAtLogin)
         {},
         {make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true)}
     );
+}
+
+TEST_F(GroupChatTest, SendMessage)
+{
+    constexpr int64_t messageId = 10001;
+    constexpr int32_t date      = 12345;
+
+    loginWithBasicGroup();
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup(("chat" + std::to_string(groupChatId)).c_str()));
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+
+    prpl.verifyEvents({
+        std::make_unique<ServGotJoinedChatEvent>(connection, 1, "chat" + std::to_string(groupChatId),
+                                            groupChatTitle),
+        std::make_unique<PresentConversationEvent>("chat" + std::to_string(groupChatId))
+    });
+    tgl.verifyNoRequests();
+
+    ASSERT_EQ(0, pluginInfo().chat_send(connection, 1, "message", PURPLE_MESSAGE_SEND));
+    tgl.verifyRequest(td::td_api::sendMessage(
+        groupChatId,
+        0,
+        nullptr,
+        nullptr,
+        make_object<inputMessageText>(
+            make_object<formattedText>("message", std::vector<object_ptr<textEntity>>()),
+            false,
+            false
+        )
+    ));
+    prpl.verifyNoEvents();
+
+    tgl.update(make_object<updateNewMessage>(
+        makeMessage(messageId, selfId, groupChatId, true, date, makeTextMessage("message"))
+    ));
+    tgl.verifyRequest(viewMessages(
+        groupChatId,
+        {messageId},
+        true
+    ));
+    prpl.verifyEvent(ConversationWriteEvent(
+        "chat" + std::to_string(groupChatId), selfFirstName + " " + selfLastName,
+        "message", PURPLE_MESSAGE_SEND, date
+    ));
 }

@@ -398,12 +398,6 @@ void PurpleTdClient::updatePrivateChat(const td::td_api::chat &chat, const td::t
     }
 }
 
-static bool isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &status)
-{
-    return status && (status->get_id() != td::td_api::chatMemberStatusLeft::ID) &&
-                     (status->get_id() != td::td_api::chatMemberStatusBanned::ID);
-}
-
 void PurpleTdClient::updateBasicGroupChat(int32_t groupId)
 {
     const td::td_api::basicGroup *group = m_data.getBasicGroup(groupId);
@@ -881,14 +875,14 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
         return -1;
     }
 
-    td::td_api::object_ptr<td::td_api::sendMessage> send_message = td::td_api::make_object<td::td_api::sendMessage>();
-    send_message->chat_id_ = tdChat->id_;
-    td::td_api::object_ptr<td::td_api::inputMessageText> message_content = td::td_api::make_object<td::td_api::inputMessageText>();
-    message_content->text_ = td::td_api::make_object<td::td_api::formattedText>();
-    message_content->text_->text_ = message;
-    send_message->input_message_content_ = std::move(message_content);
+    td::td_api::object_ptr<td::td_api::sendMessage> sendMessageRequest = td::td_api::make_object<td::td_api::sendMessage>();
+    sendMessageRequest->chat_id_ = tdChat->id_;
+    td::td_api::object_ptr<td::td_api::inputMessageText> content = td::td_api::make_object<td::td_api::inputMessageText>();
+    content->text_ = td::td_api::make_object<td::td_api::formattedText>();
+    content->text_->text_ = message;
+    sendMessageRequest->input_message_content_ = std::move(content);
 
-    m_transceiver.sendQuery(std::move(send_message), nullptr);
+    m_transceiver.sendQuery(std::move(sendMessageRequest), nullptr);
 
     // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
     return 0;
@@ -1165,26 +1159,42 @@ bool PurpleTdClient::joinChat(const char *chatName)
     const td::td_api::chat *chat     = m_data.getChat(id);
     int32_t                 purpleId = m_data.getPurpleChatId(id);
     PurpleConvChat         *conv     = NULL;
-    bool                    isMember = false;
 
-    if (chat) {
-        int groupId = getBasicGroupId(*chat);
-        if (groupId) {
-            const td::td_api::basicGroup *group = m_data.getBasicGroup(groupId);
-            isMember = group && isGroupMember(group->status_);
-        }
-        groupId = getSupergroupId(*chat);
-        if (groupId) {
-            const td::td_api::supergroup *group = m_data.getSupergroup(groupId);
-            isMember = group && isGroupMember(group->status_);
-        }
-    }
-
-    if (isMember) {
+    if (!chat)
+        purple_debug_warning(config::pluginId, "No telegram chat found for purple name %s\n", chatName);
+    else if (!m_data.isGroupChatWithMembership(*chat))
+        purple_debug_warning(config::pluginId, "Chat %s (%s) is not a group we a member of\n",
+                             chatName, chat->title_.c_str());
+    else if (purpleId) {
         conv = getChatConversation(m_account, *chat, purpleId);
         if (conv)
             purple_conversation_present(purple_conv_chat_get_conversation(conv));
     }
 
     return conv ? true : false;
+}
+
+int PurpleTdClient::sendGroupMessage(int purpleChatId, const char *message)
+{
+    const td::td_api::chat *chat = m_data.getChatByPurpleId(purpleChatId);
+
+    if (!chat)
+        purple_debug_warning(config::pluginId, "No chat found for purple id %d\n", purpleChatId);
+    else if (!m_data.isGroupChatWithMembership(*chat))
+        purple_debug_warning(config::pluginId, "purple id %d (chat %s) is not a group we a member of\n",
+                             purpleChatId, chat->title_.c_str());
+    else {
+        td::td_api::object_ptr<td::td_api::sendMessage> sendMessageRequest = td::td_api::make_object<td::td_api::sendMessage>();
+        sendMessageRequest->chat_id_ = chat->id_;
+        td::td_api::object_ptr<td::td_api::inputMessageText> content = td::td_api::make_object<td::td_api::inputMessageText>();
+        content->text_ = td::td_api::make_object<td::td_api::formattedText>();
+        content->text_->text_ = message;
+        sendMessageRequest->input_message_content_ = std::move(content);
+
+        m_transceiver.sendQuery(std::move(sendMessageRequest), nullptr);
+        // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
+        return 0;
+    }
+
+    return -1;
 }
