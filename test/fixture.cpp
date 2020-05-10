@@ -30,7 +30,8 @@ void CommTest::TearDown()
 void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, object_ptr<users> getContactsReply,
                      object_ptr<chats> getChatsReply,
                      std::initializer_list<std::unique_ptr<PurpleEvent>> postUpdateEvents,
-                     std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents)
+                     std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents,
+                     std::initializer_list<object_ptr<Function>> postUpdateRequests)
 {
     ((PurplePluginProtocolInfo *)purplePlugin.info->extra_info)->login(account);
 
@@ -78,9 +79,6 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     tgl.verifyNoRequests();
     prpl.verifyEvent(ConnectionUpdateProgressEvent(connection, 2, 3));
 
-    tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
-    tgl.verifyRequest(getContacts());
-
     tgl.update(make_object<updateUser>(makeUser(
         selfId,
         selfFirstName,
@@ -91,7 +89,11 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     for (const object_ptr<Object> &update: extraUpdates)
         tgl.update(std::move(const_cast<object_ptr<Object> &>(update))); // Take that!
     prpl.verifyEvents(std::move(postUpdateEvents));
-    tgl.verifyNoRequests();
+    tgl.verifyRequests(std::move(postUpdateRequests));
+
+    tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
+    tgl.verifyRequest(getContacts());
+
     tgl.reply(std::move(getContactsReply));
 
     tgl.verifyRequest(getChats());

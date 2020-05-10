@@ -36,7 +36,8 @@ protected:
                object_ptr<users> getContactsReply = make_object<users>(),
                object_ptr<chats> getChatsReply = make_object<chats>(),
                std::initializer_list<std::unique_ptr<PurpleEvent>> postUpdateEvents = {},
-               std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents = {});
+               std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents = {},
+               std::initializer_list<object_ptr<Function>> postUpdateRequests = {});
     void loginWithOneContact();
 
     object_ptr<updateUser>    standardUpdateUser(unsigned index);

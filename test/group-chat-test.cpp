@@ -65,13 +65,9 @@ TEST_F(GroupChatTest, AddBasicGroupChat)
 
 TEST_F(GroupChatTest, ExistingBasicGroupChatAtLogin)
 {
-    constexpr int32_t groupId   = 700;
-    constexpr int64_t chatId    = 7000;
-    const std::string chatTitle = "Title";
-
     GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
-    g_hash_table_insert(table, (char *)"id", g_strdup(("chat" + std::to_string(chatId)).c_str()));
-    purple_blist_add_chat(purple_chat_new(account, chatTitle.c_str(), table), NULL, NULL);
+    g_hash_table_insert(table, (char *)"id", g_strdup(("chat" + std::to_string(groupChatId)).c_str()));
+    purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), table), NULL, NULL);
     prpl.discardEvents();
 
     login(
@@ -80,11 +76,11 @@ TEST_F(GroupChatTest, ExistingBasicGroupChatAtLogin)
                 groupId, 2, make_object<chatMemberStatusMember>(), true, 0
             )),
             make_object<updateNewChat>(makeChat(
-                chatId, make_object<chatTypeBasicGroup>(groupId), chatTitle, nullptr, 0, 0, 0
+                groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
             ))
         },
         make_object<users>(),
-        make_object<chats>(std::vector<int64_t>(1, chatId))
+        make_object<chats>(std::vector<int64_t>(1, groupChatId))
     );
 }
 
@@ -103,7 +99,8 @@ TEST_F(GroupChatTest, BasicGroupReceiveText)
         true
     ));
     prpl.verifyEvents({
-        std::make_unique<ServGotJoinedChatEvent>(connection, 1, "chat" + std::to_string(groupChatId)),
+        std::make_unique<ServGotJoinedChatEvent>(connection, 1, "chat" + std::to_string(groupChatId),
+                                                 groupChatTitle),
         std::make_unique<ServGotChatEvent>(connection, 1, userFirstNames[0] + " " + userLastNames[0],
                                            "Hello", PURPLE_MESSAGE_RECV, date[0])
     });
@@ -153,7 +150,8 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
     prpl.verifyEvents({
-        std::make_unique<ServGotJoinedChatEvent>(connection, 1, "chat" + std::to_string(groupChatId)),
+        std::make_unique<ServGotJoinedChatEvent>(connection, 1, "chat" + std::to_string(groupChatId),
+                                                 groupChatTitle),
         std::make_unique<ServGotChatEvent>(connection, 1, userFirstNames[0] + " " + userLastNames[0],
                                            "photo", PURPLE_MESSAGE_RECV, date),
         std::make_unique<ConversationWriteEvent>("chat" + std::to_string(groupChatId), "", "Downloading image",
@@ -170,4 +168,47 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
         connection, 1, userFirstNames[0] + " " + userLastNames[0], "<img src=\"file:///path\">",
         PURPLE_MESSAGE_RECV, date
     ));
+}
+
+TEST_F(GroupChatTest, BasicGroupReceiveTextAtLogin)
+{
+    constexpr int64_t messageId = 10001;
+    constexpr int32_t date      = 12345;
+
+    GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(table, (char *)"id", g_strdup(("chat" + std::to_string(groupChatId)).c_str()));
+    purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), table), NULL, NULL);
+
+    purple_blist_add_buddy(purple_buddy_new(account, userPhones[0].c_str(),
+                                            (userFirstNames[0] + " " + userLastNames[0]).c_str()),
+                           NULL, NULL, NULL);
+    prpl.discardEvents();
+
+    login(
+        {
+            standardUpdateUser(0),
+            make_object<updateBasicGroup>(make_object<basicGroup>(
+                groupId, 2, make_object<chatMemberStatusMember>(), true, 0
+            )),
+            make_object<updateNewChat>(makeChat(
+                groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
+            )),
+            make_object<updateNewMessage>(
+                makeMessage(messageId, userIds[0], groupChatId, false, date, makeTextMessage("Hello"))
+            )
+        },
+        make_object<users>(),
+        make_object<chats>(std::vector<int64_t>(1, groupChatId)),
+        {
+            // TODO: chat title is wrong here because libpurple doesn't find the chat in contact
+            // list while the contact is not online, and thus has no way of knowing the chat alias.
+            // Real libpurple works like that and our mock version mirrors the behaviour.
+            std::make_unique<ServGotJoinedChatEvent>(connection, 1, "chat" + std::to_string(groupChatId),
+                                                     "chat" + std::to_string(groupChatId)),
+            std::make_unique<ServGotChatEvent>(connection, 1, userFirstNames[0] + " " + userLastNames[0],
+                                               "Hello", PURPLE_MESSAGE_RECV, date)
+        },
+        {},
+        {make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true)}
+    );
 }

@@ -221,9 +221,12 @@ struct ServGotJoinedChatEvent: public PurpleEvent {
     PurpleConnection  *connection;
     int                id;
     std::string        chatName;
+    std::string        chatAlias;
 
-    ServGotJoinedChatEvent(PurpleConnection *connection, int id, const std::string &chatName)
-    : PurpleEvent(PurpleEventType::ServGotJoinedChat), connection(connection), id(id), chatName(chatName) {}
+    ServGotJoinedChatEvent(PurpleConnection *connection, int id, const std::string &chatName,
+                           const std::string &chatAlias)
+    : PurpleEvent(PurpleEventType::ServGotJoinedChat), connection(connection), id(id),
+      chatName(chatName), chatAlias(chatAlias) {}
 };
 
 struct BuddyTypingStartEvent: PurpleEvent {

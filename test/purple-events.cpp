@@ -140,6 +140,7 @@ static void compare(const ServGotJoinedChatEvent &actual, const ServGotJoinedCha
     ASSERT_EQ(expected.connection, actual.connection);
     ASSERT_EQ(expected.id, actual.id);
     ASSERT_EQ(expected.chatName, actual.chatName);
+    ASSERT_EQ(expected.chatAlias, actual.chatAlias);
 }
 
 static void compare(const BuddyTypingStartEvent &actual, const BuddyTypingStartEvent &expected)

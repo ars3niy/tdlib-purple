@@ -508,6 +508,10 @@ static PurpleConvChat *getChatConversation(PurpleAccount *account, const td::td_
         if (chatPurpleId != 0) {
             purple_debug_misc(config::pluginId, "Creating conversation for chat %s (purple id %d)\n",
                               chat.title_.c_str(), chatPurpleId);
+            // TODO: when a message arrives during login, libpurple won't find the chat in contact
+            // list because even it has been in the contact list since before, the chat lookup
+            // doesn't work when account is not connected. Therefore, it won't know chat title and
+            // will show chatXXXXXXXXXXX name in the conversation window instead. How to fix this?
             serv_got_joined_chat(purple_account_get_connection(account), chatPurpleId, chatName.c_str());
             conv = purple_find_chat(purple_account_get_connection(account), chatPurpleId);
             if (conv == NULL)

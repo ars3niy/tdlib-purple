@@ -586,7 +586,10 @@ PurpleConversation *serv_got_joined_chat(PurpleConnection *gc,
 {
     PurpleConversation *conv = purple_conversation_new_impl(PURPLE_CONV_TYPE_CHAT, gc->account, name);
     purple_conversation_get_chat_data(conv)->id = id;
-    EVENT(ServGotJoinedChatEvent, gc, id, name);
+
+    PurpleChat *chat = purple_blist_find_chat(gc->account, name);
+
+    EVENT(ServGotJoinedChatEvent, gc, id, name, (chat && chat->alias) ? chat->alias : name);
     return conv;
 }
 
