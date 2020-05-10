@@ -6,17 +6,32 @@
 #include <string>
 #include <memory>
 #include <queue>
+#include <iostream>
 
 struct PurpleEvent;
 
 class PurpleEventReceiver {
 public:
     void addEvent(std::unique_ptr<PurpleEvent> event);
-    void verifyEvent(const PurpleEvent &event);
-    void verifyEvents(std::initializer_list<std::unique_ptr<PurpleEvent>> events);
+
+    // Check that given events in that order, and no others, are in the queue, and clear the queue
+    template<typename... EventTypes>
+    void verifyEvents(const PurpleEvent &event, EventTypes... args)
+    {
+        verifyEvent(event);
+        verifyEvents(args...);
+    }
+
+    void verifyEvents2(std::initializer_list<std::unique_ptr<PurpleEvent>> events);
     void verifyNoEvents();
     void discardEvents();
 private:
+    void verifyEvent(const PurpleEvent &event);
+    void verifyEvents()
+    {
+        verifyNoEvents();
+    }
+
     std::queue<std::unique_ptr<PurpleEvent>> m_events;
 };
 

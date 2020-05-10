@@ -70,14 +70,14 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
 
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
     tgl.verifyNoRequests();
-    prpl.verifyEvents({
-        std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTING),
-        std::make_unique<ConnectionUpdateProgressEvent>(connection, 1, 3)
-    });
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 3)
+    );
 
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateUpdating>()));
     tgl.verifyNoRequests();
-    prpl.verifyEvent(ConnectionUpdateProgressEvent(connection, 2, 3));
+    prpl.verifyEvents(ConnectionUpdateProgressEvent(connection, 2, 3));
 
     tgl.update(make_object<updateUser>(makeUser(
         selfId,
@@ -88,7 +88,7 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     )));
     for (const object_ptr<Object> &update: extraUpdates)
         tgl.update(std::move(const_cast<object_ptr<Object> &>(update))); // Take that!
-    prpl.verifyEvents(std::move(postUpdateEvents));
+    prpl.verifyEvents2(std::move(postUpdateEvents));
     tgl.verifyRequests(std::move(postUpdateRequests));
 
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
@@ -100,13 +100,13 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
 
     tgl.reply(std::move(getChatsReply));
     if (postLoginEvents.size() != 0)
-        prpl.verifyEvents(std::move(postLoginEvents));
+        prpl.verifyEvents2(std::move(postLoginEvents));
     else
-        prpl.verifyEvents({
-            std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
-            std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
-            std::make_unique<ShowAccountEvent>(account)
-        });
+        prpl.verifyEvents(
+            ConnectionSetStateEvent(connection, PURPLE_CONNECTED),
+            AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
+            ShowAccountEvent(account)
+        );
 }
 
 void CommTest::loginWithOneContact()

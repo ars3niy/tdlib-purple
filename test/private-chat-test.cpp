@@ -44,21 +44,21 @@ TEST_F(PrivateChatTest, ContactedByNew)
         "+" + userPhones[0],
         make_object<userStatusOffline>()
     )));
-    prpl.verifyEvents({
-        std::make_unique<AddBuddyEvent>(
+    prpl.verifyEvents(
+        AddBuddyEvent(
             userPhones[0],
             userFirstNames[0] + " " + userLastNames[0],
             account,
             nullptr, nullptr, nullptr
         ),
-        std::make_unique<ServGotImEvent>(
+        ServGotImEvent(
             connection,
             userPhones[0],
             "text",
             PURPLE_MESSAGE_RECV,
             date
-        ),
-    });
+        )
+    );
     tgl.verifyRequest(viewMessages(
         chatIds[0],
         {messageId},
@@ -77,7 +77,7 @@ TEST_F(PrivateChatTest, ContactedByNew_ImmediatePhoneNumber)
     prpl.verifyNoEvents();
 
     tgl.update(standardPrivateChat(0));
-    prpl.verifyEvent(AddBuddyEvent(
+    prpl.verifyEvents(AddBuddyEvent(
         userPhones[0],
         userFirstNames[0] + " " + userLastNames[0],
         account,
@@ -92,7 +92,7 @@ TEST_F(PrivateChatTest, ContactedByNew_ImmediatePhoneNumber)
         date,
         makeTextMessage("text")
     )));
-    prpl.verifyEvent(ServGotImEvent(
+    prpl.verifyEvents(ServGotImEvent(
         connection,
         userPhones[0],
         "text",
@@ -127,12 +127,11 @@ TEST_F(PrivateChatTest, Document)
         {1},
         true
     ));
-    prpl.verifyEvents({
-        std::make_unique<ServGotImEvent>(connection, userPhones[0], "document", PURPLE_MESSAGE_RECV, date),
-        std::make_unique<ConversationWriteEvent>(userPhones[0], "",
-                                                 "Sent a file: doc.file.name [mime/type]",
-                                                 PURPLE_MESSAGE_SYSTEM, date)
-    });
+    prpl.verifyEvents(
+        ServGotImEvent(connection, userPhones[0], "document", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(userPhones[0], "", "Sent a file: doc.file.name [mime/type]",
+                               PURPLE_MESSAGE_SYSTEM, date)
+    );
 }
 
 TEST_F(PrivateChatTest, Video)
@@ -157,12 +156,11 @@ TEST_F(PrivateChatTest, Video)
         {1},
         true
     ));
-    prpl.verifyEvents({
-        std::make_unique<ServGotImEvent>(connection, userPhones[0], "video", PURPLE_MESSAGE_RECV, date),
-        std::make_unique<ConversationWriteEvent>(userPhones[0], "",
-                                                 "Sent a video: video.avi [640x480, 120s]",
-                                                 PURPLE_MESSAGE_SYSTEM, date)
-    });
+    prpl.verifyEvents(
+        ServGotImEvent(connection, userPhones[0], "video", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(userPhones[0], "", "Sent a video: video.avi [640x480, 120s]",
+                               PURPLE_MESSAGE_SYSTEM, date)
+    );
 }
 
 TEST_F(PrivateChatTest, Audio)
@@ -186,12 +184,11 @@ TEST_F(PrivateChatTest, Audio)
         {1},
         true
     ));
-    prpl.verifyEvents({
-        std::make_unique<NewConversationEvent>(PURPLE_CONV_TYPE_IM, account, userPhones[0]),
-        std::make_unique<ConversationWriteEvent>(userPhones[0], "",
-                                                 "Received unsupported message type messageAudio",
-                                                 PURPLE_MESSAGE_SYSTEM, date)
-    });
+    prpl.verifyEvents(
+        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, userPhones[0]),
+        ConversationWriteEvent(userPhones[0], "", "Received unsupported message type messageAudio",
+                               PURPLE_MESSAGE_SYSTEM, date)
+    );
 }
 
 TEST_F(PrivateChatTest, OtherMessage)
@@ -212,12 +209,11 @@ TEST_F(PrivateChatTest, OtherMessage)
         {1},
         true
     ));
-    prpl.verifyEvents({
-        std::make_unique<NewConversationEvent>(PURPLE_CONV_TYPE_IM, account, userPhones[0]),
-        std::make_unique<ConversationWriteEvent>(userPhones[0], "",
-                                                 "Received unsupported message type messageGame",
-                                                 PURPLE_MESSAGE_SYSTEM, date)
-    });
+    prpl.verifyEvents(
+        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, userPhones[0]),
+        ConversationWriteEvent(userPhones[0], "", "Received unsupported message type messageGame",
+                               PURPLE_MESSAGE_SYSTEM, date)
+    );
 }
 
 TEST_F(PrivateChatTest, Photo)
@@ -252,11 +248,10 @@ TEST_F(PrivateChatTest, Photo)
         make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
-    prpl.verifyEvents({
-        std::make_unique<ServGotImEvent>(connection, userPhones[0], "photo", PURPLE_MESSAGE_RECV, date),
-        std::make_unique<ConversationWriteEvent>(userPhones[0], "", "Downloading image",
-                                                 PURPLE_MESSAGE_SYSTEM, date)
-    });
+    prpl.verifyEvents(
+        ServGotImEvent(connection, userPhones[0], "photo", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(userPhones[0], "", "Downloading image", PURPLE_MESSAGE_SYSTEM, date)
+    );
 
     tgl.reply(make_object<ok>()); // reply to viewMessages
     tgl.reply(make_object<file>(
@@ -265,7 +260,7 @@ TEST_F(PrivateChatTest, Photo)
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     ));
 
-    prpl.verifyEvent(ServGotImEvent(connection, userPhones[0], "<img src=\"file:///path\">", PURPLE_MESSAGE_RECV, date));
+    prpl.verifyEvents(ServGotImEvent(connection, userPhones[0], "<img src=\"file:///path\">", PURPLE_MESSAGE_RECV, date));
 }
 
 TEST_F(PrivateChatTest, IgnoredUpdateUserAndNewPrivateChat)

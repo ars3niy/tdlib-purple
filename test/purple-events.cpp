@@ -206,18 +206,12 @@ void PurpleEventReceiver::verifyEvent(const PurpleEvent &event)
         compareEvents(*m_events.front(), event);
         m_events.pop();
     }
-    verifyNoEvents();
 }
 
-void PurpleEventReceiver::verifyEvents(std::initializer_list<std::unique_ptr<PurpleEvent>> events)
+void PurpleEventReceiver::verifyEvents2(std::initializer_list<std::unique_ptr<PurpleEvent>> events)
 {
-    for (auto &pEvent: events) {
-        ASSERT_FALSE(m_events.empty()) << "Missing libpurple event " << pEvent->toString();
-        if (!m_events.empty()) {
-            compareEvents(*m_events.front(), *pEvent);
-            m_events.pop();
-        }
-    }
+    for (auto &pEvent: events)
+        verifyEvent(*pEvent);
     verifyNoEvents();
 }
 

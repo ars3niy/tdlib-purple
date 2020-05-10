@@ -8,9 +8,12 @@
 class TestTransceiver: public ITransceiverBackend {
 public:
     void send(td::Client::Request &&request) override;
+
+    // Check that given requests, and no others, have been received, and clear the queue
     void verifyRequest(const td::td_api::Function &request);
     void verifyRequests(std::initializer_list<td::td_api::object_ptr<td::td_api::Function>> requests);
     void verifyNoRequests();
+
     void update(td::td_api::object_ptr<td::td_api::Object> object);
 
     // Replies to the first non-replied request from the last verifyRequest(s) batch, or fails the
