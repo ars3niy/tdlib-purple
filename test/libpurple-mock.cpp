@@ -601,4 +601,9 @@ void serv_got_typing_stopped(PurpleConnection *gc, const char *name)
     // TODO event
 }
 
+void purple_conversation_present(PurpleConversation *conv)
+{
+    EVENT(PresentConversationEvent, conv->name);
+}
+
 };

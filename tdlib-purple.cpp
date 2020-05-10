@@ -148,7 +148,13 @@ static void tgprpl_request_delete_contact (PurpleConnection *gc, PurpleBuddy *bu
 
 static void tgprpl_chat_join (PurpleConnection *gc, GHashTable *data)
 {
-    purple_serv_got_join_chat_failed (gc, data);
+    const char *name = getChatName(data);
+    if (name) {
+        PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+        if (!tdClient->joinChat(name))
+            purple_serv_got_join_chat_failed (gc, data);
+    } else
+        purple_serv_got_join_chat_failed (gc, data);
 }
 
 static char *tgprpl_get_chat_name (GHashTable * data)

@@ -44,6 +44,7 @@ enum class PurpleEventType: uint8_t {
     ServGotJoinedChat,
     BuddyTypingStart,
     BuddyTypingStop,
+    PresentConversation,
 };
 
 struct PurpleEvent {
@@ -235,6 +236,12 @@ struct BuddyTypingStartEvent: PurpleEvent {
 struct BuddyTypingStopEvent: PurpleEvent {
     PurpleConnection *connection;
     std::string       username;
+};
+
+struct PresentConversationEvent: PurpleEvent {
+    std::string name;
+    PresentConversationEvent(const std::string &name)
+    : PurpleEvent(PurpleEventType::PresentConversation), name(name) {}
 };
 
 #endif

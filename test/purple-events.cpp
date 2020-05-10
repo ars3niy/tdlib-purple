@@ -249,6 +249,7 @@ std::string PurpleEvent::toString() const
     C(ServGotJoinedChat)
     C(BuddyTypingStart)
     C(BuddyTypingStop)
+    C(PresentConversation)
     }
     return std::to_string((unsigned)type);
 #undef C

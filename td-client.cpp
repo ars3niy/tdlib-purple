@@ -1154,3 +1154,33 @@ void PurpleTdClient::notifyFailedContact(const std::string &phoneNumber, const s
     purple_notify_error(purple_account_get_connection(m_account),
                         "Failed to add contact", message.c_str(), NULL);
 }
+
+bool PurpleTdClient::joinChat(const char *chatName)
+{
+    int64_t                 id       = getTdlibChatId(chatName);
+    const td::td_api::chat *chat     = m_data.getChat(id);
+    int32_t                 purpleId = m_data.getPurpleChatId(id);
+    PurpleConvChat         *conv     = NULL;
+    bool                    isMember = false;
+
+    if (chat) {
+        int groupId = getBasicGroupId(*chat);
+        if (groupId) {
+            const td::td_api::basicGroup *group = m_data.getBasicGroup(groupId);
+            isMember = group && isGroupMember(group->status_);
+        }
+        groupId = getSupergroupId(*chat);
+        if (groupId) {
+            const td::td_api::supergroup *group = m_data.getSupergroup(groupId);
+            isMember = group && isGroupMember(group->status_);
+        }
+    }
+
+    if (isMember) {
+        conv = getChatConversation(m_account, *chat, purpleId);
+        if (conv)
+            purple_conversation_present(purple_conv_chat_get_conversation(conv));
+    }
+
+    return conv ? true : false;
+}

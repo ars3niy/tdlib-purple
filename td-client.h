@@ -14,8 +14,9 @@ public:
     ~PurpleTdClient();
 
     static void setLogLevel(int level);
-    int sendMessage(const char *buddyName, const char *message);
+    int  sendMessage(const char *buddyName, const char *message);
     void addContact(const char *phoneNumber, const char *alias);
+    bool joinChat(const char *chatName);
 private:
     friend class UpdateHandler;
     friend class AuthUpdateHandler;

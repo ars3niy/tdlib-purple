@@ -42,3 +42,19 @@ GHashTable *getChatComponents(const td::td_api::chat &chat)
     g_hash_table_insert(table, idKey, g_strdup(name));
     return table;
 }
+
+const char *getChatName(GHashTable *components)
+{
+    return (const char *)g_hash_table_lookup(components, idKey);
+}
+
+int64_t getTdlibChatId(const char *chatName)
+{
+    if (chatName && !strncmp(chatName, "chat", 4)) {
+        long long id;
+        if (sscanf(chatName+4, "%lld", &id) == 1)
+            return id;
+    }
+
+    return 0;
+}
