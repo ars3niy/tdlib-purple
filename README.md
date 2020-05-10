@@ -15,6 +15,12 @@ Missing features:
 * List of members in a group
 * User pictures
 
+## Installation
+
+RPM packages for Fedora and openSUSE are available at https://download.opensuse.org/repositories/home:/ars3niy/ .
+
+Alternatively, build from source (see below).
+
 ## Debugging vs. privacy
 
 It's good to have debug log at hand whenever a glitch is observed, or to be able to reproduce the glitch with loggin turned on. With pidgin, debug log can be turn on like this:
@@ -45,11 +51,7 @@ cmake -DTd_DIR=/path/to/tdlib/usr/local/lib/cmake/Td ..
 make
 ```
 
-## Installation
-
-Copy the .so to libpurple plugins directory.
-
-It's good to have telegram-purple installed as well since its icon is used at the moment.
+To install, copy the .so to libpurple plugins directory, or run `make install`.
 
 ## Regression test
 
