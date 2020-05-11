@@ -121,6 +121,11 @@ static void compare(const sendMessage &actual, const sendMessage &expected)
     compare(actual.input_message_content_, expected.input_message_content_);
 }
 
+static void compare(const getBasicGroupFullInfo &actual, const getBasicGroupFullInfo &expected)
+{
+    ASSERT_EQ(expected.basic_group_id_, actual.basic_group_id_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected)
 {
     ASSERT_EQ(expected.get_id(), actual.get_id()) << "Wrong request type: expected " << requestToString(expected);
@@ -138,6 +143,7 @@ static void compareRequests(const Function &actual, const Function &expected)
         C(viewMessages)
         C(downloadFile)
         C(sendMessage)
+        C(getBasicGroupFullInfo)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

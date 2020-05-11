@@ -38,6 +38,19 @@ static bool isPhoneEqual(const std::string &n1, const std::string &n2)
     return !strcmp(s1, s2);
 }
 
+std::string getDisplayName(const td::td_api::user *user)
+{
+    if (user) {
+        std::string result = user->first_name_;
+        if (!result.empty() && !user->last_name_.empty())
+            result += ' ';
+        result += user->last_name_;
+        return result;
+    }
+
+    return "";
+}
+
 int32_t getBasicGroupId(const td::td_api::chat &chat)
 {
     if (chat.type_ && (chat.type_->get_id() == td::td_api::chatTypeBasicGroup::ID))
@@ -69,7 +82,13 @@ void TdAccountData::updateUser(TdUserPtr user)
 void TdAccountData::updateBasicGroup(TdGroupPtr group)
 {
     if (group)
-        m_groups[group->id_] = std::move(group);
+        m_groups[group->id_].group = std::move(group);
+}
+
+void TdAccountData::updateBasicGroupInfo(int32_t groupId, TdGroupInfoPtr groupInfo)
+{
+    if (groupInfo)
+        m_groups[groupId].fullInfo = std::move(groupInfo);
 }
 
 void TdAccountData::updateSupergroup(TdSupergroupPtr group)
@@ -209,7 +228,16 @@ const td::td_api::basicGroup *TdAccountData::getBasicGroup(int32_t groupId) cons
 {
     auto it = m_groups.find(groupId);
     if (it != m_groups.end())
-        return it->second.get();
+        return it->second.group.get();
+    else
+        return nullptr;
+}
+
+const td::td_api::basicGroupFullInfo *TdAccountData::getBasicGroupInfo(int32_t groupId) const
+{
+    auto it = m_groups.find(groupId);
+    if (it != m_groups.end())
+        return it->second.fullInfo.get();
     else
         return nullptr;
 }
@@ -358,4 +386,20 @@ bool TdAccountData::extractDownloadRequest(uint64_t requestId, int64_t &chatId, 
                              (unsigned long long)requestId);
         return false;
     }
+}
+
+std::unique_ptr<PendingRequest> TdAccountData::getPendingRequestImpl(uint64_t requestId)
+{
+    auto it = std::find_if(m_requests.begin(), m_requests.end(),
+                           [requestId](const std::unique_ptr<PendingRequest> &req) {
+                               return (req->requestId == requestId);
+                           });
+
+    if (it != m_requests.end()) {
+        auto result = std::move(*it);
+        m_requests.erase(it);
+        return result;
+    }
+
+    return nullptr;
 }

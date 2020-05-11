@@ -130,10 +130,10 @@ void CommTest::loginWithOneContact()
 object_ptr<updateUser> CommTest::standardUpdateUser(unsigned index)
 {
     return make_object<updateUser>(makeUser(
-        userIds[0],
-        userFirstNames[0],
-        userLastNames[0],
-        userPhones[0],
+        userIds[index],
+        userFirstNames[index],
+        userLastNames[index],
+        userPhones[index],
         make_object<userStatusOffline>()
     ));
 }

@@ -41,6 +41,8 @@ void GroupChatTest::loginWithBasicGroup()
             std::make_unique<ShowAccountEvent>(account)
         }
     );
+
+    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
 }
 
 TEST_F(GroupChatTest, AddBasicGroupChatAtLogin)
@@ -51,12 +53,15 @@ TEST_F(GroupChatTest, AddBasicGroupChatAtLogin)
 TEST_F(GroupChatTest, AddBasicGroupChat)
 {
     login();
+
     tgl.update(make_object<updateBasicGroup>(make_object<basicGroup>(
         groupId, 2, make_object<chatMemberStatusMember>(), true, 0
     )));
+    tgl.verifyNoRequests();
     tgl.update(make_object<updateNewChat>(makeChat(
         groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
     )));
+    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
 
     prpl.verifyEvents(AddChatEvent(
         "chat" + std::to_string(groupChatId), groupChatTitle, account, NULL, NULL
@@ -82,6 +87,8 @@ TEST_F(GroupChatTest, ExistingBasicGroupChatAtLogin)
         make_object<users>(),
         make_object<chats>(std::vector<int64_t>(1, groupChatId))
     );
+
+    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
 }
 
 TEST_F(GroupChatTest, BasicGroupReceiveText)
@@ -168,7 +175,7 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
     ));
 }
 
-TEST_F(GroupChatTest, BasicGroupReceiveMessageAtLogin)
+TEST_F(GroupChatTest, BasicGroupReceiveMessageAtLogin_WithMemberList)
 {
     constexpr int64_t messageId = 10001;
     constexpr int32_t date      = 12345;
@@ -208,22 +215,94 @@ TEST_F(GroupChatTest, BasicGroupReceiveMessageAtLogin)
         },
         {make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true)}
     );
+
+    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
+    tgl.update(standardUpdateUser(1));
+    std::vector<object_ptr<chatMember>> members;
+    members.push_back(make_object<chatMember>(
+        userIds[0],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    members.push_back(make_object<chatMember>(
+        userIds[1],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusCreator>(),
+        nullptr
+    ));
+    tgl.reply(make_object<basicGroupFullInfo>(
+        "basic group",
+        userIds[1],
+        std::move(members),
+        ""
+    ));
+
+    // One code path: adding chat users upon receiving getBasicGroupFullInfo reply
+    prpl.verifyEvents(
+        ChatAddUserEvent(
+            "chat" + std::to_string(groupChatId),
+            userFirstNames[0] + " " + userLastNames[0],
+            "", PURPLE_CBFLAGS_NONE, false
+        ),
+        ChatAddUserEvent(
+            "chat" + std::to_string(groupChatId),
+            userFirstNames[1] + " " + userLastNames[1],
+            "", PURPLE_CBFLAGS_FOUNDER, false
+        )
+    );
 }
 
-TEST_F(GroupChatTest, SendMessage)
+TEST_F(GroupChatTest, SendMessageWithMemberList)
 {
     constexpr int64_t messageId = 10001;
     constexpr int32_t date      = 12345;
 
     loginWithBasicGroup();
 
+    tgl.update(standardUpdateUser(1));
+    std::vector<object_ptr<chatMember>> members;
+    members.push_back(make_object<chatMember>(
+        userIds[0],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    members.push_back(make_object<chatMember>(
+        userIds[1],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusCreator>(),
+        nullptr
+    ));
+    tgl.reply(make_object<basicGroupFullInfo>(
+        "basic group",
+        userIds[1],
+        std::move(members),
+        ""
+    ));
+
     GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
     g_hash_table_insert(components, (char *)"id", g_strdup(("chat" + std::to_string(groupChatId)).c_str()));
     pluginInfo().join_chat(connection, components);
     g_hash_table_destroy(components);
 
+    // Another code path: adding chat users upon opening chat, with basicGroupFullInfo before that
     prpl.verifyEvents(
         ServGotJoinedChatEvent(connection, 1, "chat" + std::to_string(groupChatId), groupChatTitle),
+        ChatAddUserEvent(
+            "chat" + std::to_string(groupChatId),
+            userFirstNames[0] + " " + userLastNames[0],
+            "", PURPLE_CBFLAGS_NONE, false
+        ),
+        ChatAddUserEvent(
+            "chat" + std::to_string(groupChatId),
+            userFirstNames[1] + " " + userLastNames[1],
+            "", PURPLE_CBFLAGS_FOUNDER, false
+        ),
         PresentConversationEvent("chat" + std::to_string(groupChatId))
     );
     tgl.verifyNoRequests();

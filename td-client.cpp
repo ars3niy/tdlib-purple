@@ -8,6 +8,31 @@ enum {
     FILE_DOWNLOAD_PRIORITY       = 1
 };
 
+static void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
+                           const TdAccountData &accountData)
+{
+    GList *names = NULL;
+    GList *flags = NULL;
+    std::vector<std::string> nameData;
+    for (const auto &member: groupInfo.members_)
+        if (member && isGroupMember(member->status_)) {
+            const td::td_api::user *user = accountData.getUser(member->user_id_);
+            if (user) {
+                nameData.emplace_back(getDisplayName(user));
+                names = g_list_append(names, const_cast<char *>(nameData.back().c_str()));
+                PurpleConvChatBuddyFlags flag;
+                if (member->status_->get_id() == td::td_api::chatMemberStatusCreator::ID)
+                    flag = PURPLE_CBFLAGS_FOUNDER;
+                else if (member->status_->get_id() == td::td_api::chatMemberStatusAdministrator::ID)
+                    flag = PURPLE_CBFLAGS_OP;
+                else
+                    flag = PURPLE_CBFLAGS_NONE;
+                flags = g_list_append(flags, GINT_TO_POINTER(flag));
+            }
+        }
+    purple_conv_chat_add_users(purpleChat, names, NULL, flags, false);
+}
+
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)
 :   m_transceiver(this, &PurpleTdClient::processUpdate, testBackend)
 {
@@ -452,6 +477,39 @@ void PurpleTdClient::updateSupergroupChat(int32_t groupId)
     }
 }
 
+void PurpleTdClient::requestBasicGroupMembers(int32_t groupId)
+{
+    uint64_t requestId = m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getBasicGroupFullInfo>(groupId),
+                                                 &PurpleTdClient::groupInfoResponse);
+    m_data.addPendingRequest<GroupInfoRequest>(requestId, groupId);
+}
+
+// TODO process messageChatAddMembers and messageChatDeleteMember
+// TODO process messageChatUpgradeTo and messageChatUpgradeFrom
+void PurpleTdClient::groupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<GroupInfoRequest> request = m_data.getPendingRequest<GroupInfoRequest>(requestId);
+
+    if (request && object && (object->get_id() == td::td_api::basicGroupFullInfo::ID)) {
+        td::td_api::object_ptr<td::td_api::basicGroupFullInfo> groupInfo =
+            td::move_tl_object_as<td::td_api::basicGroupFullInfo>(object);
+        const td::td_api::chat *chat = m_data.getBasicGroupChatByGroup(request->groupId);
+
+        if (chat) {
+            std::string         name = getChatName(*chat);
+            PurpleConversation *conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_CHAT,
+                                                                             name.c_str(), m_account);
+            PurpleConvChat     *purpleChat = conv ? purple_conversation_get_chat_data(conv) : NULL;
+
+            if (purpleChat)
+                setChatMembers(purpleChat, *groupInfo, m_data);
+        }
+
+        purple_debug_misc(config::pluginId, "Group %d info=%p\n", request->groupId, groupInfo.get());
+        m_data.updateBasicGroupInfo(request->groupId, std::move(groupInfo));
+    }
+}
+
 void PurpleTdClient::updatePurpleChatListAndReportConnected()
 {
     purple_connection_set_state (purple_account_get_connection(m_account), PURPLE_CONNECTED);
@@ -468,8 +526,10 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
         }
 
         int32_t groupId = getBasicGroupId(*chat);
-        if (groupId)
+        if (groupId) {
+            requestBasicGroupMembers(groupId);
             updateBasicGroupChat(groupId);
+        }
         groupId = getSupergroupId(*chat);
         if (groupId)
             updateSupergroupChat(groupId);
@@ -500,9 +560,10 @@ static PurpleConversation *getImConversation(PurpleAccount *account, const char 
 }
 
 static PurpleConvChat *getChatConversation(PurpleAccount *account, const td::td_api::chat &chat,
-                                           int chatPurpleId)
+                                           int chatPurpleId, TdAccountData &accountData)
 {
-    std::string chatName = getChatName(chat);
+    std::string chatName       = getChatName(chat);
+    bool        newChatCreated = false;
     PurpleConversation *conv = purple_find_chat(purple_account_get_connection(account), chatPurpleId);
     if (conv == NULL) {
         if (chatPurpleId != 0) {
@@ -516,12 +577,26 @@ static PurpleConvChat *getChatConversation(PurpleAccount *account, const td::td_
             conv = purple_find_chat(purple_account_get_connection(account), chatPurpleId);
             if (conv == NULL)
                 purple_debug_warning(config::pluginId, "Did not create conversation for chat %s\n", chat.title_.c_str());
+            else
+                newChatCreated = true;
+
         } else
             purple_debug_warning(config::pluginId, "No internal ID for chat %s\n", chat.title_.c_str());
     }
 
-    if (conv)
-        return purple_conversation_get_chat_data(conv);
+    if (conv) {
+        PurpleConvChat *purpleChat   = purple_conversation_get_chat_data(conv);
+
+        if (purpleChat && newChatCreated) {
+            int32_t                               basicGroupId = getBasicGroupId(chat);
+            const td::td_api::basicGroupFullInfo *groupInfo    = basicGroupId ? accountData.getBasicGroupInfo(basicGroupId) : nullptr;
+            if (groupInfo)
+                setChatMembers(purpleChat, *groupInfo, accountData);
+        }
+
+        return purpleChat;
+    }
+
     return NULL;
 }
 
@@ -556,7 +631,7 @@ void PurpleTdClient::showMessageTextChat(const td::td_api::chat &chat, const std
 {
     // Again, doing what facebook plugin does
     int purpleId = m_data.getPurpleChatId(chat.id_);
-    PurpleConvChat *conv = getChatConversation(m_account, chat, purpleId);
+    PurpleConvChat *conv = getChatConversation(m_account, chat, purpleId, m_data);
 
     if (text) {
         if (outgoing) {
@@ -590,30 +665,17 @@ void PurpleTdClient::showMessageText(const td::td_api::chat &chat, const std::st
         showMessageTextChat(chat, sender, text, notification, timestamp, outgoing);
 }
 
-static std::string getSenderPurpleName(const td::td_api::user *user)
-{
-    if (user) {
-        std::string result = user->first_name_;
-        if (!result.empty() && !user->last_name_.empty())
-            result += ' ';
-        result += user->last_name_;
-        return result;
-    }
-
-    return "";
-}
-
 std::string PurpleTdClient::getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message)
 {
     if (!message.is_outgoing_ && (getBasicGroupId(chat) || getSupergroupId(chat))) {
         if (message.sender_user_id_)
-            return ::getSenderPurpleName(m_data.getUser(message.sender_user_id_));
+            return getDisplayName(m_data.getUser(message.sender_user_id_));
         else if (!message.author_signature_.empty())
             return message.author_signature_;
         else if (message.forward_info_ && message.forward_info_->origin_)
             switch (message.forward_info_->origin_->get_id()) {
             case td::td_api::messageForwardOriginUser::ID:
-                return ::getSenderPurpleName(m_data.getUser(static_cast<const td::td_api::messageForwardOriginUser &>(*message.forward_info_->origin_).sender_user_id_));
+                return getDisplayName(m_data.getUser(static_cast<const td::td_api::messageForwardOriginUser &>(*message.forward_info_->origin_).sender_user_id_));
             case td::td_api::messageForwardOriginHiddenUser::ID:
                 return static_cast<const td::td_api::messageForwardOriginHiddenUser &>(*message.forward_info_->origin_).sender_name_;
             case td::td_api::messageForwardOriginChannel::ID:
@@ -998,8 +1060,10 @@ void PurpleTdClient::addChat(td::td_api::object_ptr<td::td_api::chat> chat)
     m_data.addChat(std::move(chat));
 
     // purple_blist_find_chat doesn't work if account is not connected
-    if (basicGroupId && purple_account_is_connected(m_account))
+    if (basicGroupId && purple_account_is_connected(m_account)) {
+        requestBasicGroupMembers(basicGroupId);
         updateBasicGroupChat(basicGroupId);
+    }
     if (supergroupId && purple_account_is_connected(m_account))
         updateSupergroupChat(supergroupId);
 }
@@ -1172,7 +1236,7 @@ bool PurpleTdClient::joinChat(const char *chatName)
         purple_debug_warning(config::pluginId, "Chat %s (%s) is not a group we a member of\n",
                              chatName, chat->title_.c_str());
     else if (purpleId) {
-        conv = getChatConversation(m_account, *chat, purpleId);
+        conv = getChatConversation(m_account, *chat, purpleId, m_data);
         if (conv)
             purple_conversation_present(purple_conv_chat_get_conversation(conv));
     }

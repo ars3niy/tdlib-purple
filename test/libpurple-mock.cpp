@@ -609,4 +609,20 @@ void purple_conversation_present(PurpleConversation *conv)
     EVENT(PresentConversationEvent, conv->name);
 }
 
+void purple_conv_chat_add_user(PurpleConvChat *chat, const char *user,
+							 const char *extra_msg, PurpleConvChatBuddyFlags flags,
+							 gboolean new_arrival)
+{
+    EVENT(ChatAddUserEvent, chat->conv->name, user, extra_msg ? extra_msg : "", flags, new_arrival);
+}
+
+void purple_conv_chat_add_users(PurpleConvChat *chat, GList *users, GList *extra_msgs,
+							  GList *flags, gboolean new_arrivals)
+{
+    GList *user, *flag;
+    for (user = users, flag = flags; user; user = user->next, flag = flag->next)
+        purple_conv_chat_add_user(chat, (const char *)user->data, NULL,
+                                  (PurpleConvChatBuddyFlags)GPOINTER_TO_INT(flag->data), new_arrivals);
+}
+
 };

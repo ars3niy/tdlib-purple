@@ -60,6 +60,7 @@ enum class PurpleEventType: uint8_t {
     BuddyTypingStart,
     BuddyTypingStop,
     PresentConversation,
+    ChatAddUser,
 };
 
 struct PurpleEvent {
@@ -260,6 +261,19 @@ struct PresentConversationEvent: PurpleEvent {
     std::string name;
     PresentConversationEvent(const std::string &name)
     : PurpleEvent(PurpleEventType::PresentConversation), name(name) {}
+};
+
+struct ChatAddUserEvent: PurpleEvent {
+    std::string chatName;
+    std::string user;
+    std::string extra_msg;
+    PurpleConvChatBuddyFlags flags;
+    bool new_arrival;
+
+    ChatAddUserEvent(const std::string &chatName, const std::string &user, const std::string &extra_msg,
+                      PurpleConvChatBuddyFlags flags, gboolean new_arrival)
+    : PurpleEvent(PurpleEventType::ChatAddUser), chatName(chatName), user(user), extra_msg(extra_msg),
+      flags(flags), new_arrival(new_arrival) {}
 };
 
 #endif

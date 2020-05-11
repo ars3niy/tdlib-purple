@@ -12,7 +12,6 @@ Missing features:
 * Sending any files
 * Joining new groups (groups we got added to, or which we joined in some other client, will be shown)
 * Leaving groups
-* List of members in a group
 * User pictures
 
 ## Installation
