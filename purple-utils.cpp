@@ -192,4 +192,6 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
             }
         }
     purple_conv_chat_add_users(purpleChat, names, NULL, flags, false);
+    g_list_free(names);
+    g_list_free(flags);
 }
