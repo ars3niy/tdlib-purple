@@ -177,37 +177,40 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
     GList         *flags   = NULL;
     std::vector<std::string> nameData;
 
-    for (const auto &member: groupInfo.members_)
-        if (member && isGroupMember(member->status_)) {
-            const td::td_api::user *user = accountData.getUser(member->user_id_);
-            if (user) {
-                const char *name = getPurpleUserName(*user);
-                if (name && *name && purple_find_buddy(account, name))
-                    // We know phone number for the user, and libpurple will be able to map phone
-                    // number to alias because there is a buddy
-                    nameData.emplace_back(name);
-                else {
-                    std::string displayName = getDisplayName(user);
+    for (const auto &member: groupInfo.members_) {
+        if (!member || !isGroupMember(member->status_))
+            continue;
 
-                    // Don't get confused by sneaky users who set their name equal to
-                    // someone else's phone number
-                    if (isCanonicalPhoneNumber(displayName.c_str()))
-                        displayName += ' ';
+        const td::td_api::user *user = accountData.getUser(member->user_id_);
+        if (!user)
+            continue;
 
-                    nameData.emplace_back(displayName);
-                }
+        const char *name = getPurpleUserName(*user);
+        if (name && *name && purple_find_buddy(account, name))
+            // We know phone number for the user, and libpurple will be able to map phone
+            // number to alias because there is a buddy
+            nameData.emplace_back(name);
+        else {
+            std::string displayName = getDisplayName(user);
 
-                names = g_list_append(names, const_cast<char *>(nameData.back().c_str()));
-                PurpleConvChatBuddyFlags flag;
-                if (member->status_->get_id() == td::td_api::chatMemberStatusCreator::ID)
-                    flag = PURPLE_CBFLAGS_FOUNDER;
-                else if (member->status_->get_id() == td::td_api::chatMemberStatusAdministrator::ID)
-                    flag = PURPLE_CBFLAGS_OP;
-                else
-                    flag = PURPLE_CBFLAGS_NONE;
-                flags = g_list_append(flags, GINT_TO_POINTER(flag));
-            }
+            // Don't get confused by sneaky users who set their name equal to
+            // someone else's phone number
+            if (isCanonicalPhoneNumber(displayName.c_str()))
+                displayName += ' ';
+
+            nameData.emplace_back(displayName);
         }
+
+        names = g_list_append(names, const_cast<char *>(nameData.back().c_str()));
+        PurpleConvChatBuddyFlags flag;
+        if (member->status_->get_id() == td::td_api::chatMemberStatusCreator::ID)
+            flag = PURPLE_CBFLAGS_FOUNDER;
+        else if (member->status_->get_id() == td::td_api::chatMemberStatusAdministrator::ID)
+            flag = PURPLE_CBFLAGS_OP;
+        else
+            flag = PURPLE_CBFLAGS_NONE;
+        flags = g_list_append(flags, GINT_TO_POINTER(flag));
+    }
 
     purple_conv_chat_add_users(purpleChat, names, NULL, flags, false);
     g_list_free(names);
