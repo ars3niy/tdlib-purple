@@ -354,6 +354,11 @@ PurpleConvChat *purple_conversation_get_chat_data(const PurpleConversation *conv
     return NULL;
 }
 
+PurpleAccount *purple_conversation_get_account(const PurpleConversation *conv)
+{
+    return conv->account;
+}
+
 void purple_conversation_write(PurpleConversation *conv, const char *who,
 		const char *message, PurpleMessageFlags flags,
 		time_t mtime)

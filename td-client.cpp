@@ -468,7 +468,6 @@ void PurpleTdClient::groupInfoResponse(uint64_t requestId, td::td_api::object_pt
                 setChatMembers(purpleChat, *groupInfo, m_data);
         }
 
-        purple_debug_misc(config::pluginId, "Group %d info=%p\n", request->groupId, groupInfo.get());
         m_data.updateBasicGroupInfo(request->groupId, std::move(groupInfo));
     }
 }

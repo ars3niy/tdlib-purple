@@ -175,7 +175,7 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
     ));
 }
 
-TEST_F(GroupChatTest, BasicGroupReceiveMessageAtLogin_WithMemberList)
+TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
 {
     constexpr int64_t messageId = 10001;
     constexpr int32_t date      = 12345;
@@ -184,6 +184,7 @@ TEST_F(GroupChatTest, BasicGroupReceiveMessageAtLogin_WithMemberList)
     g_hash_table_insert(table, (char *)"id", g_strdup(("chat" + std::to_string(groupChatId)).c_str()));
     purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), table), NULL, NULL);
 
+    // Pre-add one of two group members as a contact
     purple_blist_add_buddy(purple_buddy_new(account, userPhones[0].c_str(),
                                             (userFirstNames[0] + " " + userLastNames[0]).c_str()),
                            NULL, NULL, NULL);
@@ -191,7 +192,10 @@ TEST_F(GroupChatTest, BasicGroupReceiveMessageAtLogin_WithMemberList)
 
     login(
         {
+            // Private chat with the contact
             standardUpdateUser(0),
+            standardPrivateChat(0),
+
             make_object<updateBasicGroup>(make_object<basicGroup>(
                 groupId, 2, make_object<chatMemberStatusMember>(), true, 0
             )),
@@ -202,15 +206,15 @@ TEST_F(GroupChatTest, BasicGroupReceiveMessageAtLogin_WithMemberList)
                 makeMessage(messageId, userIds[0], groupChatId, false, date, makeTextMessage("Hello"))
             )
         },
-        make_object<users>(),
+        make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
         make_object<chats>(std::vector<int64_t>(1, groupChatId)),
         {
             // TODO: chat title is wrong here because libpurple doesn't find the chat in contact
             // list while the contact is not online, and thus has no way of knowing the chat alias.
             // Real libpurple works like that and our mock version mirrors the behaviour.
-            std::make_unique<ServGotJoinedChatEvent>(connection, 1, "chat" + std::to_string(groupChatId),
+            std::make_unique<ServGotJoinedChatEvent>(connection, 2, "chat" + std::to_string(groupChatId),
                                                      "chat" + std::to_string(groupChatId)),
-            std::make_unique<ServGotChatEvent>(connection, 1, userFirstNames[0] + " " + userLastNames[0],
+            std::make_unique<ServGotChatEvent>(connection, 2, userFirstNames[0] + " " + userLastNames[0],
                                                "Hello", PURPLE_MESSAGE_RECV, date)
         },
         {make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true)}
@@ -240,15 +244,18 @@ TEST_F(GroupChatTest, BasicGroupReceiveMessageAtLogin_WithMemberList)
         ""
     ));
 
-    // One code path: adding chat users upon receiving getBasicGroupFullInfo reply
+    // One code path: adding chat users upon receiving getBasicGroupFullInfo reply, because the chat
+    // window is already open due to the received message
     prpl.verifyEvents(
         ChatAddUserEvent(
             "chat" + std::to_string(groupChatId),
-            userFirstNames[0] + " " + userLastNames[0],
+            // This user is in our contact list so his phone number is used
+            userPhones[0],
             "", PURPLE_CBFLAGS_NONE, false
         ),
         ChatAddUserEvent(
             "chat" + std::to_string(groupChatId),
+            // This user is not in our contact list so phone number is not use even though it's known
             userFirstNames[1] + " " + userLastNames[1],
             "", PURPLE_CBFLAGS_FOUNDER, false
         )

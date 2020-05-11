@@ -172,14 +172,31 @@ void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &chat,
 void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
                     const TdAccountData &accountData)
 {
-    GList *names = NULL;
-    GList *flags = NULL;
+    PurpleAccount *account = purple_conversation_get_account(purple_conv_chat_get_conversation(purpleChat));
+    GList         *names   = NULL;
+    GList         *flags   = NULL;
     std::vector<std::string> nameData;
+
     for (const auto &member: groupInfo.members_)
         if (member && isGroupMember(member->status_)) {
             const td::td_api::user *user = accountData.getUser(member->user_id_);
             if (user) {
-                nameData.emplace_back(getDisplayName(user));
+                const char *name = getPurpleUserName(*user);
+                if (name && *name && purple_find_buddy(account, name))
+                    // We know phone number for the user, and libpurple will be able to map phone
+                    // number to alias because there is a buddy
+                    nameData.emplace_back(name);
+                else {
+                    std::string displayName = getDisplayName(user);
+
+                    // Don't get confused by sneaky users who set their name equal to
+                    // someone else's phone number
+                    if (isCanonicalPhoneNumber(displayName.c_str()))
+                        displayName += ' ';
+
+                    nameData.emplace_back(displayName);
+                }
+
                 names = g_list_append(names, const_cast<char *>(nameData.back().c_str()));
                 PurpleConvChatBuddyFlags flag;
                 if (member->status_->get_id() == td::td_api::chatMemberStatusCreator::ID)
@@ -191,6 +208,7 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
                 flags = g_list_append(flags, GINT_TO_POINTER(flag));
             }
         }
+
     purple_conv_chat_add_users(purpleChat, names, NULL, flags, false);
     g_list_free(names);
     g_list_free(flags);
