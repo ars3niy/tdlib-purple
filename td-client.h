@@ -75,14 +75,12 @@ private:
     void       showPhoto(int64_t chatId, const std::string &sender, int32_t timestamp, bool outgoing,
                          const std::string &filePath);
 
-    PurpleAccount                      *m_account;
-    TdTransceiver                       m_transceiver;
-    TdAccountData                       m_data;
-
-    // These data structures are only used in poll thread and therefore don't need to be thread-safe
-    int32_t                             m_lastAuthState = 0;
-    TdAuthCodePtr                       m_authCodeInfo;
-    std::vector<int32_t>                m_usersForNewPrivateChats;
+    PurpleAccount        *m_account;
+    TdTransceiver         m_transceiver;
+    TdAccountData         m_data;
+    int32_t               m_lastAuthState = 0;
+    TdAuthCodePtr         m_authCodeInfo;
+    std::vector<int32_t>  m_usersForNewPrivateChats;
 };
 
 #endif
