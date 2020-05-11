@@ -237,6 +237,13 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
         make_object<chatMemberStatusCreator>(),
         nullptr
     ));
+    members.push_back(make_object<chatMember>(
+        selfId,
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
     tgl.reply(make_object<basicGroupFullInfo>(
         "basic group",
         userIds[1],
@@ -258,6 +265,12 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
             // This user is not in our contact list so phone number is not use even though it's known
             userFirstNames[1] + " " + userLastNames[1],
             "", PURPLE_CBFLAGS_FOUNDER, false
+        ),
+        ChatAddUserEvent(
+            "chat" + std::to_string(groupChatId),
+            // This is us (with + to match account name)
+            "+" + selfPhoneNumber,
+            "", PURPLE_CBFLAGS_NONE, false
         )
     );
 }
@@ -285,6 +298,13 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
         make_object<chatMemberStatusCreator>(),
         nullptr
     ));
+    members.push_back(make_object<chatMember>(
+        selfId,
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
     tgl.reply(make_object<basicGroupFullInfo>(
         "basic group",
         userIds[1],
@@ -309,6 +329,12 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
             "chat" + std::to_string(groupChatId),
             userFirstNames[1] + " " + userLastNames[1],
             "", PURPLE_CBFLAGS_FOUNDER, false
+        ),
+        ChatAddUserEvent(
+            "chat" + std::to_string(groupChatId),
+            // This is us (with + to match account name)
+            "+" + selfPhoneNumber,
+            "", PURPLE_CBFLAGS_NONE, false
         ),
         PresentConversationEvent("chat" + std::to_string(groupChatId))
     );

@@ -19,7 +19,7 @@ protected:
     PurpleAccount       *account;
     PurpleConnection    *connection;
 
-    const std::string phoneNumber       = "1234567";
+    const std::string selfPhoneNumber   = "1234567";
     const int         selfId            = 1;
     const std::string selfFirstName     = "Isaac";
     const std::string selfLastName      = "Newton";

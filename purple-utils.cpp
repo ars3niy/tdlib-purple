@@ -185,17 +185,29 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
         if (!user)
             continue;
 
-        const char *name = getPurpleUserName(*user);
-        if (name && *name && purple_find_buddy(account, name))
-            // We know phone number for the user, and libpurple will be able to map phone
-            // number to alias because there is a buddy
-            nameData.emplace_back(name);
-        else {
+        const char *phoneNumber = getPurpleUserName(*user);
+        if (phoneNumber && *phoneNumber) {
+            if (purple_find_buddy(account, phoneNumber))
+                // We know phone number for the user, and libpurple will be able to map phone
+                // number to alias because there is a buddy
+                nameData.emplace_back(phoneNumber);
+            else if (!strcmp(getCanonicalPhoneNumber(purple_account_get_username(account)), phoneNumber))
+                // This is us, so again libpurple will map phone number to alias
+                nameData.emplace_back(purple_account_get_username(account));
+            else
+                // Use first/last name instead
+                phoneNumber = NULL;
+        }
+
+        if (!phoneNumber || !*phoneNumber) {
             std::string displayName = getDisplayName(user);
 
             // Don't get confused by sneaky users who set their name equal to
-            // someone else's phone number
-            if (isCanonicalPhoneNumber(displayName.c_str()))
+            // someone else's phone number (the user can still be confused but at least there will
+            // be no bugs)
+            // Buddy cannot have leading + in their name but our own account can, so tweak any
+            // phone-number-looking name
+            if (isPhoneNumber(displayName.c_str()))
                 displayName += ' ';
 
             nameData.emplace_back(displayName);

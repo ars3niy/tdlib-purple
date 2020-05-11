@@ -9,7 +9,7 @@ CommTest::CommTest()
 
 void CommTest::SetUp()
 {
-    account = purple_account_new(("+" + phoneNumber).c_str(), NULL);
+    account = purple_account_new(("+" + selfPhoneNumber).c_str(), NULL);
     connection = new PurpleConnection;
     connection->state = PURPLE_DISCONNECTED;
     connection->account = account;
@@ -39,7 +39,7 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     tgl.verifyRequest(setTdlibParameters(make_object<tdlibParameters>(
         false,
         std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
-        "tdlib" + G_DIR_SEPARATOR_S + "+" + phoneNumber,
+        "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
         "",
         false,
         false,
@@ -62,7 +62,7 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     tgl.reply(make_object<ok>());
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitPhoneNumber>()));
-    tgl.verifyRequest(setAuthenticationPhoneNumber("+" + phoneNumber, nullptr));
+    tgl.verifyRequest(setAuthenticationPhoneNumber("+" + selfPhoneNumber, nullptr));
     tgl.reply(make_object<ok>());
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
@@ -83,7 +83,7 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
         selfId,
         selfFirstName,
         selfLastName,
-        phoneNumber, // Phone number here without + to make it more interesting
+        selfPhoneNumber, // Phone number here without + to make it more interesting
         make_object<userStatusOffline>()
     )));
     for (const object_ptr<Object> &update: extraUpdates)
