@@ -286,7 +286,7 @@ TEST_F(PrivateChatTest, RenameBuddyAtConnect)
         {standardUpdateUser(0), standardPrivateChat(0)},
         make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
         make_object<chats>(std::vector<int64_t>(1, chatIds[0])),
-        {},
+        {}, {},
         {
             std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
             std::make_unique<RemoveBuddyEvent>(account, userPhones[0]),

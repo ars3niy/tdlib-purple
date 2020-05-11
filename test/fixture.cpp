@@ -30,8 +30,8 @@ void CommTest::TearDown()
 void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, object_ptr<users> getContactsReply,
                      object_ptr<chats> getChatsReply,
                      std::initializer_list<std::unique_ptr<PurpleEvent>> postUpdateEvents,
-                     std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents,
-                     std::initializer_list<object_ptr<Function>> postUpdateRequests)
+                     std::initializer_list<object_ptr<Function>> postUpdateRequests,
+                     std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents)
 {
     pluginInfo().login(account);
 
@@ -99,14 +99,14 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     tgl.verifyRequest(getChats());
 
     tgl.reply(std::move(getChatsReply));
-    if (postLoginEvents.size() != 0)
-        prpl.verifyEvents2(std::move(postLoginEvents));
-    else
+    if ((postLoginEvents.size() == 1) && (*postLoginEvents.begin() == nullptr))
         prpl.verifyEvents(
             ConnectionSetStateEvent(connection, PURPLE_CONNECTED),
             AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
             ShowAccountEvent(account)
         );
+    else
+        prpl.verifyEvents2(std::move(postLoginEvents));
 }
 
 void CommTest::loginWithOneContact()
@@ -115,7 +115,7 @@ void CommTest::loginWithOneContact()
         {standardUpdateUser(0), standardPrivateChat(0)},
         make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
         make_object<chats>(std::vector<int64_t>(1, chatIds[0])),
-        {},
+        {}, {},
         {
             std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
             std::make_unique<AddBuddyEvent>(userPhones[0], userFirstNames[0] + " " + userLastNames[0],

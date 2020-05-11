@@ -31,7 +31,7 @@ void GroupChatTest::loginWithBasicGroup()
         },
         make_object<users>(),
         make_object<chats>(std::vector<int64_t>(1, groupChatId)),
-        {},
+        {}, {},
         {
             std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
             std::make_unique<AddChatEvent>(
@@ -206,7 +206,6 @@ TEST_F(GroupChatTest, BasicGroupReceiveMessageAtLogin)
             std::make_unique<ServGotChatEvent>(connection, 1, userFirstNames[0] + " " + userLastNames[0],
                                                "Hello", PURPLE_MESSAGE_RECV, date)
         },
-        {},
         {make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true)}
     );
 }
