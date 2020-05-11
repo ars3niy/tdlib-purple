@@ -26,6 +26,7 @@ add_library(telegram-tdlib SHARED
     account-data.cpp
     chat-info.cpp
     config.cpp
+    purple-utils.cpp
 )
 
 target_compile_definitions(telegram-tdlib PRIVATE

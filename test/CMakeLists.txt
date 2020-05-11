@@ -19,6 +19,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     ../account-data.cpp
     ../chat-info.cpp
     ../config.cpp
+    ../purple-utils.cpp
 )
 
 target_compile_definitions(tests PRIVATE

@@ -47,8 +47,6 @@ private:
     void       showMessage(const td::td_api::chat &chat, const td::td_api::message &message);
     void       showMessageText(const td::td_api::chat &chat, const std::string &sender, const char *text,
                                const char *notification, time_t timestamp, bool outgoing);
-    void       showMessageTextChat(const td::td_api::chat &chat, const std::string &sender, const char *text,
-                                   const char *notification, time_t timestamp, bool outgoing);
     void       showTextMessage(const td::td_api::chat &chat, const td::td_api::message &message,const td::td_api::messageText &text);
     void       showPhotoMessage(const td::td_api::chat &chat, const td::td_api::message &message, const td::td_api::messagePhoto &photo);
     void       showDocument(const td::td_api::chat &chat, const td::td_api::message &message, const td::td_api::messageDocument &document);
