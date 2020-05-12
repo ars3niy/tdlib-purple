@@ -8,6 +8,7 @@ void TestTransceiver::send(td::Client::Request &&request)
 {
     ASSERT_EQ(expectedRequestId, request.id);
     expectedRequestId++;
+    std::cout << "Received: " << requestToString(*request.function) << std::endl;
     m_requests.push(std::move(request));
 }
 
@@ -30,6 +31,8 @@ void TestTransceiver::verifyRequests(std::initializer_list<td::td_api::object_pt
     }
     verifyNoRequests();
 }
+
+#define COMPARE(param) ASSERT_EQ(expected.param, actual.param)
 
 static void compare(const setTdlibParameters &actual, const setTdlibParameters &expected)
 {
@@ -126,6 +129,11 @@ static void compare(const getBasicGroupFullInfo &actual, const getBasicGroupFull
     ASSERT_EQ(expected.basic_group_id_, actual.basic_group_id_);
 }
 
+static void compare(const joinChatByInviteLink &actual, const joinChatByInviteLink &expected)
+{
+    COMPARE(invite_link_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected)
 {
     ASSERT_EQ(expected.get_id(), actual.get_id()) << "Wrong request type: expected " << requestToString(expected);
@@ -144,6 +152,7 @@ static void compareRequests(const Function &actual, const Function &expected)
         C(downloadFile)
         C(sendMessage)
         C(getBasicGroupFullInfo)
+        C(joinChatByInviteLink)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

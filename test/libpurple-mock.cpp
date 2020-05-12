@@ -184,6 +184,15 @@ const char *purple_buddy_get_name(const PurpleBuddy *buddy)
     return buddy->name;
 }
 
+static void newNode(PurpleBlistNode &node, PurpleBlistNodeType type)
+{
+    node.child = NULL;
+    node.next = NULL;
+    node.parent = NULL;
+    node.prev = NULL;
+    node.type = type;
+}
+
 PurpleBuddy *purple_buddy_new(PurpleAccount *account, const char *name, const char *alias)
 {
     PurpleBuddy *buddy = new PurpleBuddy;
@@ -192,6 +201,7 @@ PurpleBuddy *purple_buddy_new(PurpleAccount *account, const char *name, const ch
     buddy->name = strdup(name);
     buddy->alias = strdup(alias);
     buddy->node.parent = NULL;
+    newNode(buddy->node, PURPLE_BLIST_BUDDY_NODE);
 
     return buddy;
 }
@@ -202,7 +212,7 @@ PurpleChat *purple_chat_new(PurpleAccount *account, const char *alias, GHashTabl
     chat->account = account;
     chat->alias = strdup(alias);
     chat->components = components;
-    chat->node.parent = NULL;
+    newNode(chat->node, PURPLE_BLIST_CHAT_NODE);
     return chat;
 }
 
@@ -628,6 +638,31 @@ void purple_conv_chat_add_users(PurpleConvChat *chat, GList *users, GList *extra
     for (user = users, flag = flags; user; user = user->next, flag = flag->next)
         purple_conv_chat_add_user(chat, (const char *)user->data, NULL,
                                   (PurpleConvChatBuddyFlags)GPOINTER_TO_INT(flag->data), new_arrivals);
+}
+
+PurpleBlistNode *purple_blist_get_root(void)
+{
+    return NULL;
+}
+
+PurpleBlistNode *purple_blist_node_get_sibling_next(PurpleBlistNode *node)
+{
+    return node->next;
+}
+
+PurpleBlistNodeType purple_blist_node_get_type(PurpleBlistNode *node)
+{
+    return node->type;
+}
+
+GHashTable *purple_chat_get_components(PurpleChat *chat)
+{
+    return chat->components;
+}
+
+PurpleBlistNode *purple_blist_node_get_first_child(PurpleBlistNode *node)
+{
+    return node->child;
 }
 
 };

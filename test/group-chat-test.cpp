@@ -50,7 +50,7 @@ TEST_F(GroupChatTest, AddBasicGroupChatAtLogin)
     loginWithBasicGroup();
 }
 
-TEST_F(GroupChatTest, AddBasicGroupChat)
+TEST_F(GroupChatTest, BasicGroupChatAppearsAfterLogin)
 {
     login();
 
@@ -262,7 +262,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
         ),
         ChatAddUserEvent(
             "chat" + std::to_string(groupChatId),
-            // This user is not in our contact list so phone number is not use even though it's known
+            // This user is not in our contact list so first/last name is used
             userFirstNames[1] + " " + userLastNames[1],
             "", PURPLE_CBFLAGS_FOUNDER, false
         ),
@@ -365,5 +365,109 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
     prpl.verifyEvents(ConversationWriteEvent(
         "chat" + std::to_string(groupChatId), selfFirstName + " " + selfLastName,
         "message", PURPLE_MESSAGE_SEND, date
+    ));
+}
+
+TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
+{
+    const char *const LINK = "https://t.me/joinchat/";
+    login();
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"link", g_strdup(LINK));
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+
+    prpl.verifyNoEvents();
+    tgl.verifyRequest(joinChatByInviteLink(LINK));
+
+    // Success
+    tgl.update(make_object<updateBasicGroup>(make_object<basicGroup>(
+        groupId, 2, make_object<chatMemberStatusMember>(), true, 0
+    )));
+    prpl.verifyNoEvents();
+    tgl.verifyNoRequests();
+
+    tgl.update(make_object<updateNewChat>(makeChat(
+        groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
+    )));
+    // Chat is added, list of members requested
+    prpl.verifyEvents(AddChatEvent(
+        "chat" + std::to_string(groupChatId), groupChatTitle, account, NULL, NULL
+    ));
+    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
+
+    // There will always be this "message" about joining the group
+    tgl.update(make_object<updateNewMessage>(
+        makeMessage(1, selfId, groupChatId, false, 12345, make_object<messageChatJoinByLink>())
+    ));
+    // There is now viewMessages request, but don't verify it yet so as not to interfere with
+    // replying to getBasicGroupFullInfo
+
+    // The message is shown in chat conversation
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, 1, "chat" + std::to_string(groupChatId), groupChatTitle),
+        ConversationWriteEvent("chat" + std::to_string(groupChatId), "",
+                               "Received unsupported message type messageChatJoinByLink",
+                               PURPLE_MESSAGE_SYSTEM, 12345)
+    );
+
+    // Replying to group full info request with list of members
+    tgl.update(standardUpdateUser(0));
+    tgl.update(standardUpdateUser(1));
+    std::vector<object_ptr<chatMember>> members;
+    members.push_back(make_object<chatMember>(
+        userIds[0],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    members.push_back(make_object<chatMember>(
+        userIds[1],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusCreator>(),
+        nullptr
+    ));
+    members.push_back(make_object<chatMember>(
+        selfId,
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    tgl.reply(make_object<basicGroupFullInfo>(
+        "basic group",
+        userIds[1],
+        std::move(members),
+        ""
+    ));
+
+    prpl.verifyEvents(
+        ChatAddUserEvent(
+            "chat" + std::to_string(groupChatId),
+            // This user is not in our contact list so first/last name is used
+            userFirstNames[0] + " " + userLastNames[0],
+            "", PURPLE_CBFLAGS_NONE, false
+        ),
+        ChatAddUserEvent(
+            "chat" + std::to_string(groupChatId),
+            // This user is not in our contact list so first/last name is used
+            userFirstNames[1] + " " + userLastNames[1],
+            "", PURPLE_CBFLAGS_FOUNDER, false
+        ),
+        ChatAddUserEvent(
+            "chat" + std::to_string(groupChatId),
+            // This is us (with + to match account name)
+            "+" + selfPhoneNumber,
+            "", PURPLE_CBFLAGS_NONE, false
+        )
+    );
+
+    tgl.verifyRequest(viewMessages(
+        groupChatId,
+        {1},
+        true
     ));
 }
