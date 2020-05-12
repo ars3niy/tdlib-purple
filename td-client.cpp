@@ -512,48 +512,12 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
     purple_blist_add_account(m_account);
 }
 
-void PurpleTdClient::showMessageText(const td::td_api::chat &chat, const std::string &sender, const char *text,
-                                     const char *notification, time_t timestamp, bool outgoing)
-{
-    const td::td_api::user *privateUser = m_data.getUserByPrivateChat(chat);
-    if (privateUser)
-        showMessageTextIm(m_account, getPurpleUserName(*privateUser), text, notification, timestamp,
-                          outgoing);
-
-    if (getBasicGroupId(chat) || getSupergroupId(chat))
-        showMessageTextChat(m_account, chat, sender, text, notification, timestamp, outgoing, m_data);
-}
-
-std::string PurpleTdClient::getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message)
-{
-    if (!message.is_outgoing_ && (getBasicGroupId(chat) || getSupergroupId(chat))) {
-        if (message.sender_user_id_)
-            return getDisplayName(m_data.getUser(message.sender_user_id_));
-        else if (!message.author_signature_.empty())
-            return message.author_signature_;
-        else if (message.forward_info_ && message.forward_info_->origin_)
-            switch (message.forward_info_->origin_->get_id()) {
-            case td::td_api::messageForwardOriginUser::ID:
-                return getDisplayName(m_data.getUser(static_cast<const td::td_api::messageForwardOriginUser &>(*message.forward_info_->origin_).sender_user_id_));
-            case td::td_api::messageForwardOriginHiddenUser::ID:
-                return static_cast<const td::td_api::messageForwardOriginHiddenUser &>(*message.forward_info_->origin_).sender_name_;
-            case td::td_api::messageForwardOriginChannel::ID:
-                return static_cast<const td::td_api::messageForwardOriginChannel&>(*message.forward_info_->origin_).author_signature_;
-            }
-    }
-
-    // For outgoing messages, our name will be used instead
-    // For private chats, sender name will be determined from the chat instead
-
-    return "";
-}
-
 void PurpleTdClient::showTextMessage(const td::td_api::chat &chat, const td::td_api::message &message,
                                      const td::td_api::messageText &text)
 {
     if (text.text_)
-        showMessageText(chat, getSenderPurpleName(chat, message), text.text_->text_.c_str(), NULL,
-                        message.date_, message.is_outgoing_);
+        showMessageText(m_account, chat, getSenderPurpleName(chat, message, m_data), text.text_->text_.c_str(), NULL,
+                        message.date_, message.is_outgoing_, m_data);
 }
 
 static const td::td_api::file *selectPhotoSize(const td::td_api::messagePhoto &photo)
@@ -578,9 +542,10 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const td::td
 {
     const td::td_api::file *file = selectPhotoSize(photo);
 
-    showMessageText(chat, getSenderPurpleName(chat, message),
+    showMessageText(m_account, chat, getSenderPurpleName(chat, message, m_data),
                     photo.caption_ ? photo.caption_->text_.c_str() : NULL,
-                    file ? "Downloading image" : "Faulty image", message.date_, message.is_outgoing_);
+                    file ? "Downloading image" : "Faulty image", message.date_, message.is_outgoing_,
+                    m_data);
 
     if (file) {
         purple_debug_misc(config::pluginId, "Downloading photo (file id %d)\n", (int)file->id_);
@@ -594,7 +559,7 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const td::td
 
         uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq),
                                                      &PurpleTdClient::messagePhotoDownloadResponse);
-        m_data.addDownloadRequest(requestId, message.chat_id_, getSenderPurpleName(chat, message),
+        m_data.addDownloadRequest(requestId, message.chat_id_, getSenderPurpleName(chat, message, m_data),
                                   message.date_, message.is_outgoing_);
     }
 }
@@ -637,7 +602,7 @@ void PurpleTdClient::showPhoto(int64_t chatId, const std::string &sender, int32_
             purple_debug_misc(config::pluginId, "Cannot show photo: file path contains quotes\n");
         else {
             std::string text = "<img src=\"file://" + filePath + "\">";
-            showMessageText(*chat, sender, text.c_str(), NULL, timestamp, outgoing);
+            showMessageText(m_account, *chat, sender, text.c_str(), NULL, timestamp, outgoing, m_data);
         }
     }
 }
@@ -650,9 +615,9 @@ void PurpleTdClient::showDocument(const td::td_api::chat &chat, const td::td_api
         description = description + ": " + document.document_->file_name_ + " [" +
         document.document_->mime_type_ + "]";
 
-    showMessageText(chat, getSenderPurpleName(chat, message),
+    showMessageText(m_account, chat, getSenderPurpleName(chat, message, m_data),
                     document.caption_ ? document.caption_->text_.c_str() : NULL,
-                    description.c_str(), message.date_, message.is_outgoing_);
+                    description.c_str(), message.date_, message.is_outgoing_, m_data);
 }
 
 void PurpleTdClient::showVideo(const td::td_api::chat &chat, const td::td_api::message &message,
@@ -664,9 +629,9 @@ void PurpleTdClient::showVideo(const td::td_api::chat &chat, const td::td_api::m
         std::to_string(video.video_->width_) + "x" + std::to_string(video.video_->height_) + ", " +
         std::to_string(video.video_->duration_) + "s]";
 
-    showMessageText(chat, getSenderPurpleName(chat, message),
+    showMessageText(m_account, chat, getSenderPurpleName(chat, message, m_data),
                     video.caption_ ? video.caption_->text_.c_str() : NULL,
-                    description.c_str(), message.date_, message.is_outgoing_);
+                    description.c_str(), message.date_, message.is_outgoing_, m_data);
 }
 
 void PurpleTdClient::showMessage(const td::td_api::chat &chat, const td::td_api::message &message)
@@ -704,8 +669,8 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, const td::td_api:
         default: {
             std::string notice = "Received unsupported message type " +
                                  messageTypeToString(*message.content_);
-            showMessageText(chat, getSenderPurpleName(chat, message), NULL, notice.c_str(),
-                            message.date_, message.is_outgoing_);
+            showMessageText(m_account, chat, getSenderPurpleName(chat, message, m_data), NULL, notice.c_str(),
+                            message.date_, message.is_outgoing_, m_data);
         }
     }
 }

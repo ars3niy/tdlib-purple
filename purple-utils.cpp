@@ -169,6 +169,44 @@ void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &chat,
     }
 }
 
+void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const std::string &sender,
+                     const char *text, const char *notification, time_t timestamp, bool outgoing,
+                     TdAccountData &accountData)
+{
+    const td::td_api::user *privateUser = accountData.getUserByPrivateChat(chat);
+    if (privateUser)
+        showMessageTextIm(account, getPurpleUserName(*privateUser), text, notification, timestamp,
+                          outgoing);
+
+    if (getBasicGroupId(chat) || getSupergroupId(chat))
+        showMessageTextChat(account, chat, sender, text, notification, timestamp, outgoing, accountData);
+}
+
+std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
+                                TdAccountData &accountData)
+{
+    if (!message.is_outgoing_ && (getBasicGroupId(chat) || getSupergroupId(chat))) {
+        if (message.sender_user_id_)
+            return getDisplayName(accountData.getUser(message.sender_user_id_));
+        else if (!message.author_signature_.empty())
+            return message.author_signature_;
+        else if (message.forward_info_ && message.forward_info_->origin_)
+            switch (message.forward_info_->origin_->get_id()) {
+            case td::td_api::messageForwardOriginUser::ID:
+                return getDisplayName(accountData.getUser(static_cast<const td::td_api::messageForwardOriginUser &>(*message.forward_info_->origin_).sender_user_id_));
+            case td::td_api::messageForwardOriginHiddenUser::ID:
+                return static_cast<const td::td_api::messageForwardOriginHiddenUser &>(*message.forward_info_->origin_).sender_name_;
+            case td::td_api::messageForwardOriginChannel::ID:
+                return static_cast<const td::td_api::messageForwardOriginChannel&>(*message.forward_info_->origin_).author_signature_;
+            }
+    }
+
+    // For outgoing messages, our name will be used instead
+    // For private chats, sender name will be determined from the chat instead
+
+    return "";
+}
+
 void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
                     const TdAccountData &accountData)
 {
