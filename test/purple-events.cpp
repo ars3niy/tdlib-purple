@@ -13,32 +13,32 @@ void PurpleEventReceiver::addEvent(std::unique_ptr<PurpleEvent> event)
 
 static void compare(const AccountSetAliasEvent &actual, const AccountSetAliasEvent &expected)
 {
-    ASSERT_EQ(expected.account, actual.account);
-    ASSERT_EQ(expected.alias, actual.alias);
+    COMPARE(account);
+    COMPARE(alias);
 }
 
 static void compare(const ShowAccountEvent &actual, const ShowAccountEvent &expected)
 {
-    ASSERT_EQ(expected.account, actual.account);
+    COMPARE(account);
 }
 
 static void compare(const AddBuddyEvent &actual, const AddBuddyEvent &expected)
 {
-    ASSERT_EQ(expected.username, actual.username);
-    ASSERT_EQ(expected.alias, actual.alias);
-    ASSERT_EQ(expected.account, actual.account);
-    ASSERT_EQ(expected.contact, actual.contact);
-    ASSERT_EQ(expected.group, actual.group);
-    ASSERT_EQ(expected.node, actual.node);
+    COMPARE(username);
+    COMPARE(alias);
+    COMPARE(account);
+    COMPARE(contact);
+    COMPARE(group);
+    COMPARE(node);
 }
 
 static void compare(const AddChatEvent &actual, const AddChatEvent &expected)
 {
-    ASSERT_EQ(expected.name, actual.name);
-    ASSERT_EQ(expected.alias, actual.alias);
-    ASSERT_EQ(expected.account, actual.account);
-    ASSERT_EQ(expected.group, actual.group);
-    ASSERT_EQ(expected.node, actual.node);
+    COMPARE(name);
+    COMPARE(alias);
+    COMPARE(account);
+    COMPARE(group);
+    COMPARE(node);
 }
 
 static void compare(const RemoveChatEvent &actual, const RemoveChatEvent &expected)
@@ -49,133 +49,133 @@ static void compare(const RemoveChatEvent &actual, const RemoveChatEvent &expect
 
 static void compare(const HideAccountEvent &actual, const HideAccountEvent &expected)
 {
-    ASSERT_EQ(expected.account, actual.account);
+    COMPARE(account);
 }
 
 static void compare(const RemoveBuddyEvent &actual, const RemoveBuddyEvent &expected)
 {
-    ASSERT_EQ(expected.account, actual.account);
-    ASSERT_EQ(expected.username, actual.username);
+    COMPARE(account);
+    COMPARE(username);
 }
 
 static void compare(const ConnectionErrorEvent &actual, const ConnectionErrorEvent &expected)
 {
-    ASSERT_EQ(expected.connection, actual.connection);
-    ASSERT_EQ(expected.message, actual.message);
+    COMPARE(connection);
+    COMPARE(message);
 }
 
 static void compare(const ConnectionSetStateEvent &actual, const ConnectionSetStateEvent &expected)
 {
-    ASSERT_EQ(expected.connection, actual.connection);
-    ASSERT_EQ(expected.state, actual.state);
+    COMPARE(connection);
+    COMPARE(state);
 }
 
 static void compare(const ConnectionUpdateProgressEvent &actual, const ConnectionUpdateProgressEvent &expected)
 {
-    ASSERT_EQ(expected.connection, actual.connection);
-    ASSERT_EQ(expected.step, actual.step);
-    ASSERT_EQ(expected.stepCount, actual.stepCount);
+    COMPARE(connection);
+    COMPARE(step);
+    COMPARE(stepCount);
 }
 
 static void compare(const NewConversationEvent &actual, const NewConversationEvent &expected)
 {
-    ASSERT_EQ(expected.type, actual.type);
-    ASSERT_EQ(expected.account, actual.account);
-    ASSERT_EQ(expected.name, actual.name);
+    COMPARE(type);
+    COMPARE(account);
+    COMPARE(name);
 }
 
 static void compare(const ConversationWriteEvent &actual, const ConversationWriteEvent &expected)
 {
-    ASSERT_EQ(expected.conversation, actual.conversation);
-    ASSERT_EQ(expected.username, actual.username);
-    ASSERT_EQ(expected.message, actual.message);
-    ASSERT_EQ(expected.flags, actual.flags);
-    ASSERT_EQ(expected.mtime, actual.mtime);
+    COMPARE(conversation);
+    COMPARE(username);
+    COMPARE(message);
+    COMPARE(flags);
+    COMPARE(mtime);
 }
 
 static void compare(const NotifyMessageEvent &actual, const NotifyMessageEvent &expected)
 {
-    ASSERT_EQ(expected.handle, actual.handle);
-    ASSERT_EQ(expected.type, actual.type);
-    ASSERT_EQ(expected.title, actual.title);
-    ASSERT_EQ(expected.primary, actual.primary);
-    ASSERT_EQ(expected.secondary, actual.secondary);
+    COMPARE(handle);
+    COMPARE(type);
+    COMPARE(title);
+    COMPARE(primary);
+    COMPARE(secondary);
 }
 
 static void compare(const UserStatusEvent &actual, const UserStatusEvent &expected)
 {
-    ASSERT_EQ(expected.account, actual.account);
-    ASSERT_EQ(expected.username, actual.username);
-    ASSERT_EQ(expected.status, actual.status);
+    COMPARE(account);
+    COMPARE(username);
+    COMPARE(status);
 }
 
 static void compare(const RequestInputEvent &actual, const RequestInputEvent &expected)
 {
-    ASSERT_EQ(expected.handle, actual.handle);
-    ASSERT_EQ(expected.title, actual.title);
-    ASSERT_EQ(expected.primary, actual.primary);
-    ASSERT_EQ(expected.account, actual.account);
-    ASSERT_EQ(expected.username, actual.username);
-    ASSERT_EQ(expected.conv, actual.conv);
+    COMPARE(handle);
+    COMPARE(title);
+    COMPARE(primary);
+    COMPARE(account);
+    COMPARE(username);
+    COMPARE(conv);
 }
 
 static void compare(const JoinChatFailedEvent &actual, const JoinChatFailedEvent &expected)
 {
-    ASSERT_EQ(expected.connection, actual.connection);
+    COMPARE(connection);
 }
 
 static void compare(const ServGotChatEvent &actual, const ServGotChatEvent &expected)
 {
-    ASSERT_EQ(expected.connection, actual.connection);
-    ASSERT_EQ(expected.id, actual.id);
-    ASSERT_EQ(expected.username, actual.username);
-    ASSERT_EQ(expected.message, actual.message);
-    ASSERT_EQ(expected.flags, actual.flags);
-    ASSERT_EQ(expected.mtime, actual.mtime);
+    COMPARE(connection);
+    COMPARE(id);
+    COMPARE(username);
+    COMPARE(message);
+    COMPARE(flags);
+    COMPARE(mtime);
 }
 
 static void compare(const ServGotImEvent &actual, const ServGotImEvent &expected)
 {
-    ASSERT_EQ(expected.connection, actual.connection);
-    ASSERT_EQ(expected.username, actual.username);
-    ASSERT_EQ(expected.message, actual.message);
-    ASSERT_EQ(expected.flags, actual.flags);
-    ASSERT_EQ(expected.mtime, actual.mtime);
+    COMPARE(connection);
+    COMPARE(username);
+    COMPARE(message);
+    COMPARE(flags);
+    COMPARE(mtime);
 }
 
 static void compare(const ServGotJoinedChatEvent &actual, const ServGotJoinedChatEvent &expected)
 {
-    ASSERT_EQ(expected.connection, actual.connection);
-    ASSERT_EQ(expected.id, actual.id);
-    ASSERT_EQ(expected.chatName, actual.chatName);
-    ASSERT_EQ(expected.chatAlias, actual.chatAlias);
+    COMPARE(connection);
+    COMPARE(id);
+    COMPARE(chatName);
+    COMPARE(chatAlias);
 }
 
 static void compare(const BuddyTypingStartEvent &actual, const BuddyTypingStartEvent &expected)
 {
-    ASSERT_EQ(expected.connection, actual.connection);
-    ASSERT_EQ(expected.username, actual.username);
-    ASSERT_EQ(expected.state, actual.state);
+    COMPARE(connection);
+    COMPARE(username);
+    COMPARE(state);
 }
 
 static void compare(const BuddyTypingStopEvent &actual, const BuddyTypingStopEvent &expected)
 {
-    ASSERT_EQ(expected.connection, actual.connection);
-    ASSERT_EQ(expected.username, actual.username);
+    COMPARE(connection);
+    COMPARE(username);
 }
 
 static void compare(const PresentConversationEvent &actual, const PresentConversationEvent &expected)
 {
-    ASSERT_EQ(expected.name, actual.name);
+    COMPARE(name);
 }
 
 static void compare(const ChatAddUserEvent &actual, const ChatAddUserEvent &expected)
 {
-    ASSERT_EQ(expected.chatName,    actual.chatName);
-    ASSERT_EQ(expected.user,        actual.user);
-    ASSERT_EQ(expected.extra_msg,   actual.extra_msg);
-    ASSERT_EQ(expected.flags,       actual.flags);
-    ASSERT_EQ(expected.new_arrival, actual.new_arrival);
+    COMPARE(chatName);
+    COMPARE(user);
+    COMPARE(extra_msg);
+    COMPARE(flags);
+    COMPARE(new_arrival);
 }
 
 static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected)

@@ -37,36 +37,36 @@ void TestTransceiver::verifyRequests(std::initializer_list<td::td_api::object_pt
 
 static void compare(const setTdlibParameters &actual, const setTdlibParameters &expected)
 {
-    ASSERT_EQ(expected.parameters_->database_directory_, actual.parameters_->database_directory_);
+    COMPARE(parameters_->database_directory_);
 }
 
 static void compare(const checkDatabaseEncryptionKey &actual, const checkDatabaseEncryptionKey &expected)
 {
-    ASSERT_EQ(expected.encryption_key_, actual.encryption_key_);
+    COMPARE(encryption_key_);
 }
 
 static void compare(const setAuthenticationPhoneNumber &actual, const setAuthenticationPhoneNumber &expected)
 {
-    ASSERT_EQ(expected.phone_number_, actual.phone_number_);
+    COMPARE(phone_number_);
     ASSERT_TRUE((expected.settings_ != nullptr) == (actual.settings_ != nullptr));
 }
 
 static void compare(const viewMessages &actual, const viewMessages &expected)
 {
-    ASSERT_EQ(expected.chat_id_, actual.chat_id_);
-    ASSERT_EQ(expected.message_ids_.size(), actual.message_ids_.size());
+    COMPARE(chat_id_);
+    COMPARE(message_ids_.size());
     for (size_t i = 0; i < actual.message_ids_.size(); i++)
-        ASSERT_EQ(expected.message_ids_[i], actual.message_ids_[i]);
-    ASSERT_EQ(expected.force_read_, actual.force_read_);
+        COMPARE(message_ids_[i]);
+    COMPARE(force_read_);
 }
 
 static void compare(const downloadFile &actual, const downloadFile &expected)
 {
-    ASSERT_EQ(expected.file_id_,     actual.file_id_);
-    ASSERT_EQ(expected.priority_,    actual.priority_);
-    ASSERT_EQ(expected.offset_,      actual.offset_);
-    ASSERT_EQ(expected.limit_,       actual.limit_);
-    ASSERT_EQ(expected.synchronous_, actual.synchronous_);
+    COMPARE(file_id_);
+    COMPARE(priority_);
+    COMPARE(offset_);
+    COMPARE(limit_);
+    COMPARE(synchronous_);
 }
 
 static void compare(const object_ptr<sendMessageOptions> &actual, const object_ptr<sendMessageOptions> &expected)
@@ -95,8 +95,8 @@ static void compare(const inputMessageText &actual,
                     const inputMessageText &expected)
 {
     compare(actual.text_, expected.text_);
-    EXPECT_EQ(expected.disable_web_page_preview_, actual.disable_web_page_preview_);
-    EXPECT_EQ(expected.clear_draft_,              actual.clear_draft_);
+    COMPARE(disable_web_page_preview_);
+    COMPARE(clear_draft_);
 }
 
 static void compare(const object_ptr<InputMessageContent> &actual,
@@ -117,8 +117,8 @@ static void compare(const object_ptr<InputMessageContent> &actual,
 
 static void compare(const sendMessage &actual, const sendMessage &expected)
 {
-    ASSERT_EQ(expected.chat_id_,             actual.chat_id_);
-    ASSERT_EQ(expected.reply_to_message_id_, actual.reply_to_message_id_);
+    COMPARE(chat_id_);
+    COMPARE(reply_to_message_id_);
 
     compare(actual.options_,               expected.options_);
     compare(actual.reply_markup_,          expected.reply_markup_);
@@ -127,7 +127,7 @@ static void compare(const sendMessage &actual, const sendMessage &expected)
 
 static void compare(const getBasicGroupFullInfo &actual, const getBasicGroupFullInfo &expected)
 {
-    ASSERT_EQ(expected.basic_group_id_, actual.basic_group_id_);
+    COMPARE(basic_group_id_);
 }
 
 static void compare(const joinChatByInviteLink &actual, const joinChatByInviteLink &expected)
