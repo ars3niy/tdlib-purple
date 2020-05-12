@@ -57,8 +57,7 @@ static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
     return NULL;
 }
 
-static const char *_(const char *s) { return s; }
-static char *_(char *s) { return s; }
+static char *_(const char *s) { return const_cast<char *>(s); }
 
 static GList *tgprpl_chat_join_info (PurpleConnection *gc)
 {
@@ -232,8 +231,7 @@ static GHashTable *tgprpl_get_account_text_table (PurpleAccount *pa)
     GHashTable *HT;
     HT = g_hash_table_new (g_str_hash, g_str_equal);
     static char label[] = "login_label";
-    static char phoneno[] = "phone no. (+ country prefix)";
-    g_hash_table_insert(HT, label, _(phoneno));
+    g_hash_table_insert(HT, label, _("phone no. (+ country prefix)"));
     return HT;
 }
 

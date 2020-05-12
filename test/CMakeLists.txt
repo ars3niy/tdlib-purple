@@ -20,6 +20,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     ../chat-info.cpp
     ../config.cpp
     ../purple-utils.cpp
+    ../format.cpp
 )
 
 target_compile_definitions(tests PRIVATE
@@ -27,7 +28,7 @@ target_compile_definitions(tests PRIVATE
 )
 set_property(TARGET tests PROPERTY CXX_STANDARD 14)
 target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(tests PRIVATE gtest Td::TdStatic glib-2.0)
+target_link_libraries(tests PRIVATE gtest fmt::fmt Td::TdStatic glib-2.0)
 
 if (DEFINED GTEST_PATH)
     target_include_directories(tests PRIVATE ${GTEST_PATH}/include)

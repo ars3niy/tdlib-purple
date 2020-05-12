@@ -1,25 +1,28 @@
 #include "chat-info.h"
 #include "config.h"
 
+static const char *_(const char *s) { return s; }
+
 static char idKey[] = "id";
 
 GList *getChatJoinInfo()
 {
+    // First entry is the internal chat name used to look up conversations
     struct proto_chat_entry *pce;
     pce = g_new0 (struct proto_chat_entry, 1);
-    pce->label = "Chat ID:";
+    pce->label = _("Chat ID (leave empty):");
     pce->identifier = idKey;
     pce->required = FALSE;
     GList *info = g_list_append (NULL, pce);
 
     pce = g_new0 (struct proto_chat_entry, 1);
-    pce->label = "Invite link:";
+    pce->label = _("Invite link (empty if creating new):");
     pce->identifier = "link";
     pce->required = FALSE;
     info = g_list_append (info, pce);
 
     pce = g_new0 (struct proto_chat_entry, 1);
-    pce->label = "Subject:";
+    pce->label = _("Subject (if creating a group):");
     pce->identifier = "subject";
     pce->required = FALSE;
     info = g_list_append (info, pce);

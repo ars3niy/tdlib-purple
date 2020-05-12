@@ -27,6 +27,7 @@ add_library(telegram-tdlib SHARED
     chat-info.cpp
     config.cpp
     purple-utils.cpp
+    format.cpp
 )
 
 target_compile_definitions(telegram-tdlib PRIVATE
@@ -35,6 +36,10 @@ target_compile_definitions(telegram-tdlib PRIVATE
 include_directories(telegram-tdlib ${Purple_INCLUDE_DIRS})
 target_link_libraries(telegram-tdlib PRIVATE Td::TdStatic ${Purple_LIBRARIES})
 set_property(TARGET telegram-tdlib PROPERTY CXX_STANDARD 14)
+
+add_subdirectory(fmt)
+target_compile_options(fmt PRIVATE -fPIC)
+target_link_libraries(telegram-tdlib PRIVATE fmt::fmt)
 
 install(TARGETS telegram-tdlib LIBRARY DESTINATION "${PURPLE_PLUGIN_DIR}")
 install(FILES icons/telegram16.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/16" RENAME telegram.png)

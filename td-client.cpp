@@ -2,6 +2,9 @@
 #include "chat-info.h"
 #include "config.h"
 #include "purple-utils.h"
+#include "format.h"
+
+static char *_(const char *s) { return const_cast<char *>(s); }
 
 enum {
     // Typing notifications seems to be resent every 5-6 seconds, so 10s timeout hould be appropriate
@@ -176,21 +179,17 @@ static std::string getAuthCodeDesc(const td::td_api::AuthenticationCodeType &cod
 {
     switch (codeType.get_id()) {
     case td::td_api::authenticationCodeTypeTelegramMessage::ID:
-        return "Telegram message (length: " +
-               std::to_string(static_cast<const td::td_api::authenticationCodeTypeTelegramMessage &>(codeType).length_) +
-               ")";
+        return formatMessage(_("Telegram message (length: {})"),
+                             static_cast<const td::td_api::authenticationCodeTypeTelegramMessage &>(codeType).length_);
     case td::td_api::authenticationCodeTypeSms::ID:
-        return "SMS (length: " +
-               std::to_string(static_cast<const td::td_api::authenticationCodeTypeSms &>(codeType).length_) +
-               ")";
+        return formatMessage(_("SMS (length: {})"),
+                             static_cast<const td::td_api::authenticationCodeTypeSms &>(codeType).length_);
     case td::td_api::authenticationCodeTypeCall::ID:
-        return "Phone call (length: " +
-               std::to_string(static_cast<const td::td_api::authenticationCodeTypeCall &>(codeType).length_) +
-               ")";
+        return formatMessage(_("Phone call (length: {})"),
+                             static_cast<const td::td_api::authenticationCodeTypeCall &>(codeType).length_);
     case td::td_api::authenticationCodeTypeFlashCall::ID:
-        return "Poor man's phone call (pattern: " +
-               static_cast<const td::td_api::authenticationCodeTypeFlashCall &>(codeType).pattern_ +
-               ")";
+        return formatMessage(_("Poor man's phone call (pattern: {})"),
+                             static_cast<const td::td_api::authenticationCodeTypeFlashCall &>(codeType).pattern_);
     default:
         return "Pigeon post";
     }
@@ -198,25 +197,25 @@ static std::string getAuthCodeDesc(const td::td_api::AuthenticationCodeType &cod
 
 void PurpleTdClient::requestAuthCode()
 {
-    std::string message = "Enter authentication code\n";
+    std::string message = _("Enter authentication code") + std::string("\n");
 
     if (m_authCodeInfo) {
         if (m_authCodeInfo->type_)
-            message += "Code sent via: " + getAuthCodeDesc(*m_authCodeInfo->type_) + "\n";
+            message += formatMessage(_("Code sent via: {}"), getAuthCodeDesc(*m_authCodeInfo->type_)) + "\n";
         if (m_authCodeInfo->next_type_)
-            message += "Next code will be: " + getAuthCodeDesc(*m_authCodeInfo->next_type_) + "\n";
+            message += formatMessage(_("Next code will be: {}"), getAuthCodeDesc(*m_authCodeInfo->next_type_)) + "\n";
     }
 
     if (!purple_request_input (purple_account_get_connection(m_account),
-                               (char *)"Login code",
+                               _("Login code"),
                                message.c_str(),
                                NULL, // secondary message
                                NULL, // default value
                                FALSE, // multiline input
                                FALSE, // masked input
-                               (char *)"the code",
-                               (char *)"OK", G_CALLBACK(requestCodeEntered),
-                               (char *)"Cancel", G_CALLBACK(requestCodeCancelled),
+                               _("the code"),
+                               _("OK"), G_CALLBACK(requestCodeEntered),
+                               _("Cancel"), G_CALLBACK(requestCodeCancelled),
                                m_account,
                                NULL, // buddy
                                NULL, // conversation
@@ -257,7 +256,7 @@ void PurpleTdClient::authResponse(uint64_t requestId, td::td_api::object_ptr<td:
 
 static std::string getDisplayedError(const td::td_api::error &error)
 {
-    return "code " + std::to_string(error.code_) + " (" + error.message_ + ")";
+    return formatMessage("code {} ({})", {std::to_string(error.code_), error.message_});
 }
 
 void PurpleTdClient::notifyAuthError(td::td_api::object_ptr<td::td_api::error> error)
@@ -265,17 +264,17 @@ void PurpleTdClient::notifyAuthError(td::td_api::object_ptr<td::td_api::error> e
     std::string message;
     switch (m_lastAuthState) {
     case td::td_api::authorizationStateWaitEncryptionKey::ID:
-        message = "Error applying database encryption key";
+        message = _("Error applying database encryption key: {}");
         break;
     case td::td_api::authorizationStateWaitPhoneNumber::ID:
-        message = "Authentication error after sending phone number";
+        message = _("Authentication error after sending phone number: {}");
         break;
     default:
-        message = "Authentication error";
+        message = _("Authentication error: {}");
     }
 
     if (error)
-        message += ": " + getDisplayedError(*error);
+        message = formatMessage(message.c_str(), getDisplayedError(*error));
 
     purple_connection_error(purple_account_get_connection(m_account), message.c_str());
 }
@@ -1051,7 +1050,7 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
 
     // For whatever reason, complaining at an earlier stage leads to error message not being shown in pidgin
     if (!isPhoneNumber(phoneNumber.c_str()))
-        notifyFailedContact(phoneNumber, "Not a valid phone number");
+        notifyFailedContact(phoneNumber, _("Not a valid phone number"));
     else if (userId) {
         td::td_api::object_ptr<td::td_api::contact> contact =
             td::td_api::make_object<td::td_api::contact>(phoneNumber, alias, "", "", userId);
@@ -1061,7 +1060,7 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
                                                         &PurpleTdClient::addContactResponse);
         m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), alias.c_str(), userId);
     } else
-        notifyFailedContact(phoneNumber, "User not found");
+        notifyFailedContact(phoneNumber, _("User not found"));
 }
 
 void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -1084,7 +1083,7 @@ void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_p
                         phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
         notifyFailedContact(phoneNumber, getDisplayedError(*error));
     } else
-        notifyFailedContact(phoneNumber, "Strange reply to adding contact");
+        notifyFailedContact(phoneNumber, _("Strange reply to adding contact"));
 }
 
 void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -1102,24 +1101,21 @@ void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td:
                               phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
             notifyFailedContact(phoneNumber, getDisplayedError(*error));
         } else
-            notifyFailedContact(phoneNumber, "Strange reply to creating private chat");
+            notifyFailedContact(phoneNumber, _("Strange reply to creating private chat"));
     }
 }
 
 void PurpleTdClient::notifyFailedContact(const std::string &phoneNumber, const std::string &errorMessage)
 {
-    std::string message;
-    message += "Failed to add contact (";
-    message += phoneNumber;
-    message += "): ";
-    message += errorMessage;
+    std::string message = formatMessage(_("Failed to add contact (phone number {}): {}"),
+                                        {phoneNumber, errorMessage});
 
     PurpleBuddy *buddy = purple_find_buddy(m_account, phoneNumber.c_str());
     if (buddy)
         purple_blist_remove_buddy(buddy);
 
     purple_notify_error(purple_account_get_connection(m_account),
-                        "Failed to add contact", message.c_str(), NULL);
+                        _("Failed to add contact"), message.c_str(), NULL);
 }
 
 bool PurpleTdClient::joinChat(const char *chatName)
