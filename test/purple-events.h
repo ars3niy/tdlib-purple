@@ -114,6 +114,11 @@ struct AddChatEvent: PurpleEvent {
 };
 
 struct RemoveChatEvent: public PurpleEvent {
+    std::string name;
+    std::string inviteLink;
+
+    RemoveChatEvent(const std::string &name, const std::string &inviteLink)
+    : PurpleEvent(PurpleEventType::RemoveChat), name(name), inviteLink(inviteLink) {}
 };
 
 struct HideAccountEvent: PurpleEvent {

@@ -9,6 +9,8 @@ void PurpleEventReceiver::addEvent(std::unique_ptr<PurpleEvent> event)
     m_events.push(std::move(event));
 }
 
+#define COMPARE(param) ASSERT_EQ(expected.param, actual.param)
+
 static void compare(const AccountSetAliasEvent &actual, const AccountSetAliasEvent &expected)
 {
     ASSERT_EQ(expected.account, actual.account);
@@ -37,6 +39,12 @@ static void compare(const AddChatEvent &actual, const AddChatEvent &expected)
     ASSERT_EQ(expected.account, actual.account);
     ASSERT_EQ(expected.group, actual.group);
     ASSERT_EQ(expected.node, actual.node);
+}
+
+static void compare(const RemoveChatEvent &actual, const RemoveChatEvent &expected)
+{
+    COMPARE(name);
+    COMPARE(inviteLink);
 }
 
 static void compare(const HideAccountEvent &actual, const HideAccountEvent &expected)
@@ -185,6 +193,7 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(ShowAccount)
         C(AddBuddy)
         C(AddChat)
+        C(RemoveChat)
         C(HideAccount)
         C(RemoveBuddy)
         C(ConnectionError)

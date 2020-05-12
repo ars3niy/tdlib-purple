@@ -10,7 +10,7 @@ public:
     void send(td::Client::Request &&request) override;
 
     // Check that given requests, and no others, have been received, and clear the queue
-    void verifyRequest(const td::td_api::Function &request);
+    uint64_t verifyRequest(const td::td_api::Function &request);
     void verifyRequests(std::initializer_list<td::td_api::object_ptr<td::td_api::Function>> requests);
     void verifyNoRequests();
 
@@ -19,6 +19,7 @@ public:
     // Replies to the first non-replied request from the last verifyRequest(s) batch, or fails the
     // test case if there is no such request
     void reply(td::td_api::object_ptr<td::td_api::Object> object);
+    void reply(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 private:
     std::queue<td::Client::Request> m_requests;
     std::vector<uint64_t>           m_lastRequestIds;

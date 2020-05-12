@@ -84,6 +84,17 @@ PurpleAccount *purple_account_new(const char *username, const char *protocol_id)
     return account;
 }
 
+PurpleBlistNode root = {
+    .type = PURPLE_BLIST_OTHER_NODE,
+    .prev = NULL,
+    .next = NULL,
+    .parent = NULL,
+    .child = NULL,
+    .settings = NULL,
+    .ui_data = NULL,
+    .flags = (PurpleBlistNodeFlags)0
+};
+
 void purple_account_destroy(PurpleAccount *account)
 {
     free(account->username);
@@ -101,6 +112,7 @@ void purple_account_destroy(PurpleAccount *account)
     g_accounts.erase(it);
 
     delete account;
+    ASSERT_EQ(nullptr, root.child) << "Blist nodes remain";
 }
 
 void purple_blist_add_account(PurpleAccount *account)
@@ -108,8 +120,33 @@ void purple_blist_add_account(PurpleAccount *account)
     EVENT(ShowAccountEvent, account);
 }
 
+static void addNode(PurpleBlistNode &node)
+{
+    node.next = root.child;
+    node.prev = NULL;
+    if (root.child)
+        root.child->prev = &node;
+    root.child = &node;
+}
+
+static void removeNode(PurpleBlistNode &node)
+{
+    PurpleBlistNode *found;
+    for (found = root.child; found; found = found->next)
+        if (found == &node)
+            break;
+    ASSERT_TRUE(found != NULL) << "Removing unknown blist node";
+    if (node.prev)
+        node.prev->next = node.next;
+    if (node.next)
+        node.next->prev = node.prev;
+    if (&node == root.child)
+        root.child = node.next;
+}
+
 void purple_blist_add_buddy(PurpleBuddy *buddy, PurpleContact *contact, PurpleGroup *group, PurpleBlistNode *node)
 {
+    ASSERT_EQ(NULL, node) << "Not supported";
     auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
                                  [buddy](const AccountInfo &info) { return (info.account == buddy->account); });
     ASSERT_FALSE(pAccount == g_accounts.end()) << "Adding buddy with unknown account";
@@ -121,6 +158,7 @@ void purple_blist_add_buddy(PurpleBuddy *buddy, PurpleContact *contact, PurpleGr
         << "Buddy already exists in this account";
 
     buddy->node.parent = group ? &group->node : NULL;
+    addNode(buddy->node);
     pAccount->buddies.push_back(buddy);
 
     EVENT(AddBuddyEvent, buddy->name, buddy->alias, buddy->account, contact, group, node);
@@ -145,7 +183,19 @@ void purple_blist_remove_buddy(PurpleBuddy *buddy)
 
     free(buddy->name);
     free(buddy->alias);
+    removeNode(buddy->node);
     delete buddy;
+}
+
+static char *getChatName(const PurpleChat *chat)
+{
+    auto        pluginInfo  = (PurplePluginProtocolInfo *)g_plugin->info->extra_info;
+    GList      *chatInfo    = (pluginInfo)->chat_info(chat->account->gc);
+    const char *componentId = ((proto_chat_entry *)chatInfo->data)->identifier;
+    char       *name        = (char *)g_hash_table_lookup(chat->components, componentId);
+
+    g_list_free_full(chatInfo, g_free);
+    return name;
 }
 
 void purple_blist_remove_chat(PurpleChat *chat)
@@ -158,9 +208,12 @@ void purple_blist_remove_chat(PurpleChat *chat)
     ASSERT_FALSE(it == pAccount->chats.end()) << "Removing unkown chat";
     pAccount->chats.erase(it);
 
-    // TODO event
+    const char *inviteLink = (const char *)g_hash_table_lookup(chat->components, (char *)"link");
+    EVENT(RemoveChatEvent, getChatName(chat), inviteLink ? inviteLink : "");
+
     free(chat->alias);
     g_hash_table_destroy(chat->components);
+    removeNode(chat->node);
     delete chat;
 }
 
@@ -216,19 +269,9 @@ PurpleChat *purple_chat_new(PurpleAccount *account, const char *alias, GHashTabl
     return chat;
 }
 
-static char *getChatName(const PurpleChat *chat)
-{
-    auto        pluginInfo  = (PurplePluginProtocolInfo *)g_plugin->info->extra_info;
-    GList      *chatInfo    = (pluginInfo)->chat_info(chat->account->gc);
-    const char *componentId = ((proto_chat_entry *)chatInfo->data)->identifier;
-    char       *name        = (char *)g_hash_table_lookup(chat->components, componentId);
-
-    g_list_free_full(chatInfo, g_free);
-    return name;
-}
-
 void purple_blist_add_chat(PurpleChat *chat, PurpleGroup *group, PurpleBlistNode *node)
 {
+    ASSERT_EQ(NULL, node) << "Not supported";
     char *name = getChatName(chat);
 
     auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
@@ -242,6 +285,7 @@ void purple_blist_add_chat(PurpleChat *chat, PurpleGroup *group, PurpleBlistNode
         << "Chat already exists in this account";
 
     chat->node.parent = group ? &group->node : NULL;
+    addNode(chat->node);
     pAccount->chats.push_back(chat);
 
     EVENT(AddChatEvent, name, chat->alias, chat->account, group, node);
@@ -642,7 +686,7 @@ void purple_conv_chat_add_users(PurpleConvChat *chat, GList *users, GList *extra
 
 PurpleBlistNode *purple_blist_get_root(void)
 {
-    return NULL;
+    return &root;
 }
 
 PurpleBlistNode *purple_blist_node_get_sibling_next(PurpleBlistNode *node)

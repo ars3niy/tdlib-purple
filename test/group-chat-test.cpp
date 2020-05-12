@@ -373,13 +373,20 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
     const char *const LINK = "https://t.me/joinchat/";
     login();
 
+    // As if "Add chat" function in pidgin was used
     GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup(""));
     g_hash_table_insert(components, (char *)"link", g_strdup(LINK));
-    pluginInfo().join_chat(connection, components);
-    g_hash_table_destroy(components);
 
+    PurpleChat *chat = purple_chat_new(account, "old chat", components);
+    purple_blist_add_chat(chat, NULL, NULL);
+    prpl.discardEvents();
+
+    // And now that chat is being joined
+    pluginInfo().join_chat(connection, components);
     prpl.verifyNoEvents();
-    tgl.verifyRequest(joinChatByInviteLink(LINK));
+
+    uint64_t joinRequestId = tgl.verifyRequest(joinChatByInviteLink(LINK));
 
     // Success
     tgl.update(make_object<updateBasicGroup>(make_object<basicGroup>(
@@ -395,14 +402,17 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
     prpl.verifyEvents(AddChatEvent(
         "chat" + std::to_string(groupChatId), groupChatTitle, account, NULL, NULL
     ));
-    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
+    uint64_t groupInfoRequestId = tgl.verifyRequest(getBasicGroupFullInfo(groupId));
 
     // There will always be this "message" about joining the group
     tgl.update(make_object<updateNewMessage>(
         makeMessage(1, selfId, groupChatId, false, 12345, make_object<messageChatJoinByLink>())
     ));
-    // There is now viewMessages request, but don't verify it yet so as not to interfere with
-    // replying to getBasicGroupFullInfo
+    uint64_t viewMessagesRequestId = tgl.verifyRequest(viewMessages(
+        groupChatId,
+        {1},
+        true
+    ));
 
     // The message is shown in chat conversation
     prpl.verifyEvents(
@@ -411,6 +421,12 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
                                "Received unsupported message type messageChatJoinByLink",
                                PURPLE_MESSAGE_SYSTEM, 12345)
     );
+
+    // Now reply to join group - original chat is removed
+    tgl.reply(joinRequestId, makeChat(
+        groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
+    ));
+    prpl.verifyEvents(RemoveChatEvent("", LINK));
 
     // Replying to group full info request with list of members
     tgl.update(standardUpdateUser(0));
@@ -437,7 +453,7 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
         make_object<chatMemberStatusMember>(),
         nullptr
     ));
-    tgl.reply(make_object<basicGroupFullInfo>(
+    tgl.reply(groupInfoRequestId, make_object<basicGroupFullInfo>(
         "basic group",
         userIds[1],
         std::move(members),
@@ -465,9 +481,5 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
         )
     );
 
-    tgl.verifyRequest(viewMessages(
-        groupChatId,
-        {1},
-        true
-    ));
+    tgl.reply(viewMessagesRequestId, make_object<ok>());
 }

@@ -12,13 +12,14 @@ void TestTransceiver::send(td::Client::Request &&request)
     m_requests.push(std::move(request));
 }
 
-void TestTransceiver::verifyRequest(const Function &request)
+uint64_t TestTransceiver::verifyRequest(const Function &request)
 {
     m_lastRequestIds.clear();
     verifyRequestImpl(request);
     m_lastRequestIds.push_back(m_requests.front().id);
     m_requests.pop();
     verifyNoRequests();
+    return m_lastRequestIds.back();
 }
 
 void TestTransceiver::verifyRequests(std::initializer_list<td::td_api::object_ptr<td::td_api::Function>> requests)
@@ -179,9 +180,14 @@ void TestTransceiver::update(object_ptr<Object> object)
 void TestTransceiver::reply(object_ptr<Object> object)
 {
     ASSERT_FALSE(m_lastRequestIds.empty()) << "No requests to reply to";
-    std::cout << "Replying to request " << m_lastRequestIds.front() << ": " << responseToString(*object) << "\n";
-    receive({m_lastRequestIds.front(), std::move(object)});
+    reply(m_lastRequestIds.front(), std::move(object));
     m_lastRequestIds.erase(m_lastRequestIds.begin());
+}
+
+void TestTransceiver::reply(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::cout << "Replying to request " << requestId << ": " << responseToString(*object) << "\n";
+    receive({requestId, std::move(object)});
 }
 
 namespace td {
