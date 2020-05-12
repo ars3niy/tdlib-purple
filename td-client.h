@@ -30,7 +30,7 @@ private:
     static void requestCodeEntered(PurpleTdClient *self, const gchar *code);
     static void requestCodeCancelled(PurpleTdClient *self);
     void       authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    void       notifyAuthError(td::td_api::object_ptr<td::td_api::error> error);
+    void       notifyAuthError(const td::td_api::object_ptr<td::td_api::Object> &response);
     void       connectionReady();
     void       setPurpleConnectionInProgress();
     void       setPurpleConnectionUpdating();

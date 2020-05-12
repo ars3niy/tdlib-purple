@@ -244,22 +244,24 @@ void PurpleTdClient::requestCodeCancelled(PurpleTdClient *self)
 
 void PurpleTdClient::authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    if (object->get_id() == td::td_api::error::ID) {
-        td::td_api::object_ptr<td::td_api::error> error = td::move_tl_object_as<td::td_api::error>(object);
-        purple_debug_misc(config::pluginId, "Authentication error on query %lu (auth step %d): code %d (%s)\n",
-                          (unsigned long)requestId, (int)m_lastAuthState, (int)error->code_,
-                          error->message_.c_str());
-        notifyAuthError(std::move(error));
-    } else
+    if (object && (object->get_id() == td::td_api::ok::ID))
         purple_debug_misc(config::pluginId, "Authentication success on query %lu\n", (unsigned long)requestId);
+    else
+        notifyAuthError(object);
 }
 
-static std::string getDisplayedError(const td::td_api::error &error)
+static std::string getDisplayedError(const td::td_api::object_ptr<td::td_api::Object> &object)
 {
-    return formatMessage("code {} ({})", {std::to_string(error.code_), error.message_});
+    if (!object)
+        return _("No response received");
+    else if (object->get_id() == td::td_api::error::ID) {
+        const td::td_api::error &error = static_cast<const td::td_api::error &>(*object);
+        return formatMessage("code {} ({})", {std::to_string(error.code_), error.message_});
+    } else
+        return _("Unexpected response");
 }
 
-void PurpleTdClient::notifyAuthError(td::td_api::object_ptr<td::td_api::error> error)
+void PurpleTdClient::notifyAuthError(const td::td_api::object_ptr<td::td_api::Object> &response)
 {
     std::string message;
     switch (m_lastAuthState) {
@@ -273,8 +275,7 @@ void PurpleTdClient::notifyAuthError(td::td_api::object_ptr<td::td_api::error> e
         message = _("Authentication error: {}");
     }
 
-    if (error)
-        message = formatMessage(message.c_str(), getDisplayedError(*error));
+    message = formatMessage(message.c_str(), getDisplayedError(response));
 
     purple_connection_error(purple_account_get_connection(m_account), message.c_str());
 }
@@ -309,7 +310,7 @@ void PurpleTdClient::setPurpleConnectionUpdating()
 void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     purple_debug_misc(config::pluginId, "getContacts response to request %llu\n", (unsigned long long)requestId);
-    if (object->get_id() == td::td_api::users::ID) {
+    if (object && (object->get_id() == td::td_api::users::ID)) {
         td::td_api::object_ptr<td::td_api::users> users = td::move_tl_object_as<td::td_api::users>(object);
         m_data.setContacts(users->user_ids_);
         // td::td_api::chats response will be preceded by a string of updateNewChat for all chats
@@ -318,19 +319,19 @@ void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_
                                     nullptr, std::numeric_limits<std::int64_t>::max(), 0, 200),
                                 &PurpleTdClient::getChatsResponse);
     } else
-        notifyAuthError(td::td_api::make_object<td::td_api::error>(0, "Strange response to getContacts"));
+        notifyAuthError(object);
 }
 
 void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     purple_debug_misc(config::pluginId, "getChats response to request %llu\n", (unsigned long long)requestId);
-    if (object->get_id() == td::td_api::chats::ID) {
+    if (object && (object->get_id() == td::td_api::chats::ID)) {
         td::td_api::object_ptr<td::td_api::chats> chats = td::move_tl_object_as<td::td_api::chats>(object);
         m_data.setActiveChats(std::move(chats->chat_ids_));
         m_data.getContactsWithNoChat(m_usersForNewPrivateChats);
         requestMissingPrivateChats();
     } else
-        notifyAuthError(td::td_api::make_object<td::td_api::error>(0, "Strange response to getChats"));
+        notifyAuthError(object);
 }
 
 void PurpleTdClient::requestMissingPrivateChats()
@@ -1077,13 +1078,8 @@ void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_p
         uint64_t newRequestId = m_transceiver.sendQuery(std::move(createChat),
                                                         &PurpleTdClient::addContactCreatePrivateChatResponse);
         m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), alias.c_str(), userId);
-    } else if (object->get_id() == td::td_api::error::ID) {
-        td::td_api::object_ptr<td::td_api::error> error = td::move_tl_object_as<td::td_api::error>(object);
-        purple_debug_misc(config::pluginId, "Failed to add contact (%s): code %d (%s)\n",
-                        phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
-        notifyFailedContact(phoneNumber, getDisplayedError(*error));
     } else
-        notifyFailedContact(phoneNumber, _("Strange reply to adding contact"));
+        notifyFailedContact(phoneNumber, getDisplayedError(object));
 }
 
 void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -1094,14 +1090,10 @@ void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td:
     if (! m_data.extractContactRequest(requestId, phoneNumber, alias, userId))
         return;
 
-    if (object->get_id() != td::td_api::chat::ID) {
-        if (object->get_id() == td::td_api::error::ID) {
-            td::td_api::object_ptr<td::td_api::error> error = td::move_tl_object_as<td::td_api::error>(object);
-            purple_debug_misc(config::pluginId, "Failed to create private chat (to %s): code %d (%s)\n",
-                              phoneNumber.c_str(), (int)error->code_, error->message_.c_str());
-            notifyFailedContact(phoneNumber, getDisplayedError(*error));
-        } else
-            notifyFailedContact(phoneNumber, _("Strange reply to creating private chat"));
+    if (!object || (object->get_id() != td::td_api::chat::ID)) {
+        purple_debug_misc(config::pluginId, "Failed to create private chat to %s\n",
+                          phoneNumber.c_str());
+        notifyFailedContact(phoneNumber, getDisplayedError(object));
     }
 }
 
