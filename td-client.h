@@ -69,18 +69,23 @@ private:
     void       addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       notifyFailedContact(const std::string &phoneNumber, const std::string &errorMessage);
 
+    void       requestDownload(int32_t fileId, int64_t chatId, const std::string &sender,
+                               int32_t timestamp, bool outgoing,
+                               td::td_api::object_ptr<td::td_api::file> thumbnail,
+                               TdTransceiver::ResponseCb responseCb);
     void       showImage(const td::td_api::chat &chat, const td::td_api::message &message, const td::td_api::file &file);
     void       imageDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       showDownloadedImage(int64_t chatId, const std::string &sender, int32_t timestamp, bool outgoing,
                                    const std::string &filePath);
-    void       showInlineFile(const td::td_api::chat &chat, const std::string &sender, int32_t timestamp, bool outgoing,
-                              const td::td_api::file &file, const char *label, FileFallback fallbackType,
-                              td::td_api::object_ptr<td::td_api::file> fallback);
+    void       showInlineFile(const td::td_api::chat &chat, const td::td_api::message &message,
+                              const td::td_api::file &file);
     void       fileDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       showDownloadedInlineFile(int64_t chatId, const std::string &sender, int32_t timestamp, 
-                                        bool outgoing, const std::string &filePath, const char *label,
-                                        FileFallback fallbackType,
-                                        td::td_api::object_ptr<td::td_api::file> fallback);
+                                        bool outgoing, const std::string &filePath, const char *label);
+    void       stickerDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       showDownloadedSticker(int64_t chatId, const std::string &sender, int32_t timestamp, 
+                                     bool outgoing, const std::string &filePath,
+                                     td::td_api::object_ptr<td::td_api::file> thumbnail);
 
     PurpleAccount        *m_account;
     TdTransceiver         m_transceiver;
