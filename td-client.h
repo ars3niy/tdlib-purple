@@ -43,12 +43,12 @@ private:
     void       updatePurpleChatListAndReportConnected();
     // Login sequence end
 
-    void       showMessage(const td::td_api::chat &chat, const td::td_api::message &message);
+    void       showMessage(const td::td_api::chat &chat, td::td_api::message &message);
     void       showTextMessage(const td::td_api::chat &chat, const td::td_api::message &message,const td::td_api::messageText &text);
     void       showPhotoMessage(const td::td_api::chat &chat, const td::td_api::message &message, const td::td_api::messagePhoto &photo);
     void       showDocument(const td::td_api::chat &chat, const td::td_api::message &message, const td::td_api::messageDocument &document);
     void       showVideo(const td::td_api::chat &chat, const td::td_api::message &message, const td::td_api::messageVideo &video);
-    void       showSticker(const td::td_api::chat &chat, const td::td_api::message &message, const td::td_api::messageSticker &sticker);
+    void       showSticker(const td::td_api::chat &chat, const td::td_api::message &message, td::td_api::messageSticker &sticker);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
 
     void       updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
@@ -73,11 +73,14 @@ private:
     void       imageDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       showDownloadedImage(int64_t chatId, const std::string &sender, int32_t timestamp, bool outgoing,
                                    const std::string &filePath);
-    void       showInlineFile(const td::td_api::chat &chat, const td::td_api::message &message,
-                              const td::td_api::file &file, const char *label);
+    void       showInlineFile(const td::td_api::chat &chat, const std::string &sender, int32_t timestamp, bool outgoing,
+                              const td::td_api::file &file, const char *label, FileFallback fallbackType,
+                              td::td_api::object_ptr<td::td_api::file> fallback);
     void       fileDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       showDownloadedInlineFile(int64_t chatId, const std::string &sender, int32_t timestamp, 
-                                        bool outgoing, const std::string &filePath, const char *label);
+                                        bool outgoing, const std::string &filePath, const char *label,
+                                        FileFallback fallbackType,
+                                        td::td_api::object_ptr<td::td_api::file> fallback);
 
     PurpleAccount        *m_account;
     TdTransceiver         m_transceiver;

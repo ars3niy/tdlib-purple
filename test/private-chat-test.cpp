@@ -254,7 +254,7 @@ TEST_F(PrivateChatTest, Sticker)
             ),
             make_object<file>(
                 fileId[1], 10000, 10000,
-                make_object<localFile>("/sticker2", true, true, false, true, 0, 10000, 10000),
+                make_object<localFile>("/sticker2.tgs", true, true, false, true, 0, 10000, 10000),
                 make_object<remoteFile>("beh", "bleh", false, true, 10000)
             )
         ))
@@ -268,7 +268,8 @@ TEST_F(PrivateChatTest, Sticker)
     prpl.verifyEvents(ServGotImEvent(
         connection,
         userPhones[0],
-        "<a href=\"file:///sticker2\">Sticker</a>",
+        // Sticker replaced with thumbnail because it's .tgs
+        "<a href=\"file:///thumb\">Sticker</a>",
         PURPLE_MESSAGE_RECV,
         date
     ));

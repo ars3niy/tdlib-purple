@@ -34,19 +34,27 @@ public:
     : PendingRequest(requestId), groupId(groupId) {}
 };
 
+enum class FileFallback: uint8_t {
+    None,
+    ReplaceTgs,
+};
+
 // Matching completed downloads to chats they belong to
 class DownloadRequest: public PendingRequest {
 public:
-    int64_t     chatId;
-    std::string sender;
-    int32_t     timestamp;
-    bool        outgoing;
-    std::string label;
+    int64_t      chatId;
+    std::string  sender;
+    int32_t      timestamp;
+    bool         outgoing;
+    std::string  label;
+    FileFallback fallbackType;
+    td::td_api::object_ptr<td::td_api::file> fallback;
 
     DownloadRequest(uint64_t requestId, int64_t chatId, const std::string &sender, int32_t timestamp,
-                    bool outgoing, const std::string &label)
+                    bool outgoing, const std::string &label, FileFallback fallbackType,
+                    td::td_api::file *fallback)
     : PendingRequest(requestId), chatId(chatId), sender(sender), timestamp(timestamp),
-      outgoing(outgoing), label(label) {}
+      outgoing(outgoing), label(label), fallbackType(fallbackType), fallback(fallback) {}
 };
 
 class TdAccountData {

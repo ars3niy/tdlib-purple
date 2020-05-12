@@ -579,7 +579,7 @@ void PurpleTdClient::showImage(const td::td_api::chat &chat, const td::td_api::m
         uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq),
                                                      &PurpleTdClient::imageDownloadResponse);
         m_data.addPendingRequest<DownloadRequest>(requestId, message.chat_id_, sender, message.date_,
-                                                  message.is_outgoing_, "");
+                                                  message.is_outgoing_, "", FileFallback::None, nullptr);
     }
 }
 
@@ -651,26 +651,26 @@ void PurpleTdClient::showVideo(const td::td_api::chat &chat, const td::td_api::m
 }
 
 void PurpleTdClient::showSticker(const td::td_api::chat &chat, const td::td_api::message &message,
-                 const td::td_api::messageSticker &stickerContent)
+                                 td::td_api::messageSticker &stickerContent)
 {
     if (!stickerContent.sticker_) return;
-    const td::td_api::sticker &sticker = *stickerContent.sticker_;
-
-    //if (sticker.thumbnail_ && sticker.thumbnail_->photo_)
-    //    could show thumbnail instead of "Sticker";
+    td::td_api::sticker &sticker = *stickerContent.sticker_;
 
     if (sticker.sticker_)
-        showInlineFile(chat, message, *sticker.sticker_, "Sticker");
+        showInlineFile(chat, getSenderPurpleName(chat, message, m_data), message.date_,
+                       message.is_outgoing_, *sticker.sticker_, "Sticker", FileFallback::ReplaceTgs,
+                       sticker.thumbnail_ ? std::move(sticker.thumbnail_->photo_) : nullptr);
 }
 
-void PurpleTdClient::showInlineFile(const td::td_api::chat &chat, const td::td_api::message &message,
-                                    const td::td_api::file &file, const char *label)
+void PurpleTdClient::showInlineFile(const td::td_api::chat &chat, const std::string &sender,
+                                    int32_t timestamp, bool outgoing,
+                                    const td::td_api::file &file, const char *label,
+                                    FileFallback fallbackType,
+                                    td::td_api::object_ptr<td::td_api::file> fallback)
 {
-    std::string sender = getSenderPurpleName(chat, message, m_data);
-
     if (file.local_ && file.local_->is_downloading_completed_)
-        showDownloadedInlineFile(chat.id_, sender, message.date_, message.is_outgoing_,
-                                 file.local_->path_, label);
+        showDownloadedInlineFile(chat.id_, sender, timestamp, outgoing,
+                                 file.local_->path_, label, fallbackType, std::move(fallback));
     else {
         purple_debug_misc(config::pluginId, "Downloading file (id %d)\n", (int)file.id_);
         td::td_api::object_ptr<td::td_api::downloadFile> downloadReq =
@@ -683,8 +683,9 @@ void PurpleTdClient::showInlineFile(const td::td_api::chat &chat, const td::td_a
 
         uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq),
                                                      &PurpleTdClient::fileDownloadResponse);
-        m_data.addPendingRequest<DownloadRequest>(requestId, message.chat_id_, sender, message.date_,
-                                                  message.is_outgoing_, label);
+        m_data.addPendingRequest<DownloadRequest>(requestId, chat.id_, sender, timestamp,
+                                                  outgoing, label, fallbackType,
+                                                  fallback.release());
     }
 }
 
@@ -710,15 +711,33 @@ void PurpleTdClient::fileDownloadResponse(uint64_t requestId, td::td_api::object
     if (!path.empty()) {
         purple_debug_misc(config::pluginId, "File downloaded, path: %s\n", path.c_str());
         showDownloadedInlineFile(request->chatId, request->sender, request->timestamp,
-                                 request->outgoing, path, request->label.c_str());
+                                 request->outgoing, path, request->label.c_str(),
+                                 request->fallbackType, std::move(request->fallback));
     }
 }
 
+static bool isTgs(const std::string &path)
+{
+    size_t dot = path.rfind('.');
+    if (dot != std::string::npos)
+        return !strcmp(path.c_str() + dot + 1, "tgs");
+
+    return false;
+}
+
 void PurpleTdClient::showDownloadedInlineFile(int64_t chatId, const std::string &sender, int32_t timestamp, 
-                                              bool outgoing, const std::string &filePath, const char *label)
+                                              bool outgoing, const std::string &filePath, const char *label,
+                                              FileFallback fallbackType,
+                                              td::td_api::object_ptr<td::td_api::file> fallback)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
     if (chat) {
+        if ((fallbackType == FileFallback::ReplaceTgs && isTgs(filePath)) && fallback) {
+            showInlineFile(*chat, sender, timestamp, outgoing, *fallback, label,
+                           FileFallback::None, nullptr);
+            return;
+        }
+
         if (filePath.find('"') != std::string::npos)
             showMessageText(m_account, *chat, sender, NULL,
                             "Cannot show file: path contains quotes", timestamp, outgoing, m_data);
@@ -729,7 +748,7 @@ void PurpleTdClient::showDownloadedInlineFile(int64_t chatId, const std::string 
     }
 }
 
-void PurpleTdClient::showMessage(const td::td_api::chat &chat, const td::td_api::message &message)
+void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::message &message)
 {
     td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
     viewMessagesReq->chat_id_ = message.chat_id_;
@@ -754,7 +773,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, const td::td_api:
             showVideo(chat, message, static_cast<const td::td_api::messageVideo &>(*message.content_));
             break;
         case td::td_api::messageSticker::ID:
-            showSticker(chat, message, static_cast<const td::td_api::messageSticker &>(*message.content_));
+            showSticker(chat, message, static_cast<td::td_api::messageSticker &>(*message.content_));
             break;
         default: {
             std::string notice = "Received unsupported message type " +
