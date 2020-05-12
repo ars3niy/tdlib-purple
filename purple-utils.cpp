@@ -207,6 +207,38 @@ std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::
     return "";
 }
 
+static void findChatsByInviteLink(PurpleBlistNode *node, const std::string &inviteLink,
+                                  std::vector<PurpleChat *> &result)
+{
+    PurpleBlistNodeType nodeType = purple_blist_node_get_type(node);
+
+    if (nodeType == PURPLE_BLIST_CHAT_NODE) {
+        PurpleChat *chat       = PURPLE_CHAT(node);
+        const char *nodeLink   = getChatInviteLink(purple_chat_get_components(chat));
+        if (nodeLink && (nodeLink == inviteLink))
+            result.push_back(chat);
+    }
+
+    for (PurpleBlistNode *child = purple_blist_node_get_first_child(node); child;
+         child = purple_blist_node_get_sibling_next(child))
+    {
+        findChatsByInviteLink(child, inviteLink, result);
+    }
+}
+
+std::vector<PurpleChat *>findChatsByInviteLink(const std::string &inviteLink)
+{
+    std::vector<PurpleChat *> result;
+
+    for (PurpleBlistNode *root = purple_blist_get_root(); root;
+         root = purple_blist_node_get_sibling_next(root)) // LOL
+    {
+        findChatsByInviteLink(root, inviteLink, result);
+    }
+
+    return result;
+}
+
 void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
                     const TdAccountData &accountData)
 {

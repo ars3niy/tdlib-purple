@@ -12,6 +12,7 @@ PurpleConvChat     *getChatConversation(PurpleAccount *account, const td::td_api
                                         int chatPurpleId, TdAccountData &accountData);
 std::string         getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
                                         TdAccountData &accountData);
+std::vector<PurpleChat *> findChatsByInviteLink(const std::string &inviteLink);
 
 void showMessageTextIm(PurpleAccount *account, const char *purpleUserName, const char *text,
                        const char *notification, time_t timestamp, bool outgoing);

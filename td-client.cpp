@@ -1155,3 +1155,40 @@ int PurpleTdClient::sendGroupMessage(int purpleChatId, const char *message)
 
     return -1;
 }
+
+bool PurpleTdClient::joinChatByLink(const char *inviteLink)
+{
+    auto     request   = td::td_api::make_object<td::td_api::joinChatByInviteLink>(inviteLink);
+    uint64_t requestId = m_transceiver.sendQuery(std::move(request), &PurpleTdClient::joinChatByLinkResponse);
+    m_data.addPendingRequest<GroupJoinRequest>(requestId, inviteLink);
+
+    return true;
+}
+
+void PurpleTdClient::joinChatByLinkResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<GroupJoinRequest> request = m_data.getPendingRequest<GroupJoinRequest>(requestId);
+    if (object && (object->get_id() == td::td_api::chat::ID)) {
+        // If the chat was added with something like "Add chat" function from Pidgin, the chat in
+        // contact list was created without id component (for if there was the id component,
+        // tgprpl_chat_join would not have called PurpleTdClient::joinChatByLink).
+
+        // So when updateNewChat came prior to this response (as it must have), a new chat with
+        // correct id component (but without invite link component) was added to the contact list
+        // by PurpleTdClient::addChat calling updateBasicGroupChat, or whatever happens for
+        // supergroups.
+
+        // Therefore, remove the original manually added chat, and keep the auto-added one.
+        // Furthermore, user could have added same chat like that multiple times, in which case
+        // remove all of them.
+        if (request) {
+            std::vector<PurpleChat *> obsoleteChats = findChatsByInviteLink(request->inviteLink);
+            for (PurpleChat *chat: obsoleteChats)
+                purple_blist_remove_chat(chat);
+        }
+    } else {
+        std::string message = formatMessage(_("Failed to join chat: {}"), getDisplayedError(object));
+        purple_notify_error(purple_account_get_connection(m_account), _("Failed to join chat"),
+                            message.c_str(), NULL);
+    }
+}

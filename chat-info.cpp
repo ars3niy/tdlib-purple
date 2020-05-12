@@ -3,7 +3,8 @@
 
 static const char *_(const char *s) { return s; }
 
-static char idKey[] = "id";
+static char idKey[]     = "id";
+static char inviteKey[] = "link";
 
 GList *getChatJoinInfo()
 {
@@ -17,7 +18,7 @@ GList *getChatJoinInfo()
 
     pce = g_new0 (struct proto_chat_entry, 1);
     pce->label = _("Invite link (empty if creating new):");
-    pce->identifier = "link";
+    pce->identifier = inviteKey;
     pce->required = FALSE;
     info = g_list_append (info, pce);
 
@@ -49,6 +50,11 @@ GHashTable *getChatComponents(const td::td_api::chat &chat)
 const char *getChatName(GHashTable *components)
 {
     return (const char *)g_hash_table_lookup(components, idKey);
+}
+
+const char *getChatInviteLink(GHashTable *components)
+{
+    return (const char *)g_hash_table_lookup(components, inviteKey);
 }
 
 int64_t getTdlibChatId(const char *chatName)

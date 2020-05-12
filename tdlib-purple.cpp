@@ -1,6 +1,7 @@
 #include "config.h"
 #include "td-client.h"
 #include "chat-info.h"
+#include "format.h"
 #include <purple.h>
 
 #include <cstdint>
@@ -54,6 +55,15 @@ static GList *tgprpl_status_types (PurpleAccount *acct)
 
 static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
 {
+    /*
+  if (PURPLE_BLIST_NODE_IS_CHAT(node)) {
+
+    // Delete self from chat
+    PurpleMenuAction* action = purple_menu_action_new (_("Delete and exit..."), PURPLE_CALLBACK(leave_and_delete_chat_gw),
+        NULL, NULL);
+    menu = g_list_append (menu, (gpointer)action);
+  }
+  */
     return NULL;
 }
 
@@ -145,12 +155,36 @@ static void tgprpl_request_delete_contact (PurpleConnection *gc, PurpleBuddy *bu
                           _("_No"), request_delete_contact_on_server_no);
 }
 
+static std::array<const char *, 3> invitePrefixes {
+    "https://t.me/joinchat/",
+    "https://telegram.me/joinchat/",
+    "https://telegram.dog/joinchat/"
+};
+
+static bool isValidInviteLink(const char *link)
+{
+    return !strncmp(link, invitePrefixes[0], strlen(invitePrefixes[0])) ||
+           !strncmp(link, invitePrefixes[1], strlen(invitePrefixes[1])) ||
+           !strncmp(link, invitePrefixes[2], strlen(invitePrefixes[2]));
+}
+
 static void tgprpl_chat_join (PurpleConnection *gc, GHashTable *data)
 {
-    const char *name = getChatName(data);
-    if (name) {
-        PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    PurpleTdClient *tdClient   = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    const char     *name       = getChatName(data);
+    const char     *inviteLink = getChatInviteLink(data);
+
+    if (name && *name) {
         if (!tdClient->joinChat(name))
+            purple_serv_got_join_chat_failed (gc, data);
+    } else if (inviteLink && *inviteLink) {
+        // Some user-friendliness
+        if (!isValidInviteLink(inviteLink)) {
+            std::string message = formatMessage(_("Invite link must begin with {}, {}, or {}"),
+                                                {invitePrefixes[0], invitePrefixes[1], invitePrefixes[2]});
+            purple_notify_error(gc, _("Failed to join chat"), message.c_str(), NULL);
+        }
+        else if (!tdClient->joinChatByLink(inviteLink))
             purple_serv_got_join_chat_failed (gc, data);
     } else
         purple_serv_got_join_chat_failed (gc, data);

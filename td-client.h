@@ -15,6 +15,7 @@ public:
     void addContact(const char *phoneNumber, const char *alias);
     bool joinChat(const char *chatName);
     int  sendGroupMessage(int purpleChatId, const char *message);
+    bool joinChatByLink(const char *inviteLink);
 private:
     using TdObjectPtr   = td::td_api::object_ptr<td::td_api::Object>;
     using ResponseCb    = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
@@ -68,6 +69,7 @@ private:
     void       addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       notifyFailedContact(const std::string &phoneNumber, const std::string &errorMessage);
+    void       joinChatByLinkResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
     void       requestDownload(int32_t fileId, int64_t chatId, const std::string &sender,
                                int32_t timestamp, bool outgoing,

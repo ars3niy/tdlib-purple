@@ -50,6 +50,14 @@ public:
       outgoing(outgoing), thumbnail(thumbnail) {}
 };
 
+class GroupJoinRequest: public PendingRequest {
+public:
+    std::string inviteLink;
+
+    GroupJoinRequest(uint64_t requestId, const std::string &inviteLink)
+    : PendingRequest(requestId), inviteLink(inviteLink) {}
+};
+
 class TdAccountData {
 public:
     using TdUserPtr       = td::td_api::object_ptr<td::td_api::user>;
