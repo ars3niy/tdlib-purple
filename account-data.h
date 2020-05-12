@@ -34,6 +34,21 @@ public:
     : PendingRequest(requestId), groupId(groupId) {}
 };
 
+// Matching completed downloads to chats they belong to
+class DownloadRequest: public PendingRequest {
+public:
+    int64_t     chatId;
+    std::string sender;
+    int32_t     timestamp;
+    bool        outgoing;
+    std::string label;
+
+    DownloadRequest(uint64_t requestId, int64_t chatId, const std::string &sender, int32_t timestamp,
+                    bool outgoing, const std::string &label)
+    : PendingRequest(requestId), chatId(chatId), sender(sender), timestamp(timestamp),
+      outgoing(outgoing), label(label) {}
+};
+
 class TdAccountData {
 public:
     using TdUserPtr       = td::td_api::object_ptr<td::td_api::user>;
@@ -74,9 +89,6 @@ public:
     void addDelayedMessage(int32_t userId, TdMessagePtr message);
     void extractDelayedMessagesByUser(int32_t userId, std::vector<TdMessagePtr> &messages);
 
-    void addDownloadRequest(uint64_t requestId, int64_t chatId, const std::string &sender, int32_t timestamp, bool outgoing);
-    bool extractDownloadRequest(uint64_t requestId, int64_t &chatId, std::string &sender, int32_t &timestamp, bool &outgoing);
-
     template<typename ReqType, typename... ArgsType>
     void addPendingRequest(ArgsType... args)
     {
@@ -99,15 +111,6 @@ private:
     struct PendingMessage {
         TdMessagePtr message;
         int32_t      userId;
-    };
-
-    struct DownloadRequest {
-        // TODO: refactor into PendingRequest
-        uint64_t    requestId;
-        int64_t     chatId;
-        std::string sender;
-        int32_t     timestamp;
-        bool        outgoing;
     };
 
     struct ChatInfo {
@@ -145,9 +148,6 @@ private:
     // known, at which point it becomes possible to create libpurple contact and show the message
     // properly
     std::vector<PendingMessage>        m_delayedMessages;
-
-    // Matching completed downloads to chats they belong to
-    std::vector<DownloadRequest>       m_downloadRequests;
 
     std::vector<std::unique_ptr<PendingRequest>> m_requests;
 

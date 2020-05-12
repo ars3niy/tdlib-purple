@@ -541,65 +541,81 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const td::td
                                       const td::td_api::messagePhoto &photo)
 {
     const td::td_api::file *file = selectPhotoSize(photo);
+    const char             *notice;
 
-    showMessageText(m_account, chat, getSenderPurpleName(chat, message, m_data),
-                    photo.caption_ ? photo.caption_->text_.c_str() : NULL,
-                    file ? "Downloading image" : "Faulty image", message.date_, message.is_outgoing_,
-                    m_data);
+    if (!file)
+        notice = "Faulty image";
+    else if (file->local_ && file->local_->is_downloading_completed_)
+        notice = NULL;
+    else
+        notice = "Downloading image";
 
-    if (file) {
-        purple_debug_misc(config::pluginId, "Downloading photo (file id %d)\n", (int)file->id_);
+    if ((!photo.caption_ && photo.caption_->text_.empty()) || notice)
+        showMessageText(m_account, chat, getSenderPurpleName(chat, message, m_data),
+                        photo.caption_ ? photo.caption_->text_.c_str() : NULL,
+                        notice, message.date_, message.is_outgoing_, m_data);
+
+    if (file)
+        showImage(chat, message, *file);
+}
+
+void PurpleTdClient::showImage(const td::td_api::chat &chat, const td::td_api::message &message,
+                               const td::td_api::file &file)
+{
+    std::string sender = getSenderPurpleName(chat, message, m_data);
+
+    if (file.local_ && file.local_->is_downloading_completed_)
+        showDownloadedImage(chat.id_, sender, message.date_, message.is_outgoing_, file.local_->path_);
+    else {
+        purple_debug_misc(config::pluginId, "Downloading image (file id %d)\n", (int)file.id_);
         td::td_api::object_ptr<td::td_api::downloadFile> downloadReq =
             td::td_api::make_object<td::td_api::downloadFile>();
-        downloadReq->file_id_     = file->id_;
+        downloadReq->file_id_     = file.id_;
         downloadReq->priority_    = FILE_DOWNLOAD_PRIORITY;
         downloadReq->offset_      = 0;
         downloadReq->limit_       = 0;
         downloadReq->synchronous_ = true;
 
         uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq),
-                                                     &PurpleTdClient::messagePhotoDownloadResponse);
-        m_data.addDownloadRequest(requestId, message.chat_id_, getSenderPurpleName(chat, message, m_data),
-                                  message.date_, message.is_outgoing_);
+                                                     &PurpleTdClient::imageDownloadResponse);
+        m_data.addPendingRequest<DownloadRequest>(requestId, message.chat_id_, sender, message.date_,
+                                                  message.is_outgoing_, "");
     }
 }
 
-void PurpleTdClient::messagePhotoDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+void PurpleTdClient::imageDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    int64_t     chatId;
-    std::string sender;
-    int32_t     timestamp;
-    bool        outgoing;
-    if (!m_data.extractDownloadRequest(requestId, chatId, sender, timestamp, outgoing))
+    std::string                      path;
+    std::unique_ptr<DownloadRequest> request = m_data.getPendingRequest<DownloadRequest>(requestId);
+    if (!request)
         return;
-
-    std::string path;
 
     if (object->get_id() == td::td_api::file::ID) {
         const td::td_api::file &file = static_cast<const td::td_api::file &>(*object);
         if (!file.local_)
             purple_debug_misc(config::pluginId, "No local file info after downloading photo\n");
         else if (!file.local_->is_downloading_completed_)
-            purple_debug_misc(config::pluginId, "Photo not completely downloaded\n");
+            purple_debug_misc(config::pluginId, "Image not completely downloaded\n");
         else
             path = file.local_->path_;
     } else
-        purple_debug_misc(config::pluginId, "Unexpected response to downloading photo: id %d\n",
+        purple_debug_misc(config::pluginId, "Unexpected response to downloading image: id %d\n",
                           (int)object->get_id());
 
     if (!path.empty()) {
-        purple_debug_misc(config::pluginId, "Photo downloaded, path: %s\n", path.c_str());
-        showPhoto(chatId, sender, timestamp, outgoing, path);
+        purple_debug_misc(config::pluginId, "Image downloaded, path: %s\n", path.c_str());
+        showDownloadedImage(request->chatId, request->sender, request->timestamp, request->outgoing, path);
     }
 }
 
-void PurpleTdClient::showPhoto(int64_t chatId, const std::string &sender, int32_t timestamp, 
-                               bool outgoing, const std::string &filePath)
+void PurpleTdClient::showDownloadedImage(int64_t chatId, const std::string &sender, int32_t timestamp, 
+                                         bool outgoing, const std::string &filePath)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
     if (chat) {
         if (filePath.find('"') != std::string::npos)
-            purple_debug_misc(config::pluginId, "Cannot show photo: file path contains quotes\n");
+            showMessageText(m_account, *chat, sender, NULL,
+                            "Cannot show photo: file path contains quotes", timestamp, outgoing, m_data);
         else {
             std::string text = "<img src=\"file://" + filePath + "\">";
             showMessageText(m_account, *chat, sender, text.c_str(), NULL, timestamp, outgoing, m_data);
@@ -634,6 +650,85 @@ void PurpleTdClient::showVideo(const td::td_api::chat &chat, const td::td_api::m
                     description.c_str(), message.date_, message.is_outgoing_, m_data);
 }
 
+void PurpleTdClient::showSticker(const td::td_api::chat &chat, const td::td_api::message &message,
+                 const td::td_api::messageSticker &stickerContent)
+{
+    if (!stickerContent.sticker_) return;
+    const td::td_api::sticker &sticker = *stickerContent.sticker_;
+
+    //if (sticker.thumbnail_ && sticker.thumbnail_->photo_)
+    //    could show thumbnail instead of "Sticker";
+
+    if (sticker.sticker_)
+        showInlineFile(chat, message, *sticker.sticker_, "Sticker");
+}
+
+void PurpleTdClient::showInlineFile(const td::td_api::chat &chat, const td::td_api::message &message,
+                                    const td::td_api::file &file, const char *label)
+{
+    std::string sender = getSenderPurpleName(chat, message, m_data);
+
+    if (file.local_ && file.local_->is_downloading_completed_)
+        showDownloadedInlineFile(chat.id_, sender, message.date_, message.is_outgoing_,
+                                 file.local_->path_, label);
+    else {
+        purple_debug_misc(config::pluginId, "Downloading file (id %d)\n", (int)file.id_);
+        td::td_api::object_ptr<td::td_api::downloadFile> downloadReq =
+            td::td_api::make_object<td::td_api::downloadFile>();
+        downloadReq->file_id_     = file.id_;
+        downloadReq->priority_    = FILE_DOWNLOAD_PRIORITY;
+        downloadReq->offset_      = 0;
+        downloadReq->limit_       = 0;
+        downloadReq->synchronous_ = true;
+
+        uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq),
+                                                     &PurpleTdClient::fileDownloadResponse);
+        m_data.addPendingRequest<DownloadRequest>(requestId, message.chat_id_, sender, message.date_,
+                                                  message.is_outgoing_, label);
+    }
+}
+
+void PurpleTdClient::fileDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::string                      path;
+    std::unique_ptr<DownloadRequest> request = m_data.getPendingRequest<DownloadRequest>(requestId);
+    if (!request)
+        return;
+
+    if (object->get_id() == td::td_api::file::ID) {
+        const td::td_api::file &file = static_cast<const td::td_api::file &>(*object);
+        if (!file.local_)
+            purple_debug_misc(config::pluginId, "No local file info after downloading\n");
+        else if (!file.local_->is_downloading_completed_)
+            purple_debug_misc(config::pluginId, "File not completely downloaded\n");
+        else
+            path = file.local_->path_;
+    } else
+        purple_debug_misc(config::pluginId, "Unexpected response to downloading file: id %d\n",
+                          (int)object->get_id());
+
+    if (!path.empty()) {
+        purple_debug_misc(config::pluginId, "File downloaded, path: %s\n", path.c_str());
+        showDownloadedInlineFile(request->chatId, request->sender, request->timestamp,
+                                 request->outgoing, path, request->label.c_str());
+    }
+}
+
+void PurpleTdClient::showDownloadedInlineFile(int64_t chatId, const std::string &sender, int32_t timestamp, 
+                                              bool outgoing, const std::string &filePath, const char *label)
+{
+    const td::td_api::chat *chat = m_data.getChat(chatId);
+    if (chat) {
+        if (filePath.find('"') != std::string::npos)
+            showMessageText(m_account, *chat, sender, NULL,
+                            "Cannot show file: path contains quotes", timestamp, outgoing, m_data);
+        else {
+            std::string text = "<a href=\"file://" + filePath + "\">" + label + "</a>";
+            showMessageText(m_account, *chat, sender, text.c_str(), NULL, timestamp, outgoing, m_data);
+        }
+    }
+}
+
 void PurpleTdClient::showMessage(const td::td_api::chat &chat, const td::td_api::message &message)
 {
     td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
@@ -646,26 +741,21 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, const td::td_api:
         return;
 
     switch (message.content_->get_id()) {
-        case td::td_api::messageText::ID: {
-            const td::td_api::messageText &text = static_cast<const td::td_api::messageText &>(*message.content_);
-            showTextMessage(chat, message, text);
+        case td::td_api::messageText::ID:
+            showTextMessage(chat, message, static_cast<const td::td_api::messageText &>(*message.content_));
             break;
-        }
-        case td::td_api::messagePhoto::ID: {
-            const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message.content_);
-            showPhotoMessage(chat, message, photo);
+        case td::td_api::messagePhoto::ID:
+            showPhotoMessage(chat, message, static_cast<const td::td_api::messagePhoto &>(*message.content_));
             break;
-        }
-        case td::td_api::messageDocument::ID: {
-            const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message.content_);
-            showDocument(chat, message, document);
+        case td::td_api::messageDocument::ID:
+            showDocument(chat, message, static_cast<const td::td_api::messageDocument &>(*message.content_));
             break;
-        }
-        case td::td_api::messageVideo::ID: {
-            const td::td_api::messageVideo &video = static_cast<const td::td_api::messageVideo &>(*message.content_);
-            showVideo(chat, message, video);
+        case td::td_api::messageVideo::ID:
+            showVideo(chat, message, static_cast<const td::td_api::messageVideo &>(*message.content_));
             break;
-        }
+        case td::td_api::messageSticker::ID:
+            showSticker(chat, message, static_cast<const td::td_api::messageSticker &>(*message.content_));
+            break;
         default: {
             std::string notice = "Received unsupported message type " +
                                  messageTypeToString(*message.content_);

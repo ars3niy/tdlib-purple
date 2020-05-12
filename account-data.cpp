@@ -357,37 +357,6 @@ void TdAccountData::extractDelayedMessagesByUser(int32_t userId, std::vector<TdM
     m_delayedMessages.erase(it, m_delayedMessages.end());
 }
 
-void TdAccountData::addDownloadRequest(uint64_t requestId, int64_t chatId, const std::string &sender,
-                                       int32_t timestamp, bool outgoing)
-{
-    m_downloadRequests.emplace_back();
-    m_downloadRequests.back().requestId = requestId;
-    m_downloadRequests.back().chatId    = chatId;
-    m_downloadRequests.back().sender    = sender;
-    m_downloadRequests.back().timestamp = timestamp;
-    m_downloadRequests.back().outgoing  = outgoing;
-}
-
-bool TdAccountData::extractDownloadRequest(uint64_t requestId, int64_t &chatId, std::string &sender,
-                                           int32_t &timestamp, bool &outgoing)
-{
-    auto it = std::find_if(m_downloadRequests.begin(), m_downloadRequests.end(),
-                           [requestId](const DownloadRequest &req) { return (req.requestId == requestId); });
-
-    if (it != m_downloadRequests.end()) {
-        chatId    = it->chatId;
-        sender    = it->sender;
-        timestamp = it->timestamp;
-        outgoing  = it->outgoing;
-        m_downloadRequests.erase(it);
-        return true;
-    } else {
-        purple_debug_warning(config::pluginId, "Unknown file download request id %llu\n",
-                             (unsigned long long)requestId);
-        return false;
-    }
-}
-
 std::unique_ptr<PendingRequest> TdAccountData::getPendingRequestImpl(uint64_t requestId)
 {
     auto it = std::find_if(m_requests.begin(), m_requests.end(),

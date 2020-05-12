@@ -191,6 +191,89 @@ TEST_F(PrivateChatTest, Audio)
     );
 }
 
+TEST_F(PrivateChatTest, Sticker)
+{
+    const int32_t date      = 10001;
+    const int32_t fileId[2] = {1234, 1235};
+    const int32_t thumbId   = 1236;
+    loginWithOneContact();
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messageSticker>(make_object<sticker>(
+            0, 320, 200, "", true, false, nullptr,
+            nullptr,
+            make_object<file>(
+                fileId[0], 10000, 10000,
+                nullptr,
+                make_object<remoteFile>("beh", "bleh", false, true, 10000)
+            )
+        ))
+    )));
+    tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
+        make_object<downloadFile>(fileId[0], 1, 0, 0, true)
+    });
+
+    tgl.reply(make_object<ok>()); // reply to viewMessages
+    tgl.reply(make_object<file>(
+        fileId[0], 10000, 10000,
+        make_object<localFile>("/sticker", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        userPhones[0],
+        "<a href=\"file:///sticker\">Sticker</a>",
+        PURPLE_MESSAGE_RECV,
+        date
+    ));
+
+    // Now with thumbnail and main file, both already downloaded
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messageSticker>(make_object<sticker>(
+            0, 320, 200, "", true, false, nullptr,
+            make_object<photoSize>(
+                "whatever",
+                make_object<file>(
+                    thumbId, 10000, 10000,
+                    make_object<localFile>("/thumb", true, true, false, true, 0, 10000, 10000),
+                    make_object<remoteFile>("beh", "bleh", false, true, 10000)
+                ),
+                320, 200
+            ),
+            make_object<file>(
+                fileId[1], 10000, 10000,
+                make_object<localFile>("/sticker2", true, true, false, true, 0, 10000, 10000),
+                make_object<remoteFile>("beh", "bleh", false, true, 10000)
+            )
+        ))
+    )));
+    tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
+    });
+
+    tgl.reply(make_object<ok>()); // reply to viewMessages
+
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        userPhones[0],
+        "<a href=\"file:///sticker2\">Sticker</a>",
+        PURPLE_MESSAGE_RECV,
+        date
+    ));
+}
+
 TEST_F(PrivateChatTest, OtherMessage)
 {
     const int32_t date = 10001;
@@ -260,7 +343,13 @@ TEST_F(PrivateChatTest, Photo)
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     ));
 
-    prpl.verifyEvents(ServGotImEvent(connection, userPhones[0], "<img src=\"file:///path\">", PURPLE_MESSAGE_RECV, date));
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        userPhones[0],
+        "<img src=\"file:///path\">",
+        PURPLE_MESSAGE_RECV,
+        date
+    ));
 }
 
 TEST_F(PrivateChatTest, IgnoredUpdateUserAndNewPrivateChat)
