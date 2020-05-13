@@ -369,25 +369,6 @@ bool TdAccountData::extractContactRequest(uint64_t requestId, std::string &phone
     return false;
 }
 
-void TdAccountData::addDelayedMessage(int32_t userId, TdMessagePtr message)
-{
-    m_delayedMessages.emplace_back();
-    m_delayedMessages.back().message = std::move(message);
-    m_delayedMessages.back().userId  = userId;
-}
-
-void TdAccountData::extractDelayedMessagesByUser(int32_t userId, std::vector<TdMessagePtr> &messages)
-{
-    messages.clear();
-
-    auto it = std::remove_if(m_delayedMessages.begin(), m_delayedMessages.end(),
-                             [userId](const PendingMessage &msg) { return (msg.userId == userId); });
-
-    for (auto i = it; i != m_delayedMessages.end(); ++i)
-        messages.push_back(std::move(i->message));
-    m_delayedMessages.erase(it, m_delayedMessages.end());
-}
-
 std::unique_ptr<PendingRequest> TdAccountData::getPendingRequestImpl(uint64_t requestId)
 {
     auto it = std::find_if(m_requests.begin(), m_requests.end(),

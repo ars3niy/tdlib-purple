@@ -95,9 +95,6 @@ public:
     void addNewContactRequest(uint64_t requestId, const std::string &phoneNumber, const std::string &alias, int32_t userId = 0);
     bool extractContactRequest(uint64_t requestId, std::string &phoneNumber, std::string &alias, int32_t &userId);
 
-    void addDelayedMessage(int32_t userId, TdMessagePtr message);
-    void extractDelayedMessagesByUser(int32_t userId, std::vector<TdMessagePtr> &messages);
-
     template<typename ReqType, typename... ArgsType>
     void addPendingRequest(ArgsType... args)
     {
@@ -115,11 +112,6 @@ private:
         std::string phoneNumber;
         std::string alias;
         int32_t     userId;
-    };
-
-    struct PendingMessage {
-        TdMessagePtr message;
-        int32_t      userId;
     };
 
     struct ChatInfo {
@@ -151,12 +143,6 @@ private:
 
     // Used to remember stuff during asynchronous communication when adding contact
     std::vector<ContactRequest>        m_addContactRequests;
-
-    // When someone completely new writes to us, the first message has been observed to arrive
-    // before their phone number is known. Such message with linger here until phone number becomes
-    // known, at which point it becomes possible to create libpurple contact and show the message
-    // properly
-    std::vector<PendingMessage>        m_delayedMessages;
 
     std::vector<std::unique_ptr<PendingRequest>> m_requests;
 
