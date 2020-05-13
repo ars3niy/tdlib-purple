@@ -138,8 +138,8 @@ int TdTransceiverImpl::rxCallback(gpointer user_data)
                 callback = it->second;
                 self->m_responseHandlers.erase(it);
             } else
-                purple_debug_misc(config::pluginId, "Ignoring response to request %llu\n",
-                                  (unsigned long long)response.id);
+                purple_debug_misc(config::pluginId, "Ignoring response to request %" G_GUINT64_FORMAT "\n",
+                                  response.id);
             if (callback)
                 ((self->m_owner)->*callback)(response.id, std::move(response.object));
         }

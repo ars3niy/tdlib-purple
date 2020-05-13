@@ -39,7 +39,7 @@ std::string getChatName(const td::td_api::chat &chat)
 GHashTable *getChatComponents(const td::td_api::chat &chat)
 {
     char name[32];
-    snprintf(name, sizeof(name)-1, "chat%lld", (long long)chat.id_);
+    snprintf(name, sizeof(name)-1, "chat%" G_GUINT64_FORMAT "", chat.id_);
     name[sizeof(name)-1] = '\0';
 
     GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
@@ -61,7 +61,7 @@ int64_t getTdlibChatId(const char *chatName)
 {
     if (chatName && !strncmp(chatName, "chat", 4)) {
         long long id;
-        if (sscanf(chatName+4, "%lld", &id) == 1)
+        if (sscanf(chatName+4, "%" G_GUINT64_FORMAT "", &id) == 1)
             return id;
     }
 

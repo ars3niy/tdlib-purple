@@ -309,7 +309,7 @@ void PurpleTdClient::setPurpleConnectionUpdating()
 
 void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    purple_debug_misc(config::pluginId, "getContacts response to request %llu\n", (unsigned long long)requestId);
+    purple_debug_misc(config::pluginId, "getContacts response to request %" G_GUINT64_FORMAT "\n", requestId);
     if (object && (object->get_id() == td::td_api::users::ID)) {
         td::td_api::object_ptr<td::td_api::users> users = td::move_tl_object_as<td::td_api::users>(object);
         m_data.setContacts(users->user_ids_);
@@ -324,7 +324,7 @@ void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_
 
 void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    purple_debug_misc(config::pluginId, "getChats response to request %llu\n", (unsigned long long)requestId);
+    purple_debug_misc(config::pluginId, "getChats response to request %" G_GUINT64_FORMAT "\n", requestId);
     if (object && (object->get_id() == td::td_api::chats::ID)) {
         td::td_api::object_ptr<td::td_api::chats> chats = td::move_tl_object_as<td::td_api::chats>(object);
         m_data.setActiveChats(std::move(chats->chat_ids_));
@@ -353,8 +353,8 @@ void PurpleTdClient::loginCreatePrivateChatResponse(uint64_t requestId, td::td_a
 {
     if (object->get_id() == td::td_api::chat::ID) {
         td::td_api::object_ptr<td::td_api::chat> chat = td::move_tl_object_as<td::td_api::chat>(object);
-        purple_debug_misc(config::pluginId, "Requested private chat received: id %lld\n",
-                          (long long)chat->id_);
+        purple_debug_misc(config::pluginId, "Requested private chat received: id %" G_GUINT64_FORMAT "\n",
+                          chat->id_);
         // Here the "new" chat already exists in AccountData because there has just been
         // updateNewChat about this same chat. But do addChat anyway, just in case.
         m_data.addChat(std::move(chat));
@@ -371,8 +371,8 @@ void PurpleTdClient::updatePrivateChat(const td::td_api::chat &chat, const td::t
 
     PurpleBuddy *buddy = purple_find_buddy(m_account, purpleUserName);
     if (buddy == NULL) {
-        purple_debug_misc(config::pluginId, "Adding new buddy %s for chat id %lld\n",
-                            chat.title_.c_str(), (long long)chat.id_);
+        purple_debug_misc(config::pluginId, "Adding new buddy %s for chat id %" G_GUINT64_FORMAT "\n",
+                            chat.title_.c_str(), chat.id_);
         buddy = purple_buddy_new(m_account, purpleUserName, chat.title_.c_str());
         purple_blist_add_buddy(buddy, NULL, NULL, NULL);
         // If a new buddy has been added here, it means that there was updateUser with phone number.
@@ -806,8 +806,8 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
 
     const td::td_api::chat *chat = m_data.getChat(message->chat_id_);
     if (!chat) {
-        purple_debug_warning(config::pluginId, "Received message with unknown chat id %lld\n",
-                            (long long)message->chat_id_);
+        purple_debug_warning(config::pluginId, "Received message with unknown chat id %" G_GUINT64_FORMAT "\n",
+                            message->chat_id_);
         return;
     }
 
@@ -973,13 +973,13 @@ void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction
     chat = m_data.getChat(updateChatAction.chat_id_);
 
     if (!chat)
-        purple_debug_warning(config::pluginId, "Got user chat action for unknown chat %lld\n",
-                             (long long)updateChatAction.chat_id_);
+        purple_debug_warning(config::pluginId, "Got user chat action for unknown chat %" G_GUINT64_FORMAT "\n",
+                             updateChatAction.chat_id_);
     else if (chat->type_->get_id() == td::td_api::chatTypePrivate::ID) {
         const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat->type_);
         if (privType.user_id_ != updateChatAction.user_id_)
-            purple_debug_warning(config::pluginId, "Got user action for private chat %lld (with user %d) for another user %d\n",
-                                 (long long)updateChatAction.chat_id_, privType.user_id_,
+            purple_debug_warning(config::pluginId, "Got user action for private chat %" G_GUINT64_FORMAT " (with user %d) for another user %d\n",
+                                 updateChatAction.chat_id_, privType.user_id_,
                                  updateChatAction.user_id_);
         else if (updateChatAction.action_) {
             if (updateChatAction.action_->get_id() == td::td_api::chatActionCancel::ID) {
@@ -997,8 +997,8 @@ void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction
             }
         }
     } else
-        purple_debug_misc(config::pluginId, "Ignoring user chat action for non-private chat %lld\n",
-                          (long long)updateChatAction.chat_id_);
+        purple_debug_misc(config::pluginId, "Ignoring user chat action for non-private chat %" G_GUINT64_FORMAT "\n",
+                          updateChatAction.chat_id_);
 }
 
 void PurpleTdClient::showUserChatAction(int32_t userId, bool isTyping)
