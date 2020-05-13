@@ -36,6 +36,7 @@ private:
     void       connectionReady();
     void       setPurpleConnectionInProgress();
     void       setPurpleConnectionUpdating();
+    void       onLoggedIn();
     void       getContactsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       requestMissingPrivateChats();
@@ -95,6 +96,7 @@ private:
     TdAccountData         m_data;
     int32_t               m_lastAuthState = 0;
     TdAuthCodePtr         m_authCodeInfo;
+    bool                  m_connectionReady = false;
     std::vector<int32_t>  m_usersForNewPrivateChats;
 };
 

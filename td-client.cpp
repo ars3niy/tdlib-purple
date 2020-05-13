@@ -145,6 +145,8 @@ void PurpleTdClient::processAuthorizationState(td::td_api::AuthorizationState &a
 
     case td::td_api::authorizationStateReady::ID:
         purple_debug_misc(config::pluginId, "Authorization state update: ready\n");
+        if (m_connectionReady)
+            onLoggedIn();
         break;
     }
 }
@@ -285,14 +287,15 @@ void PurpleTdClient::notifyAuthError(const td::td_api::object_ptr<td::td_api::Ob
 void PurpleTdClient::connectionReady()
 {
     purple_debug_misc(config::pluginId, "Connection ready\n");
-    // This query ensures an updateUser for every contact
-    m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getContacts>(),
-                            &PurpleTdClient::getContactsResponse);
+    m_connectionReady = true;
+    if (m_lastAuthState == td::td_api::authorizationStateReady::ID)
+        onLoggedIn();
 }
 
 void PurpleTdClient::setPurpleConnectionInProgress()
 {
     purple_debug_misc(config::pluginId, "Connection in progress\n");
+    m_connectionReady = false;
     PurpleConnection *gc = purple_account_get_connection(m_account);
 
     if (PURPLE_CONNECTION_IS_CONNECTED(gc))
@@ -304,9 +307,17 @@ void PurpleTdClient::setPurpleConnectionInProgress()
 void PurpleTdClient::setPurpleConnectionUpdating()
 {
     purple_debug_misc(config::pluginId, "Updating account status\n");
+    m_connectionReady = false;
     PurpleConnection *gc = purple_account_get_connection(m_account);
 
     purple_connection_update_progress(gc, "Updating status", 2, 3);
+}
+
+void PurpleTdClient::onLoggedIn()
+{
+    // This query ensures an updateUser for every contact
+    m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getContacts>(),
+                            &PurpleTdClient::getContactsResponse);
 }
 
 void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)

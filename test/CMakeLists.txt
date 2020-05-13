@@ -7,6 +7,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     test-main.cpp
     private-chat-test.cpp
     group-chat-test.cpp
+    login-test.cpp
     test-transceiver.cpp
     libpurple-mock.cpp
     printout.cpp

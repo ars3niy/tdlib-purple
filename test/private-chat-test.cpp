@@ -2,11 +2,6 @@
 
 class PrivateChatTest: public CommTest {};
 
-TEST_F(PrivateChatTest, Login)
-{
-    login();
-}
-
 TEST_F(PrivateChatTest, AddContactByPhone)
 {
     login();
