@@ -14,15 +14,9 @@ std::string         getSenderPurpleName(const td::td_api::chat &chat, const td::
                                         TdAccountData &accountData);
 std::vector<PurpleChat *> findChatsByInviteLink(const std::string &inviteLink);
 
-void showMessageTextIm(PurpleAccount *account, const char *purpleUserName, const char *text,
-                       const char *notification, time_t timestamp, bool outgoing);
-void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &chat,
-                         const std::string &sender, const char *text,
-                         const char *notification, time_t timestamp, bool outgoing,
-                         TdAccountData &accountData);
 void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const std::string &sender,
                      const char *text, const char *notification, time_t timestamp, bool outgoing,
-                     TdAccountData &accountData);
+                     TdAccountData &accountData, uint32_t extraFlags = 0);
 void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
                     const TdAccountData &accountData);
 

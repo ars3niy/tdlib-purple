@@ -423,7 +423,7 @@ TEST_F(PrivateChatTest, Photo)
         connection,
         purpleUserName(0),
         "<img src=\"file:///path\">",
-        PURPLE_MESSAGE_RECV,
+        (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
         date
     ));
 }

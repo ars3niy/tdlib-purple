@@ -731,4 +731,9 @@ const char *purple_group_get_name(PurpleGroup *group)
     return group->name;
 }
 
+int purple_imgstore_add_with_id(gpointer data, size_t size, const char *filename)
+{
+    return 1;
+}
+
 };

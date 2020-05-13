@@ -115,22 +115,21 @@ PurpleConvChat *getChatConversation(PurpleAccount *account, const td::td_api::ch
     return NULL;
 }
 
-void showMessageTextIm(PurpleAccount *account, const char *purpleUserName, const char *text,
-                       const char *notification, time_t timestamp, bool outgoing)
+static void showMessageTextIm(PurpleAccount *account, const char *purpleUserName, const char *text,
+                              const char *notification, time_t timestamp, PurpleMessageFlags flags)
 {
     PurpleConversation *conv = NULL;
 
     if (text) {
-        if (outgoing) {
+        if (flags & PURPLE_MESSAGE_SEND) {
             // serv_got_im seems to work for messages sent from another client, but not for
             // echoed messages from this client. Therefore, this (code snippet from facebook plugin).
             conv = getImConversation(account, purpleUserName);
             purple_conversation_write(conv, purple_account_get_alias(account), text,
-                                    PURPLE_MESSAGE_SEND, // TODO: maybe set PURPLE_MESSAGE_REMOTE_SEND when appropriate
-                                    timestamp);
+                                      flags, timestamp);
         } else {
             serv_got_im(purple_account_get_connection(account), purpleUserName, text,
-                        PURPLE_MESSAGE_RECV, timestamp);
+                        flags, timestamp);
         }
     }
 
@@ -141,25 +140,25 @@ void showMessageTextIm(PurpleAccount *account, const char *purpleUserName, const
     }
 }
 
-void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &chat,
-                         const std::string &sender, const char *text,
-                         const char *notification, time_t timestamp, bool outgoing,
-                         TdAccountData &accountData)
+static void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &chat,
+                                const std::string &sender, const char *text,
+                                const char *notification, time_t timestamp, PurpleMessageFlags flags,
+                                TdAccountData &accountData)
 {
     // Again, doing what facebook plugin does
     int purpleId = accountData.getPurpleChatId(chat.id_);
     PurpleConvChat *conv = getChatConversation(account, chat, purpleId, accountData);
 
     if (text) {
-        if (outgoing) {
+        if (flags & PURPLE_MESSAGE_SEND) {
             if (conv)
                 purple_conv_chat_write(conv, purple_account_get_alias(account), text,
-                                    PURPLE_MESSAGE_SEND, timestamp);
+                                       flags, timestamp);
         } else {
             if (purpleId != 0)
                 serv_got_chat_in(purple_account_get_connection(account), purpleId,
                                  sender.empty() ? "someone" : sender.c_str(),
-                                 PURPLE_MESSAGE_RECV, text, timestamp);
+                                 flags, text, timestamp);
         }
     }
 
@@ -172,16 +171,19 @@ void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &chat,
 
 void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const std::string &sender,
                      const char *text, const char *notification, time_t timestamp, bool outgoing,
-                     TdAccountData &accountData)
+                     TdAccountData &accountData, uint32_t extraFlags)
 {
+    // TODO: maybe set PURPLE_MESSAGE_REMOTE_SEND when appropriate
+    PurpleMessageFlags flags = (PurpleMessageFlags) (extraFlags | (outgoing ? PURPLE_MESSAGE_SEND :
+                                                                              PURPLE_MESSAGE_RECV));
     const td::td_api::user *privateUser = accountData.getUserByPrivateChat(chat);
     if (privateUser) {
         std::string userName = getPurpleUserName(*privateUser);
-        showMessageTextIm(account, userName.c_str(), text, notification, timestamp, outgoing);
+        showMessageTextIm(account, userName.c_str(), text, notification, timestamp, flags);
     }
 
     if (getBasicGroupId(chat) || getSupergroupId(chat))
-        showMessageTextChat(account, chat, sender, text, notification, timestamp, outgoing, accountData);
+        showMessageTextChat(account, chat, sender, text, notification, timestamp, flags, accountData);
 }
 
 std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,

@@ -171,7 +171,7 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
     ));
     prpl.verifyEvents(ServGotChatEvent(
         connection, 1, userFirstNames[0] + " " + userLastNames[0], "<img src=\"file:///path\">",
-        PURPLE_MESSAGE_RECV, date
+        (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES), date
     ));
 }
 

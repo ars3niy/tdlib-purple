@@ -635,8 +635,17 @@ void PurpleTdClient::showDownloadedImage(int64_t chatId, const std::string &send
             showMessageText(m_account, *chat, sender, NULL,
                             "Cannot show photo: file path contains quotes", timestamp, outgoing, m_data);
         else {
-            std::string text = "<img src=\"file://" + filePath + "\">";
-            showMessageText(m_account, *chat, sender, text.c_str(), NULL, timestamp, outgoing, m_data);
+            std::string  text;
+            gchar       *data = NULL;
+            size_t       len  = 0;
+
+            if (g_file_get_contents (filePath.c_str(), &data, &len, NULL)) {
+                int id = purple_imgstore_add_with_id (data, len, NULL);
+                text = "\n<img id=\"" + std::to_string(id) + "\">";
+            } else
+                text = "<img src=\"file://" + filePath + "\">";
+            showMessageText(m_account, *chat, sender, text.c_str(), NULL, timestamp, outgoing,
+                            m_data, PURPLE_MESSAGE_IMAGES);
         }
     }
 }
