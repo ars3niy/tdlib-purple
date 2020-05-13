@@ -10,6 +10,10 @@
 
 struct PurpleEvent;
 
+extern "C" {
+    extern PurpleGroup standardPurpleGroup;
+}
+
 class PurpleEventReceiver {
 public:
     void addEvent(std::unique_ptr<PurpleEvent> event);

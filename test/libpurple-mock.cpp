@@ -709,4 +709,26 @@ PurpleBlistNode *purple_blist_node_get_first_child(PurpleBlistNode *node)
     return node->child;
 }
 
+static char groupName[] = "Group";
+
+PurpleGroup standardPurpleGroup = {
+    .node = PurpleBlistNode(),
+	.name = groupName,
+	.totalsize = 0,
+	.currentsize = 0,
+	.online = 0
+};
+
+PurpleGroup *purple_find_group(const char *name)
+{
+    if (!strcmp(name, standardPurpleGroup.name))
+        return &standardPurpleGroup;
+    return NULL;
+}
+
+const char *purple_group_get_name(PurpleGroup *group)
+{
+    return group->name;
+}
+
 };

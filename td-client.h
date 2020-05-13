@@ -12,7 +12,7 @@ public:
 
     static void setLogLevel(int level);
     int  sendMessage(const char *buddyName, const char *message);
-    void addContact(const std::string &phoneNumber, const std::string &alias);
+    void addContact(const std::string &phoneNumber, const std::string &alias, const std::string &groupName);
     bool joinChat(const char *chatName);
     int  sendGroupMessage(int purpleChatId, const char *message);
     bool joinChatByLink(const char *inviteLink);

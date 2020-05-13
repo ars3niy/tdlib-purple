@@ -34,6 +34,19 @@ public:
     : PendingRequest(requestId), groupId(groupId) {}
 };
 
+class ContactRequest: public PendingRequest {
+public:
+    std::string phoneNumber;
+    std::string alias;
+    std::string groupName;
+    int32_t     userId;
+
+    ContactRequest(uint64_t requestId, const std::string &phoneNumber, const std::string &alias,
+                   const std::string &groupName, int32_t userId)
+    : PendingRequest(requestId), phoneNumber(phoneNumber), alias(alias), groupName(groupName),
+      userId(userId) {}
+};
+
 // Matching completed downloads to chats they belong to
 class DownloadRequest: public PendingRequest {
 public:
@@ -92,28 +105,25 @@ public:
     const td::td_api::chat       *getSupergroupChatByGroup(int32_t groupId) const;
     bool                          isGroupChatWithMembership(const td::td_api::chat &chat);
 
-    void addNewContactRequest(uint64_t requestId, const std::string &phoneNumber, const std::string &alias, int32_t userId = 0);
-    bool extractContactRequest(uint64_t requestId, std::string &phoneNumber, std::string &alias, int32_t &userId);
-
     template<typename ReqType, typename... ArgsType>
     void addPendingRequest(ArgsType... args)
     {
         m_requests.push_back(std::make_unique<ReqType>(args...));
     }
     template<typename ReqType>
+    void addPendingRequest(uint64_t requestId, std::unique_ptr<ReqType> &&request)
+    {
+        m_requests.push_back(std::move(request));
+        m_requests.back()->requestId = requestId;
+    }
+    template<typename ReqType>
     std::unique_ptr<ReqType> getPendingRequest(uint64_t requestId)
     {
         return std::unique_ptr<ReqType>(dynamic_cast<ReqType *>(getPendingRequestImpl(requestId).release()));
     }
-private:
-    struct ContactRequest {
-        // TODO: refactor into PendingRequest
-        uint64_t    requestId;
-        std::string phoneNumber;
-        std::string alias;
-        int32_t     userId;
-    };
 
+    const ContactRequest *findContactRequest(int32_t userId);
+private:
     struct ChatInfo {
         int32_t   purpleId;
         TdChatPtr chat;

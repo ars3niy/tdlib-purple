@@ -11,12 +11,11 @@ TEST_F(PrivateChatTest, AddContactByPhone)
 {
     login();
 
-    PurpleGroup group;
     PurpleBuddy *buddy = purple_buddy_new(account, userPhones[0].c_str(), "LocalAlias");
-    purple_blist_add_buddy(buddy, NULL, &group, NULL);
+    purple_blist_add_buddy(buddy, NULL, &standardPurpleGroup, NULL);
     prpl.discardEvents();
 
-    pluginInfo().add_buddy(connection, buddy, &group);
+    pluginInfo().add_buddy(connection, buddy, &standardPurpleGroup);
     // The buddy is deleted right away, to be replaced later
     prpl.verifyEvents(RemoveBuddyEvent(account, userPhones[0]));
 
@@ -71,8 +70,14 @@ TEST_F(PrivateChatTest, AddContactByPhone)
         nullptr, 0, 0, 0
     )));
 
-    // TODO group must be preserved
-    prpl.verifyEvents(AddBuddyEvent(purpleUserName(0), "LocalAlias", account, NULL, NULL, NULL));
+    prpl.verifyEvents(AddBuddyEvent(
+        purpleUserName(0),
+        "LocalAlias",
+        account,
+        NULL,
+        &standardPurpleGroup,
+        NULL
+    ));
     tgl.reply(makeChat(
         chatIds[0],
         make_object<chatTypePrivate>(userIds[0]),
@@ -438,8 +443,8 @@ TEST_F(PrivateChatTest, IgnoredUpdateUserAndNewPrivateChat)
 
 TEST_F(PrivateChatTest, RenameBuddyAtConnect)
 {
-    PurpleGroup group;
-    purple_blist_add_buddy(purple_buddy_new(account, purpleUserName(0).c_str(), "whatever"), NULL, &group, NULL);
+    purple_blist_add_buddy(purple_buddy_new(account, purpleUserName(0).c_str(), "whatever"), NULL,
+                           &standardPurpleGroup, NULL);
     prpl.discardEvents();
 
     login(
@@ -451,7 +456,7 @@ TEST_F(PrivateChatTest, RenameBuddyAtConnect)
             std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
             std::make_unique<RemoveBuddyEvent>(account, purpleUserName(0)),
             std::make_unique<AddBuddyEvent>(purpleUserName(0), userFirstNames[0] + " " + userLastNames[0],
-                                            account, nullptr, &group, nullptr),
+                                            account, nullptr, &standardPurpleGroup, nullptr),
             std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_OFFLINE),
             std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
             std::make_unique<ShowAccountEvent>(account)

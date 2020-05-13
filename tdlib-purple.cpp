@@ -126,6 +126,7 @@ static void tgprpl_add_buddy (PurpleConnection *gc, PurpleBuddy *buddy, PurpleGr
 {
     const char  *phoneNumber = purple_buddy_get_name(buddy);
     const char  *alias       = purple_buddy_get_alias(buddy);
+    const char  *groupName   = group ? purple_group_get_name(group) : NULL;
 
     std::string  phoneNumberStr = phoneNumber;
     std::string  aliasStr       = alias ? alias : "";
@@ -135,7 +136,7 @@ static void tgprpl_add_buddy (PurpleConnection *gc, PurpleBuddy *buddy, PurpleGr
     // Now original C strings are gone
 
     PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
-    tdClient->addContact(phoneNumberStr, aliasStr);
+    tdClient->addContact(phoneNumberStr, aliasStr, groupName ? groupName : "");
 }
 
 static void request_delete_contact_on_server_yes (void *data, PurpleRequestFields* fields)

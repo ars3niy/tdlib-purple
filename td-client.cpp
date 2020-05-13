@@ -371,8 +371,15 @@ void PurpleTdClient::updatePrivateChat(const td::td_api::chat &chat, const td::t
     if (buddy == NULL) {
         purple_debug_misc(config::pluginId, "Adding new buddy %s for user %s, chat id %" G_GUINT64_FORMAT "\n",
                           chat.title_.c_str(), purpleUserName.c_str(), chat.id_);
+
+        const ContactRequest *contactReq = m_data.findContactRequest(user.id_);
+        PurpleGroup          *group      = (contactReq && !contactReq->groupName.empty()) ?
+                                           purple_find_group(contactReq->groupName.c_str()) : NULL;
+        if (group)
+            purple_debug_misc(config::pluginId, "Adding into group %s\n", purple_group_get_name(group));
+
         buddy = purple_buddy_new(m_account, purpleUserName.c_str(), chat.title_.c_str());
-        purple_blist_add_buddy(buddy, NULL, NULL, NULL);
+        purple_blist_add_buddy(buddy, NULL, group, NULL);
         // If a new buddy has been added here, it means that there was updateNewChat with the private
         // chat. This means either we added them to contacts or started messaging them, or they
         // messaged us. Either way, there is no need to for any extra notification about new contact
@@ -990,7 +997,8 @@ void PurpleTdClient::showUserChatAction(int32_t userId, bool isTyping)
     }
 }
 
-void PurpleTdClient::addContact(const std::string &phoneNumber, const std::string &alias)
+void PurpleTdClient::addContact(const std::string &phoneNumber, const std::string &alias,
+                                const std::string &groupName)
 {
     if (m_data.getUserByPhone(phoneNumber.c_str())) {
         purple_debug_info(config::pluginId, "User with phone number %s already exists\n", phoneNumber.c_str());
@@ -1005,15 +1013,13 @@ void PurpleTdClient::addContact(const std::string &phoneNumber, const std::strin
     uint64_t requestId = m_transceiver.sendQuery(std::move(importReq),
                                                  &PurpleTdClient::importContactResponse);
 
-    m_data.addNewContactRequest(requestId, phoneNumber, alias);
+    m_data.addPendingRequest<ContactRequest>(requestId, phoneNumber, alias, groupName, 0);
 }
 
 void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    std::string         phoneNumber;
-    std::string         alias;
-    int32_t             dummy;
-    if (! m_data.extractContactRequest(requestId, phoneNumber, alias, dummy))
+    std::unique_ptr<ContactRequest> request = m_data.getPendingRequest<ContactRequest>(requestId);
+    if (!request)
         return;
 
     int32_t userId = 0;
@@ -1025,50 +1031,47 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
     }
 
     // For whatever reason, complaining at an earlier stage leads to error message not being shown in pidgin
-    if (!isPhoneNumber(phoneNumber.c_str()))
-        notifyFailedContact(phoneNumber, _("Not a valid phone number"));
+    if (!isPhoneNumber(request->phoneNumber.c_str()))
+        notifyFailedContact(request->phoneNumber, _("Not a valid phone number"));
     else if (userId) {
         td::td_api::object_ptr<td::td_api::contact> contact =
-            td::td_api::make_object<td::td_api::contact>(phoneNumber, alias, "", "", userId);
+            td::td_api::make_object<td::td_api::contact>(request->phoneNumber, request->alias, "", "", userId);
         td::td_api::object_ptr<td::td_api::addContact> addContact =
             td::td_api::make_object<td::td_api::addContact>(std::move(contact), true);
         uint64_t newRequestId = m_transceiver.sendQuery(std::move(addContact),
                                                         &PurpleTdClient::addContactResponse);
-        m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), alias.c_str(), userId);
+        m_data.addPendingRequest<ContactRequest>(newRequestId, request->phoneNumber, request->alias,
+                                                 request->groupName, userId);
     } else
-        notifyFailedContact(phoneNumber, _("User not found"));
+        notifyFailedContact(request->phoneNumber, _("User not found"));
 }
 
 void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    std::string         phoneNumber;
-    std::string         alias;
-    int32_t             userId;
-    if (! m_data.extractContactRequest(requestId, phoneNumber, alias, userId))
+    std::unique_ptr<ContactRequest> request = m_data.getPendingRequest<ContactRequest>(requestId);
+    if (!request)
         return;
 
     if (object->get_id() == td::td_api::ok::ID) {
         td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
-            td::td_api::make_object<td::td_api::createPrivateChat>(userId, false);
+            td::td_api::make_object<td::td_api::createPrivateChat>(request->userId, false);
         uint64_t newRequestId = m_transceiver.sendQuery(std::move(createChat),
                                                         &PurpleTdClient::addContactCreatePrivateChatResponse);
-        m_data.addNewContactRequest(newRequestId, phoneNumber.c_str(), alias.c_str(), userId);
+        m_data.addPendingRequest(newRequestId, std::move(request));
     } else
-        notifyFailedContact(phoneNumber, getDisplayedError(object));
+        notifyFailedContact(request->phoneNumber, getDisplayedError(object));
 }
 
 void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    std::string         phoneNumber;
-    std::string         alias;
-    int32_t             userId;
-    if (! m_data.extractContactRequest(requestId, phoneNumber, alias, userId))
+    std::unique_ptr<ContactRequest> request = m_data.getPendingRequest<ContactRequest>(requestId);
+    if (!request)
         return;
 
     if (!object || (object->get_id() != td::td_api::chat::ID)) {
         purple_debug_misc(config::pluginId, "Failed to create private chat to %s\n",
-                          phoneNumber.c_str());
-        notifyFailedContact(phoneNumber, getDisplayedError(object));
+                          request->phoneNumber.c_str());
+        notifyFailedContact(request->phoneNumber, getDisplayedError(object));
     }
 }
 

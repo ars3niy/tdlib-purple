@@ -343,32 +343,6 @@ void TdAccountData::getActiveChats(std::vector<const td::td_api::chat *> &chats)
     }
 }
 
-void TdAccountData::addNewContactRequest(uint64_t requestId, const std::string &phoneNumber,
-                                         const std::string &alias, int32_t userId)
-{
-    m_addContactRequests.emplace_back();
-    m_addContactRequests.back().requestId = requestId;
-    m_addContactRequests.back().phoneNumber = phoneNumber;
-    m_addContactRequests.back().alias = alias;
-    m_addContactRequests.back().userId = userId;
-}
-
-bool TdAccountData::extractContactRequest(uint64_t requestId, std::string &phoneNumber,
-                                          std::string &alias, int32_t &userId)
-{
-    auto pReq = std::find_if(m_addContactRequests.begin(), m_addContactRequests.end(),
-                             [requestId](const ContactRequest &req) { return (req.requestId == requestId); });
-    if (pReq != m_addContactRequests.end()) {
-        phoneNumber = std::move(pReq->phoneNumber);
-        alias = std::move(pReq->alias);
-        userId = pReq->userId;
-        m_addContactRequests.erase(pReq);
-        return true;
-    }
-
-    return false;
-}
-
 std::unique_ptr<PendingRequest> TdAccountData::getPendingRequestImpl(uint64_t requestId)
 {
     auto it = std::find_if(m_requests.begin(), m_requests.end(),
@@ -382,5 +356,18 @@ std::unique_ptr<PendingRequest> TdAccountData::getPendingRequestImpl(uint64_t re
         return result;
     }
 
+    return nullptr;
+}
+
+const ContactRequest *TdAccountData::findContactRequest(int32_t userId)
+{
+    auto it = std::find_if(m_requests.begin(), m_requests.end(),
+                           [userId](const std::unique_ptr<PendingRequest> &req) {
+                               const ContactRequest *contactReq = dynamic_cast<const ContactRequest *>(req.get());
+                               return (contactReq && (contactReq->userId == userId));
+                           });
+
+    if (it != m_requests.end())
+        return static_cast<const ContactRequest *>(it->get());
     return nullptr;
 }
