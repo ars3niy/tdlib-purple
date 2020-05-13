@@ -4,6 +4,24 @@
 #include "account-data.h"
 #include <purple.h>
 
+struct TgMessageInfo {
+    std::string sender;
+    time_t      timestamp;
+    bool        outgoing;
+};
+
+// Matching completed downloads to chats they belong to
+class DownloadRequest: public PendingRequest {
+public:
+    int64_t       chatId;
+    TgMessageInfo message;
+    td::td_api::object_ptr<td::td_api::file> thumbnail;
+
+    // Could not pass object_ptr through variadic funciton :(
+    DownloadRequest(uint64_t requestId, int64_t chatId, const TgMessageInfo &message, td::td_api::file *thumbnail)
+    : PendingRequest(requestId), chatId(chatId), message(message), thumbnail(thumbnail) {}
+};
+
 std::string         messageTypeToString(const td::td_api::MessageContent &content);
 const char         *getPurpleStatusId(const td::td_api::UserStatus &tdStatus);
 std::string         getPurpleUserName(const td::td_api::user &user);
@@ -14,9 +32,9 @@ std::string         getSenderPurpleName(const td::td_api::chat &chat, const td::
                                         TdAccountData &accountData);
 std::vector<PurpleChat *> findChatsByInviteLink(const std::string &inviteLink);
 
-void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const std::string &sender,
-                     const char *text, const char *notification, time_t timestamp, bool outgoing,
-                     TdAccountData &accountData, uint32_t extraFlags = 0);
+void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const TgMessageInfo &message,
+                     const char *text, const char *notification, TdAccountData &accountData,
+                     uint32_t extraFlags = 0);
 void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
                     const TdAccountData &accountData);
 

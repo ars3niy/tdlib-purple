@@ -47,22 +47,6 @@ public:
       userId(userId) {}
 };
 
-// Matching completed downloads to chats they belong to
-class DownloadRequest: public PendingRequest {
-public:
-    int64_t      chatId;
-    std::string  sender;
-    int32_t      timestamp;
-    bool         outgoing;
-    td::td_api::object_ptr<td::td_api::file> thumbnail;
-
-    // Could not pass object_ptr through variadic funciton :(
-    DownloadRequest(uint64_t requestId, int64_t chatId, const std::string &sender, int32_t timestamp,
-                    bool outgoing, td::td_api::file *thumbnail)
-    : PendingRequest(requestId), chatId(chatId), sender(sender), timestamp(timestamp),
-      outgoing(outgoing), thumbnail(thumbnail) {}
-};
-
 class GroupJoinRequest: public PendingRequest {
 public:
     std::string inviteLink;

@@ -141,8 +141,8 @@ static void showMessageTextIm(PurpleAccount *account, const char *purpleUserName
 }
 
 static void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &chat,
-                                const std::string &sender, const char *text,
-                                const char *notification, time_t timestamp, PurpleMessageFlags flags,
+                                const TgMessageInfo &message, const char *text,
+                                const char *notification, PurpleMessageFlags flags,
                                 TdAccountData &accountData)
 {
     // Again, doing what facebook plugin does
@@ -153,37 +153,38 @@ static void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &
         if (flags & PURPLE_MESSAGE_SEND) {
             if (conv)
                 purple_conv_chat_write(conv, purple_account_get_alias(account), text,
-                                       flags, timestamp);
+                                       flags, message.timestamp);
         } else {
             if (purpleId != 0)
                 serv_got_chat_in(purple_account_get_connection(account), purpleId,
-                                 sender.empty() ? "someone" : sender.c_str(),
-                                 flags, text, timestamp);
+                                 message.sender.empty() ? "someone" : message.sender.c_str(),
+                                 flags, text, message.timestamp);
         }
     }
 
     if (notification) {
         if (conv)
             purple_conversation_write(purple_conv_chat_get_conversation(conv), nullptr,
-                                      notification, PURPLE_MESSAGE_SYSTEM, timestamp);
+                                      notification, PURPLE_MESSAGE_SYSTEM, message.timestamp);
     }
 }
 
-void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const std::string &sender,
-                     const char *text, const char *notification, time_t timestamp, bool outgoing,
-                     TdAccountData &accountData, uint32_t extraFlags)
+void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const TgMessageInfo &message,
+                     const char *text, const char *notification, TdAccountData &accountData,
+                     uint32_t extraFlags)
 {
     // TODO: maybe set PURPLE_MESSAGE_REMOTE_SEND when appropriate
-    PurpleMessageFlags flags = (PurpleMessageFlags) (extraFlags | (outgoing ? PURPLE_MESSAGE_SEND :
-                                                                              PURPLE_MESSAGE_RECV));
+    PurpleMessageFlags directionFlag = message.outgoing ? PURPLE_MESSAGE_SEND : PURPLE_MESSAGE_RECV;
+    PurpleMessageFlags flags = (PurpleMessageFlags) (extraFlags | directionFlag);
+
     const td::td_api::user *privateUser = accountData.getUserByPrivateChat(chat);
     if (privateUser) {
         std::string userName = getPurpleUserName(*privateUser);
-        showMessageTextIm(account, userName.c_str(), text, notification, timestamp, flags);
+        showMessageTextIm(account, userName.c_str(), text, notification, message.timestamp, flags);
     }
 
     if (getBasicGroupId(chat) || getSupergroupId(chat))
-        showMessageTextChat(account, chat, sender, text, notification, timestamp, flags, accountData);
+        showMessageTextChat(account, chat, message, text, notification, flags, accountData);
 }
 
 std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
