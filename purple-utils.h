@@ -6,7 +6,7 @@
 
 std::string         messageTypeToString(const td::td_api::MessageContent &content);
 const char         *getPurpleStatusId(const td::td_api::UserStatus &tdStatus);
-const char         *getPurpleUserName(const td::td_api::user &user);
+std::string         getPurpleUserName(const td::td_api::user &user);
 PurpleConversation *getImConversation(PurpleAccount *account, const char *username);
 PurpleConvChat     *getChatConversation(PurpleAccount *account, const td::td_api::chat &chat,
                                         int chatPurpleId, TdAccountData &accountData);

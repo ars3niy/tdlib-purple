@@ -59,9 +59,10 @@ const char *getPurpleStatusId(const td::td_api::UserStatus &tdStatus)
         return purple_primitive_get_id_from_type(PURPLE_STATUS_OFFLINE);
 }
 
-const char *getPurpleUserName(const td::td_api::user &user)
+std::string getPurpleUserName(const td::td_api::user &user)
 {
-    return getCanonicalPhoneNumber(user.phone_number_.c_str());
+    // Prepend "id" so it's not accidentally equal to our phone number which is account name
+    return "id" + std::to_string(user.id_);
 }
 
 PurpleConversation *getImConversation(PurpleAccount *account, const char *username)
@@ -174,9 +175,10 @@ void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const
                      TdAccountData &accountData)
 {
     const td::td_api::user *privateUser = accountData.getUserByPrivateChat(chat);
-    if (privateUser)
-        showMessageTextIm(account, getPurpleUserName(*privateUser), text, notification, timestamp,
-                          outgoing);
+    if (privateUser) {
+        std::string userName = getPurpleUserName(*privateUser);
+        showMessageTextIm(account, userName.c_str(), text, notification, timestamp, outgoing);
+    }
 
     if (getBasicGroupId(chat) || getSupergroupId(chat))
         showMessageTextChat(account, chat, sender, text, notification, timestamp, outgoing, accountData);
@@ -255,31 +257,17 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
         if (!user)
             continue;
 
-        const char *phoneNumber = getPurpleUserName(*user);
-        if (phoneNumber && *phoneNumber) {
-            if (purple_find_buddy(account, phoneNumber))
-                // We know phone number for the user, and libpurple will be able to map phone
-                // number to alias because there is a buddy
-                nameData.emplace_back(phoneNumber);
-            else if (!strcmp(getCanonicalPhoneNumber(purple_account_get_username(account)), phoneNumber))
-                // This is us, so again libpurple will map phone number to alias
-                nameData.emplace_back(purple_account_get_username(account));
-            else
-                // Use first/last name instead
-                phoneNumber = NULL;
-        }
-
-        if (!phoneNumber || !*phoneNumber) {
+        std::string userName    = getPurpleUserName(*user);
+        const char *phoneNumber = getCanonicalPhoneNumber(user->phone_number_.c_str());
+        if (purple_find_buddy(account, userName.c_str()))
+            // libpurple will be able to map user name to alias because there is a buddy
+            nameData.emplace_back(userName);
+        else if (!strcmp(getCanonicalPhoneNumber(purple_account_get_username(account)), phoneNumber))
+            // This is us, so again libpurple will map phone number to alias
+            nameData.emplace_back(purple_account_get_username(account));
+        else {
+            // Use first and last name instead
             std::string displayName = getDisplayName(user);
-
-            // Don't get confused by sneaky users who set their name equal to
-            // someone else's phone number (the user can still be confused but at least there will
-            // be no bugs)
-            // Buddy cannot have leading + in their name but our own account can, so tweak any
-            // phone-number-looking name
-            if (isPhoneNumber(displayName.c_str()))
-                displayName += ' ';
-
             nameData.emplace_back(displayName);
         }
 

@@ -185,7 +185,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
     purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), table), NULL, NULL);
 
     // Pre-add one of two group members as a contact
-    purple_blist_add_buddy(purple_buddy_new(account, userPhones[0].c_str(),
+    purple_blist_add_buddy(purple_buddy_new(account, purpleUserName(0).c_str(),
                                             (userFirstNames[0] + " " + userLastNames[0]).c_str()),
                            NULL, NULL, NULL);
     prpl.discardEvents();
@@ -256,8 +256,8 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
     prpl.verifyEvents(
         ChatAddUserEvent(
             "chat" + std::to_string(groupChatId),
-            // This user is in our contact list so his phone number is used
-            userPhones[0],
+            // This user is in our contact list so his libpurple user name is used
+            purpleUserName(0),
             "", PURPLE_CBFLAGS_NONE, false
         ),
         ChatAddUserEvent(

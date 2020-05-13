@@ -10,16 +10,20 @@ void TestTransceiver::send(td::Client::Request &&request)
     expectedRequestId++;
     std::cout << "Received: " << requestToString(*request.function) << std::endl;
     m_requests.push(std::move(request));
+
+    printf("First request: %p count: %u\n", m_requests.front().function.get(), (unsigned)m_requests.size());
 }
 
 uint64_t TestTransceiver::verifyRequest(const Function &request)
 {
     m_lastRequestIds.clear();
     verifyRequestImpl(request);
-    m_lastRequestIds.push_back(m_requests.front().id);
-    m_requests.pop();
+    if (!m_requests.empty()) {
+        m_lastRequestIds.push_back(m_requests.front().id);
+        m_requests.pop();
+    }
     verifyNoRequests();
-    return m_lastRequestIds.back();
+    return m_lastRequestIds.empty() ? 0 : m_lastRequestIds.back();
 }
 
 void TestTransceiver::verifyRequests(std::initializer_list<td::td_api::object_ptr<td::td_api::Function>> requests)
@@ -27,8 +31,10 @@ void TestTransceiver::verifyRequests(std::initializer_list<td::td_api::object_pt
     m_lastRequestIds.clear();
     for (auto &pReq: requests) {
         verifyRequestImpl(*pReq);
-        m_lastRequestIds.push_back(m_requests.front().id);
-        m_requests.pop();
+        if (!m_requests.empty()) {
+            m_lastRequestIds.push_back(m_requests.front().id);
+            m_requests.pop();
+        }
     }
     verifyNoRequests();
 }
@@ -135,6 +141,35 @@ static void compare(const joinChatByInviteLink &actual, const joinChatByInviteLi
     COMPARE(invite_link_);
 }
 
+static void compare(const contact &actual, const contact &expected)
+{
+    COMPARE(phone_number_);
+    COMPARE(first_name_);
+    COMPARE(last_name_);
+    COMPARE(vcard_);
+    COMPARE(user_id_);
+}
+
+static void compare(const importContacts &actual, const importContacts &expected)
+{
+    COMPARE(contacts_.size());
+
+    for (size_t i = 0; i < actual.contacts_.size(); i++)
+        compare(*actual.contacts_[i], *expected.contacts_[i]);
+}
+
+static void compare(const addContact &actual, const addContact &expected)
+{
+    compare(*actual.contact_, *expected.contact_);
+    COMPARE(share_phone_number_);
+}
+
+static void compare(const createPrivateChat &actual, const createPrivateChat &expected)
+{
+    COMPARE(user_id_);
+    COMPARE(force_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected)
 {
     ASSERT_EQ(expected.get_id(), actual.get_id()) << "Wrong request type: expected " << requestToString(expected);
@@ -154,6 +189,9 @@ static void compareRequests(const Function &actual, const Function &expected)
         C(sendMessage)
         C(getBasicGroupFullInfo)
         C(joinChatByInviteLink)
+        C(importContacts)
+        C(addContact)
+        C(createPrivateChat)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

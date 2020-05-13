@@ -5,9 +5,9 @@
 #include <map>
 #include <mutex>
 
-bool        isCanonicalPhoneNumber(const char *s);
 bool        isPhoneNumber(const char *s);
 const char *getCanonicalPhoneNumber(const char *s);
+int32_t     stringToUserId(const char *s);
 std::string getDisplayName(const td::td_api::user *user);
 int32_t     getBasicGroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeBasicGroup
 int32_t     getSupergroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeSupergroup
@@ -92,7 +92,7 @@ public:
     const td::td_api::chat       *getSupergroupChatByGroup(int32_t groupId) const;
     bool                          isGroupChatWithMembership(const td::td_api::chat &chat);
 
-    void addNewContactRequest(uint64_t requestId, const char *phoneNumber, const char *alias, int32_t userId = 0);
+    void addNewContactRequest(uint64_t requestId, const std::string &phoneNumber, const std::string &alias, int32_t userId = 0);
     bool extractContactRequest(uint64_t requestId, std::string &phoneNumber, std::string &alias, int32_t &userId);
 
     void addDelayedMessage(int32_t userId, TdMessagePtr message);

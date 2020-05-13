@@ -3,7 +3,7 @@
 #include <purple.h>
 #include <algorithm>
 
-bool isCanonicalPhoneNumber(const char *s)
+static bool isCanonicalPhoneNumber(const char *s)
 {
     if (*s == '\0')
         return false;
@@ -29,6 +29,30 @@ const char *getCanonicalPhoneNumber(const char *s)
         return s;
 }
 
+int32_t stringToUserId(const char *s)
+{
+    if (strncmp(s, "id", 2))
+        return 0;
+    s += 2;
+
+    const char *c = s;
+    if (*c == '-')
+        c++;
+    if ((*c == '\0') || (*c == '0'))
+        return 0;
+    for (; *c; c++)
+        if ((c >= s+12) || !isdigit(*c))
+            return 0;
+
+    long long x;
+    static_assert(sizeof(x) > 4, "need more than int32 here");
+    x = atoll(s);
+    if ((x < INT32_MIN) || (x > INT32_MAX))
+        return 0;
+
+    return x;
+}
+
 static bool isPhoneEqual(const std::string &n1, const std::string &n2)
 {
     const char *s1 = n1.c_str();
@@ -45,6 +69,13 @@ std::string getDisplayName(const td::td_api::user *user)
         if (!result.empty() && !user->last_name_.empty())
             result += ' ';
         result += user->last_name_;
+
+        // If some sneaky user sets their name equal to someone else's libpurple username, or to our
+        // phone number which is libpurple account name, make sure display name is different, because
+        // of how it is used for group chat members
+        if ((stringToUserId(result.c_str()) != 0) || isPhoneNumber(result.c_str()))
+            result += ' ';
+
         return result;
     }
 
@@ -312,8 +343,8 @@ void TdAccountData::getActiveChats(std::vector<const td::td_api::chat *> &chats)
     }
 }
 
-void TdAccountData::addNewContactRequest(uint64_t requestId, const char *phoneNumber,
-                                         const char *alias, int32_t userId)
+void TdAccountData::addNewContactRequest(uint64_t requestId, const std::string &phoneNumber,
+                                         const std::string &alias, int32_t userId)
 {
     m_addContactRequests.emplace_back();
     m_addContactRequests.back().requestId = requestId;

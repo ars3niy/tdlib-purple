@@ -7,6 +7,80 @@ TEST_F(PrivateChatTest, Login)
     login();
 }
 
+TEST_F(PrivateChatTest, AddContactByPhone)
+{
+    login();
+
+    PurpleGroup group;
+    PurpleBuddy *buddy = purple_buddy_new(account, userPhones[0].c_str(), "LocalAlias");
+    purple_blist_add_buddy(buddy, NULL, &group, NULL);
+    prpl.discardEvents();
+
+    pluginInfo().add_buddy(connection, buddy, &group);
+    // The buddy is deleted right away, to be replaced later
+    prpl.verifyEvents(RemoveBuddyEvent(account, userPhones[0]));
+
+    std::vector<object_ptr<contact>> contacts;
+    contacts.push_back(make_object<contact>(
+        userPhones[0],
+        "",
+        "",
+        "",
+        0
+    ));
+    tgl.verifyRequest(importContacts(std::move(contacts)));
+
+    tgl.update(make_object<updateUser>(makeUser(
+        userIds[0],
+        "",
+        "",
+        userPhones[0],
+        make_object<userStatusOffline>()
+    )));
+    tgl.reply(make_object<importedContacts>(
+        std::vector<int32_t>(1, userIds[0]),
+        std::vector<int32_t>()
+    ));
+
+    tgl.verifyRequest(addContact(
+        make_object<contact>(
+            userPhones[0],
+            "LocalAlias",
+            "",
+            "",
+            userIds[0]
+        ), true
+    ));
+
+    tgl.update(make_object<updateUser>(makeUser(
+        userIds[0],
+        "LocalAlias",
+        "",
+        userPhones[0],
+        make_object<userStatusOffline>()
+    )));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(createPrivateChat(userIds[0], false));
+    prpl.verifyNoEvents();
+
+    tgl.update(make_object<updateNewChat>(makeChat(
+        chatIds[0],
+        make_object<chatTypePrivate>(userIds[0]),
+        "LocalAlias",
+        nullptr, 0, 0, 0
+    )));
+
+    // TODO group must be preserved
+    prpl.verifyEvents(AddBuddyEvent(purpleUserName(0), "LocalAlias", account, NULL, NULL, NULL));
+    tgl.reply(makeChat(
+        chatIds[0],
+        make_object<chatTypePrivate>(userIds[0]),
+        userFirstNames[0] + " " + userLastNames[0],
+        nullptr, 0, 0, 0
+    ));
+}
+
 TEST_F(PrivateChatTest, ContactedByNew)
 {
     login();
@@ -24,61 +98,8 @@ TEST_F(PrivateChatTest, ContactedByNew)
 
     // They message us
     tgl.update(standardPrivateChat(0));
-
-    tgl.update(make_object<updateNewMessage>(makeMessage(
-        messageId,
-        userIds[0],
-        chatIds[0],
-        false,
-        date,
-        makeTextMessage("text")
-    )));
-    prpl.verifyNoEvents();
-    tgl.verifyNoRequests();
-
-    // And only now we get phone number (with +, though in reality it's without)
-    tgl.update(make_object<updateUser>(makeUser(
-        userIds[0],
-        userFirstNames[0],
-        userLastNames[0],
-        "+" + userPhones[0],
-        make_object<userStatusOffline>()
-    )));
-    prpl.verifyEvents(
-        AddBuddyEvent(
-            userPhones[0],
-            userFirstNames[0] + " " + userLastNames[0],
-            account,
-            nullptr, nullptr, nullptr
-        ),
-        ServGotImEvent(
-            connection,
-            userPhones[0],
-            "text",
-            PURPLE_MESSAGE_RECV,
-            date
-        )
-    );
-    tgl.verifyRequest(viewMessages(
-        chatIds[0],
-        {messageId},
-        true
-    ));
-}
-
-TEST_F(PrivateChatTest, ContactedByNew_ImmediatePhoneNumber)
-{
-    login();
-    constexpr int64_t messageId = 10000;
-    constexpr int32_t date      = 123456;
-
-    // Phone number sent right away - this has not been observed in real life
-    tgl.update(standardUpdateUser(0));
-    prpl.verifyNoEvents();
-
-    tgl.update(standardPrivateChat(0));
     prpl.verifyEvents(AddBuddyEvent(
-        userPhones[0],
+        purpleUserName(0),
         userFirstNames[0] + " " + userLastNames[0],
         account,
         nullptr, nullptr, nullptr
@@ -94,7 +115,56 @@ TEST_F(PrivateChatTest, ContactedByNew_ImmediatePhoneNumber)
     )));
     prpl.verifyEvents(ServGotImEvent(
         connection,
-        userPhones[0],
+        purpleUserName(0),
+        "text",
+        PURPLE_MESSAGE_RECV,
+        date
+    ));
+    tgl.verifyRequest(viewMessages(
+        chatIds[0],
+        {messageId},
+        true
+    ));
+
+    // And only now we get phone number
+    tgl.update(make_object<updateUser>(makeUser(
+        userIds[0],
+        userFirstNames[0],
+        userLastNames[0],
+        "+" + userPhones[0],
+        make_object<userStatusOffline>()
+    )));
+}
+
+TEST_F(PrivateChatTest, ContactedByNew_ImmediatePhoneNumber)
+{
+    login();
+    constexpr int64_t messageId = 10000;
+    constexpr int32_t date      = 123456;
+
+    // Phone number sent right away - this has not been observed in real life
+    tgl.update(standardUpdateUser(0));
+    prpl.verifyNoEvents();
+
+    tgl.update(standardPrivateChat(0));
+    prpl.verifyEvents(AddBuddyEvent(
+        purpleUserName(0),
+        userFirstNames[0] + " " + userLastNames[0],
+        account,
+        nullptr, nullptr, nullptr
+    ));
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        makeTextMessage("text")
+    )));
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        purpleUserName(0),
         "text",
         PURPLE_MESSAGE_RECV,
         date
@@ -128,8 +198,8 @@ TEST_F(PrivateChatTest, Document)
         true
     ));
     prpl.verifyEvents(
-        ServGotImEvent(connection, userPhones[0], "document", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(userPhones[0], "", "Sent a file: doc.file.name [mime/type]",
+        ServGotImEvent(connection, purpleUserName(0), "document", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(purpleUserName(0), "", "Sent a file: doc.file.name [mime/type]",
                                PURPLE_MESSAGE_SYSTEM, date)
     );
 }
@@ -157,8 +227,8 @@ TEST_F(PrivateChatTest, Video)
         true
     ));
     prpl.verifyEvents(
-        ServGotImEvent(connection, userPhones[0], "video", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(userPhones[0], "", "Sent a video: video.avi [640x480, 120s]",
+        ServGotImEvent(connection, purpleUserName(0), "video", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(purpleUserName(0), "", "Sent a video: video.avi [640x480, 120s]",
                                PURPLE_MESSAGE_SYSTEM, date)
     );
 }
@@ -185,8 +255,8 @@ TEST_F(PrivateChatTest, Audio)
         true
     ));
     prpl.verifyEvents(
-        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, userPhones[0]),
-        ConversationWriteEvent(userPhones[0], "", "Received unsupported message type messageAudio",
+        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
+        ConversationWriteEvent(purpleUserName(0), "", "Received unsupported message type messageAudio",
                                PURPLE_MESSAGE_SYSTEM, date)
     );
 }
@@ -228,7 +298,7 @@ TEST_F(PrivateChatTest, Sticker)
 
     prpl.verifyEvents(ServGotImEvent(
         connection,
-        userPhones[0],
+        purpleUserName(0),
         "<a href=\"file:///sticker\">Sticker</a>",
         PURPLE_MESSAGE_RECV,
         date
@@ -267,7 +337,7 @@ TEST_F(PrivateChatTest, Sticker)
 
     prpl.verifyEvents(ServGotImEvent(
         connection,
-        userPhones[0],
+        purpleUserName(0),
         // Sticker replaced with thumbnail because it's .tgs
         "<a href=\"file:///thumb\">Sticker</a>",
         PURPLE_MESSAGE_RECV,
@@ -294,8 +364,8 @@ TEST_F(PrivateChatTest, OtherMessage)
         true
     ));
     prpl.verifyEvents(
-        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, userPhones[0]),
-        ConversationWriteEvent(userPhones[0], "", "Received unsupported message type messageGame",
+        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
+        ConversationWriteEvent(purpleUserName(0), "", "Received unsupported message type messageGame",
                                PURPLE_MESSAGE_SYSTEM, date)
     );
 }
@@ -333,8 +403,8 @@ TEST_F(PrivateChatTest, Photo)
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
     prpl.verifyEvents(
-        ServGotImEvent(connection, userPhones[0], "photo", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(userPhones[0], "", "Downloading image", PURPLE_MESSAGE_SYSTEM, date)
+        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(purpleUserName(0), "", "Downloading image", PURPLE_MESSAGE_SYSTEM, date)
     );
 
     tgl.reply(make_object<ok>()); // reply to viewMessages
@@ -346,7 +416,7 @@ TEST_F(PrivateChatTest, Photo)
 
     prpl.verifyEvents(ServGotImEvent(
         connection,
-        userPhones[0],
+        purpleUserName(0),
         "<img src=\"file:///path\">",
         PURPLE_MESSAGE_RECV,
         date
@@ -369,7 +439,7 @@ TEST_F(PrivateChatTest, IgnoredUpdateUserAndNewPrivateChat)
 TEST_F(PrivateChatTest, RenameBuddyAtConnect)
 {
     PurpleGroup group;
-    purple_blist_add_buddy(purple_buddy_new(account, userPhones[0].c_str(), "whatever"), NULL, &group, NULL);
+    purple_blist_add_buddy(purple_buddy_new(account, purpleUserName(0).c_str(), "whatever"), NULL, &group, NULL);
     prpl.discardEvents();
 
     login(
@@ -379,10 +449,10 @@ TEST_F(PrivateChatTest, RenameBuddyAtConnect)
         {}, {},
         {
             std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
-            std::make_unique<RemoveBuddyEvent>(account, userPhones[0]),
-            std::make_unique<AddBuddyEvent>(userPhones[0], userFirstNames[0] + " " + userLastNames[0],
+            std::make_unique<RemoveBuddyEvent>(account, purpleUserName(0)),
+            std::make_unique<AddBuddyEvent>(purpleUserName(0), userFirstNames[0] + " " + userLastNames[0],
                                             account, nullptr, &group, nullptr),
-            std::make_unique<UserStatusEvent>(account, userPhones[0], PURPLE_STATUS_OFFLINE),
+            std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_OFFLINE),
             std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
             std::make_unique<ShowAccountEvent>(account)
         }

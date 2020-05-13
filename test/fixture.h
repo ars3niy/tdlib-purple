@@ -29,6 +29,7 @@ protected:
     const std::string userPhones[2]     = {"00001", "00002"};
     const std::string userFirstNames[2] = {"Gottfried", "Galileo"};
     const std::string userLastNames[2]  = {"Leibniz", "Galilei"};
+    std::string       purpleUserName(unsigned index) { return "id" + std::to_string(userIds[index]); }
 
     void SetUp() override;
     void TearDown() override;
