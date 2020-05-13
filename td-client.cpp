@@ -2,6 +2,9 @@
 #include "chat-info.h"
 #include "config.h"
 #include "format.h"
+#include "tg-utils.h"
+#include <unistd.h>
+#include <stdlib.h>
 
 static char *_(const char *s) { return const_cast<char *>(s); }
 
@@ -834,14 +837,7 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
         return -1;
     }
 
-    td::td_api::object_ptr<td::td_api::sendMessage> sendMessageRequest = td::td_api::make_object<td::td_api::sendMessage>();
-    sendMessageRequest->chat_id_ = tdChat->id_;
-    td::td_api::object_ptr<td::td_api::inputMessageText> content = td::td_api::make_object<td::td_api::inputMessageText>();
-    content->text_ = td::td_api::make_object<td::td_api::formattedText>();
-    content->text_->text_ = message;
-    sendMessageRequest->input_message_content_ = std::move(content);
-
-    m_transceiver.sendQuery(std::move(sendMessageRequest), nullptr);
+    transmitMessage(tdChat->id_, message, m_transceiver);
 
     // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
     return 0;
@@ -1111,14 +1107,7 @@ int PurpleTdClient::sendGroupMessage(int purpleChatId, const char *message)
         purple_debug_warning(config::pluginId, "purple id %d (chat %s) is not a group we a member of\n",
                              purpleChatId, chat->title_.c_str());
     else {
-        td::td_api::object_ptr<td::td_api::sendMessage> sendMessageRequest = td::td_api::make_object<td::td_api::sendMessage>();
-        sendMessageRequest->chat_id_ = chat->id_;
-        td::td_api::object_ptr<td::td_api::inputMessageText> content = td::td_api::make_object<td::td_api::inputMessageText>();
-        content->text_ = td::td_api::make_object<td::td_api::formattedText>();
-        content->text_->text_ = message;
-        sendMessageRequest->input_message_content_ = std::move(content);
-
-        m_transceiver.sendQuery(std::move(sendMessageRequest), nullptr);
+        transmitMessage(chat->id_, message, m_transceiver);
         // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
         return 0;
     }

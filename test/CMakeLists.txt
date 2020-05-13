@@ -21,6 +21,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     ../config.cpp
     ../purple-utils.cpp
     ../format.cpp
+    ../tg-utils.cpp
 )
 
 target_compile_definitions(tests PRIVATE

@@ -736,4 +736,19 @@ int purple_imgstore_add_with_id(gpointer data, size_t size, const char *filename
     return 1;
 }
 
+PurpleStoredImage *purple_imgstore_find_by_id(int id)
+{
+    return NULL;
+}
+
+gconstpointer purple_imgstore_get_data(PurpleStoredImage *img)
+{
+    return NULL;
+}
+
+size_t purple_imgstore_get_size(PurpleStoredImage *img)
+{
+    return 0;
+}
+
 };

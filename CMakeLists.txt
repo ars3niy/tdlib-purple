@@ -28,6 +28,7 @@ add_library(telegram-tdlib SHARED
     config.cpp
     purple-utils.cpp
     format.cpp
+    tg-utils.cpp
 )
 
 target_compile_definitions(telegram-tdlib PRIVATE

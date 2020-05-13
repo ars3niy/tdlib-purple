@@ -88,6 +88,8 @@ private:
                                      const std::string &filePath,
                                      td::td_api::object_ptr<td::td_api::file> thumbnail);
 
+    bool       sendMessage(int64_t chatId, const char *message);
+
     PurpleAccount        *m_account;
     TdTransceiver         m_transceiver;
     TdAccountData         m_data;
