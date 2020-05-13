@@ -1,6 +1,6 @@
 namespace config {
 
-#define PACKAGE_VERSION "0.3.2"
+#define PACKAGE_VERSION "0.4"
 
 char pluginId[]      = "telegram-tdlib";
 char pluginName[]    = "Telegram (tdlib)";
