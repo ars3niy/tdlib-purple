@@ -138,8 +138,8 @@ void TdAccountData::addChat(TdChatPtr chat)
         auto pContact = std::find(m_contactUserIdsNoChat.begin(), m_contactUserIdsNoChat.end(),
                                   privType.user_id_);
         if (pContact != m_contactUserIdsNoChat.end()) {
-            purple_debug_misc(config::pluginId, "Private chat (id %lld) now known for user %d\n",
-                              (long long)chat->id_, (int)privType.user_id_);
+            purple_debug_misc(config::pluginId, "Private chat (id %" G_GUINT64_FORMAT ") now known for user %d\n",
+                              chat->id_, (int)privType.user_id_);
             m_contactUserIdsNoChat.erase(pContact);
         }
     }
@@ -335,7 +335,7 @@ void TdAccountData::getActiveChats(std::vector<const td::td_api::chat *> &chats)
     for (int64_t chatId: m_activeChats) {
         const td::td_api::chat *chat = getChat(chatId);
         if (!chat) {
-            purple_debug_warning(config::pluginId, "Received unknown chat id %lld\n", (long long)chatId);
+            purple_debug_warning(config::pluginId, "Received unknown chat id %" G_GINT64_FORMAT "\n", chatId);
             continue;
         }
 
