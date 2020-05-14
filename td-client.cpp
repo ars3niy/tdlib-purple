@@ -241,8 +241,13 @@ void PurpleTdClient::registerUser()
 {
     std::string firstName, lastName;
     getNamesFromAlias(purple_account_get_alias(m_account), firstName, lastName);
-    m_transceiver.sendQuery(td::td_api::make_object<td::td_api::registerUser>(firstName, lastName),
-                            &PurpleTdClient::authResponse);
+
+    if (firstName.empty() && lastName.empty())
+        purple_connection_error(purple_account_get_connection(m_account),
+                                _("Account alias (your name) must be set to register new user"));
+    else
+        m_transceiver.sendQuery(td::td_api::make_object<td::td_api::registerUser>(firstName, lastName),
+                                &PurpleTdClient::authResponse);
 }
 
 void PurpleTdClient::requestCodeEntered(PurpleTdClient *self, const gchar *code)
@@ -255,7 +260,7 @@ void PurpleTdClient::requestCodeEntered(PurpleTdClient *self, const gchar *code)
 void PurpleTdClient::requestCodeCancelled(PurpleTdClient *self)
 {
     purple_connection_error(purple_account_get_connection(self->m_account),
-                            "Authentication code required");
+                            _("Authentication code required"));
 }
 
 void PurpleTdClient::authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
