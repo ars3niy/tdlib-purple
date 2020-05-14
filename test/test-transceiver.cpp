@@ -10,8 +10,6 @@ void TestTransceiver::send(td::Client::Request &&request)
     expectedRequestId++;
     std::cout << "Received: " << requestToString(*request.function) << std::endl;
     m_requests.push(std::move(request));
-
-    printf("First request: %p count: %u\n", m_requests.front().function.get(), (unsigned)m_requests.size());
 }
 
 uint64_t TestTransceiver::verifyRequest(const Function &request)
@@ -170,6 +168,17 @@ static void compare(const createPrivateChat &actual, const createPrivateChat &ex
     COMPARE(force_);
 }
 
+static void compare(const checkAuthenticationCode &actual, const checkAuthenticationCode &expected)
+{
+    COMPARE(code_);
+}
+
+static void compare(const registerUser &actual, const registerUser &expected)
+{
+    COMPARE(first_name_);
+    COMPARE(last_name_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected)
 {
     ASSERT_EQ(expected.get_id(), actual.get_id()) << "Wrong request type: expected " << requestToString(expected);
@@ -192,6 +201,8 @@ static void compareRequests(const Function &actual, const Function &expected)
         C(importContacts)
         C(addContact)
         C(createPrivateChat)
+        C(checkAuthenticationCode)
+        C(registerUser)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

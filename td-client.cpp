@@ -138,9 +138,13 @@ void PurpleTdClient::processAuthorizationState(td::td_api::AuthorizationState &a
     case td::td_api::authorizationStateWaitCode::ID: {
         auto &codeState = static_cast<td::td_api::authorizationStateWaitCode &>(authState);
         purple_debug_misc(config::pluginId, "Authorization state update: authentication code requested\n");
-        m_authCodeInfo = std::move(codeState.code_info_);
-        requestAuthCode();
+        requestAuthCode(codeState.code_info_.get());
         break;
+    }
+
+    case td::td_api::authorizationStateWaitRegistration::ID: {
+        purple_debug_misc(config::pluginId, "Authorization state update: new user registration\n");
+        registerUser();
     }
 
     case td::td_api::authorizationStateReady::ID:
@@ -199,15 +203,15 @@ static std::string getAuthCodeDesc(const td::td_api::AuthenticationCodeType &cod
     }
 }
 
-void PurpleTdClient::requestAuthCode()
+void PurpleTdClient::requestAuthCode(const td::td_api::authenticationCodeInfo *codeInfo)
 {
     std::string message = _("Enter authentication code") + std::string("\n");
 
-    if (m_authCodeInfo) {
-        if (m_authCodeInfo->type_)
-            message += formatMessage(_("Code sent via: {}"), getAuthCodeDesc(*m_authCodeInfo->type_)) + "\n";
-        if (m_authCodeInfo->next_type_)
-            message += formatMessage(_("Next code will be: {}"), getAuthCodeDesc(*m_authCodeInfo->next_type_)) + "\n";
+    if (codeInfo) {
+        if (codeInfo->type_)
+            message += formatMessage(_("Code sent via: {}"), getAuthCodeDesc(*codeInfo->type_)) + "\n";
+        if (codeInfo->next_type_)
+            message += formatMessage(_("Next code will be: {}"), getAuthCodeDesc(*codeInfo->next_type_)) + "\n";
     }
 
     if (!purple_request_input (purple_account_get_connection(m_account),
@@ -231,6 +235,14 @@ void PurpleTdClient::requestAuthCode()
             "Authentication code needs to be entered but this libpurple won't cooperate",
             (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_SYSTEM), 0);
     }
+}
+
+void PurpleTdClient::registerUser()
+{
+    std::string firstName, lastName;
+    getNamesFromAlias(purple_account_get_alias(m_account), firstName, lastName);
+    m_transceiver.sendQuery(td::td_api::make_object<td::td_api::registerUser>(firstName, lastName),
+                            &PurpleTdClient::authResponse);
 }
 
 void PurpleTdClient::requestCodeEntered(PurpleTdClient *self, const gchar *code)

@@ -29,6 +29,9 @@ public:
     void verifyEvents2(std::initializer_list<std::unique_ptr<PurpleEvent>> events);
     void verifyNoEvents();
     void discardEvents();
+
+    void inputEnter(const gchar *value);
+    void inputCancel();
 private:
     void verifyEvent(const PurpleEvent &event);
     void verifyEvents()
@@ -37,6 +40,9 @@ private:
     }
 
     std::queue<std::unique_ptr<PurpleEvent>> m_events;
+    void      *inputUserData = NULL;
+    GCallback  inputOkCb     = NULL;
+    GCallback  inputCancelCb = NULL;
 };
 
 extern PurpleEventReceiver g_purpleEvents;
@@ -209,6 +215,33 @@ struct RequestInputEvent: PurpleEvent {
     std::string         username;
     PurpleConversation *conv;
 	void               *user_data;
+
+    RequestInputEvent(void *handle, const char *title, const char *primary,
+                      const char *secondary, const char *default_value,
+                      const char *ok_text, GCallback ok_cb,
+                      const char *cancel_text, GCallback cancel_cb,
+                      PurpleAccount *account, const char *who, PurpleConversation *conv,
+                      void *user_data)
+    : PurpleEvent(PurpleEventType::RequestInput),
+      handle(handle),
+      title(title ? title : ""),
+      primary(primary ? primary : ""),
+      secondary(secondary ? secondary : ""),
+      default_value(default_value ? default_value : ""),
+      ok_cb(ok_cb),
+      cancel_cb(cancel_cb),
+      account(account),
+      username(who ? who : ""),
+      conv(conv),
+      user_data(user_data)
+      {}
+    RequestInputEvent(void *handle, PurpleAccount *account, const char *who, PurpleConversation *conv)
+    : PurpleEvent(PurpleEventType::RequestInput),
+      handle(handle),
+      account(account),
+      username(who ? who : ""),
+      conv(conv)
+      {}
 };
 
 struct JoinChatFailedEvent: PurpleEvent {

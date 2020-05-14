@@ -61,10 +61,6 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     tgl.verifyRequest(checkDatabaseEncryptionKey(""));
     tgl.reply(make_object<ok>());
 
-    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitPhoneNumber>()));
-    tgl.verifyRequest(setAuthenticationPhoneNumber("+" + selfPhoneNumber, nullptr));
-    tgl.reply(make_object<ok>());
-
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
     tgl.verifyNoRequests();
 

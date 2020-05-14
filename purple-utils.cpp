@@ -212,6 +212,20 @@ std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::
     return "";
 }
 
+void getNamesFromAlias(const char *alias, std::string &firstName, std::string &lastName)
+{
+    if (!alias) alias = "";
+
+    const char *name1end = alias;
+    while (*name1end && isspace(*name1end)) name1end++;
+    while (*name1end && !isspace(*name1end)) name1end++;
+    firstName = std::string(alias, name1end-alias);
+
+    const char *name2start = name1end;
+    while (*name2start && isspace(*name2start)) name2start++;
+    lastName = name2start;
+}
+
 static void findChatsByInviteLink(PurpleBlistNode *node, const std::string &inviteLink,
                                   std::vector<PurpleChat *> &result)
 {

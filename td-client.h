@@ -20,7 +20,6 @@ public:
 private:
     using TdObjectPtr   = td::td_api::object_ptr<td::td_api::Object>;
     using ResponseCb    = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
-    using TdAuthCodePtr = td::td_api::object_ptr<td::td_api::authenticationCodeInfo>;
 
     void       processUpdate(td::td_api::Object &object);
     void       processAuthorizationState(td::td_api::AuthorizationState &authState);
@@ -28,7 +27,8 @@ private:
     // Login sequence start
     void       sendTdlibParameters();
     void       sendPhoneNumber();
-    void       requestAuthCode();
+    void       requestAuthCode(const td::td_api::authenticationCodeInfo *authCodeInfo);
+    void       registerUser();
     static void requestCodeEntered(PurpleTdClient *self, const gchar *code);
     static void requestCodeCancelled(PurpleTdClient *self);
     void       authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
@@ -95,7 +95,6 @@ private:
     TdTransceiver         m_transceiver;
     TdAccountData         m_data;
     int32_t               m_lastAuthState = 0;
-    TdAuthCodePtr         m_authCodeInfo;
     bool                  m_connectionReady = false;
     std::vector<int32_t>  m_usersForNewPrivateChats;
 };

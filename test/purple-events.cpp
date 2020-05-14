@@ -112,8 +112,6 @@ static void compare(const UserStatusEvent &actual, const UserStatusEvent &expect
 static void compare(const RequestInputEvent &actual, const RequestInputEvent &expected)
 {
     COMPARE(handle);
-    COMPARE(title);
-    COMPARE(primary);
     COMPARE(account);
     COMPARE(username);
     COMPARE(conv);
@@ -223,6 +221,12 @@ void PurpleEventReceiver::verifyEvent(const PurpleEvent &event)
     ASSERT_FALSE(m_events.empty()) << "Missing libpurple event " << event.toString();
     if (!m_events.empty()) {
         compareEvents(*m_events.front(), event);
+        if (m_events.front()->type == PurpleEventType::RequestInput) {
+            const RequestInputEvent &inputEvent = static_cast<const RequestInputEvent &>(*m_events.front());
+            inputOkCb     = inputEvent.ok_cb;
+            inputCancelCb = inputEvent.cancel_cb;
+            inputUserData = inputEvent.user_data;
+        }
         m_events.pop();
     }
 }
@@ -242,6 +246,24 @@ void PurpleEventReceiver::verifyNoEvents()
 void PurpleEventReceiver::discardEvents()
 {
     while (!m_events.empty()) m_events.pop();
+}
+
+void PurpleEventReceiver::inputEnter(const gchar *value)
+{
+    ASSERT_NE(nullptr, inputOkCb);
+    ((void (*)(void *, const char *))(inputOkCb))(inputUserData, value);
+    inputOkCb = NULL;
+    inputCancelCb = NULL;
+    inputUserData = NULL;
+}
+
+void PurpleEventReceiver::inputCancel()
+{
+    ASSERT_NE(nullptr, inputCancelCb);
+    ((void (*)(void *))(inputCancelCb))(inputUserData);
+    inputOkCb = NULL;
+    inputCancelCb = NULL;
+    inputUserData = NULL;
 }
 
 std::string PurpleEvent::toString() const

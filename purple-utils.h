@@ -30,6 +30,7 @@ PurpleConvChat     *getChatConversation(PurpleAccount *account, const td::td_api
                                         int chatPurpleId, TdAccountData &accountData);
 std::string         getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
                                         TdAccountData &accountData);
+void                getNamesFromAlias(const char *alias, std::string &firstName, std::string &lastName);
 std::vector<PurpleChat *> findChatsByInviteLink(const std::string &inviteLink);
 
 void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const TgMessageInfo &message,
