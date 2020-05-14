@@ -14,10 +14,12 @@ else (${UNIX})
     set(GIT_COMMIT "")
 endif (${UNIX})
 
-include(FindPkgConfig)
-pkg_check_modules(Purple REQUIRED purple)
-pkg_get_variable(PURPLE_PLUGIN_DIR purple plugindir)
-pkg_get_variable(PURPLE_DATA_DIR purple datarootdir)
+if (NOT DEFINED NoPkgConfig OR NOT NoPkgConfig)
+    include(FindPkgConfig)
+    pkg_check_modules(Purple REQUIRED purple)
+    pkg_get_variable(PURPLE_PLUGIN_DIR purple plugindir)
+    pkg_get_variable(PURPLE_DATA_DIR purple datarootdir)
+endif (NOT DEFINED NoPkgConfig OR NOT NoPkgConfig)
 
 add_library(telegram-tdlib SHARED
     tdlib-purple.cpp
