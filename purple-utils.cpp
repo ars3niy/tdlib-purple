@@ -262,7 +262,6 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
                     const TdAccountData &accountData)
 {
     PurpleAccount *account = purple_conversation_get_account(purple_conv_chat_get_conversation(purpleChat));
-    GList         *names   = NULL;
     GList         *flags   = NULL;
     std::vector<std::string> nameData;
 
@@ -288,7 +287,6 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
             nameData.emplace_back(displayName);
         }
 
-        names = g_list_append(names, const_cast<char *>(nameData.back().c_str()));
         PurpleConvChatBuddyFlags flag;
         if (member->status_->get_id() == td::td_api::chatMemberStatusCreator::ID)
             flag = PURPLE_CBFLAGS_FOUNDER;
@@ -298,6 +296,10 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
             flag = PURPLE_CBFLAGS_NONE;
         flags = g_list_append(flags, GINT_TO_POINTER(flag));
     }
+
+    GList *names = NULL;
+    for (const std::string &name: nameData)
+        names = g_list_append(names, const_cast<char *>(name.c_str()));
 
     purple_conv_chat_add_users(purpleChat, names, NULL, flags, false);
     g_list_free(names);
