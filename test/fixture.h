@@ -46,4 +46,6 @@ protected:
     PurplePluginProtocolInfo  &pluginInfo();
 };
 
+void checkFile(const char *filename, void *content, unsigned size);
+
 #endif

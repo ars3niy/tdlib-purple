@@ -20,10 +20,13 @@ public:
     // test case if there is no such request
     void reply(td::td_api::object_ptr<td::td_api::Object> object);
     void reply(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+
+    const std::string &getInputPhotoPath(unsigned index) { return m_inputPhotoPaths.at(index); }
 private:
     std::queue<td::Client::Request> m_requests;
     std::vector<uint64_t>           m_lastRequestIds;
     uint64_t                        expectedRequestId = 1;
+    std::vector<std::string>        m_inputPhotoPaths;
 
     void verifyRequestImpl(const td::td_api::Function &request);
 };
@@ -50,6 +53,12 @@ object_ptr<message> makeMessage(std::int64_t id_, std::int32_t sender_user_id_, 
                                 bool is_outgoing_, std::int32_t date_, object_ptr<MessageContent> &&content_);
 
 object_ptr<messageText> makeTextMessage(const std::string &text);
+
+object_ptr<photo> makePhotoRemote(int32_t fileId, unsigned size, unsigned width, unsigned height);
+object_ptr<photo> makePhotoLocal(int32_t fileId, unsigned size, const std::string &path,
+                                 unsigned width, unsigned height);
+object_ptr<photo> makePhotoUploading(int32_t fileId, unsigned size, unsigned uploaded, const std::string &path,
+                                     unsigned width, unsigned height);
 
 }
 }

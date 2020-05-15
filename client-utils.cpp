@@ -2,6 +2,8 @@
 #include "chat-info.h"
 #include "config.h"
 #include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
 
 std::string messageTypeToString(const td::td_api::MessageContent &content)
 {
@@ -313,51 +315,110 @@ struct MessagePart {
     std::string text;
 };
 
-static void parseMessage(const char *message, std::vector<MessagePart> &parts)
+static void appendText(std::vector<MessagePart> &parts, const char *s, size_t len)
 {
-    // TODO: recognize images
-    parts.resize(1);
-    parts.back().isImage = false;
-    parts.back().text = message;
+    if (parts.empty())
+        parts.emplace_back();
+    parts.back().text = std::string(s, len);
 }
 
-void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver)
+static void parseMessage(const char *message, std::vector<MessagePart> &parts)
+{
+    parts.clear();
+    if (!message)
+        return;
+
+    const char *s         = message;
+    const char *textStart = message;
+
+    while (*s) {
+        bool  isImage = false;
+        long  imageId;
+        char *pastImage = NULL;
+
+        if (!strncasecmp(s, "<img id=\"", 9)) {
+            const char *idString = s+9;
+
+            imageId = strtol(idString, &pastImage, 10);
+            if ((pastImage != idString) && !strncmp(pastImage, "\">", 2) && (imageId <= INT32_MAX) &&
+                (imageId >= INT32_MIN))
+            {
+                isImage = true;
+                pastImage += 2;
+            }
+        }
+
+        if (isImage) {
+            if (s != textStart)
+                appendText(parts, textStart, s-textStart);
+            parts.emplace_back();
+            parts.back().isImage = true;
+            parts.back().imageId = imageId;
+            s = pastImage;
+            textStart = pastImage;
+        } else
+            s++;
+    }
+
+    if (s != textStart)
+        appendText(parts, textStart, s-textStart);
+}
+
+static bool saveImage(int id, char **fileName)
+{
+    *fileName = NULL;
+    char *tempFileName;
+
+    PurpleStoredImage *psi = purple_imgstore_find_by_id (id);
+    if (!psi) {
+        purple_debug_misc(config::pluginId, "Failed to send image: id %d not found\n", id);
+        return false;
+    }
+    int fd = g_file_open_tmp("tdlib_upload_XXXXXXXX", &tempFileName, NULL);
+    if (fd < 0) {
+        purple_debug_misc(config::pluginId, "Failed to send image: could not create temporary file\n");
+        return false;
+    }
+    ssize_t len = write(fd, purple_imgstore_get_data (psi), purple_imgstore_get_size (psi));
+    close(fd);
+    if (len != (ssize_t)purple_imgstore_get_size(psi)) {
+        purple_debug_misc(config::pluginId, "Failed to send image: could not write temporary file\n");
+        remove(tempFileName);
+        g_free(tempFileName);
+        return false;
+    }
+
+    *fileName = tempFileName;
+    return true;
+}
+
+void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
+                     TdAccountData &accountData, TdTransceiver::ResponseCb response)
 {
     std::vector<MessagePart> parts;
     parseMessage(message, parts);
     for (const MessagePart &input: parts) {
         td::td_api::object_ptr<td::td_api::sendMessage> sendMessageRequest = td::td_api::make_object<td::td_api::sendMessage>();
         sendMessageRequest->chat_id_ = chatId;
+        char *tempFileName = NULL;
+        bool  hasImage     = false;
 
-        if (input.isImage) {
-            PurpleStoredImage *psi = purple_imgstore_find_by_id (input.imageId);
-            if (!psi) {
-                purple_debug_misc(config::pluginId, "Failed to send image: id %d not found\n", input.imageId);
-                continue;
-            }
-            char *fileName;
-            int fd = g_file_open_tmp("tdlib_upload_XXXXXXXX", &fileName, NULL);
-            if (fd < 0) {
-                purple_debug_misc(config::pluginId, "Failed to send image: could not create temporary file\n");
-                continue;
-            }
-            write(fd, purple_imgstore_get_data (psi), purple_imgstore_get_size (psi));
-            close(fd);
+        if (input.isImage)
+            hasImage = saveImage(input.imageId, &tempFileName);
 
-            td::td_api::object_ptr<td::td_api::sendMessage> sendMessageRequest = td::td_api::make_object<td::td_api::sendMessage>();
+        if (hasImage) {
             sendMessageRequest->chat_id_ = chatId;
             td::td_api::object_ptr<td::td_api::inputMessagePhoto> content = td::td_api::make_object<td::td_api::inputMessagePhoto>();
-            content->photo_ = td::td_api::make_object<td::td_api::inputFileLocal>(fileName);
+            content->photo_ = td::td_api::make_object<td::td_api::inputFileLocal>(tempFileName);
             content->caption_ = td::td_api::make_object<td::td_api::formattedText>();
             content->caption_->text_ = input.text;
 
             sendMessageRequest->input_message_content_ = std::move(content);
-            purple_debug_misc(config::pluginId, "Sending photo %s\n", fileName);
-            g_free(fileName);
+            purple_debug_misc(config::pluginId, "Sending photo %s\n", tempFileName);
         } else {
             td::td_api::object_ptr<td::td_api::inputMessageText> content = td::td_api::make_object<td::td_api::inputMessageText>();
             content->text_ = td::td_api::make_object<td::td_api::formattedText>();
-            content->text_->text_ = message;
+            content->text_->text_ = input.text;
             sendMessageRequest->input_message_content_ = std::move(content);
         }
 
@@ -366,6 +427,10 @@ void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transce
         // and if not is_uploading_completed, show error message
         // Or updateMessageContent, or updateMessageSendSucceeded
 
-        transceiver.sendQuery(std::move(sendMessageRequest), nullptr);
+        uint64_t requestId = transceiver.sendQuery(std::move(sendMessageRequest), response);
+        if (tempFileName) {
+            accountData.addPendingRequest<SendMessageRequest>(requestId, tempFileName);
+            g_free(tempFileName);
+        }
     }
 }

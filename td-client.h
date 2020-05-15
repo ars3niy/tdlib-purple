@@ -92,6 +92,8 @@ private:
                                      td::td_api::object_ptr<td::td_api::file> thumbnail);
 
     bool       sendMessage(int64_t chatId, const char *message);
+    void       sendMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       removeTempFile(int64_t messageId);
 
     PurpleAccount        *m_account;
     TdTransceiver         m_transceiver;

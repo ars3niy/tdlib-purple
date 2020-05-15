@@ -109,6 +109,18 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         break;
     }
 
+    case td::td_api::updateMessageSendSucceeded::ID: {
+        auto &sendSucceeded = static_cast<const td::td_api::updateMessageSendSucceeded &>(update);
+        removeTempFile(sendSucceeded.old_message_id_);
+        break;
+    };
+
+    case td::td_api::updateMessageSendFailed::ID: {
+        auto &sendFailed = static_cast<const td::td_api::updateMessageSendFailed &>(update);
+        removeTempFile(sendFailed.old_message_id_);
+        break;
+    };
+
     default:
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
         break;
@@ -871,7 +883,7 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
         return -1;
     }
 
-    transmitMessage(tdChat->id_, message, m_transceiver);
+    transmitMessage(tdChat->id_, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
 
     // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
     return 0;
@@ -1141,7 +1153,7 @@ int PurpleTdClient::sendGroupMessage(int purpleChatId, const char *message)
         purple_debug_warning(config::pluginId, "purple id %d (chat %s) is not a group we a member of\n",
                              purpleChatId, chat->title_.c_str());
     else {
-        transmitMessage(chat->id_, message, m_transceiver);
+        transmitMessage(chat->id_, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
         // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
         return 0;
     }
@@ -1183,5 +1195,25 @@ void PurpleTdClient::joinChatByLinkResponse(uint64_t requestId, td::td_api::obje
         std::string message = formatMessage(_("Failed to join chat: {}"), getDisplayedError(object));
         purple_notify_error(purple_account_get_connection(m_account), _("Failed to join chat"),
                             message.c_str(), NULL);
+    }
+}
+
+void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<SendMessageRequest> request = m_data.getPendingRequest<SendMessageRequest>(requestId);
+    if (!request)
+        return;
+    if (object && (object->get_id() == td::td_api::message::ID)) {
+        const td::td_api::message &message = static_cast<td::td_api::message &>(*object);
+        m_data.addTempFileUpload(message.id_, request->tempFile);
+    }
+}
+
+void PurpleTdClient::removeTempFile(int64_t messageId)
+{
+    std::string path = m_data.extractTempFileUpload(messageId);
+    if (!path.empty()) {
+        purple_debug_misc(config::pluginId, "Removing temporary file %s\n", path.c_str());
+        remove(path.c_str());
     }
 }

@@ -1,4 +1,5 @@
 #include "fixture.h"
+#include <fmt/format.h>
 
 class PrivateChatTest: public CommTest {};
 
@@ -502,4 +503,140 @@ TEST_F(PrivateChatTest, RenameBuddyAtConnect)
             std::make_unique<ShowAccountEvent>(account)
         }
     );
+}
+
+TEST_F(PrivateChatTest, SendImage)
+{
+    loginWithOneContact();
+
+    const int64_t msgIdOld[3] = {10, 11, 12};
+    const int64_t msgIdNew[3] = {20, 21, 22};
+    const int32_t fileId[2] = {101, 102};
+    const int32_t messageFailureDate = 1234;
+    uint8_t data1[] = {1, 2, 3, 4, 5};
+    uint8_t data2[] = {11, 12, 13, 14};
+    const int id1 = purple_imgstore_add_with_id(data1, sizeof(data1), "filename1");
+    const int id2 = purple_imgstore_add_with_id(data2, sizeof(data2), "filename2");
+    const std::string messageText = fmt::format("prefix<img id=\"{}\">caption1<img id=\"{}\">caption2", id1, id2);
+
+    ASSERT_EQ(0, pluginInfo().send_im(connection, purpleUserName(0).c_str(), messageText.c_str(), PURPLE_MESSAGE_SEND));
+    tgl.verifyRequests({
+        make_object<sendMessage>(
+            chatIds[0],
+            0,
+            nullptr,
+            nullptr,
+            make_object<inputMessageText>(
+                make_object<formattedText>("prefix", std::vector<object_ptr<textEntity>>()),
+                false, false
+            )
+        ),
+        make_object<sendMessage>(
+            chatIds[0],
+            0,
+            nullptr,
+            nullptr,
+            make_object<inputMessagePhoto>(
+                make_object<inputFileLocal>(),
+                nullptr, std::vector<std::int32_t>(), 0, 0,
+                make_object<formattedText>("caption1", std::vector<object_ptr<textEntity>>()),
+                0
+            )
+        ),
+        make_object<sendMessage>(
+            chatIds[0],
+            0,
+            nullptr,
+            nullptr,
+            make_object<inputMessagePhoto>(
+                make_object<inputFileLocal>(),
+                nullptr, std::vector<std::int32_t>(), 0, 0,
+                make_object<formattedText>("caption2", std::vector<object_ptr<textEntity>>()),
+                0
+            )
+        )
+    });
+
+    object_ptr<message> msg = makeMessage(
+        msgIdOld[0],
+        userIds[0],
+        chatIds[0],
+        true,
+        1,
+        makeTextMessage("prefix")
+    );
+    tgl.reply(std::move(msg));
+
+    msg = makeMessage(
+        msgIdOld[1],
+        userIds[0],
+        chatIds[0],
+        true,
+        1,
+        make_object<messagePhoto>(
+            makePhotoUploading(fileId[0], sizeof(data1), 0, tgl.getInputPhotoPath(0), 0, 0),
+            make_object<formattedText>("caption1", std::vector<object_ptr<textEntity>>()),
+            false
+        )
+    );
+    msg->sending_state_ = make_object<messageSendingStatePending>();
+    tgl.reply(std::move(msg));
+
+    msg = makeMessage(
+        msgIdOld[2],
+        userIds[0],
+        chatIds[0],
+        true,
+        1,
+        make_object<messagePhoto>(
+            makePhotoUploading(fileId[1], sizeof(data2), 0, tgl.getInputPhotoPath(1), 0, 0),
+            make_object<formattedText>("caption2", std::vector<object_ptr<textEntity>>()),
+            false
+        )
+    );
+    msg->sending_state_ = make_object<messageSendingStatePending>();
+    tgl.reply(std::move(msg));
+
+    checkFile(tgl.getInputPhotoPath(0).c_str(), data1, sizeof(data1));
+    tgl.update(make_object<updateMessageSendSucceeded>(
+        makeMessage(
+            msgIdNew[1],
+            userIds[0],
+            chatIds[0],
+            true,
+            1,
+            make_object<messagePhoto>(
+                makePhotoLocal(fileId[0], sizeof(data1), tgl.getInputPhotoPath(0), 0, 0),
+                make_object<formattedText>("caption1", std::vector<object_ptr<textEntity>>()),
+                false
+            )
+        ),
+        msgIdOld[1]
+    ));
+    ASSERT_FALSE(g_file_test(tgl.getInputPhotoPath(0).c_str(), G_FILE_TEST_EXISTS));
+
+    checkFile(tgl.getInputPhotoPath(1).c_str(), data2, sizeof(data2));
+    tgl.update(make_object<updateMessageSendFailed>(
+        makeMessage(
+            msgIdNew[2],
+            userIds[0],
+            chatIds[0],
+            true,
+            messageFailureDate,
+            make_object<messagePhoto>(
+                makePhotoLocal(fileId[1], sizeof(data1), tgl.getInputPhotoPath(1), 0, 0),
+                make_object<formattedText>("caption2", std::vector<object_ptr<textEntity>>()),
+                false
+            )
+        ),
+        msgIdOld[2],
+        1, "whatever error"
+    ));
+    ASSERT_FALSE(g_file_test(tgl.getInputPhotoPath(1).c_str(), G_FILE_TEST_EXISTS));
+
+    // TODO maybe implement this
+    //prpl.verifyEvents(
+    //    ConversationWriteEvent(purpleUserName(0), "", "Failed to send message: whatever error",
+    //                           PURPLE_MESSAGE_SYSTEM, messageFailureDate)
+    //);
 }

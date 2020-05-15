@@ -371,3 +371,26 @@ const ContactRequest *TdAccountData::findContactRequest(int32_t userId)
         return static_cast<const ContactRequest *>(it->get());
     return nullptr;
 }
+
+void TdAccountData::addTempFileUpload(int64_t messageId, const std::string &path)
+{
+    m_sentMessages.emplace_back();
+    m_sentMessages.back().messageId = messageId;
+    m_sentMessages.back().tempFile = path;
+}
+
+std::string TdAccountData::extractTempFileUpload(int64_t messageId)
+{
+    auto it = std::find_if(m_sentMessages.begin(), m_sentMessages.end(),
+                           [messageId](const SendMessageInfo &item) {
+                               return (item.messageId == messageId);
+                           });
+
+    std::string result;
+    if (it != m_sentMessages.end()) {
+        result = it->tempFile;
+        m_sentMessages.erase(it);
+    }
+
+    return result;
+}

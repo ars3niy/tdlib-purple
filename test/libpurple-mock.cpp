@@ -734,24 +734,36 @@ const char *purple_group_get_name(PurpleGroup *group)
     return group->name;
 }
 
+struct _PurpleStoredImage {
+    std::vector<uint8_t> data;
+};
+
+std::vector<std::unique_ptr<PurpleStoredImage>> imageStore;
+
 int purple_imgstore_add_with_id(gpointer data, size_t size, const char *filename)
 {
-    return 1;
+    imageStore.push_back(std::make_unique<PurpleStoredImage>());
+    imageStore.back()->data = std::vector<uint8_t>(size);
+    memmove(imageStore.back()->data.data(), data, size);
+    return imageStore.size()-1;
 }
 
 PurpleStoredImage *purple_imgstore_find_by_id(int id)
 {
-    return NULL;
+    if ((id >= 0) && ((unsigned)id < imageStore.size()))
+        return imageStore[id].get();
+    else
+        return NULL;
 }
 
 gconstpointer purple_imgstore_get_data(PurpleStoredImage *img)
 {
-    return NULL;
+    return img->data.data();
 }
 
 size_t purple_imgstore_get_size(PurpleStoredImage *img)
 {
-    return 0;
+    return img->data.size();
 }
 
 };

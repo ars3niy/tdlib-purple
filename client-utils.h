@@ -40,6 +40,7 @@ void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const
 void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
                     const TdAccountData &accountData);
 
-void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver);
+void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
+                     TdAccountData &accountData, TdTransceiver::ResponseCb response);
 
 #endif

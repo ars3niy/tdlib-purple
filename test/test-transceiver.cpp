@@ -103,8 +103,30 @@ static void compare(const inputMessageText &actual,
     COMPARE(clear_draft_);
 }
 
+static void compare(const inputMessagePhoto &actual, const inputMessagePhoto &expected,
+                    std::vector<std::string> &m_inputPhotoPaths)
+{
+    ASSERT_EQ(nullptr, expected.thumbnail_) << "not supported";
+    ASSERT_EQ(nullptr, actual.thumbnail_) << "not supported";
+    COMPARE(added_sticker_file_ids_.size());
+    for (unsigned i = 0; i < actual.added_sticker_file_ids_.size(); i++)
+        COMPARE(added_sticker_file_ids_[i]);
+    COMPARE(width_);
+    COMPARE(height_);
+    compare(actual.caption_, expected.caption_);
+    COMPARE(ttl_);
+
+    COMPARE(photo_ != nullptr);
+    if (actual.photo_) {
+        COMPARE(photo_->get_id());
+        if (actual.photo_->get_id() == inputFileLocal::ID)
+            m_inputPhotoPaths.push_back(static_cast<const inputFileLocal &>(*actual.photo_).path_);
+    }
+}
+
 static void compare(const object_ptr<InputMessageContent> &actual,
-                    const object_ptr<InputMessageContent> &expected)
+                    const object_ptr<InputMessageContent> &expected,
+                    std::vector<std::string> &m_inputPhotoPaths)
 {
     ASSERT_EQ(expected != nullptr, actual != nullptr);
     if (!actual) return;
@@ -114,19 +136,24 @@ static void compare(const object_ptr<InputMessageContent> &actual,
         case inputMessageText::ID:
             compare(static_cast<const inputMessageText &>(*actual), static_cast<const inputMessageText &>(*expected));
             break;
+        case inputMessagePhoto::ID:
+            compare(static_cast<const inputMessagePhoto &>(*actual), static_cast<const inputMessagePhoto &>(*expected),
+                    m_inputPhotoPaths);
+            break;
         default:
             ASSERT_TRUE(false) << "Unsupported input message content";
     }
 }
 
-static void compare(const sendMessage &actual, const sendMessage &expected)
+static void compare(const sendMessage &actual, const sendMessage &expected,
+                    std::vector<std::string> &m_inputPhotoPaths)
 {
     COMPARE(chat_id_);
     COMPARE(reply_to_message_id_);
 
     compare(actual.options_,               expected.options_);
     compare(actual.reply_markup_,          expected.reply_markup_);
-    compare(actual.input_message_content_, expected.input_message_content_);
+    compare(actual.input_message_content_, expected.input_message_content_, m_inputPhotoPaths);
 }
 
 static void compare(const getBasicGroupFullInfo &actual, const getBasicGroupFullInfo &expected)
@@ -179,7 +206,8 @@ static void compare(const registerUser &actual, const registerUser &expected)
     COMPARE(last_name_);
 }
 
-static void compareRequests(const Function &actual, const Function &expected)
+static void compareRequests(const Function &actual, const Function &expected,
+                            std::vector<std::string> &m_inputPhotoPaths)
 {
     ASSERT_EQ(expected.get_id(), actual.get_id()) << "Wrong request type: expected " << requestToString(expected);
 
@@ -195,7 +223,10 @@ static void compareRequests(const Function &actual, const Function &expected)
         case getChats::ID: break;
         C(viewMessages)
         C(downloadFile)
-        C(sendMessage)
+        case sendMessage::ID:
+            compare(static_cast<const sendMessage &>(actual), static_cast<const sendMessage &>(expected),
+                    m_inputPhotoPaths);
+            break;
         C(getBasicGroupFullInfo)
         C(joinChatByInviteLink)
         C(importContacts)
@@ -212,7 +243,7 @@ void TestTransceiver::verifyRequestImpl(const Function &request)
     ASSERT_FALSE(m_requests.empty()) << "Missing request: expected " << requestToString(request);
 
     std::cout << "Received request " << m_requests.front().id << ": " << requestToString(*m_requests.front().function) << "\n";
-    compareRequests(*m_requests.front().function, request);
+    compareRequests(*m_requests.front().function, request, m_inputPhotoPaths);
 }
 
 void TestTransceiver::verifyNoRequests()
@@ -338,6 +369,55 @@ object_ptr<messageText> makeTextMessage(const std::string &text)
         make_object<formattedText>(text, std::vector<object_ptr<textEntity>>()),
         nullptr
     );
+}
+
+object_ptr<photo> makePhotoRemote(int32_t fileId, unsigned size, unsigned width, unsigned height)
+{
+    std::vector<object_ptr<photoSize>> sizes;
+    sizes.push_back(make_object<photoSize>(
+        "whatever",
+        make_object<file>(
+            fileId, size, size,
+            make_object<localFile>("", true, true, false, false, 0, 0, 0),
+            make_object<remoteFile>("beh", "bleh", false, true, size)
+        ),
+        width, height
+    ));
+    return make_object<photo>(false, nullptr, std::move(sizes));
+}
+
+object_ptr<photo> makePhotoLocal(int32_t fileId, unsigned size, const std::string &path,
+                                 unsigned width, unsigned height)
+{
+    std::vector<object_ptr<photoSize>> sizes;
+    sizes.push_back(make_object<photoSize>(
+        "whatever",
+        make_object<file>(
+            fileId, size, size,
+            make_object<localFile>(path, true, true, false, true, 0, size, size),
+            make_object<remoteFile>("beh", "bleh", false, true, size)
+        ),
+        width, height
+    ));
+    return make_object<photo>(false, nullptr, std::move(sizes));
+}
+
+object_ptr<photo> makePhotoUploading(int32_t fileId, unsigned size, unsigned uploaded, const std::string &path,
+                                     unsigned width, unsigned height)
+{
+    EXPECT_TRUE(uploaded < size);
+
+    std::vector<object_ptr<photoSize>> sizes;
+    sizes.push_back(make_object<photoSize>(
+        "whatever",
+        make_object<file>(
+            fileId, size, size,
+            make_object<localFile>(path, true, true, false, true, 0, size, size),
+            make_object<remoteFile>("beh", "bleh", false, false, uploaded)
+        ),
+        width, height
+    ));
+    return make_object<photo>(false, nullptr, std::move(sizes));
 }
 
 }

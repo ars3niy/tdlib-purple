@@ -55,6 +55,14 @@ public:
     : PendingRequest(requestId), inviteLink(inviteLink) {}
 };
 
+class SendMessageRequest: public PendingRequest {
+public:
+    std::string tempFile;
+
+    SendMessageRequest(uint64_t requestId, const std::string &tempFile)
+    : PendingRequest(requestId), tempFile(tempFile) {}
+};
+
 class TdAccountData {
 public:
     using TdUserPtr       = td::td_api::object_ptr<td::td_api::user>;
@@ -107,6 +115,8 @@ public:
     }
 
     const ContactRequest *findContactRequest(int32_t userId);
+    void                  addTempFileUpload(int64_t messageId, const std::string &path);
+    std::string           extractTempFileUpload(int64_t messageId);
 private:
     struct ChatInfo {
         int32_t   purpleId;
@@ -118,6 +128,11 @@ private:
     struct GroupInfo {
         TdGroupPtr     group;
         TdGroupInfoPtr fullInfo;
+    };
+
+    struct SendMessageInfo {
+        int64_t     messageId;
+        std::string tempFile;
     };
 
     using ChatMap = std::map<int64_t, ChatInfo>;
@@ -139,6 +154,7 @@ private:
     std::vector<ContactRequest>        m_addContactRequests;
 
     std::vector<std::unique_ptr<PendingRequest>> m_requests;
+    std::vector<SendMessageInfo>       m_sentMessages;
 
     std::unique_ptr<PendingRequest>    getPendingRequestImpl(uint64_t requestId);
 };

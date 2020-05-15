@@ -133,20 +133,10 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
     const int32_t fileId    = 1234;
     loginWithBasicGroup();
 
-    std::vector<object_ptr<photoSize>> sizes;
-    sizes.push_back(make_object<photoSize>(
-        "whatever",
-        make_object<file>(
-            fileId, 10000, 10000,
-            make_object<localFile>("", true, true, false, false, 0, 0, 0),
-            make_object<remoteFile>("beh", "bleh", false, true, 10000)
-        ),
-        640, 480
-    ));
     tgl.update(make_object<updateNewMessage>(makeMessage(
         messageId, userIds[0], groupChatId, false, date,
         make_object<messagePhoto>(
-            make_object<photo>(false, nullptr, std::move(sizes)),
+            makePhotoRemote(fileId, 10000, 640, 480),
             make_object<formattedText>("photo", std::vector<object_ptr<textEntity>>()),
             false
         )
@@ -341,7 +331,7 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
     tgl.verifyNoRequests();
 
     ASSERT_EQ(0, pluginInfo().chat_send(connection, 1, "message", PURPLE_MESSAGE_SEND));
-    tgl.verifyRequest(td::td_api::sendMessage(
+    tgl.verifyRequest(sendMessage(
         groupChatId,
         0,
         nullptr,
