@@ -7,8 +7,6 @@
 #include <stdlib.h>
 #include <algorithm>
 
-static char *_(const char *s) { return const_cast<char *>(s); }
-
 enum {
     // Typing notifications seems to be resent every 5-6 seconds, so 10s timeout hould be appropriate
     REMOTE_TYPING_NOTICE_TIMEOUT = 10,

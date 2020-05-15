@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <math.h>
 
-static const char *_(const char *s) { return s; }
-
 static char chatNameComponent[] = "id";
 static char inviteKey[]         = "link";
 static char nameKey[]           = "name";

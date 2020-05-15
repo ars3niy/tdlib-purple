@@ -13,8 +13,6 @@ enum {
     MAX_MESSAGE_PARTS    = 10,
 };
 
-static const char *_(const char *s) { return s; }
-
 const char *errorCodeMessage()
 {
     return _("code {} ({})");

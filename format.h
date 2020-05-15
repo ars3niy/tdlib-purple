@@ -12,5 +12,6 @@ std::string formatMessage(const char *fmt, T arg)
     return formatMessage(fmt, {std::to_string(arg)});
 }
 
-#endif
+static inline char *_(const char *s) { return const_cast<char *>(s); }
 
+#endif
