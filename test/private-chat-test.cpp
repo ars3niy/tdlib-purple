@@ -423,6 +423,51 @@ TEST_F(PrivateChatTest, Photo)
     ));
 }
 
+TEST_F(PrivateChatTest, AlreadyDownloadedPhoto)
+{
+    const int32_t date   = 10001;
+    const int32_t fileId = 1234;
+    loginWithOneContact();
+
+    std::vector<object_ptr<photoSize>> sizes;
+    sizes.push_back(make_object<photoSize>(
+        "whatever",
+        make_object<file>(
+            fileId, 10000, 10000,
+            make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+            make_object<remoteFile>("beh", "bleh", false, true, 10000)
+        ),
+        640, 480
+    ));
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messagePhoto>(
+            make_object<photo>(false, nullptr, std::move(sizes)),
+            make_object<formattedText>("photo", std::vector<object_ptr<textEntity>>()),
+            false
+        )
+    )));
+    tgl.verifyRequest(
+        viewMessages(chatIds[0], std::vector<int64_t>(1, 1), true)
+    );
+    prpl.verifyEvents(
+        ServGotImEvent(
+            connection,
+            purpleUserName(0),
+            "<img src=\"file:///path\">\n"
+            "photo",
+            (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
+            date
+        )
+    );
+
+    tgl.reply(make_object<ok>()); // reply to viewMessages
+}
+
 TEST_F(PrivateChatTest, IgnoredUpdateUserAndNewPrivateChat)
 {
     loginWithOneContact();

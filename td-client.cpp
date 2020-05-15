@@ -585,12 +585,13 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const TgMess
     else
         notice = "Downloading image";
 
-    if ((!photo.caption_ && photo.caption_->text_.empty()) || notice)
-        showMessageText(m_account, chat, message, photo.caption_ ? photo.caption_->text_.c_str() : NULL,
-                        notice, m_data);
+    const char *caption = photo.caption_ ? photo.caption_->text_.c_str() : NULL;
+
+    if (notice)
+        showMessageText(m_account, chat, message, caption, notice, m_data);
 
     if (file)
-        showImage(chat, message, *file);
+        showImage(chat, message, *file, caption);
 }
 
 void PurpleTdClient::requestDownload(int32_t fileId, int64_t chatId, const TgMessageInfo &message,
@@ -610,10 +611,10 @@ void PurpleTdClient::requestDownload(int32_t fileId, int64_t chatId, const TgMes
 }
 
 void PurpleTdClient::showImage(const td::td_api::chat &chat, const TgMessageInfo &message,
-                               const td::td_api::file &file)
+                               const td::td_api::file &file, const char *caption)
 {
     if (file.local_ && file.local_->is_downloading_completed_)
-        showDownloadedImage(chat.id_, message, file.local_->path_);
+        showDownloadedImage(chat.id_, message, file.local_->path_, caption);
     else {
         purple_debug_misc(config::pluginId, "Downloading image (file id %d)\n", (int)file.id_);
         requestDownload(file.id_, chat.id_, message, nullptr, &PurpleTdClient::imageDownloadResponse);
@@ -646,31 +647,37 @@ void PurpleTdClient::imageDownloadResponse(uint64_t requestId, td::td_api::objec
 
     if (request && !path.empty()) {
         purple_debug_misc(config::pluginId, "Image downloaded, path: %s\n", path.c_str());
-        showDownloadedImage(request->chatId, request->message, path);
+        // For image that needed downloading, caption was shown as soon as message was received
+        showDownloadedImage(request->chatId, request->message, path, NULL);
     }
 }
 
 void PurpleTdClient::showDownloadedImage(int64_t chatId, const TgMessageInfo &message,
-                                         const std::string &filePath)
+                                         const std::string &filePath, const char *caption)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
     if (chat) {
-        if (filePath.find('"') != std::string::npos)
-            showMessageText(m_account, *chat, message, NULL,
-                            "Cannot show photo: file path contains quotes", m_data);
-        else {
-            std::string  text;
-            gchar       *data = NULL;
-            size_t       len  = 0;
+        std::string  text;
+        const char  *notice = NULL;
+        gchar       *data   = NULL;
+        size_t       len    = 0;
 
-            if (g_file_get_contents (filePath.c_str(), &data, &len, NULL)) {
-                int id = purple_imgstore_add_with_id (data, len, NULL);
-                text = "\n<img id=\"" + std::to_string(id) + "\">";
-            } else
-                text = "<img src=\"file://" + filePath + "\">";
-            showMessageText(m_account, *chat, message, text.c_str(), NULL, m_data,
-                            PURPLE_MESSAGE_IMAGES);
+        if (g_file_get_contents (filePath.c_str(), &data, &len, NULL)) {
+            int id = purple_imgstore_add_with_id (data, len, NULL);
+            text = "\n<img id=\"" + std::to_string(id) + "\">";
+        } else if (filePath.find('"') == std::string::npos)
+            text = "<img src=\"file://" + filePath + "\">";
+        else
+            notice = "Cannot show photo: file path contains quotes";
+
+        if (caption && *caption) {
+            if (!text.empty())
+                text += "\n";
+            text += caption;
         }
+
+        showMessageText(m_account, *chat, message, text.empty() ? NULL : text.c_str(), notice, m_data,
+                        PURPLE_MESSAGE_IMAGES);
     }
 }
 
