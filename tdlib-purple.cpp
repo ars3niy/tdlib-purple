@@ -21,8 +21,6 @@
 #include <rlottie.h>
 #endif
 
-static char *_(const char *s) { return const_cast<char *>(s); }
-
 static const char *tgprpl_list_icon (PurpleAccount *acct, PurpleBuddy *buddy)
 {
     return "telegram";
