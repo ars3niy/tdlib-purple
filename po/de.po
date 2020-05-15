@@ -1,0 +1,695 @@
+# Translation (template) of tdlib-purple.
+# Copyright (C) 2020 Arseniy Lartsev
+# Copyright (C) 2020 Ben Wiederhake
+# This file is distributed under the same license as the tdlib-purple package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# 
+# 
+# Translators:
+# Ben Wiederhake <BenWiederhake.GitHub@gmx.de>, 2020
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: tdlib-purple\n"
+"Report-Msgid-Bugs-To: https://github.com/ars3niy/tdlib-purple/issues/new\n"
+"POT-Creation-Date: 2020-07-05 15:00+0200\n"
+"PO-Revision-Date: 2020-05-15 01:36+0000\n"
+"Last-Translator: Ben Wiederhake <BenWiederhake.GitHub@gmx.de>, 2020\n"
+"Language-Team: German (https://www.transifex.com/tdlib-purple-developers/teams/110016/de/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: ../client-utils.cpp:20
+msgid "code {} ({})"
+msgstr "Code {} ({})"
+
+#: ../client-utils.cpp:233
+msgid "Future messages in this conversation will be shown in a different tab"
+msgstr "Künftige Nachrichten werden in einem anderen Tab angezeigt"
+
+#: ../client-utils.cpp:447
+msgid "unknown user"
+msgstr "Unbekannter Nutzer"
+
+#: ../client-utils.cpp:451
+msgid "[message unavailable]"
+msgstr "[Nachricht nicht verfügbar]"
+
+#: ../client-utils.cpp:463
+msgid "[photo]"
+msgstr "[Photo]"
+
+#: ../client-utils.cpp:471
+msgid "[file: {} ({})"
+msgstr "[Datei: {} ({})"
+
+#: ../client-utils.cpp:474
+msgid "[file]"
+msgstr "[Datei]"
+
+#: ../client-utils.cpp:482
+msgid "[video: {}]"
+msgstr "[Video: {}]"
+
+#: ../client-utils.cpp:484
+msgid "[video]"
+msgstr "[Video]"
+
+#: ../client-utils.cpp:490
+msgid "[sticker]"
+msgstr "[Sticker]"
+
+#: ../client-utils.cpp:493
+msgid "[message type {}]"
+msgstr "[Nachrichtentyp {}]"
+
+#: ../client-utils.cpp:499
+msgid ""
+"<b>&gt; {} wrote:</b>\n"
+"&gt; {}"
+msgstr ""
+"<b>&gt; {} schrieb:</b>\n"
+"&gt; {}"
+
+#: ../client-utils.cpp:515
+msgid "<b>Forwarded from {}:</b>"
+msgstr "<b>Weitergeleitet von {}:</b>"
+
+#: ../client-utils.cpp:1157
+msgid "voice note [{}]"
+msgstr "Sprachnachricht [{}]"
+
+#: ../client-utils.cpp:1165
+msgid "video note [{} s]"
+msgstr "Videonachricht [{} s]"
+
+#: ../client-utils.cpp:1213 ../td-client.cpp:1355
+msgid "Failed to send message: {}"
+msgstr "Konnte Nachricht nicht senden: {}"
+
+#: ../client-utils.cpp:1228 ../client-utils.cpp:1274
+msgid "Rejected secret chat with {}"
+msgstr "Geheimer Chat abgewiesen wegen {}"
+
+#: ../client-utils.cpp:1230 ../client-utils.cpp:1276 ../client-utils.cpp:1283
+msgid "Secret chat"
+msgstr "Geheimer Chat"
+
+#: ../client-utils.cpp:1266
+msgid "(unknown user)"
+msgstr "(Unbekannter Nutzer)"
+
+#: ../client-utils.cpp:1280
+msgid "Accept secret chat with {} on this device?"
+msgstr "Geheimen Chat mit {} auf diesem Gerät annehmen?"
+
+#: ../client-utils.cpp:1283
+msgid ""
+"Secret chats can only have one end point. If you accept a secret chat on "
+"this device, its messages will not be available anywhere else. If you "
+"decline, you can still accept the chat on other devices."
+msgstr ""
+"Geheime Chats können nur ein Endgerät haben. Wenn du einen geheimen Chat auf"
+" diesem Gerät annimmst, werden die Nachrichten auf deinen anderen Geräten "
+"nicht verfügbar sein. Wenn du ablehnst, kannst du den geheimen Chat "
+"immernoch auf anderen Geräten annehmen."
+
+#: ../purple-info.cpp:24
+msgid "Chat ID (don't change):"
+msgstr "Chat ID (unveränderlich):"
+
+#: ../purple-info.cpp:30
+msgid "Invite link (empty if creating new):"
+msgstr "Einlade-Link (leer bei neuen Gruppen):"
+
+#: ../purple-info.cpp:36
+msgid "Group name (if creating a group):"
+msgstr "Gruppenname:"
+
+#: ../purple-info.cpp:42
+msgid "Group to create: 1=small 2=big 3=channel"
+msgstr "Gruppentyp: 1=normal 2=Supergroup 3=Channel"
+
+#: ../purple-info.cpp:113
+msgid "Invalid auto-download limit '{}', resetting to default"
+msgstr ""
+"Ungültiges Limit für automatische Downloads '{}', ersetzt durch Standardwert"
+
+#: ../purple-info.cpp:114
+msgid "Download limit"
+msgstr "Download Limit"
+
+#: ../td-client.cpp:278
+msgid "Proxy type {} is not supported"
+msgstr "Proxy Typ {} nicht unterstützt"
+
+#: ../td-client.cpp:301
+msgid "No response received"
+msgstr "Keine Antwort erhalten"
+
+#: ../td-client.cpp:306
+msgid "Unexpected response"
+msgstr "Unerwartete Antwort"
+
+#: ../td-client.cpp:316
+msgid "Could not set proxy: {}"
+msgstr "Konnte Proxy nicht setzen: {}"
+
+#: ../td-client.cpp:328
+msgid "Could not get proxies: {}"
+msgstr "Konnte Proxies nicht abrufen: {}"
+
+#: ../td-client.cpp:391
+msgid "Telegram message (length: {})"
+msgstr "Telegram Nachricht (Länge: {})"
+
+#: ../td-client.cpp:394
+msgid "SMS (length: {})"
+msgstr "SMS (Länge: {})"
+
+#: ../td-client.cpp:397
+msgid "Phone call (length: {})"
+msgstr "Telefonanruf (Länge: {})"
+
+#: ../td-client.cpp:400
+msgid "Poor man's phone call (pattern: {})"
+msgstr "Behelfs-Anruf (Muster: {})"
+
+#: ../td-client.cpp:409
+msgid "Enter authentication code"
+msgstr "Authentifizierungs-Code eingeben"
+
+#: ../td-client.cpp:413
+msgid "Code sent via: {}"
+msgstr "Code gesendet durch: {}"
+
+#: ../td-client.cpp:415
+msgid "Next code will be: {}"
+msgstr "Nächster Code wird {} sein"
+
+#: ../td-client.cpp:419
+msgid "Login code"
+msgstr "Login code"
+
+#. secondary message
+#. default value
+#. multiline input
+#. masked input
+#: ../td-client.cpp:425
+msgid "the code"
+msgstr "der Code"
+
+#: ../td-client.cpp:426 ../td-client.cpp:484 ../td-client.cpp:510
+#: ../td-client.cpp:2185 ../tdlib-purple.cpp:386 ../tdlib-purple.cpp:822
+msgid "OK"
+msgstr "Ok"
+
+#: ../td-client.cpp:427 ../td-client.cpp:485 ../td-client.cpp:511
+#: ../td-client.cpp:2186 ../tdlib-purple.cpp:387 ../tdlib-purple.cpp:823
+msgid "Cancel"
+msgstr "Abbrechen"
+
+#: ../td-client.cpp:450
+msgid "Authentication code required"
+msgstr "Authentifizierungs-Code benötigt"
+
+#: ../td-client.cpp:464
+msgid "Password required"
+msgstr "Passwort benötigt"
+
+#: ../td-client.cpp:471
+msgid "Hint: {}"
+msgstr "Hinweis: {}"
+
+#: ../td-client.cpp:474
+msgid "Recovery e-mail may have been sent to {}"
+msgstr "Wiederherstellungs-E-Mail wurde vielleicht an {} gesendet"
+
+#: ../td-client.cpp:477
+msgid "Password"
+msgstr "Passwort"
+
+#: ../td-client.cpp:478
+msgid "Enter password for two-factor authentication"
+msgstr "Passwort für Zwei-Faktor-Authentifizierung eingeben"
+
+#. default value
+#. multiline input
+#. masked input
+#: ../td-client.cpp:483
+msgid "password"
+msgstr "Passwort"
+
+#: ../td-client.cpp:503
+msgid "Registration"
+msgstr "Registrierung"
+
+#: ../td-client.cpp:504
+msgid "New account is being created. Please enter your display name."
+msgstr "Erstelle neuen Account. Bitte Anzeigenamen eingeben."
+
+#: ../td-client.cpp:531 ../td-client.cpp:540
+msgid "Display name is required for registration"
+msgstr "Anzeigename wird zur Registrierung benötigt"
+
+#: ../td-client.cpp:556
+msgid "Error applying database encryption key: {}"
+msgstr "Fehler bei Verwendung des Datenbank-Verschlüsselungs-Keys: {}"
+
+#: ../td-client.cpp:559
+msgid "Authentication error after sending phone number: {}"
+msgstr "Authentifizierungs-Fehler nach Senden der Telefonnummer: {}"
+
+#: ../td-client.cpp:562
+msgid "Authentication error: {}"
+msgstr "Authentifizierungs-Fehler: {}"
+
+#: ../td-client.cpp:849
+msgid "Downloading {}"
+msgstr "Lade {} herunter"
+
+#: ../td-client.cpp:852
+msgid "Requesting {} download"
+msgstr "Versuche {} herunterzuladen"
+
+#: ../td-client.cpp:856
+msgid "Ignoring {} download ({})"
+msgstr "Ignoriere Download {} ({})"
+
+#: ../td-client.cpp:858
+msgid "unknown size"
+msgstr "unbekannte Größe"
+
+#: ../td-client.cpp:894
+msgid "Ignoring secret photo"
+msgstr "Ignoriere geheimes Foto"
+
+#: ../td-client.cpp:900
+msgid "photo"
+msgstr "Foto"
+
+#: ../td-client.cpp:949
+msgid "Download file from {}?"
+msgstr "Datei von {} herunterladen?"
+
+#: ../td-client.cpp:952
+msgid "unknown"
+msgstr "unbekannt"
+
+#: ../td-client.cpp:953
+msgid "private chat"
+msgstr "Direktchat"
+
+#: ../td-client.cpp:954
+msgid "{} posted in {}, size: {}"
+msgstr "{} wurde gepostet in {}, Größe {}"
+
+#: ../td-client.cpp:966
+msgid "Download"
+msgstr "Download"
+
+#: ../td-client.cpp:1071
+msgid "sticker"
+msgstr "Sticker"
+
+#: ../td-client.cpp:1097
+msgid "Converting sticker"
+msgstr "Konvertiere Sticker"
+
+#: ../td-client.cpp:1156
+msgid "Could not read sticker file {}: {}"
+msgstr "Konnte Sticker Datei {} nicht lesen: {}"
+
+#: ../td-client.cpp:1192
+msgid ""
+"Received self-destructing message, not displayed due to lack of support"
+msgstr ""
+"Kann eingehende selbstzerstörende Nachricht nicht anzeigen, da nicht "
+"unterstützt"
+
+#: ../td-client.cpp:1247
+msgid "{} changed group name to {}"
+msgstr "{} änderte den Gruppennamen zu {}"
+
+#: ../td-client.cpp:1254
+msgid "Received unsupported message type {}"
+msgstr "Nicht unterstützter Nachrichtentyp {}"
+
+#: ../td-client.cpp:1626
+msgid "Failed to add contact: {}"
+msgstr "Konnte Kontakt nicht hinzufügen: {}"
+
+#: ../td-client.cpp:1627
+msgid "Failed to add contact"
+msgstr "Konnte Kontakt nicht hinzufügen"
+
+#: ../td-client.cpp:1705
+msgid "{} is not a valid phone number"
+msgstr "Telefonnummer {} wird nicht erkannt"
+
+#: ../td-client.cpp:1709
+msgid "No user found with phone number '{}'"
+msgstr "Kein Benutzer mit Telefonnummer '{}'"
+
+#: ../td-client.cpp:1858
+msgid "Failed to join chat: {}"
+msgstr "Konnte Chat nicht beitreten: {}"
+
+#: ../td-client.cpp:1859 ../tdlib-purple.cpp:405 ../tdlib-purple.cpp:421
+msgid "Failed to join chat"
+msgstr "Konnte Chat nicht beitreten"
+
+#: ../td-client.cpp:1874
+msgid "Cannot create basic group without additional members"
+msgstr "Kann Gruppe nicht ohne weitere Mitglieder anlegen"
+
+#: ../td-client.cpp:1879
+msgid "No known user with id {}"
+msgstr "Kein Benutzer mit ID {}"
+
+#: ../td-client.cpp:1886
+msgid "No known user by the name '{}'"
+msgstr "Kein Benutzer mit dem Namen '{}'"
+
+#: ../td-client.cpp:1897
+msgid "Failed to create group"
+msgstr "Konnte Gruppe nicht anlegen"
+
+#: ../td-client.cpp:1897
+msgid "Invalid group members"
+msgstr "Ungültige Gruppenmitglieder"
+
+#: ../td-client.cpp:1958 ../td-client.cpp:1983 ../tdlib-purple.cpp:148
+msgid "Error"
+msgstr "Fehler"
+
+#: ../td-client.cpp:1958
+msgid "Failed to delete group or channel"
+msgstr "Konnte Gruppe/Channel nicht löschen"
+
+#: ../td-client.cpp:1983
+msgid "Failed to set group description"
+msgstr "Konnte Gruppenbeschreibung nicht setzen"
+
+#: ../td-client.cpp:2000 ../td-client.cpp:2070 ../tdlib-purple.cpp:264
+msgid "User not found"
+msgstr "Benutzer nicht gefunden"
+
+#: ../td-client.cpp:2003 ../td-client.cpp:2039
+msgid "Cannot kick user: {}"
+msgstr "Konnte Benutzer nicht kicken: {}"
+
+#: ../td-client.cpp:2042 ../td-client.cpp:2073
+msgid "Cannot add user to group: {}"
+msgstr "Konnte Benutzer nicht der Gruppe hinzufügen: {}"
+
+#: ../td-client.cpp:2045
+msgid "Cannot generate invite link: {}"
+msgstr "Konnte Einlade-Link nicht erstellen: {}"
+
+#. "description" is hard-coded in bitlbee as possible field for chat topic
+#: ../td-client.cpp:2130
+msgid "Description"
+msgstr "Beschreibung"
+
+#: ../td-client.cpp:2179 ../td-client.cpp:2195 ../td-client.cpp:2214
+#: ../td-client.cpp:2234 ../td-client.cpp:2237 ../td-client.cpp:2242
+#: ../tdlib-purple.cpp:822
+msgid "Two-factor authentication"
+msgstr "Zwei-Faktor-Authentifizierung"
+
+#: ../td-client.cpp:2180
+msgid "Enter verification code received in the e-mail"
+msgstr "Bitte Bestätigungs-Code aus E-Mail eingeben"
+
+#: ../td-client.cpp:2196
+msgid "Password set"
+msgstr "Passwort gesetzt"
+
+#: ../td-client.cpp:2196
+msgid "Password cleared"
+msgstr "Passwort entfernt"
+
+#: ../td-client.cpp:2197
+msgid "Recovery e-mail is configured"
+msgstr "Wiederherstellungs-E-Mail gesetzt"
+
+#: ../td-client.cpp:2198
+msgid "No recovery e-mail configured"
+msgstr "Keine Wiederherstellungs-E-Mail gesetzt"
+
+#: ../td-client.cpp:2206
+msgid "Code sent to {} (length: {})"
+msgstr "Code gesendet an {} (Länge: {})"
+
+#: ../td-client.cpp:2214
+msgid "Failed to set password"
+msgstr "Konnte Passwort nicht setzen"
+
+#: ../td-client.cpp:2232
+msgid "E-mail address: {}"
+msgstr "E-Mail Adresse: {}"
+
+#: ../td-client.cpp:2235
+msgid "For some reason, new confirmation code was sent"
+msgstr "Seltsamerweise wurde ein neuer Bestätigungs-Code gesendet"
+
+#: ../td-client.cpp:2237
+msgid "Looks like the code was wrong"
+msgstr "Der Code war falsch"
+
+#: ../td-client.cpp:2242
+msgid "Failed to verify recovery e-mail"
+msgstr "Konnte Wiederherstellungs-E-Mail nicht bestätigen"
+
+#: ../td-client.cpp:2313
+msgid "Unable to send message: The message is too large."
+msgstr "Konnte Nachricht nicht senden: Zu groß."
+
+#: ../td-client.cpp:2315
+msgid "Unable to send message."
+msgstr "Konnte Nachricht nicht senden."
+
+#: ../td-client.cpp:2317
+msgid "Failed to open chat: {}"
+msgstr "Konnte Chat nicht öffnen: {}"
+
+#: ../tdlib-purple.cpp:33
+msgid "now"
+msgstr "jetzt"
+
+#: ../tdlib-purple.cpp:40
+msgid "recently"
+msgstr "kürzlich"
+
+#: ../tdlib-purple.cpp:42
+msgid "last week"
+msgstr "letzte Woche"
+
+#: ../tdlib-purple.cpp:44
+msgid "last month"
+msgstr "letzten Monat"
+
+#: ../tdlib-purple.cpp:61 ../tdlib-purple.cpp:279
+msgid "Last online"
+msgstr "Zuletzt online"
+
+#: ../tdlib-purple.cpp:123 ../tdlib-purple.cpp:129
+msgid "Leaving group"
+msgstr "Gruppe verlassen"
+
+#: ../tdlib-purple.cpp:124
+msgid "Confirm deleting group"
+msgstr "Löschen der Gruppe bestätigen"
+
+#: ../tdlib-purple.cpp:125
+msgid "Leaving basic group you created will delete the group. Continue?"
+msgstr ""
+"Eine „normale“ Gruppe die man erstellt hat zu verlassen löscht die Gruppe. "
+"Fortfahren?"
+
+#: ../tdlib-purple.cpp:127 ../tdlib-purple.cpp:132 ../tdlib-purple.cpp:156
+msgid "_Yes"
+msgstr "_Ja"
+
+#: ../tdlib-purple.cpp:127 ../tdlib-purple.cpp:132 ../tdlib-purple.cpp:156
+msgid "_No"
+msgstr "_Nein"
+
+#: ../tdlib-purple.cpp:130
+msgid "Leave the group?"
+msgstr "Gruppe verlassen?"
+
+#: ../tdlib-purple.cpp:148
+msgid "Cannot delete group"
+msgstr "Konnte Gruppe nicht löschen"
+
+#: ../tdlib-purple.cpp:149
+msgid "Cannot delete basic group created by someone else"
+msgstr ""
+"Konnte „einfache“ Gruppe nicht löschen, da sie von jemand Anderes angelegt "
+"wurde."
+
+#: ../tdlib-purple.cpp:153
+msgid "Deleting group"
+msgstr "Gruppe löschen"
+
+#: ../tdlib-purple.cpp:154
+msgid "Delete the group?"
+msgstr "Gruppe löschen?"
+
+#: ../tdlib-purple.cpp:183
+msgid "Leave group"
+msgstr "Gruppe verlassen"
+
+#: ../tdlib-purple.cpp:188
+msgid "Delete group"
+msgstr "Gruppe löschen"
+
+#: ../tdlib-purple.cpp:193
+msgid "Show invite link"
+msgstr "Zeige Einlade-Link an"
+
+#: ../tdlib-purple.cpp:270
+msgid "First name"
+msgstr "Vorname"
+
+#: ../tdlib-purple.cpp:271
+msgid "Last name"
+msgstr "Nachname"
+
+#: ../tdlib-purple.cpp:273 ../tdlib-purple.cpp:370 ../tdlib-purple.cpp:374
+#: ../tdlib-purple.cpp:378
+msgid "Username"
+msgstr "Benutzername"
+
+#: ../tdlib-purple.cpp:275
+msgid "Phone number"
+msgstr "Telefonnummer"
+
+#: ../tdlib-purple.cpp:282
+msgid "Internal id"
+msgstr "Interne ID"
+
+#: ../tdlib-purple.cpp:368
+msgid ""
+"Invite at least one additional user by specifying their full name "
+"(autocompletion available)."
+msgstr ""
+"Lade mindestens einen weiteren Benutzer ein, indem du ihren vollen Namen "
+"angibst (Autocomplete verfügbar)."
+
+#: ../tdlib-purple.cpp:386
+msgid "Create group chat"
+msgstr "Erstelle Gruppenchat"
+
+#: ../tdlib-purple.cpp:386
+msgid "Invite users"
+msgstr "Lade Benutzer ein"
+
+#: ../tdlib-purple.cpp:403
+msgid "Invite link must begin with {}, {}, or {}"
+msgstr "Einladungs-Link muss mit {}, {} oder {} anfangen"
+
+#: ../tdlib-purple.cpp:421
+msgid "Please enter group name and valid type"
+msgstr "Bitte Gruppenname und -Typ angeben"
+
+#: ../tdlib-purple.cpp:579
+msgid "phone no. (+ country prefix)"
+msgstr "Telefonnummer (+ Ländervorwahl)"
+
+#: ../tdlib-purple.cpp:699
+msgid "kick <user>:  Kick a user from the room using name or internal id"
+msgstr ""
+"kick <Benutzer>: Kickt den Benutzer aus dem Raum, per Name oder per interner"
+" ID."
+
+#: ../tdlib-purple.cpp:718
+msgid ""
+"The error may be caused by corrupt account data. If this is the case, it "
+"could be fixed by removing account data under {} . You will be required to "
+"log in into the account again."
+msgstr ""
+"Der Fehler kann durch korrupte Account-Daten verursacht sein. In diesem Fall"
+" könnte es helfen, die Account-Daten unter {} zu löschen. In diesem Fall ist"
+" es notwendig, dich neu einzuloggen. Geheime Chats gehen dabei verloren."
+
+#: ../tdlib-purple.cpp:722
+msgid "tdlib error: {}"
+msgstr "tdlib Fehler: {}"
+
+#: ../tdlib-purple.cpp:726
+msgid "Telegram plugin"
+msgstr "Telegram Plugin"
+
+#: ../tdlib-purple.cpp:727
+msgid "Fatal error encountered in telegram plugin"
+msgstr "Fataler Fehler im Telegram Plugin"
+
+#: ../tdlib-purple.cpp:765 ../tdlib-purple.cpp:779
+msgid "Ask"
+msgstr "Fragen"
+
+#: ../tdlib-purple.cpp:766
+msgid "Discard"
+msgstr "Verwerfen"
+
+#: ../tdlib-purple.cpp:768
+msgid "Auto-download size limit, MB (0 for unlimited)"
+msgstr "Limit für autmatische Downloads, in MB (0 für unbegrenzt)"
+
+#: ../tdlib-purple.cpp:773
+msgid "Bigger file transfers"
+msgstr "Größere Datei-Übertragungen"
+
+#: ../tdlib-purple.cpp:780
+msgid "Always"
+msgstr "Immer"
+
+#: ../tdlib-purple.cpp:781
+msgid "Never"
+msgstr "Niemals"
+
+#: ../tdlib-purple.cpp:783
+msgid "Accept secret chats"
+msgstr "Geheime Chats annehmen"
+
+#: ../tdlib-purple.cpp:787
+msgid "Show animated stickers"
+msgstr "Zeige animierte Sticker an"
+
+#: ../tdlib-purple.cpp:800
+msgid "Current password"
+msgstr "Aktuelles Passwort"
+
+#: ../tdlib-purple.cpp:804
+msgid "New password"
+msgstr "Neues Passwort"
+
+#: ../tdlib-purple.cpp:808
+msgid "Repeat password"
+msgstr "Passwort wiederholen"
+
+#: ../tdlib-purple.cpp:812
+msgid "Password hint"
+msgstr "Passwort Hinweis"
+
+#: ../tdlib-purple.cpp:815
+msgid "Recovery e-mail"
+msgstr "Wiederherstellungs-E-Mail"
+
+#: ../tdlib-purple.cpp:831
+msgid "Please enter same password twice"
+msgstr "Bitte dasselbe Passwort zweimal eingeben"
+
+#: ../tdlib-purple.cpp:861
+msgid "Enter new password and recovery e-mail address"
+msgstr "Bitte neues Passwort und Wiederherstellungs-E-Mail eingeben"
+
+#: ../tdlib-purple.cpp:869
+msgid "Configure two-factor authentication..."
+msgstr "Zwei-Faktor-Authentifizierung einstellen..."
