@@ -574,7 +574,7 @@ TEST_F(PrivateChatTest, SendImage)
         true,
         1,
         make_object<messagePhoto>(
-            makePhotoUploading(fileId[0], sizeof(data1), 0, tgl.getInputPhotoPath(0), 0, 0),
+            makePhotoUploading(fileId[0], sizeof(data1), 0, "/path", 0, 0),
             make_object<formattedText>("caption1", std::vector<object_ptr<textEntity>>()),
             false
         )
@@ -589,7 +589,7 @@ TEST_F(PrivateChatTest, SendImage)
         true,
         1,
         make_object<messagePhoto>(
-            makePhotoUploading(fileId[1], sizeof(data2), 0, tgl.getInputPhotoPath(1), 0, 0),
+            makePhotoUploading(fileId[1], sizeof(data2), 0, "/path", 0, 0),
             make_object<formattedText>("caption2", std::vector<object_ptr<textEntity>>()),
             false
         )
@@ -606,7 +606,7 @@ TEST_F(PrivateChatTest, SendImage)
             true,
             1,
             make_object<messagePhoto>(
-                makePhotoLocal(fileId[0], sizeof(data1), tgl.getInputPhotoPath(0), 0, 0),
+                makePhotoLocal(fileId[0], sizeof(data1), "/path", 0, 0),
                 make_object<formattedText>("caption1", std::vector<object_ptr<textEntity>>()),
                 false
             )
@@ -624,7 +624,7 @@ TEST_F(PrivateChatTest, SendImage)
             true,
             messageFailureDate,
             make_object<messagePhoto>(
-                makePhotoLocal(fileId[1], sizeof(data1), tgl.getInputPhotoPath(1), 0, 0),
+                makePhotoLocal(fileId[1], sizeof(data1), "/path", 0, 0),
                 make_object<formattedText>("caption2", std::vector<object_ptr<textEntity>>()),
                 false
             )
