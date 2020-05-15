@@ -1,0 +1,10 @@
+# List of source files containing translatable strings.
+# Only some of them are currently used, but I want to avoid headaches down the road.
+account-data.cpp
+client-utils.cpp
+format.cpp
+purple-info.cpp
+sticker.cpp
+td-client.cpp
+tdlib-purple.cpp
+transceiver.cpp
