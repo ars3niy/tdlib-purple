@@ -3,7 +3,7 @@
 
 #include "account-data.h"
 #include "transceiver.h"
-#include "purple-utils.h"
+#include "client-utils.h"
 #include <purple.h>
 
 class PurpleTdClient {

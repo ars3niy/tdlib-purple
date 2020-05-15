@@ -1,7 +1,8 @@
-#ifndef _PURPLE_UTILS_H
-#define _PURPLE_UTILS_H
+#ifndef _CLIENT_UTILS_H
+#define _CLIENT_UTILS_H
 
 #include "account-data.h"
+#include "transceiver.h"
 #include <purple.h>
 
 struct TgMessageInfo {
@@ -38,5 +39,7 @@ void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const
                      uint32_t extraFlags = 0);
 void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
                     const TdAccountData &accountData);
+
+void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver);
 
 #endif

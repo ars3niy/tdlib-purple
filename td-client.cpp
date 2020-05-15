@@ -2,7 +2,6 @@
 #include "chat-info.h"
 #include "config.h"
 #include "format.h"
-#include "tg-utils.h"
 #include <unistd.h>
 #include <stdlib.h>
 
