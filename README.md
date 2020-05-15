@@ -9,8 +9,9 @@ telegram-purple seems to miss incoming messages a lot, thus writing new plugin u
 Missing features:
 * Removing contacts
 * Receiving files other than photos
-* Sending any files
-* Joining new groups (groups we got added to, or which we joined in some other client, will be shown)
+* Sending files other than inline images
+* Creating groups
+* Joining supergroups/channels
 * Leaving groups
 * User pictures
 
