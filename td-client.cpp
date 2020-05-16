@@ -827,6 +827,10 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
     messageInfo.outgoing         = message.is_outgoing_;
     messageInfo.repliedMessageId = message.reply_to_message_id_;
 
+    if (message.ttl_ != 0)
+        showMessageText(m_account, chat, messageInfo, NULL,
+                        _("Received self-destructing message, not displayed due to lack of support"), m_data);
+
     switch (message.content_->get_id()) {
         case td::td_api::messageText::ID:
             showTextMessage(chat, messageInfo, static_cast<const td::td_api::messageText &>(*message.content_));
@@ -864,7 +868,8 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     }
 
     showMessage(*chat, *message);
-    m_data.saveMessage(std::move(message));
+    if (message->ttl_ == 0)
+        m_data.saveMessage(std::move(message));
 }
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)

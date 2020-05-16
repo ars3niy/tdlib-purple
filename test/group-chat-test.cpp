@@ -154,7 +154,8 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
         ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, groupChatTitle),
         ServGotChatEvent(connection, 1, userFirstNames[0] + " " + userLastNames[0], "photo",
                          PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(groupChatPurpleName, "", "Downloading image",
+        ConversationWriteEvent(groupChatPurpleName, "",
+                               userFirstNames[0] + " " + userLastNames[0] + ": Downloading image",
                                PURPLE_MESSAGE_SYSTEM, date)
     );
 
@@ -403,7 +404,7 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
 
     // There will always be this "message" about joining the group
     tgl.update(make_object<updateNewMessage>(
-        makeMessage(1, selfId, groupChatId, false, 12345, make_object<messageChatJoinByLink>())
+        makeMessage(1, selfId, groupChatId, true, 12345, make_object<messageChatJoinByLink>())
     ));
     uint64_t viewMessagesRequestId = tgl.verifyRequest(viewMessages(
         groupChatId,
