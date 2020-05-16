@@ -9,6 +9,7 @@ struct TgMessageInfo {
     std::string sender;
     time_t      timestamp;
     bool        outgoing;
+    int64_t     repliedMessageId;
 };
 
 // Matching completed downloads to chats they belong to

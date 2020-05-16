@@ -822,9 +822,10 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
         return;
 
     TgMessageInfo messageInfo;
-    messageInfo.sender    = getSenderPurpleName(chat, message, m_data);
-    messageInfo.timestamp = message.date_;
-    messageInfo.outgoing  = message.is_outgoing_;
+    messageInfo.sender           = getSenderPurpleName(chat, message, m_data);
+    messageInfo.timestamp        = message.date_;
+    messageInfo.outgoing         = message.is_outgoing_;
+    messageInfo.repliedMessageId = message.reply_to_message_id_;
 
     switch (message.content_->get_id()) {
         case td::td_api::messageText::ID:
@@ -863,6 +864,7 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     }
 
     showMessage(*chat, *message);
+    m_data.saveMessage(std::move(message));
 }
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)

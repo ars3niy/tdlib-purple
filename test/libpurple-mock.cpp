@@ -771,4 +771,10 @@ size_t purple_imgstore_get_size(PurpleStoredImage *img)
     return img->data.size();
 }
 
+gchar *purple_markup_escape_text(const gchar *text, gssize length)
+{
+    std::string s(text, length);
+    return g_strdup(s.c_str());
+}
+
 };

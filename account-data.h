@@ -114,9 +114,12 @@ public:
         return std::unique_ptr<ReqType>(dynamic_cast<ReqType *>(getPendingRequestImpl(requestId).release()));
     }
 
-    const ContactRequest *findContactRequest(int32_t userId);
-    void                  addTempFileUpload(int64_t messageId, const std::string &path);
-    std::string           extractTempFileUpload(int64_t messageId);
+    const ContactRequest      *findContactRequest(int32_t userId);
+    void                       addTempFileUpload(int64_t messageId, const std::string &path);
+    std::string                extractTempFileUpload(int64_t messageId);
+
+    void                       saveMessage(TdMessagePtr message);
+    const td::td_api::message *findMessage(int64_t messageId);
 private:
     struct ChatInfo {
         int32_t   purpleId;
@@ -155,6 +158,7 @@ private:
 
     std::vector<std::unique_ptr<PendingRequest>> m_requests;
     std::vector<SendMessageInfo>       m_sentMessages;
+    std::map<int64_t, TdMessagePtr>    m_messages;
 
     std::unique_ptr<PendingRequest>    getPendingRequestImpl(uint64_t requestId);
 };

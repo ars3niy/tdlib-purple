@@ -1,5 +1,6 @@
 #include "fixture.h"
 #include <glib/gstrfuncs.h>
+#include <fmt/format.h>
 
 class GroupChatTest: public CommTest {
 protected:
@@ -92,7 +93,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupChatAtLogin)
     tgl.verifyRequest(getBasicGroupFullInfo(groupId));
 }
 
-TEST_F(GroupChatTest, BasicGroupReceiveText)
+TEST_F(GroupChatTest, BasicGroupReceiveTextAndReply)
 {
     constexpr int32_t date[]      = {12345, 123456};
     constexpr int64_t messageId[] = {10000, 10001};
@@ -112,9 +113,10 @@ TEST_F(GroupChatTest, BasicGroupReceiveText)
                          "Hello", PURPLE_MESSAGE_RECV, date[0])
     );
 
-    tgl.update(make_object<updateNewMessage>(
-        makeMessage(messageId[1], selfId, groupChatId, true, date[1], makeTextMessage("Reply"))
-    ));
+    object_ptr<message> reply = makeMessage(messageId[1], selfId, groupChatId, true, date[1],
+                                            makeTextMessage("Reply"));
+    reply->reply_to_message_id_ = messageId[0];
+    tgl.update(make_object<updateNewMessage>(std::move(reply)));
     tgl.verifyRequest(viewMessages(
         groupChatId,
         {messageId[1]},
@@ -122,7 +124,9 @@ TEST_F(GroupChatTest, BasicGroupReceiveText)
     ));
     prpl.verifyEvents(ConversationWriteEvent(
         groupChatPurpleName, selfFirstName + " " + selfLastName,
-        "Reply", PURPLE_MESSAGE_SEND, date[1]
+        fmt::format("<b>&gt; {} {} wrote:</b>\n&gt; {}\n{}",
+                    userFirstNames[0], userLastNames[0], "Hello", "Reply"),
+        PURPLE_MESSAGE_SEND, date[1]
     ));
 
 }

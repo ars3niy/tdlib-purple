@@ -1,9 +1,12 @@
 #include "client-utils.h"
 #include "chat-info.h"
 #include "config.h"
+#include "format.h"
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+
+static const char *_(const char *s) { return s; }
 
 std::string messageTypeToString(const td::td_api::MessageContent &content)
 {
@@ -172,6 +175,75 @@ static void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &
     }
 }
 
+static std::string quoteMessage(const td::td_api::message *message, TdAccountData &accountData)
+{
+    const td::td_api::user *originalAuthor = nullptr;
+    if (message)
+        originalAuthor = accountData.getUser(message->sender_user_id_);
+
+    std::string originalName;
+    if (originalAuthor)
+        originalName = getDisplayName(originalAuthor);
+    else
+        originalName = _("unknown user");
+
+    std::string text;
+    if (!message || !message->content_)
+        text = _("[message unavailable]");
+    else switch (message->content_->get_id()) {
+        case td::td_api::messageText::ID: {
+            const td::td_api::messageText &messageText = static_cast<const td::td_api::messageText &>(*message->content_);
+            if (messageText.text_)
+                text = messageText.text_->text_;
+            else
+                text = "";
+            break;
+        }
+        case td::td_api::messagePhoto::ID: {
+            const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message->content_);
+            text = _("[photo]");
+            if (photo.caption_)
+                text += " " + photo.caption_->text_;
+            break;
+        }
+        case td::td_api::messageDocument::ID: {
+            const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message->content_);
+            if (document.document_)
+                text = formatMessage(_("[file: {} ({})"), {document.document_->file_name_,
+                                                           document.document_->mime_type_});
+            else
+                text = _("[file]");
+            if (document.caption_)
+                text += " " + document.caption_->text_;
+            break;
+        }
+        case td::td_api::messageVideo::ID: {
+            const td::td_api::messageVideo &video = static_cast<const td::td_api::messageVideo &>(*message->content_);
+            if (video.video_)
+                text = formatMessage(_("[video: {}]"), video.video_->file_name_);
+            else
+                text = _("[video]");
+            if (video.caption_)
+                text += " " + video.caption_->text_;
+            break;
+        }
+        case td::td_api::messageSticker::ID:
+            text = _("[sticker]");
+            break;
+        default:
+            text = formatMessage(_("[message type {}]"), messageTypeToString(*message->content_));
+    }
+
+    char *newText = purple_markup_escape_text(text.c_str(), text.size());
+    text = newText;
+    g_free(newText);
+
+    for (unsigned i = 0; i < text.size(); i++)
+        if (text[i] == '\n') text[i] = ' ';
+
+    return formatMessage(_("<b>&gt; {} wrote:</b>\n&gt; {}"), {originalName, text});
+}
+
 void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const TgMessageInfo &message,
                      const char *text, const char *notification, TdAccountData &accountData,
                      uint32_t extraFlags)
@@ -179,6 +251,16 @@ void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const
     // TODO: maybe set PURPLE_MESSAGE_REMOTE_SEND when appropriate
     PurpleMessageFlags directionFlag = message.outgoing ? PURPLE_MESSAGE_SEND : PURPLE_MESSAGE_RECV;
     PurpleMessageFlags flags = (PurpleMessageFlags) (extraFlags | directionFlag);
+
+    std::string newText;
+    if (message.repliedMessageId != 0) {
+        newText = quoteMessage(accountData.findMessage(message.repliedMessageId), accountData);
+        if (text) {
+            newText += "\n";
+            newText += text;
+        }
+        text = newText.c_str();
+    }
 
     const td::td_api::user *privateUser = accountData.getUserByPrivateChat(chat);
     if (privateUser) {
