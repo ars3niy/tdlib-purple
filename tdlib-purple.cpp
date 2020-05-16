@@ -15,14 +15,47 @@
 #include <vector>
 #include <ctype.h>
 
+static char *_(const char *s) { return const_cast<char *>(s); }
+
 static const char *tgprpl_list_icon (PurpleAccount *acct, PurpleBuddy *buddy)
 {
     return "telegram";
 }
 
+static const char *getLastOnline(const td::td_api::UserStatus &status)
+{
+    switch (status.get_id()) {
+        case td::td_api::userStatusOnline::ID:
+            return _("now");
+        case td::td_api::userStatusOffline::ID: {
+            const td::td_api::userStatusOffline &offline = static_cast<const td::td_api::userStatusOffline &>(status);
+            time_t timestamp = offline.was_online_;
+            return ctime(&timestamp);
+        }
+        case td::td_api::userStatusRecently::ID:
+            return _("recently");
+        case td::td_api::userStatusLastWeek::ID:
+            return _("last week");
+        case td::td_api::userStatusLastMonth::ID:
+            return _("last month");
+    }
+
+    return "";
+}
+
 static void tgprpl_tooltip_text (PurpleBuddy *buddy, PurpleNotifyUserInfo *info, gboolean full)
 {
-    purple_notify_user_info_add_pair (info, "test: ", "TEST");
+    PurpleConnection *connection = purple_account_get_connection(purple_buddy_get_account(buddy));
+    PurpleTdClient   *tdClient   = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(connection));
+
+    std::vector<const td::td_api::user *> users;
+    tdClient->getUsers(purple_buddy_get_name(buddy), users);
+
+    if ((users.size() == 1) && users[0]->status_) {
+        const char *lastOnline = getLastOnline(*users[0]->status_);
+        if (lastOnline && *lastOnline)
+            purple_notify_user_info_add_pair(info, _("Last online"), lastOnline);
+    }
 }
 
 static GList *tgprpl_status_types (PurpleAccount *acct)
@@ -66,8 +99,6 @@ static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
   */
     return NULL;
 }
-
-static char *_(const char *s) { return const_cast<char *>(s); }
 
 static GList *tgprpl_chat_join_info (PurpleConnection *gc)
 {
@@ -120,7 +151,7 @@ static void tgprpl_info_show (PurpleConnection *gc, const char *who)
 
     PurpleNotifyUserInfo *info = purple_notify_user_info_new();
     if (users.empty())
-        purple_notify_user_info_add_section_header(info, _("User not found"));
+        purple_notify_user_info_add_pair(info, _("User not found"), NULL);
 
     for (const td::td_api::user *user: users) {
         if (purple_notify_user_info_get_entries(info))
@@ -132,6 +163,11 @@ static void tgprpl_info_show (PurpleConnection *gc, const char *who)
             purple_notify_user_info_add_pair(info, _("Username"), user->username_.c_str());
         if (!user->phone_number_.empty())
             purple_notify_user_info_add_pair(info, _("Phone number"), user->phone_number_.c_str());
+        if (user->status_) {
+            const char *lastOnline = getLastOnline(*user->status_);
+            if (lastOnline && *lastOnline)
+                purple_notify_user_info_add_pair(info, _("Last online"), lastOnline);
+        }
     }
 
     purple_notify_userinfo(gc, who, info, NULL, NULL);

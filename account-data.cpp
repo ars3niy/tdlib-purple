@@ -110,6 +110,13 @@ void TdAccountData::updateUser(TdUserPtr user)
         m_userInfo[user->id_] = std::move(user);
 }
 
+void TdAccountData::setUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status)
+{
+    auto it = m_userInfo.find(userId);
+    if (it != m_userInfo.end())
+        it->second->status_ = std::move(status);
+}
+
 void TdAccountData::updateBasicGroup(TdGroupPtr group)
 {
     if (group)

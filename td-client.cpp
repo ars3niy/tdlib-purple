@@ -901,6 +901,7 @@ void PurpleTdClient::updateUserStatus(uint32_t userId, td::td_api::object_ptr<td
     if (user) {
         std::string userName = getPurpleBuddyName(*user);
         purple_prpl_got_user_status(m_account, userName.c_str(), getPurpleStatusId(*status), NULL);
+        m_data.setUserStatus(userId, std::move(status));
     }
 }
 

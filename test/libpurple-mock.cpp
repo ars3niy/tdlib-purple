@@ -525,10 +525,6 @@ PurpleNotifyUserInfo *purple_notify_user_info_new(void)
     return NULL;
 }
 
-void purple_notify_user_info_add_section_header(PurpleNotifyUserInfo *user_info, const char *label)
-{
-}
-
 GList *purple_notify_user_info_get_entries(PurpleNotifyUserInfo *user_info)
 {
     return NULL;

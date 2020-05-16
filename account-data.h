@@ -73,6 +73,7 @@ public:
     using TdSupergroupPtr = td::td_api::object_ptr<td::td_api::supergroup>;
 
     void updateUser(TdUserPtr user);
+    void setUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void updateBasicGroup(TdGroupPtr group);
     void updateBasicGroupInfo(int32_t groupId, TdGroupInfoPtr groupInfo);
     void updateSupergroup(TdSupergroupPtr group);
