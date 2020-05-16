@@ -406,7 +406,7 @@ void PurpleTdClient::loginCreatePrivateChatResponse(uint64_t requestId, td::td_a
 
 void PurpleTdClient::updatePrivateChat(const td::td_api::chat &chat, const td::td_api::user &user)
 {
-    std::string purpleUserName = getPurpleUserName(user);
+    std::string purpleUserName = getPurpleBuddyName(user);
 
     PurpleBuddy *buddy = purple_find_buddy(m_account, purpleUserName.c_str());
     if (buddy == NULL) {
@@ -525,7 +525,7 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
         const td::td_api::user *user = m_data.getUserByPrivateChat(*chat);
         if (user) {
             updatePrivateChat(*chat, *user);
-            std::string userName = getPurpleUserName(*user);
+            std::string userName = getPurpleBuddyName(*user);
             purple_prpl_got_user_status(m_account, userName.c_str(),
                                         getPurpleStatusId(*user->status_), NULL);
         }
@@ -899,7 +899,7 @@ void PurpleTdClient::updateUserStatus(uint32_t userId, td::td_api::object_ptr<td
 {
     const td::td_api::user *user = m_data.getUser(userId);
     if (user) {
-        std::string userName = getPurpleUserName(*user);
+        std::string userName = getPurpleBuddyName(*user);
         purple_prpl_got_user_status(m_account, userName.c_str(), getPurpleStatusId(*status), NULL);
     }
 }
@@ -1030,7 +1030,7 @@ void PurpleTdClient::showUserChatAction(int32_t userId, bool isTyping)
 {
     const td::td_api::user *user = m_data.getUser(userId);
     if (user) {
-        std::string userName = getPurpleUserName(*user);
+        std::string userName = getPurpleBuddyName(*user);
         if (isTyping)
             serv_got_typing(purple_account_get_connection(m_account),
                             userName.c_str(), REMOTE_TYPING_NOTICE_TIMEOUT,
@@ -1222,4 +1222,9 @@ void PurpleTdClient::removeTempFile(int64_t messageId)
         purple_debug_misc(config::pluginId, "Removing temporary file %s\n", path.c_str());
         remove(path.c_str());
     }
+}
+
+void PurpleTdClient::getUsers(const char *username, std::vector<const td::td_api::user *> &users)
+{
+    getUsersByPurpleName(username, users, m_data);
 }

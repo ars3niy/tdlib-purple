@@ -65,10 +65,24 @@ const char *getPurpleStatusId(const td::td_api::UserStatus &tdStatus)
         return purple_primitive_get_id_from_type(PURPLE_STATUS_OFFLINE);
 }
 
-std::string getPurpleUserName(const td::td_api::user &user)
+std::string getPurpleBuddyName(const td::td_api::user &user)
 {
     // Prepend "id" so it's not accidentally equal to our phone number which is account name
     return "id" + std::to_string(user.id_);
+}
+
+void getUsersByPurpleName(const char *username, std::vector<const td::td_api::user*> &users,
+                         TdAccountData &accountData)
+{
+    int32_t userId = stringToUserId(username);
+
+    if (userId != 0) {
+        users.clear();
+        const td::td_api::user *user = accountData.getUser(userId);
+        if (user)
+            users.push_back(user);
+    } else
+        accountData.getUsersByDisplayName(username, users);
 }
 
 PurpleConversation *getImConversation(PurpleAccount *account, const char *username)
@@ -301,7 +315,7 @@ void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const
 
     const td::td_api::user *privateUser = accountData.getUserByPrivateChat(chat);
     if (privateUser) {
-        std::string userName = getPurpleUserName(*privateUser);
+        std::string userName = getPurpleBuddyName(*privateUser);
         showMessageTextIm(account, userName.c_str(), text, notification, message.timestamp, flags);
     }
 
@@ -416,7 +430,7 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
         if (!user)
             continue;
 
-        std::string userName    = getPurpleUserName(*user);
+        std::string userName    = getPurpleBuddyName(*user);
         const char *phoneNumber = getCanonicalPhoneNumber(user->phone_number_.c_str());
         if (purple_find_buddy(account, userName.c_str()))
             // libpurple will be able to map user name to alias because there is a buddy

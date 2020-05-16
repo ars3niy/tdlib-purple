@@ -520,8 +520,33 @@ void *purple_notify_message(void *handle, PurpleNotifyMsgType type,
     return NULL;
 }
 
+PurpleNotifyUserInfo *purple_notify_user_info_new(void)
+{
+    return NULL;
+}
+
+void purple_notify_user_info_add_section_header(PurpleNotifyUserInfo *user_info, const char *label)
+{
+}
+
+GList *purple_notify_user_info_get_entries(PurpleNotifyUserInfo *user_info)
+{
+    return NULL;
+}
+
+void purple_notify_user_info_add_section_break(PurpleNotifyUserInfo *user_info)
+{
+}
+
 void purple_notify_user_info_add_pair(PurpleNotifyUserInfo *user_info, const char *label, const char *value)
 {
+}
+
+void *purple_notify_userinfo(PurpleConnection *gc, const char *who,
+						   PurpleNotifyUserInfo *user_info, PurpleNotifyCloseCallback cb,
+						   gpointer user_data)
+{
+    return NULL;
 }
 
 gboolean purple_plugin_register(PurplePlugin *plugin)

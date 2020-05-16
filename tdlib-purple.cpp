@@ -114,8 +114,27 @@ static unsigned int tgprpl_send_typing (PurpleConnection *gc, const char *who, P
 
 static void tgprpl_info_show (PurpleConnection *gc, const char *who)
 {
-    //tgl_do_get_channel_info (gc_get_tls (gc), P->id, FALSE, tgp_info_load_channel_done, P);
-    //tgl_do_get_user_info (gc_get_tls (gc), P->id, 0, tgp_info_load_user_done, P);
+    PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    std::vector<const td::td_api::user *> users;
+    tdClient->getUsers(who, users);
+
+    PurpleNotifyUserInfo *info = purple_notify_user_info_new();
+    if (users.empty())
+        purple_notify_user_info_add_section_header(info, _("User not found"));
+
+    for (const td::td_api::user *user: users) {
+        if (purple_notify_user_info_get_entries(info))
+            purple_notify_user_info_add_section_break(info);
+
+        purple_notify_user_info_add_pair(info, _("First name"), user->first_name_.c_str());
+        purple_notify_user_info_add_pair(info, _("Last name"), user->last_name_.c_str());
+        if (!user->username_.empty())
+            purple_notify_user_info_add_pair(info, _("Username"), user->username_.c_str());
+        if (!user->phone_number_.empty())
+            purple_notify_user_info_add_pair(info, _("Phone number"), user->phone_number_.c_str());
+    }
+
+    purple_notify_userinfo(gc, who, info, NULL, NULL);
 }
 
 static void tgprpl_set_status (PurpleAccount *acct, PurpleStatus *status)

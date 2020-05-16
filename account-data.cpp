@@ -255,6 +255,18 @@ const td::td_api::user *TdAccountData::getUserByPrivateChat(const td::td_api::ch
     return nullptr;
 }
 
+void TdAccountData::getUsersByDisplayName(const char *displayName,
+                                         std::vector<const td::td_api::user*> &users)
+{
+    users.clear();
+    if (!displayName || (*displayName == '\0'))
+        return;
+
+    for (const UserMap::value_type &entry: m_userInfo)
+        if (getDisplayName(entry.second.get()) == displayName)
+            users.push_back(entry.second.get());
+}
+
 const td::td_api::basicGroup *TdAccountData::getBasicGroup(int32_t groupId) const
 {
     auto it = m_groups.find(groupId);
