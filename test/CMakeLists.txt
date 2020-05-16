@@ -5,9 +5,10 @@ endif (DEFINED GTEST_PATH)
 # Compiling plugin sources again is not optimal but it's the easy way
 add_executable(tests EXCLUDE_FROM_ALL
     test-main.cpp
+    login-test.cpp
     private-chat-test.cpp
     group-chat-test.cpp
-    login-test.cpp
+    supergroup-test.cpp
     test-transceiver.cpp
     libpurple-mock.cpp
     printout.cpp
