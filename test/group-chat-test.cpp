@@ -205,11 +205,12 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
         make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
         make_object<chats>(std::vector<int64_t>(1, groupChatId)),
         {
-            // TODO: chat title is wrong here because libpurple doesn't find the chat in contact
+            // chat title is wrong at this point because libpurple doesn't find the chat in contact
             // list while the contact is not online, and thus has no way of knowing the chat alias.
             // Real libpurple works like that and our mock version mirrors the behaviour.
             std::make_unique<ServGotJoinedChatEvent>(connection, 2, groupChatPurpleName,
                                                      groupChatPurpleName),
+            std::make_unique<ConvSetTitleEvent>(groupChatPurpleName, groupChatTitle),
             std::make_unique<ServGotChatEvent>(connection, 2, userFirstNames[0] + " " + userLastNames[0],
                                                "Hello", PURPLE_MESSAGE_RECV, date)
         },

@@ -358,6 +358,7 @@ static PurpleConversation *purple_conversation_new_impl(PurpleConversationType t
     conv->type = type;
     conv->account = account;
     conv->name = strdup(name);
+    conv->title = NULL;
     if (conv->type == PURPLE_CONV_TYPE_CHAT) {
         conv->u.chat = new PurpleConvChat;
         conv->u.chat->conv = conv;
@@ -395,6 +396,7 @@ void purple_conversation_destroy(PurpleConversation *conv)
     pAccount->conversations.erase(it);
 
     free(conv->name);
+    free(conv->title);
     if (conv->type == PURPLE_CONV_TYPE_CHAT)
         delete conv->u.chat;
     delete conv;
@@ -411,6 +413,12 @@ PurpleConvChat *purple_conversation_get_chat_data(const PurpleConversation *conv
 PurpleAccount *purple_conversation_get_account(const PurpleConversation *conv)
 {
     return conv->account;
+}
+
+void purple_conversation_set_title(PurpleConversation *conv, const char *title)
+{
+    conv->title = strdup(title);
+    EVENT(ConvSetTitleEvent, conv->name, title);
 }
 
 void purple_conversation_write(PurpleConversation *conv, const char *who,
@@ -650,8 +658,10 @@ PurpleConversation *serv_got_joined_chat(PurpleConnection *gc,
     purple_conversation_get_chat_data(conv)->id = id;
 
     PurpleChat *chat = purple_blist_find_chat(gc->account, name);
+    if (chat && chat->alias)
+        conv->title = strdup(chat->alias);
 
-    EVENT(ServGotJoinedChatEvent, gc, id, name, (chat && chat->alias) ? chat->alias : name);
+    EVENT(ServGotJoinedChatEvent, gc, id, name, conv->title ? conv->title : name);
     return conv;
 }
 

@@ -60,6 +60,7 @@ enum class PurpleEventType: uint8_t {
     ConnectionUpdateProgress,
     NewConversation,
     ConversationWrite,
+    ConvSetTitle,
     NotifyMessage,
     UserStatus,
     RequestInput,
@@ -189,6 +190,14 @@ struct ConversationWriteEvent: PurpleEvent {
     username(username), message(message), flags(flags), mtime(mtime) {}
 };
 
+struct ConvSetTitleEvent: PurpleEvent {
+    std::string name;
+    std::string newTitle;
+
+    ConvSetTitleEvent(const std::string name, const std::string &newTitle)
+    : PurpleEvent(PurpleEventType::ConvSetTitle), name(name), newTitle(newTitle) {}
+};
+
 struct NotifyMessageEvent: PurpleEvent {
     void                *handle;
     PurpleNotifyMsgType  type;
@@ -280,12 +289,12 @@ struct ServGotJoinedChatEvent: public PurpleEvent {
     PurpleConnection  *connection;
     int                id;
     std::string        chatName;
-    std::string        chatAlias;
+    std::string        conversationTitle;
 
     ServGotJoinedChatEvent(PurpleConnection *connection, int id, const std::string &chatName,
                            const std::string &chatAlias)
     : PurpleEvent(PurpleEventType::ServGotJoinedChat), connection(connection), id(id),
-      chatName(chatName), chatAlias(chatAlias) {}
+      chatName(chatName), conversationTitle(chatAlias) {}
 };
 
 struct BuddyTypingStartEvent: PurpleEvent {

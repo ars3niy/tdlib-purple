@@ -93,6 +93,12 @@ static void compare(const ConversationWriteEvent &actual, const ConversationWrit
     COMPARE(mtime);
 }
 
+static void compare(const ConvSetTitleEvent &actual, const ConvSetTitleEvent &expected)
+{
+    COMPARE(name);
+    COMPARE(newTitle);
+}
+
 static void compare(const NotifyMessageEvent &actual, const NotifyMessageEvent &expected)
 {
     COMPARE(handle);
@@ -146,7 +152,7 @@ static void compare(const ServGotJoinedChatEvent &actual, const ServGotJoinedCha
     COMPARE(connection);
     COMPARE(id);
     COMPARE(chatName);
-    COMPARE(chatAlias);
+    COMPARE(conversationTitle);
 }
 
 static void compare(const BuddyTypingStartEvent &actual, const BuddyTypingStartEvent &expected)
@@ -204,6 +210,7 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(ConnectionUpdateProgress)
         C(NewConversation)
         C(ConversationWrite)
+        C(ConvSetTitle)
         C(NotifyMessage)
         C(UserStatus)
         C(RequestInput)
@@ -288,6 +295,7 @@ std::string PurpleEvent::toString() const
     C(ConnectionUpdateProgress)
     C(NewConversation)
     C(ConversationWrite)
+    C(ConvSetTitle)
     C(NotifyMessage)
     C(UserStatus)
     C(RequestInput)

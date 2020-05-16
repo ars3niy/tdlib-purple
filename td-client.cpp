@@ -505,11 +505,7 @@ void PurpleTdClient::groupInfoResponse(uint64_t requestId, td::td_api::object_pt
         const td::td_api::chat *chat = m_data.getBasicGroupChatByGroup(request->groupId);
 
         if (chat) {
-            std::string         name = getChatName(*chat);
-            PurpleConversation *conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_CHAT,
-                                                                             name.c_str(), m_account);
-            PurpleConvChat     *purpleChat = conv ? purple_conversation_get_chat_data(conv) : NULL;
-
+            PurpleConvChat *purpleChat = findChatConversation(m_account, *chat);
             if (purpleChat)
                 setChatMembers(purpleChat, *groupInfo, m_data);
         }
