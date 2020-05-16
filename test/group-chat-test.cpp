@@ -3,9 +3,10 @@
 
 class GroupChatTest: public CommTest {
 protected:
-    const int32_t     groupId        = 700;
-    const int64_t     groupChatId    = 7000;
-    const std::string groupChatTitle = "Title";
+    const int32_t     groupId             = 700;
+    const int64_t     groupChatId         = 7000;
+    const std::string groupChatTitle      = "Title";
+    const std::string groupChatPurpleName = "chat" + std::to_string(groupChatId);
 
     void loginWithBasicGroup();
 };
@@ -35,7 +36,7 @@ void GroupChatTest::loginWithBasicGroup()
         {
             std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
             std::make_unique<AddChatEvent>(
-                "chat" + std::to_string(groupChatId), groupChatTitle, account, nullptr, nullptr
+                groupChatPurpleName, groupChatTitle, account, nullptr, nullptr
             ),
             std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
             std::make_unique<ShowAccountEvent>(account)
@@ -64,14 +65,14 @@ TEST_F(GroupChatTest, BasicGroupChatAppearsAfterLogin)
     tgl.verifyRequest(getBasicGroupFullInfo(groupId));
 
     prpl.verifyEvents(AddChatEvent(
-        "chat" + std::to_string(groupChatId), groupChatTitle, account, NULL, NULL
+        groupChatPurpleName, groupChatTitle, account, NULL, NULL
     ));
 }
 
 TEST_F(GroupChatTest, ExistingBasicGroupChatAtLogin)
 {
     GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
-    g_hash_table_insert(components, (char *)"id", g_strdup(("chat" + std::to_string(groupChatId)).c_str()));
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
     purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), components), NULL, NULL);
     prpl.discardEvents();
 
@@ -106,7 +107,7 @@ TEST_F(GroupChatTest, BasicGroupReceiveText)
         true
     ));
     prpl.verifyEvents(
-        ServGotJoinedChatEvent(connection, 1, "chat" + std::to_string(groupChatId), groupChatTitle),
+        ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, groupChatTitle),
         ServGotChatEvent(connection, 1, userFirstNames[0] + " " + userLastNames[0],
                          "Hello", PURPLE_MESSAGE_RECV, date[0])
     );
@@ -120,7 +121,7 @@ TEST_F(GroupChatTest, BasicGroupReceiveText)
         true
     ));
     prpl.verifyEvents(ConversationWriteEvent(
-        "chat" + std::to_string(groupChatId), selfFirstName + " " + selfLastName,
+        groupChatPurpleName, selfFirstName + " " + selfLastName,
         "Reply", PURPLE_MESSAGE_SEND, date[1]
     ));
 
@@ -146,10 +147,10 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
     prpl.verifyEvents(
-        ServGotJoinedChatEvent(connection, 1, "chat" + std::to_string(groupChatId), groupChatTitle),
+        ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, groupChatTitle),
         ServGotChatEvent(connection, 1, userFirstNames[0] + " " + userLastNames[0], "photo",
                          PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent("chat" + std::to_string(groupChatId), "", "Downloading image",
+        ConversationWriteEvent(groupChatPurpleName, "", "Downloading image",
                                PURPLE_MESSAGE_SYSTEM, date)
     );
 
@@ -171,7 +172,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
     constexpr int32_t date      = 12345;
 
     GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
-    g_hash_table_insert(table, (char *)"id", g_strdup(("chat" + std::to_string(groupChatId)).c_str()));
+    g_hash_table_insert(table, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
     purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), table), NULL, NULL);
 
     // Pre-add one of two group members as a contact
@@ -202,8 +203,8 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
             // TODO: chat title is wrong here because libpurple doesn't find the chat in contact
             // list while the contact is not online, and thus has no way of knowing the chat alias.
             // Real libpurple works like that and our mock version mirrors the behaviour.
-            std::make_unique<ServGotJoinedChatEvent>(connection, 2, "chat" + std::to_string(groupChatId),
-                                                     "chat" + std::to_string(groupChatId)),
+            std::make_unique<ServGotJoinedChatEvent>(connection, 2, groupChatPurpleName,
+                                                     groupChatPurpleName),
             std::make_unique<ServGotChatEvent>(connection, 2, userFirstNames[0] + " " + userLastNames[0],
                                                "Hello", PURPLE_MESSAGE_RECV, date)
         },
@@ -244,20 +245,21 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
     // One code path: adding chat users upon receiving getBasicGroupFullInfo reply, because the chat
     // window is already open due to the received message
     prpl.verifyEvents(
+        ChatClearUsersEvent(groupChatPurpleName),
         ChatAddUserEvent(
-            "chat" + std::to_string(groupChatId),
+            groupChatPurpleName,
             // This user is in our contact list so his libpurple user name is used
             purpleUserName(0),
             "", PURPLE_CBFLAGS_NONE, false
         ),
         ChatAddUserEvent(
-            "chat" + std::to_string(groupChatId),
+            groupChatPurpleName,
             // This user is not in our contact list so first/last name is used
             userFirstNames[1] + " " + userLastNames[1],
             "", PURPLE_CBFLAGS_FOUNDER, false
         ),
         ChatAddUserEvent(
-            "chat" + std::to_string(groupChatId),
+            groupChatPurpleName,
             // This is us (with + to match account name)
             "+" + selfPhoneNumber,
             "", PURPLE_CBFLAGS_NONE, false
@@ -303,30 +305,31 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
     ));
 
     GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
-    g_hash_table_insert(components, (char *)"id", g_strdup(("chat" + std::to_string(groupChatId)).c_str()));
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
     pluginInfo().join_chat(connection, components);
     g_hash_table_destroy(components);
 
     // Another code path: adding chat users upon opening chat, with basicGroupFullInfo before that
     prpl.verifyEvents(
-        ServGotJoinedChatEvent(connection, 1, "chat" + std::to_string(groupChatId), groupChatTitle),
+        ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, groupChatTitle),
+        ChatClearUsersEvent(groupChatPurpleName),
         ChatAddUserEvent(
-            "chat" + std::to_string(groupChatId),
+            groupChatPurpleName,
             userFirstNames[0] + " " + userLastNames[0],
             "", PURPLE_CBFLAGS_NONE, false
         ),
         ChatAddUserEvent(
-            "chat" + std::to_string(groupChatId),
+            groupChatPurpleName,
             userFirstNames[1] + " " + userLastNames[1],
             "", PURPLE_CBFLAGS_FOUNDER, false
         ),
         ChatAddUserEvent(
-            "chat" + std::to_string(groupChatId),
+            groupChatPurpleName,
             // This is us (with + to match account name)
             "+" + selfPhoneNumber,
             "", PURPLE_CBFLAGS_NONE, false
         ),
-        PresentConversationEvent("chat" + std::to_string(groupChatId))
+        PresentConversationEvent(groupChatPurpleName)
     );
     tgl.verifyNoRequests();
 
@@ -353,7 +356,7 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
         true
     ));
     prpl.verifyEvents(ConversationWriteEvent(
-        "chat" + std::to_string(groupChatId), selfFirstName + " " + selfLastName,
+        groupChatPurpleName, selfFirstName + " " + selfLastName,
         "message", PURPLE_MESSAGE_SEND, date
     ));
 }
@@ -390,7 +393,7 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
     )));
     // Chat is added, list of members requested
     prpl.verifyEvents(AddChatEvent(
-        "chat" + std::to_string(groupChatId), groupChatTitle, account, NULL, NULL
+        groupChatPurpleName, groupChatTitle, account, NULL, NULL
     ));
     uint64_t groupInfoRequestId = tgl.verifyRequest(getBasicGroupFullInfo(groupId));
 
@@ -406,8 +409,8 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
 
     // The message is shown in chat conversation
     prpl.verifyEvents(
-        ServGotJoinedChatEvent(connection, 1, "chat" + std::to_string(groupChatId), groupChatTitle),
-        ConversationWriteEvent("chat" + std::to_string(groupChatId), "",
+        ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, groupChatTitle),
+        ConversationWriteEvent(groupChatPurpleName, "",
                                "Received unsupported message type messageChatJoinByLink",
                                PURPLE_MESSAGE_SYSTEM, 12345)
     );
@@ -451,20 +454,21 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
     ));
 
     prpl.verifyEvents(
+        ChatClearUsersEvent(groupChatPurpleName),
         ChatAddUserEvent(
-            "chat" + std::to_string(groupChatId),
+            groupChatPurpleName,
             // This user is not in our contact list so first/last name is used
             userFirstNames[0] + " " + userLastNames[0],
             "", PURPLE_CBFLAGS_NONE, false
         ),
         ChatAddUserEvent(
-            "chat" + std::to_string(groupChatId),
+            groupChatPurpleName,
             // This user is not in our contact list so first/last name is used
             userFirstNames[1] + " " + userLastNames[1],
             "", PURPLE_CBFLAGS_FOUNDER, false
         ),
         ChatAddUserEvent(
-            "chat" + std::to_string(groupChatId),
+            groupChatPurpleName,
             // This is us (with + to match account name)
             "+" + selfPhoneNumber,
             "", PURPLE_CBFLAGS_NONE, false

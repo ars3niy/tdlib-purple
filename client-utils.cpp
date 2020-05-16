@@ -304,6 +304,7 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
     for (const std::string &name: nameData)
         names = g_list_append(names, const_cast<char *>(name.c_str()));
 
+    purple_conv_chat_clear_users(purpleChat);
     purple_conv_chat_add_users(purpleChat, names, NULL, flags, false);
     g_list_free(names);
     g_list_free(flags);

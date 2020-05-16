@@ -176,6 +176,11 @@ static void compare(const ChatAddUserEvent &actual, const ChatAddUserEvent &expe
     COMPARE(new_arrival);
 }
 
+static void compare(const ChatClearUsersEvent &actual, const ChatClearUsersEvent &expected)
+{
+    COMPARE(chatName);
+}
+
 static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected)
 {
     ASSERT_EQ(expected.type, actual.type) << "Unexpected libpurple event " << actual.toString() <<
@@ -210,6 +215,7 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(BuddyTypingStop)
         C(PresentConversation)
         C(ChatAddUser)
+        C(ChatClearUsers)
         default:
             ASSERT_TRUE(false) << "Unsupported libpurple event " << actual.toString();
     };
@@ -293,6 +299,7 @@ std::string PurpleEvent::toString() const
     C(BuddyTypingStop)
     C(PresentConversation)
     C(ChatAddUser)
+    C(ChatClearUsers)
     }
     return std::to_string((unsigned)type);
 #undef C

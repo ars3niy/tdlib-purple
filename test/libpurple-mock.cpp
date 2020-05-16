@@ -687,6 +687,11 @@ void purple_conv_chat_add_users(PurpleConvChat *chat, GList *users, GList *extra
                                   (PurpleConvChatBuddyFlags)GPOINTER_TO_INT(flag->data), new_arrivals);
 }
 
+void purple_conv_chat_clear_users(PurpleConvChat *chat)
+{
+    EVENT(ChatClearUsersEvent, chat->conv->name);
+}
+
 PurpleBlistNode *purple_blist_get_root(void)
 {
     return &root;
