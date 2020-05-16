@@ -10,6 +10,7 @@ struct TgMessageInfo {
     time_t      timestamp;
     bool        outgoing;
     int64_t     repliedMessageId;
+    std::string forwardedFrom;
 };
 
 // Matching completed downloads to chats they belong to
@@ -32,6 +33,8 @@ PurpleConvChat     *getChatConversation(PurpleAccount *account, const td::td_api
                                         int chatPurpleId, TdAccountData &accountData);
 std::string         getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
                                         TdAccountData &accountData);
+std::string         getForwardSource(const td::td_api::messageForwardInfo &forwardInfo,
+                                     TdAccountData &accountData);
 void                getNamesFromAlias(const char *alias, std::string &firstName, std::string &lastName);
 std::vector<PurpleChat *> findChatsByInviteLink(const std::string &inviteLink);
 

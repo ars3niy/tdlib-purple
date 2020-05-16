@@ -260,14 +260,20 @@ void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const
     PurpleMessageFlags flags = (PurpleMessageFlags) (extraFlags | directionFlag);
 
     std::string newText;
-    if (message.repliedMessageId != 0) {
+    if (message.repliedMessageId != 0)
         newText = quoteMessage(accountData.findMessage(message.repliedMessageId), accountData);
-        if (text) {
+    if (!message.forwardedFrom.empty()) {
+        if (!newText.empty())
             newText += "\n";
-            newText += text;
-        }
-        text = newText.c_str();
+        newText += formatMessage(_("<b>Forwarded from {}:</b>"), message.forwardedFrom);
     }
+    if (text) {
+        if (!newText.empty())
+            newText += "\n";
+        newText += text;
+    }
+    if (!newText.empty())
+        text = newText.c_str();
 
     const td::td_api::user *privateUser = accountData.getUserByPrivateChat(chat);
     if (privateUser) {
@@ -300,6 +306,27 @@ std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::
 
     // For outgoing messages, our name will be used instead
     // For private chats, sender name will be determined from the chat instead
+
+    return "";
+}
+
+std::string getForwardSource(const td::td_api::messageForwardInfo &forwardInfo,
+                             TdAccountData &accountData)
+{
+    if (!forwardInfo.origin_)
+        return "";
+
+    switch (forwardInfo.origin_->get_id()) {
+        case td::td_api::messageForwardOriginUser::ID:
+            return getDisplayName(accountData.getUser(static_cast<const td::td_api::messageForwardOriginUser &>(*forwardInfo.origin_).sender_user_id_));
+        case td::td_api::messageForwardOriginHiddenUser::ID:
+            return static_cast<const td::td_api::messageForwardOriginHiddenUser &>(*forwardInfo.origin_).sender_name_;
+        case td::td_api::messageForwardOriginChannel::ID: {
+            const td::td_api::chat *chat = accountData.getChat(static_cast<const td::td_api::messageForwardOriginChannel&>(*forwardInfo.origin_).chat_id_);
+            if (chat)
+                return chat->title_;
+        }
+    }
 
     return "";
 }

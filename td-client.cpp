@@ -827,6 +827,9 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
     messageInfo.outgoing         = message.is_outgoing_;
     messageInfo.repliedMessageId = message.reply_to_message_id_;
 
+    if (message.forward_info_)
+        messageInfo.forwardedFrom = getForwardSource(*message.forward_info_, m_data);
+
     if (message.ttl_ != 0)
         showMessageText(m_account, chat, messageInfo, NULL,
                         _("Received self-destructing message, not displayed due to lack of support"), m_data);
