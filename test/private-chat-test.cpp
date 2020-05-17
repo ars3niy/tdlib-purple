@@ -685,8 +685,7 @@ TEST_F(PrivateChatTest, ReplyToOldMessage)
         ServGotImEvent(
             connection,
             purpleUserName(0),
-            fmt::format("<b>&gt; {} {} wrote:</b>\n&gt; {}\n{}",
-                        userFirstNames[0], userLastNames[0], "message", "reply"),
+            fmt::format(replyPattern, userFirstNames[0] + " " + userLastNames[0], "message", "reply"),
             PURPLE_MESSAGE_RECV,
             date
         )
@@ -728,8 +727,7 @@ TEST_F(PrivateChatTest, ReplyToOldMessage_FetchFailed)
         ServGotImEvent(
             connection,
             purpleUserName(0),
-            fmt::format("<b>&gt; {} wrote:</b>\n&gt; {}\n{}",
-                        "unknown user", "[message unavailable]", "reply"),
+            fmt::format(replyPattern, "unknown user", "[message unavailable]", "reply"),
             PURPLE_MESSAGE_RECV,
             date
         )

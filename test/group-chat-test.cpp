@@ -124,8 +124,7 @@ TEST_F(GroupChatTest, BasicGroupReceiveTextAndReply)
     ));
     prpl.verifyEvents(ConversationWriteEvent(
         groupChatPurpleName, selfFirstName + " " + selfLastName,
-        fmt::format("<b>&gt; {} {} wrote:</b>\n&gt; {}\n{}",
-                    userFirstNames[0], userLastNames[0], "Hello", "Reply"),
+        fmt::format(replyPattern, userFirstNames[0] + " " + userLastNames[0], "Hello", "Reply"),
         PURPLE_MESSAGE_SEND, date[1]
     ));
 

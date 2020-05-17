@@ -31,6 +31,8 @@ protected:
     const std::string userLastNames[2]  = {"Leibniz", "Galilei"};
     std::string       purpleUserName(unsigned index) { return "id" + std::to_string(userIds[index]); }
 
+    const std::string replyPattern      = "<b>&gt; {} wrote:</b>\n&gt; {}\n{}";
+
     void SetUp() override;
     void TearDown() override;
     void login(std::initializer_list<object_ptr<Object>> extraUpdates = {},
