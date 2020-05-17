@@ -8,6 +8,8 @@
 class TestTransceiver: public ITransceiverBackend {
 public:
     void send(td::Client::Request &&request) override;
+    void addTimeout(guint interval, GSourceFunc function, gpointer data) override;
+    void runTimeouts();
 
     // Check that given requests, and no others, have been received, and clear the queue
     uint64_t verifyRequest(const td::td_api::Function &request);
@@ -23,10 +25,16 @@ public:
 
     const std::string &getInputPhotoPath(unsigned index) { return m_inputPhotoPaths.at(index); }
 private:
+    struct TimerInfo {
+        GSourceFunc function;
+        gpointer data;
+    };
+
     std::queue<td::Client::Request> m_requests;
     std::vector<uint64_t>           m_lastRequestIds;
     uint64_t                        expectedRequestId = 1;
     std::vector<std::string>        m_inputPhotoPaths;
+    std::vector<TimerInfo>          m_timers;
 
     void verifyRequestImpl(const td::td_api::Function &request);
 };

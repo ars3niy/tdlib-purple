@@ -640,3 +640,98 @@ TEST_F(PrivateChatTest, SendImage)
     //                           PURPLE_MESSAGE_SYSTEM, messageFailureDate)
     //);
 }
+
+TEST_F(PrivateChatTest, ReplyToOldMessage)
+{
+    const int32_t date     = 10002;
+    const int64_t msgId    = 2;
+    const int32_t srcDate  = 10001;
+    const int64_t srcMsgId = 1;
+    loginWithOneContact();
+
+    object_ptr<message> message = makeMessage(
+        msgId,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        makeTextMessage("reply")
+    );
+    message->reply_to_message_id_ = srcMsgId;
+
+    tgl.update(make_object<updateNewMessage>(std::move(message)));
+    tgl.verifyRequests({
+        make_object<viewMessages>(
+            chatIds[0],
+            std::vector<int64_t>(1, msgId),
+            true
+        ),
+        make_object<getMessage>(
+            chatIds[0], srcMsgId
+        )
+    });
+    prpl.verifyNoEvents();
+
+    tgl.reply(make_object<ok>()); // reply to viewMessages
+    tgl.reply(makeMessage(
+        srcMsgId,
+        userIds[0],
+        chatIds[0],
+        false,
+        srcDate,
+        makeTextMessage("message")
+    ));
+    prpl.verifyEvents(
+        ServGotImEvent(
+            connection,
+            purpleUserName(0),
+            fmt::format("<b>&gt; {} {} wrote:</b>\n&gt; {}\n{}",
+                        userFirstNames[0], userLastNames[0], "message", "reply"),
+            PURPLE_MESSAGE_RECV,
+            date
+        )
+    );
+}
+
+TEST_F(PrivateChatTest, ReplyToOldMessage_FetchFailed)
+{
+    const int32_t date     = 10002;
+    const int64_t msgId    = 2;
+    const int64_t srcMsgId = 1;
+    loginWithOneContact();
+
+    object_ptr<message> message = makeMessage(
+        msgId,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        makeTextMessage("reply")
+    );
+    message->reply_to_message_id_ = srcMsgId;
+
+    tgl.update(make_object<updateNewMessage>(std::move(message)));
+    tgl.verifyRequests({
+        make_object<viewMessages>(
+            chatIds[0],
+            std::vector<int64_t>(1, msgId),
+            true
+        ),
+        make_object<getMessage>(
+            chatIds[0], srcMsgId
+        )
+    });
+    prpl.verifyNoEvents();
+
+    runTimeouts();
+    prpl.verifyEvents(
+        ServGotImEvent(
+            connection,
+            purpleUserName(0),
+            fmt::format("<b>&gt; {} wrote:</b>\n&gt; {}\n{}",
+                        "unknown user", "[message unavailable]", "reply"),
+            PURPLE_MESSAGE_RECV,
+            date
+        )
+    );
+}

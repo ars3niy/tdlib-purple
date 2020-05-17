@@ -40,6 +40,7 @@ protected:
                std::initializer_list<object_ptr<Function>> postUpdateRequests = {},
                std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents = {nullptr});
     void loginWithOneContact();
+    void runTimeouts() { tgl.runTimeouts(); }
 
     object_ptr<updateUser>     standardUpdateUser(unsigned index);
     object_ptr<updateNewChat>  standardPrivateChat(unsigned index);

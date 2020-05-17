@@ -115,6 +115,22 @@ void purple_account_destroy(PurpleAccount *account)
     ASSERT_EQ(nullptr, root.child) << "Blist nodes remain";
 }
 
+const char *purple_account_get_protocol_id(const PurpleAccount *account)
+{
+    return "";
+}
+
+PurpleAccount *purple_accounts_find(const char *name, const char *protocol)
+{
+    auto it = std::find_if(g_accounts.begin(), g_accounts.end(),
+                           [name](const AccountInfo &account) {
+                               return !strcmp(account.account->username, name);
+                           });
+    if (it != g_accounts.end())
+        return it->account;
+    return NULL;
+}
+
 void purple_blist_add_account(PurpleAccount *account)
 {
     EVENT(ShowAccountEvent, account);
@@ -235,6 +251,11 @@ PurpleGroup *purple_buddy_get_group(PurpleBuddy *buddy)
 const char *purple_buddy_get_name(const PurpleBuddy *buddy)
 {
     return buddy->name;
+}
+
+PurpleAccount *purple_buddy_get_account(const PurpleBuddy *buddy)
+{
+    return buddy->account;
 }
 
 static void newNode(PurpleBlistNode &node, PurpleBlistNodeType type)

@@ -37,6 +37,21 @@ void TestTransceiver::verifyRequests(std::initializer_list<td::td_api::object_pt
     verifyNoRequests();
 }
 
+void TestTransceiver::addTimeout(guint interval, GSourceFunc function, gpointer data)
+{
+    m_timers.emplace_back();
+    m_timers.back().function = function;
+    m_timers.back().data = data;
+}
+
+void TestTransceiver::runTimeouts()
+{
+    for (const TimerInfo &timer: m_timers)
+        while (timer.function(timer.data)) ;
+
+    m_timers.clear();
+}
+
 #define COMPARE(param) ASSERT_EQ(expected.param, actual.param)
 
 static void compare(const setTdlibParameters &actual, const setTdlibParameters &expected)
@@ -206,6 +221,12 @@ static void compare(const registerUser &actual, const registerUser &expected)
     COMPARE(last_name_);
 }
 
+static void compare(const getMessage &actual, const getMessage &expected)
+{
+    COMPARE(chat_id_);
+    COMPARE(message_id_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -234,6 +255,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(createPrivateChat)
         C(checkAuthenticationCode)
         C(registerUser)
+        C(getMessage)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

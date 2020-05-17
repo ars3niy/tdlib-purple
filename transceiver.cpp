@@ -1,6 +1,32 @@
 #include "transceiver.h"
 #include "config.h"
-#include <purple.h>
+
+struct TimerCallbackData {
+    std::string accountUserName;
+    std::string accountProtocolId;
+    uint64_t    requestId;
+    TdTransceiver::ResponseCb callback;
+};
+
+static gboolean timerCallback(gpointer userdata)
+{
+    TimerCallbackData *data = static_cast<TimerCallbackData *>(userdata);
+
+    PurpleAccount *account = purple_accounts_find(data->accountUserName.c_str(),
+                                                  data->accountProtocolId.c_str());
+
+    if (account) {
+        PurpleConnection *connection   = purple_account_get_connection(account);
+        void             *protocolData = purple_connection_get_protocol_data(connection);
+
+        // If this is somehow not our PurpleTdClient then user really has themselves to blame
+        PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(protocolData);
+        (tdClient->*(data->callback))(data->requestId, nullptr);
+    }
+
+    delete data;
+    return FALSE; // one-time callback
+}
 
 // This class is used to share ownership of its instances between TdTransceiver and glib idle
 // function queue. This way, those idle functions can be called safely after TdTransceiver is
@@ -40,26 +66,29 @@ TdTransceiverImpl::~TdTransceiverImpl()
     purple_debug_misc(config::pluginId, "Destroyed TdTransceiverImpl\n");
 }
 
-TdTransceiver::TdTransceiver(PurpleTdClient *owner, UpdateCb updateCb, ITransceiverBackend *testBackend)
-:   m_stopThread(false)
+TdTransceiver::TdTransceiver(PurpleTdClient *owner, PurpleAccount *account, UpdateCb updateCb,
+                             ITransceiverBackend *testBackend)
+:   m_account(account),
+    m_stopThread(false)
 {
     m_impl = std::make_shared<TdTransceiverImpl>(owner, updateCb, testBackend);
+
     if (testBackend) {
         m_testBackend = testBackend;
         m_testBackend->setOwner(this);
-        return;
-    }
-    m_testBackend = nullptr;
+    } else {
+        m_testBackend = nullptr;
 
 #if !GLIB_CHECK_VERSION(2, 32, 0)
-    // GLib threading system is automaticaly initialized since 2.32.
-    // For earlier versions, it have to be initialized before calling any
-    // Glib or GTK+ functions.
-    if (!g_thread_supported())
-        g_thread_init(NULL);
+        // GLib threading system is automaticaly initialized since 2.32.
+        // For earlier versions, it have to be initialized before calling any
+        // Glib or GTK+ functions.
+        if (!g_thread_supported())
+            g_thread_init(NULL);
 #endif
 
-    m_pollThread = std::thread([this]() { pollThreadLoop(); });
+        m_pollThread = std::thread([this]() { pollThreadLoop(); });
+    }
 }
 
 TdTransceiver::~TdTransceiver()
@@ -167,6 +196,26 @@ uint64_t TdTransceiver::sendQuery(td::td_api::object_ptr<td::td_api::Function> f
         m_testBackend->send({queryId, std::move(f)});
     else
         m_impl->m_client->send({queryId, std::move(f)});
+    return queryId;
+}
+
+uint64_t TdTransceiver::sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::Function> f,
+                                             ResponseCb handler, unsigned timeoutSeconds)
+{
+    uint64_t queryId = sendQuery(std::move(f), handler);
+
+    TimerCallbackData *data = new TimerCallbackData;
+
+    data->accountUserName   = purple_account_get_username(m_account);
+    data->accountProtocolId = purple_account_get_protocol_id(m_account);
+    data->requestId         = queryId;
+    data->callback          = handler;
+
+    if (!m_testBackend)
+        g_timeout_add_seconds(timeoutSeconds, timerCallback, data);
+    else
+        m_testBackend->addTimeout(timeoutSeconds, timerCallback, data);
+
     return queryId;
 }
 

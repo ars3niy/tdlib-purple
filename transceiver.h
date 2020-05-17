@@ -7,6 +7,7 @@
 #include <mutex>
 #include <map>
 #include <atomic>
+#include <purple.h>
 
 class PurpleTdClient;
 class TdTransceiverImpl;
@@ -18,6 +19,7 @@ public:
 
     void         setOwner(TdTransceiver *owner) { m_owner = owner; }
     virtual void send(td::Client::Request &&request) = 0;
+    virtual void addTimeout(guint interval, GSourceFunc function, gpointer data) = 0;
     void         receive(td::Client::Response response);
 private:
     TdTransceiver *m_owner = nullptr;
@@ -33,14 +35,20 @@ public:
     using ResponseCb = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
     using UpdateCb   = void (PurpleTdClient::*)(td::td_api::Object &object);
 
-    TdTransceiver(PurpleTdClient *owner, UpdateCb updateCb, ITransceiverBackend *testBackend);
-    virtual ~TdTransceiver();
-    virtual uint64_t sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler);
+    TdTransceiver(PurpleTdClient *owner, PurpleAccount *account, UpdateCb updateCb,
+                  ITransceiverBackend *testBackend);
+    ~TdTransceiver();
+    uint64_t sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler);
+
+    // WARNING: receiving response does not cancel timeout callback
+    uint64_t sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::Function> f,
+                                  ResponseCb handler, unsigned timeoutSeconds);
 private:
     void  pollThreadLoop();
     void *queueResponse(td::Client::Response &&response);
 
     std::shared_ptr<TdTransceiverImpl>  m_impl;
+    PurpleAccount                      *m_account;
     std::thread                         m_pollThread;
     std::atomic_bool                    m_stopThread;
     ITransceiverBackend                *m_testBackend;

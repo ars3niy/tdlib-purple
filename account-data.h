@@ -63,6 +63,15 @@ public:
     : PendingRequest(requestId), tempFile(tempFile) {}
 };
 
+class PendingMessage: public PendingRequest {
+public:
+    int64_t messageId;
+    int64_t chatId;
+
+    PendingMessage(uint64_t requestId, int64_t messageId, int64_t chatId)
+    : PendingRequest(requestId), messageId(messageId), chatId(chatId) {}
+};
+
 class TdAccountData {
 public:
     using TdUserPtr       = td::td_api::object_ptr<td::td_api::user>;
@@ -122,7 +131,7 @@ public:
     std::string                extractTempFileUpload(int64_t messageId);
 
     void                       saveMessage(TdMessagePtr message);
-    const td::td_api::message *findMessage(int64_t messageId);
+    td::td_api::message       *findMessage(int64_t messageId);
 private:
     struct ChatInfo {
         int32_t   purpleId;

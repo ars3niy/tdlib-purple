@@ -19,6 +19,7 @@ void CommTest::SetUp()
 
 void CommTest::TearDown()
 {
+    tgl.runTimeouts();
     tgl.verifyNoRequests();
     prpl.verifyNoEvents();
     if (purple_connection_get_protocol_data(connection))

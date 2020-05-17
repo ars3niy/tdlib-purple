@@ -47,13 +47,14 @@ private:
     void       updatePurpleChatListAndReportConnected();
     // Login sequence end
 
-    void       showMessage(const td::td_api::chat &chat, td::td_api::message &message);
+    void       showMessage(const td::td_api::chat &chat, int64_t messageId);
     void       showTextMessage(const td::td_api::chat &chat, const TgMessageInfo &message,const td::td_api::messageText &text);
     void       showPhotoMessage(const td::td_api::chat &chat, const TgMessageInfo &message, const td::td_api::messagePhoto &photo);
     void       showDocument(const td::td_api::chat &chat, const TgMessageInfo &message, const td::td_api::messageDocument &document);
     void       showVideo(const td::td_api::chat &chat, const TgMessageInfo &message, const td::td_api::messageVideo &video);
     void       showSticker(const td::td_api::chat &chat, const TgMessageInfo &message, td::td_api::messageSticker &sticker);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
+    void       findMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
     void       updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void       updateUser(td::td_api::object_ptr<td::td_api::user> user);

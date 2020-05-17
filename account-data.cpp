@@ -420,7 +420,7 @@ void TdAccountData::saveMessage(TdMessagePtr message)
         m_messages[message->id_] = std::move(message);
 }
 
-const td::td_api::message *TdAccountData::findMessage(int64_t messageId)
+td::td_api::message *TdAccountData::findMessage(int64_t messageId)
 {
     auto it = m_messages.find(messageId);
     return (it != m_messages.end()) ? it->second.get() : nullptr;

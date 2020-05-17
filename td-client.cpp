@@ -14,7 +14,7 @@ enum {
 };
 
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)
-:   m_transceiver(this, &PurpleTdClient::processUpdate, testBackend)
+:   m_transceiver(this, acct, &PurpleTdClient::processUpdate, testBackend)
 {
     m_account = acct;
 }
@@ -806,49 +806,47 @@ void PurpleTdClient::showDownloadedInlineFile(int64_t chatId, const TgMessageInf
     }
 }
 
-void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::message &message)
+void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId)
 {
-    td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
-    viewMessagesReq->chat_id_ = message.chat_id_;
-    viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
-    viewMessagesReq->message_ids_.push_back(message.id_);
-    m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
-
-    if (!message.content_)
+    td::td_api::message *message = m_data.findMessage(messageId);
+    if (!message || !message->content_)
         return;
+    purple_debug_misc(config::pluginId, "Displaying message %" G_GINT64_FORMAT "\n", messageId);
 
     TgMessageInfo messageInfo;
-    messageInfo.sender           = getSenderPurpleName(chat, message, m_data);
-    messageInfo.timestamp        = message.date_;
-    messageInfo.outgoing         = message.is_outgoing_;
-    messageInfo.repliedMessageId = message.reply_to_message_id_;
+    messageInfo.sender           = getSenderPurpleName(chat, *message, m_data);
+    messageInfo.timestamp        = message->date_;
+    messageInfo.outgoing         = message->is_outgoing_;
+    messageInfo.repliedMessageId = message->reply_to_message_id_;
 
-    if (message.forward_info_)
-        messageInfo.forwardedFrom = getForwardSource(*message.forward_info_, m_data);
+    if (message->forward_info_)
+        messageInfo.forwardedFrom = getForwardSource(*message->forward_info_, m_data);
 
-    if (message.ttl_ != 0)
+    if (message->ttl_ != 0) {
         showMessageText(m_account, chat, messageInfo, NULL,
                         _("Received self-destructing message, not displayed due to lack of support"), m_data);
+        return;
+    }
 
-    switch (message.content_->get_id()) {
+    switch (message->content_->get_id()) {
         case td::td_api::messageText::ID:
-            showTextMessage(chat, messageInfo, static_cast<const td::td_api::messageText &>(*message.content_));
+            showTextMessage(chat, messageInfo, static_cast<const td::td_api::messageText &>(*message->content_));
             break;
         case td::td_api::messagePhoto::ID:
-            showPhotoMessage(chat, messageInfo, static_cast<const td::td_api::messagePhoto &>(*message.content_));
+            showPhotoMessage(chat, messageInfo, static_cast<const td::td_api::messagePhoto &>(*message->content_));
             break;
         case td::td_api::messageDocument::ID:
-            showDocument(chat, messageInfo, static_cast<const td::td_api::messageDocument &>(*message.content_));
+            showDocument(chat, messageInfo, static_cast<const td::td_api::messageDocument &>(*message->content_));
             break;
         case td::td_api::messageVideo::ID:
-            showVideo(chat, messageInfo, static_cast<const td::td_api::messageVideo &>(*message.content_));
+            showVideo(chat, messageInfo, static_cast<const td::td_api::messageVideo &>(*message->content_));
             break;
         case td::td_api::messageSticker::ID:
-            showSticker(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message.content_));
+            showSticker(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message->content_));
             break;
         default: {
             std::string notice = "Received unsupported message type " +
-                                 messageTypeToString(*message.content_);
+                                 messageTypeToString(*message->content_);
             showMessageText(m_account, chat, messageInfo, NULL, notice.c_str(), m_data);
         }
     }
@@ -866,9 +864,43 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
         return;
     }
 
-    showMessage(*chat, *message);
-    if (message->ttl_ == 0)
-        m_data.saveMessage(std::move(message));
+    td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
+    viewMessagesReq->chat_id_ = chat->id_;
+    viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
+    viewMessagesReq->message_ids_.push_back(message->id_);
+    m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
+
+    int64_t messageId      = message->id_;
+    int64_t replyMessageId = message->reply_to_message_id_;
+    m_data.saveMessage(std::move(message));
+
+    if (replyMessageId && !m_data.findMessage(replyMessageId)) {
+        purple_debug_misc(config::pluginId, "Fetching message %" G_GINT64_FORMAT " which message %" G_GINT64_FORMAT " replies to\n",
+                          replyMessageId, messageId);
+        td::td_api::object_ptr<td::td_api::getMessage> getMessageReq = td::td_api::make_object<td::td_api::getMessage>();
+        getMessageReq->chat_id_    = chat->id_;
+        getMessageReq->message_id_ = replyMessageId;
+        uint64_t requestId = m_transceiver.sendQueryWithTimeout(std::move(getMessageReq),
+                                                                &PurpleTdClient::findMessageResponse, 1);
+        m_data.addPendingRequest<PendingMessage>(requestId, messageId, chat->id_);
+    } else
+        showMessage(*chat, messageId);
+}
+
+void PurpleTdClient::findMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<PendingMessage> messageInfo = m_data.getPendingRequest<PendingMessage>(requestId);
+    if (!messageInfo) return;
+
+    if (object && (object->get_id() == td::td_api::message::ID))
+        m_data.saveMessage(td::move_tl_object_as<td::td_api::message>(object));
+    else
+        purple_debug_misc(config::pluginId, "Failed to fetch reply source for message %" G_GINT64_FORMAT "\n",
+                          messageInfo->messageId);
+
+    const td::td_api::chat *chat = m_data.getChat(messageInfo->chatId);
+    if (chat)
+        showMessage(*chat, messageInfo->messageId);
 }
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
