@@ -43,9 +43,14 @@ add_subdirectory(fmt)
 target_compile_options(fmt PRIVATE -fPIC)
 target_link_libraries(telegram-tdlib PRIVATE fmt::fmt)
 
+if (NOT DEFINED SHARE_INSTALL_PREFIX)
+    set(SHARE_INSTALL_PREFIX "share")
+endif (NOT DEFINED SHARE_INSTALL_PREFIX)
+
 install(TARGETS telegram-tdlib DESTINATION "${PURPLE_PLUGIN_DIR}")
-install(FILES icons/telegram16.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/16" RENAME telegram.png)
-install(FILES icons/telegram22.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/22" RENAME telegram.png)
-install(FILES icons/telegram48.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/48" RENAME telegram.png)
+install(FILES data/telegram16.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/16" RENAME telegram.png)
+install(FILES data/telegram22.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/22" RENAME telegram.png)
+install(FILES data/telegram48.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/48" RENAME telegram.png)
+install(FILES data/tdlib-purple.metainfo.xml DESTINATION "${SHARE_INSTALL_PREFIX}/metainfo")
 
 add_subdirectory(test)
