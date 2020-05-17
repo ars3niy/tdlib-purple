@@ -1,8 +1,8 @@
 # New libpurple plugin for Telegram
 
-## Motivation
+This is a future successor to [telegram-purple](https://github.com/majn/telegram-purple).
 
-telegram-purple seems to miss incoming messages a lot, thus writing new plugin using latest tdlib.
+There is a [telegram group](https://t.me/joinchat/BuRiSBO0mMw7Lxy0ufVO5g) (what else?) for discussions and support.
 
 ## Functionality
 
@@ -11,13 +11,13 @@ Missing features:
 * Receiving files other than photos
 * Sending files other than inline images
 * Creating groups
-* Joining supergroups/channels
+* Joining public groups/channels
 * Leaving groups
 * User pictures
 
 ## Installation
 
-RPM packages for Fedora and openSUSE are available at https://download.opensuse.org/repositories/home:/ars3niy/ .
+RPM packages for Fedora and openSUSE are available at https://download.opensuse.org/repositories/home:/ars3n1y/ .
 
 Alternatively, build from source (see below).
 
