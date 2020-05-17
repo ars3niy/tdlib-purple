@@ -39,6 +39,7 @@ include_directories(telegram-tdlib ${Purple_INCLUDE_DIRS})
 target_link_libraries(telegram-tdlib PRIVATE Td::TdStatic ${Purple_LIBRARIES})
 set_property(TARGET telegram-tdlib PROPERTY CXX_STANDARD 14)
 
+set(BUILD_SHARED_LIBS OFF)
 add_subdirectory(fmt)
 target_compile_options(fmt PRIVATE -fPIC)
 target_link_libraries(telegram-tdlib PRIVATE fmt::fmt)
