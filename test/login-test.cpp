@@ -120,8 +120,16 @@ TEST_F(LoginTest, RegisterNewAccount_ConnectionReadyBeforeAuthReady)
 
     prpl.verifyEvents(RequestInputEvent(connection, account, NULL, NULL));
     prpl.inputEnter("12345");
-
     tgl.verifyRequest(checkAuthenticationCode("12345"));
+
+    tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 3)
+    );
+
+    tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
+
     tgl.update(make_object<updateAuthorizationState>(
         make_object<authorizationStateWaitRegistration>(
             make_object<termsOfService>(
@@ -136,13 +144,6 @@ TEST_F(LoginTest, RegisterNewAccount_ConnectionReadyBeforeAuthReady)
     tgl.reply(make_object<ok>());
 
     tgl.verifyRequest(registerUser(selfFirstName, selfLastName));
-    tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
-    prpl.verifyEvents(
-        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
-        ConnectionUpdateProgressEvent(connection, 1, 3)
-    );
-
-    tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
     prpl.verifyNoEvents();
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
