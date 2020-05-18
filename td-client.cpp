@@ -156,6 +156,7 @@ void PurpleTdClient::processAuthorizationState(td::td_api::AuthorizationState &a
     case td::td_api::authorizationStateWaitRegistration::ID: {
         purple_debug_misc(config::pluginId, "Authorization state update: new user registration\n");
         registerUser();
+        break;
     }
 
     case td::td_api::authorizationStateReady::ID:
