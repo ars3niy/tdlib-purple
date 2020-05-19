@@ -739,3 +739,20 @@ TEST_F(PrivateChatTest, ReplyToOldMessage_FetchFailed)
         )
     );
 }
+
+TEST_F(PrivateChatTest, TypingNotification)
+{
+    loginWithOneContact();
+
+    pluginInfo().send_typing(connection, purpleUserName(0).c_str(), PURPLE_TYPING);
+    tgl.verifyRequest(sendChatAction(chatIds[0], make_object<chatActionTyping>()));
+
+    pluginInfo().send_typing(connection, purpleUserName(0).c_str(), PURPLE_TYPED);
+    tgl.verifyRequest(sendChatAction(chatIds[0], make_object<chatActionCancel>()));
+
+    pluginInfo().send_typing(connection, purpleUserName(0).c_str(), PURPLE_TYPING);
+    tgl.verifyRequest(sendChatAction(chatIds[0], make_object<chatActionTyping>()));
+
+    pluginInfo().send_typing(connection, purpleUserName(0).c_str(), PURPLE_NOT_TYPING);
+    tgl.verifyRequest(sendChatAction(chatIds[0], make_object<chatActionCancel>()));
+}

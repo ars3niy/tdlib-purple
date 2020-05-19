@@ -227,6 +227,15 @@ static void compare(const getMessage &actual, const getMessage &expected)
     COMPARE(message_id_);
 }
 
+static void compare(const sendChatAction &actual, const sendChatAction &expected)
+{
+    COMPARE(chat_id_);
+    COMPARE(action_ != nullptr);
+    if (actual.action_) {
+        COMPARE(action_->get_id());
+    }
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -256,6 +265,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(checkAuthenticationCode)
         C(registerUser)
         C(getMessage)
+        C(sendChatAction)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }
