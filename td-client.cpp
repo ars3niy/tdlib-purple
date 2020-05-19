@@ -993,6 +993,31 @@ void PurpleTdClient::updateSupergroup(td::td_api::object_ptr<td::td_api::supergr
         updateSupergroupChat(id);
 }
 
+void PurpleTdClient::updateChat(int64_t chatId)
+{
+    const td::td_api::chat *chat = m_data.getChat(chatId);
+    if (!chat) return;
+
+    const td::td_api::user *privateChatUser = m_data.getUserByPrivateChat(*chat);
+    int32_t                 basicGroupId    = getBasicGroupId(*chat);
+    int32_t                 supergroupId    = getSupergroupId(*chat);
+
+    // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
+    // user find_buddy either
+    if (purple_account_is_connected(m_account)) {
+        if (privateChatUser)
+            updatePrivateChat(*chat, *privateChatUser);
+
+        // purple_blist_find_chat doesn't work if account is not connected
+        if (basicGroupId) {
+            requestBasicGroupMembers(basicGroupId);
+            updateBasicGroupChat(basicGroupId);
+        }
+        if (supergroupId)
+            updateSupergroupChat(supergroupId);
+    }
+}
+
 void PurpleTdClient::addChat(td::td_api::object_ptr<td::td_api::chat> chat)
 {
     if (!chat) {
@@ -1000,30 +1025,10 @@ void PurpleTdClient::addChat(td::td_api::object_ptr<td::td_api::chat> chat)
         return;
     }
 
-    const td::td_api::user *privateChatUser = m_data.getUserByPrivateChat(*chat);
-    int32_t                 basicGroupId    = getBasicGroupId(*chat);
-    int32_t                 supergroupId    = getSupergroupId(*chat);
-
-    purple_debug_misc(config::pluginId, "Add chat: '%s' private=%d basic group=%d supergroup=%d\n",
-                      chat->title_.c_str(), privateChatUser ? privateChatUser->id_ : 0,
-                      basicGroupId, supergroupId);
-
-    // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
-    // user find_buddy either
-    if (privateChatUser && purple_account_is_connected(m_account))
-    {
-        updatePrivateChat(*chat, *privateChatUser);
-    }
-
+    purple_debug_misc(config::pluginId, "Add chat: '%s'\n", chat->title_.c_str());
+    int64_t chatId = chat->id_;
     m_data.addChat(std::move(chat));
-
-    // purple_blist_find_chat doesn't work if account is not connected
-    if (basicGroupId && purple_account_is_connected(m_account)) {
-        requestBasicGroupMembers(basicGroupId);
-        updateBasicGroupChat(basicGroupId);
-    }
-    if (supergroupId && purple_account_is_connected(m_account))
-        updateSupergroupChat(supergroupId);
+    updateChat(chatId);
 }
 
 void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction)
