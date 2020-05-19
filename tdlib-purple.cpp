@@ -140,6 +140,8 @@ static int tgprpl_send_im (PurpleConnection *gc, const char *who, const char *me
 
 static unsigned int tgprpl_send_typing (PurpleConnection *gc, const char *who, PurpleTypingState typing)
 {
+    PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    tdClient->sendTyping(who, typing == PURPLE_TYPING);
     return 0;
 }
 

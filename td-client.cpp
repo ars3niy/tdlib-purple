@@ -908,25 +908,31 @@ void PurpleTdClient::findMessageResponse(uint64_t requestId, td::td_api::object_
         showMessage(*chat, messageInfo->messageId);
 }
 
-int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
+static int64_t getPrivateChatIdByPurpleName(const char *buddyName, TdAccountData &accountData,
+                                            const char *action)
 {
     int32_t userId = stringToUserId(buddyName);
     if (userId == 0) {
-        purple_debug_warning(config::pluginId, "'%s' is not a valid user id\n", buddyName);
-        return -1;
+        purple_debug_warning(config::pluginId, "Cannot %s: '%s' is not a valid user id\n", action, buddyName);
+        return 0;
     }
-    const td::td_api::user *tdUser = m_data.getUser(userId);
+    const td::td_api::user *tdUser = accountData.getUser(userId);
     if (tdUser == nullptr) {
-        purple_debug_warning(config::pluginId, "No user with id %s\n", buddyName);
-        return -1;
+        purple_debug_warning(config::pluginId, "Cannot %s: no user with id %s\n", action, buddyName);
+        return 0;
     }
-    const td::td_api::chat *tdChat = m_data.getPrivateChatByUserId(tdUser->id_);
+    const td::td_api::chat *tdChat = accountData.getPrivateChatByUserId(tdUser->id_);
     if (tdChat == nullptr) {
-        purple_debug_warning(config::pluginId, "No chat with user %s\n", buddyName);
-        return -1;
+        purple_debug_warning(config::pluginId, "Cannot %s: no chat with user %s\n", action, buddyName);
+        return 0;
     }
+    return tdChat->id_;
+}
 
-    transmitMessage(tdChat->id_, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
+int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
+{
+    int64_t chatId = getPrivateChatIdByPurpleName(buddyName, m_data, "send message");
+    transmitMessage(chatId, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
 
     // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
     return 0;
@@ -1270,4 +1276,19 @@ void PurpleTdClient::removeTempFile(int64_t messageId)
 void PurpleTdClient::getUsers(const char *username, std::vector<const td::td_api::user *> &users)
 {
     getUsersByPurpleName(username, users, m_data);
+}
+
+void PurpleTdClient::sendTyping(const char *buddyName, bool isTyping)
+{
+    int64_t chatId = getPrivateChatIdByPurpleName(buddyName, m_data, "send message");
+
+    if (chatId != 0) {
+        auto sendAction = td::td_api::make_object<td::td_api::sendChatAction>();
+        sendAction->chat_id_ = chatId;
+        if (isTyping)
+            sendAction->action_ = td::td_api::make_object<td::td_api::chatActionTyping>();
+        else
+            sendAction->action_ = td::td_api::make_object<td::td_api::chatActionCancel>();
+        m_transceiver.sendQuery(std::move(sendAction), nullptr);
+    }
 }

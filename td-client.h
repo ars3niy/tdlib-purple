@@ -17,6 +17,7 @@ public:
     bool joinChat(const char *chatName);
     int  sendGroupMessage(int purpleChatId, const char *message);
     bool joinChatByLink(const char *inviteLink);
+    void sendTyping(const char *buddyName, bool isTyping);
     void getUsers(const char *username, std::vector<const td::td_api::user *> &users);
 private:
     using TdObjectPtr   = td::td_api::object_ptr<td::td_api::Object>;
