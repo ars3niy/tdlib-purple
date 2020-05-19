@@ -29,7 +29,8 @@ void GroupChatTest::loginWithBasicGroup()
             )),
             make_object<updateNewChat>(makeChat(
                 groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
-            ))
+            )),
+            makeUpdateChatListMain(groupChatId)
         },
         make_object<users>(),
         make_object<chats>(std::vector<int64_t>(1, groupChatId)),
@@ -60,9 +61,13 @@ TEST_F(GroupChatTest, BasicGroupChatAppearsAfterLogin)
         groupId, 2, make_object<chatMemberStatusMember>(), true, 0
     )));
     tgl.verifyNoRequests();
+
     tgl.update(make_object<updateNewChat>(makeChat(
         groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
     )));
+    prpl.verifyNoEvents();
+    tgl.verifyNoRequests();
+    tgl.update(makeUpdateChatListMain(groupChatId));
     tgl.verifyRequest(getBasicGroupFullInfo(groupId));
 
     prpl.verifyEvents(AddChatEvent(
@@ -84,7 +89,8 @@ TEST_F(GroupChatTest, ExistingBasicGroupChatAtLogin)
             )),
             make_object<updateNewChat>(makeChat(
                 groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
-            ))
+            )),
+            makeUpdateChatListMain(groupChatId)
         },
         make_object<users>(),
         make_object<chats>(std::vector<int64_t>(1, groupChatId))
@@ -197,6 +203,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
             make_object<updateNewChat>(makeChat(
                 groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
             )),
+            makeUpdateChatListMain(groupChatId),
             make_object<updateNewMessage>(
                 makeMessage(messageId, userIds[0], groupChatId, false, date, makeTextMessage("Hello"))
             )
@@ -393,9 +400,11 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
     prpl.verifyNoEvents();
     tgl.verifyNoRequests();
 
-    tgl.update(make_object<updateNewChat>(makeChat(
+    auto chatUpdate = make_object<updateNewChat>(makeChat(
         groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
-    )));
+    ));
+    chatUpdate->chat_->chat_list_ = make_object<chatListMain>();
+    tgl.update(std::move(chatUpdate));
     // Chat is added, list of members requested
     prpl.verifyEvents(AddChatEvent(
         groupChatPurpleName, groupChatTitle, account, NULL, NULL

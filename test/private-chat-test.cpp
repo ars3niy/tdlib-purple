@@ -65,6 +65,8 @@ TEST_F(PrivateChatTest, AddContactByPhone)
         "LocalAlias",
         nullptr, 0, 0, 0
     )));
+    prpl.verifyNoEvents();
+    tgl.update(makeUpdateChatListMain(chatIds[0]));
 
     prpl.verifyEvents(AddBuddyEvent(
         purpleUserName(0),
@@ -98,7 +100,9 @@ TEST_F(PrivateChatTest, ContactedByNew)
     )));
 
     // They message us
-    tgl.update(standardPrivateChat(0));
+    object_ptr<updateNewChat> chatUpdate = standardPrivateChat(0);
+    chatUpdate->chat_->chat_list_ = make_object<chatListMain>();
+    tgl.update(std::move(chatUpdate));
     prpl.verifyEvents(AddBuddyEvent(
         purpleUserName(0),
         userFirstNames[0] + " " + userLastNames[0],
@@ -147,7 +151,9 @@ TEST_F(PrivateChatTest, ContactedByNew_ImmediatePhoneNumber)
     tgl.update(standardUpdateUser(0));
     prpl.verifyNoEvents();
 
-    tgl.update(standardPrivateChat(0));
+    object_ptr<updateNewChat> chatUpdate = standardPrivateChat(0);
+    chatUpdate->chat_->chat_list_ = make_object<chatListMain>();
+    tgl.update(std::move(chatUpdate));
     prpl.verifyEvents(AddBuddyEvent(
         purpleUserName(0),
         userFirstNames[0] + " " + userLastNames[0],
@@ -489,7 +495,7 @@ TEST_F(PrivateChatTest, RenameBuddyAtConnect)
     prpl.discardEvents();
 
     login(
-        {standardUpdateUser(0), standardPrivateChat(0)},
+        {standardUpdateUser(0), standardPrivateChat(0), makeUpdateChatListMain(chatIds[0])},
         make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
         make_object<chats>(std::vector<int64_t>(1, chatIds[0])),
         {}, {},

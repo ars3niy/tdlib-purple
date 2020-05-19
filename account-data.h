@@ -88,6 +88,7 @@ public:
     void updateSupergroup(TdSupergroupPtr group);
 
     void addChat(TdChatPtr chat); // Updates existing chat if any
+    void updateChatChatList(int64_t chatId, td::td_api::object_ptr<td::td_api::ChatList> list);
     void setContacts(const std::vector<std::int32_t> &userIds);
     void setActiveChats(std::vector<std::int64_t> &&chats);
     void getContactsWithNoChat(std::vector<std::int32_t> &userIds);

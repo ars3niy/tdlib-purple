@@ -109,7 +109,7 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
 void CommTest::loginWithOneContact()
 {
     login(
-        {standardUpdateUser(0), standardPrivateChat(0)},
+        {standardUpdateUser(0), standardPrivateChat(0), makeUpdateChatListMain(chatIds[0])},
         make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
         make_object<chats>(std::vector<int64_t>(1, chatIds[0])),
         {}, {},

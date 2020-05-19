@@ -28,7 +28,8 @@ TEST_F(SupergroupTest, AddSupergroupChatAtLogin)
             make_object<updateNewChat>(makeChat(
                 groupChatId, make_object<chatTypeSupergroup>(groupId, false), groupChatTitle,
                 nullptr, 0, 0, 0
-            ))
+            )),
+            makeUpdateChatListMain(groupChatId)
         },
         make_object<users>(),
         make_object<chats>(std::vector<int64_t>(1, groupChatId)),
@@ -60,7 +61,8 @@ TEST_F(SupergroupTest, ExistingSupergroupChatAtLogin)
             make_object<updateNewChat>(makeChat(
                 groupChatId, make_object<chatTypeSupergroup>(groupId, false), groupChatTitle,
                 nullptr, 0, 0, 0
-            ))
+            )),
+            makeUpdateChatListMain(groupChatId)
         },
         make_object<users>(),
         make_object<chats>(std::vector<int64_t>(1, groupChatId))

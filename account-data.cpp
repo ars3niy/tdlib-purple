@@ -161,6 +161,13 @@ void TdAccountData::addChat(TdChatPtr chat)
     }
 }
 
+void TdAccountData::updateChatChatList(int64_t chatId, td::td_api::object_ptr<td::td_api::ChatList> list)
+{
+    auto it = m_chatInfo.find(chatId);
+    if (it != m_chatInfo.end())
+        it->second.chat->chat_list_ = std::move(list);
+}
+
 void TdAccountData::setContacts(const std::vector<std::int32_t> &userIds)
 {
     for (int32_t userId: userIds)

@@ -13,6 +13,11 @@ enum {
     FILE_DOWNLOAD_PRIORITY       = 1
 };
 
+static bool isChatInContactList(const td::td_api::chat &chat)
+{
+    return (chat.chat_list_ != nullptr);
+}
+
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)
 :   m_transceiver(this, acct, &PurpleTdClient::processUpdate, testBackend)
 {
@@ -118,6 +123,13 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
     case td::td_api::updateMessageSendFailed::ID: {
         auto &sendFailed = static_cast<const td::td_api::updateMessageSendFailed &>(update);
         removeTempFile(sendFailed.old_message_id_);
+        break;
+    };
+
+    case td::td_api::updateChatChatList::ID: {
+        auto &chatListUpdate = static_cast<td::td_api::updateChatChatList &>(update);
+        m_data.updateChatChatList(chatListUpdate.chat_id_, std::move(chatListUpdate.chat_list_));
+        updateChat(chatListUpdate.chat_id_);
         break;
     };
 
@@ -523,22 +535,14 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
     m_data.getActiveChats(chats);
 
     for (const td::td_api::chat *chat: chats) {
+        updateChat(chat->id_);
+
         const td::td_api::user *user = m_data.getUserByPrivateChat(*chat);
-        if (user) {
-            updatePrivateChat(*chat, *user);
+        if (user && isChatInContactList(*chat)) {
             std::string userName = getPurpleBuddyName(*user);
             purple_prpl_got_user_status(m_account, userName.c_str(),
                                         getPurpleStatusId(*user->status_), NULL);
         }
-
-        int32_t groupId = getBasicGroupId(*chat);
-        if (groupId) {
-            requestBasicGroupMembers(groupId);
-            updateBasicGroupChat(groupId);
-        }
-        groupId = getSupergroupId(*chat);
-        if (groupId)
-            updateSupergroupChat(groupId);
     }
 
     // Here we could remove buddies for which no private chat exists, meaning they have been remove
@@ -996,7 +1000,7 @@ void PurpleTdClient::updateSupergroup(td::td_api::object_ptr<td::td_api::supergr
 void PurpleTdClient::updateChat(int64_t chatId)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
-    if (!chat) return;
+    if (!chat || !isChatInContactList(*chat)) return;
 
     const td::td_api::user *privateChatUser = m_data.getUserByPrivateChat(*chat);
     int32_t                 basicGroupId    = getBasicGroupId(*chat);
