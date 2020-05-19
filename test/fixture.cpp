@@ -19,12 +19,13 @@ void CommTest::SetUp()
 
 void CommTest::TearDown()
 {
-    tgl.runTimeouts();
     tgl.verifyNoRequests();
     prpl.verifyNoEvents();
     if (purple_connection_get_protocol_data(connection))
         pluginInfo().close(connection);
     delete connection;
+    account->gc = NULL;
+    tgl.runTimeouts();
     purple_account_destroy(account);
 }
 

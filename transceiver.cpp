@@ -12,13 +12,12 @@ static gboolean timerCallback(gpointer userdata)
 {
     TimerCallbackData *data = static_cast<TimerCallbackData *>(userdata);
 
-    PurpleAccount *account = purple_accounts_find(data->accountUserName.c_str(),
-                                                  data->accountProtocolId.c_str());
+    PurpleAccount    *account      = purple_accounts_find(data->accountUserName.c_str(),
+                                                          data->accountProtocolId.c_str());
+    PurpleConnection *connection   = account ? purple_account_get_connection(account) : NULL;
+    void             *protocolData = connection ? purple_connection_get_protocol_data(connection) : NULL;
 
-    if (account) {
-        PurpleConnection *connection   = purple_account_get_connection(account);
-        void             *protocolData = purple_connection_get_protocol_data(connection);
-
+    if (protocolData) {
         // If this is somehow not our PurpleTdClient then user really has themselves to blame
         PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(protocolData);
         (tdClient->*(data->callback))(data->requestId, nullptr);
