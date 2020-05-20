@@ -180,6 +180,28 @@ void updateChatConversationTitle(PurpleAccount *account, const td::td_api::chat 
         purple_conversation_set_title(purple_conv_chat_get_conversation(purpleChat), chat.title_.c_str());
 }
 
+void updateGroupChat(PurpleAccount *account, const td::td_api::chat &chat,
+                     const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &groupStatus,
+                     const char *groupType, int32_t groupId)
+{
+    if (!isGroupMember(groupStatus)) {
+        purple_debug_misc(config::pluginId, "Skipping %s %d because we are not a member\n",
+                          groupType, groupId);
+        return;
+    }
+
+    std::string  chatName   = getChatName(chat);
+    PurpleChat  *purpleChat = purple_blist_find_chat(account, chatName.c_str());
+    if (!purpleChat) {
+        purple_debug_misc(config::pluginId, "Adding new chat for %s %d (%s)\n",
+                          groupType, groupId, chat.title_.c_str());
+        purpleChat = purple_chat_new(account, chat.title_.c_str(), getChatComponents(chat));
+        purple_blist_add_chat(purpleChat, NULL, NULL);
+    } else {
+        const char *oldName = purple_chat_get_name(purpleChat);
+    }
+}
+
 static void showMessageTextIm(PurpleAccount *account, const char *purpleUserName, const char *text,
                               const char *notification, time_t timestamp, PurpleMessageFlags flags)
 {

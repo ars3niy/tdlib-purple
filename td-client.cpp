@@ -476,19 +476,8 @@ void PurpleTdClient::updateBasicGroupChat(int32_t groupId)
         purple_debug_misc(config::pluginId, "Basic group %d does not exist yet\n", groupId);
     else if (!chat)
         purple_debug_misc(config::pluginId, "Chat for basic group %d does not exist yet\n", groupId);
-    else if (!isGroupMember(group->status_))
-        purple_debug_misc(config::pluginId, "Skipping basic group %d because we are not a member\n",
-                          group->id_);
-    else {
-        std::string  chatName   = getChatName(*chat);
-        PurpleChat  *purpleChat = purple_blist_find_chat(m_account, chatName.c_str());
-        if (!purpleChat) {
-            purple_debug_misc(config::pluginId, "Adding new chat for basic group %d (%s)\n",
-                              group->id_, chat->title_.c_str());
-            purpleChat = purple_chat_new(m_account, chat->title_.c_str(), getChatComponents(*chat));
-            purple_blist_add_chat(purpleChat, NULL, NULL);
-        }
-    }
+    else
+        updateGroupChat(m_account, *chat, group->status_, "basic group", groupId);
 }
 
 void PurpleTdClient::updateSupergroupChat(int32_t groupId)
@@ -500,19 +489,8 @@ void PurpleTdClient::updateSupergroupChat(int32_t groupId)
         purple_debug_misc(config::pluginId, "Supergroup %d does not exist yet\n", groupId);
     else if (!chat)
         purple_debug_misc(config::pluginId, "Chat for supergroup %d does not exist yet\n", groupId);
-    else if (!isGroupMember(group->status_))
-        purple_debug_misc(config::pluginId, "Skipping supergroup %d because we are not a member\n",
-                          group->id_);
-    else {
-        std::string  chatName   = getChatName(*chat);
-        PurpleChat  *purpleChat = purple_blist_find_chat(m_account, chatName.c_str());
-        if (!purpleChat) {
-            purple_debug_misc(config::pluginId, "Adding new chat for supergroup %d (%s)\n",
-                              group->id_, chat->title_.c_str());
-            purpleChat = purple_chat_new(m_account, chat->title_.c_str(), getChatComponents(*chat));
-            purple_blist_add_chat(purpleChat, NULL, NULL);
-        }
-    }
+    else
+        updateGroupChat(m_account, *chat, group->status_, "supergroup", groupId);
 }
 
 void PurpleTdClient::requestBasicGroupMembers(int32_t groupId)
