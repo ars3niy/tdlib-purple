@@ -169,3 +169,34 @@ TEST_F(LoginTest, RegisterNewAccount_ConnectionReadyBeforeAuthReady)
         ShowAccountEvent(account)
     );
 }
+
+TEST_F(LoginTest, RenameBuddy)
+{
+    loginWithOneContact();
+
+    purple_blist_alias_buddy(purple_find_buddy(account, purpleUserName(0).c_str()), "New Name");
+    prpl.discardEvents();
+    pluginInfo().alias_buddy(connection, purpleUserName(0).c_str(), "New Name");
+
+    tgl.verifyRequest(addContact(make_object<contact>(
+        "", "New", "Name", "", userIds[0]
+    ), true));
+
+    tgl.update(make_object<updateChatTitle>(chatIds[0], "New Name"));
+    object_ptr<updateUser> updateUser = standardUpdateUser(0);
+    updateUser->user_->first_name_ = "New";
+    updateUser->user_->last_name_ = "Name";
+    tgl.update(std::move(updateUser));
+}
+
+TEST_F(LoginTest, BuddyRenamedByServer)
+{
+    loginWithOneContact();
+
+    tgl.update(make_object<updateChatTitle>(chatIds[0], "New Name"));
+    prpl.verifyEvents(AliasBuddyEvent(purpleUserName(0), "New Name"));
+    object_ptr<updateUser> updateUser = standardUpdateUser(0);
+    updateUser->user_->first_name_ = "New";
+    updateUser->user_->last_name_ = "Name";
+    tgl.update(std::move(updateUser));
+}

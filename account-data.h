@@ -89,6 +89,7 @@ public:
 
     void addChat(TdChatPtr chat); // Updates existing chat if any
     void updateChatChatList(int64_t chatId, td::td_api::object_ptr<td::td_api::ChatList> list);
+    void updateChatTitle(int64_t chatId, const std::string &title);
     void setContacts(const std::vector<std::int32_t> &userIds);
     void setActiveChats(std::vector<std::int64_t> &&chats);
     void getContactsWithNoChat(std::vector<std::int32_t> &userIds);

@@ -203,6 +203,13 @@ void purple_blist_remove_buddy(PurpleBuddy *buddy)
     delete buddy;
 }
 
+void purple_blist_alias_buddy(PurpleBuddy *buddy, const char *alias)
+{
+    free(buddy->alias);
+    buddy->alias = strdup(alias);
+    EVENT(AliasBuddyEvent, buddy->name, alias);
+}
+
 static char *getChatName(const PurpleChat *chat)
 {
     auto        pluginInfo  = (PurplePluginProtocolInfo *)g_plugin->info->extra_info;

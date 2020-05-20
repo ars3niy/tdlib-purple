@@ -55,6 +55,7 @@ enum class PurpleEventType: uint8_t {
     RemoveChat,
     HideAccount,
     RemoveBuddy,
+    AliasBuddy,
     ConnectionError,
     ConnectionSetState,
     ConnectionUpdateProgress,
@@ -143,6 +144,14 @@ struct RemoveBuddyEvent: PurpleEvent {
 
     RemoveBuddyEvent(PurpleAccount *account, const std::string &username)
     : PurpleEvent(PurpleEventType::RemoveBuddy), account(account), username(username) {}
+};
+
+struct AliasBuddyEvent: PurpleEvent {
+    std::string username;
+    std::string newAlias;
+
+    AliasBuddyEvent(const std::string &username, const std::string &newAlias)
+    : PurpleEvent(PurpleEventType::AliasBuddy), username(username), newAlias(newAlias) {}
 };
 
 struct ConnectionErrorEvent: PurpleEvent {

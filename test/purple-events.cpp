@@ -58,6 +58,12 @@ static void compare(const RemoveBuddyEvent &actual, const RemoveBuddyEvent &expe
     COMPARE(username);
 }
 
+static void compare(const AliasBuddyEvent &actual, const AliasBuddyEvent &expected)
+{
+    COMPARE(username);
+    COMPARE(newAlias);
+}
+
 static void compare(const ConnectionErrorEvent &actual, const ConnectionErrorEvent &expected)
 {
     COMPARE(connection);
@@ -205,6 +211,7 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(RemoveChat)
         C(HideAccount)
         C(RemoveBuddy)
+        C(AliasBuddy)
         C(ConnectionError)
         C(ConnectionSetState)
         C(ConnectionUpdateProgress)
@@ -290,6 +297,7 @@ std::string PurpleEvent::toString() const
     C(RemoveChat)
     C(HideAccount)
     C(RemoveBuddy)
+    C(AliasBuddy)
     C(ConnectionError)
     C(ConnectionSetState)
     C(ConnectionUpdateProgress)

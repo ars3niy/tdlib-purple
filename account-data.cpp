@@ -168,6 +168,13 @@ void TdAccountData::updateChatChatList(int64_t chatId, td::td_api::object_ptr<td
         it->second.chat->chat_list_ = std::move(list);
 }
 
+void TdAccountData::updateChatTitle(int64_t chatId, const std::string &title)
+{
+    auto it = m_chatInfo.find(chatId);
+    if (it != m_chatInfo.end())
+        it->second.chat->title_ = title;
+}
+
 void TdAccountData::setContacts(const std::vector<std::int32_t> &userIds)
 {
     for (int32_t userId: userIds)

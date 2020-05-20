@@ -116,22 +116,37 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
 
     case td::td_api::updateMessageSendSucceeded::ID: {
         auto &sendSucceeded = static_cast<const td::td_api::updateMessageSendSucceeded &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: message %" G_GINT64_FORMAT " send succeeded\n",
+                          sendSucceeded.old_message_id_);
         removeTempFile(sendSucceeded.old_message_id_);
         break;
-    };
+    }
 
     case td::td_api::updateMessageSendFailed::ID: {
         auto &sendFailed = static_cast<const td::td_api::updateMessageSendFailed &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: message %" G_GINT64_FORMAT " send failed\n",
+                          sendFailed.old_message_id_);
         removeTempFile(sendFailed.old_message_id_);
         break;
-    };
+    }
 
     case td::td_api::updateChatChatList::ID: {
         auto &chatListUpdate = static_cast<td::td_api::updateChatChatList &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: update chat list for chat %" G_GINT64_FORMAT "\n",
+                          chatListUpdate.chat_id_);
         m_data.updateChatChatList(chatListUpdate.chat_id_, std::move(chatListUpdate.chat_list_));
         updateChat(chatListUpdate.chat_id_);
         break;
-    };
+    }
+
+    case td::td_api::updateChatTitle::ID: {
+        auto &chatTitleUpdate = static_cast<td::td_api::updateChatTitle &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: update chat title for chat %" G_GINT64_FORMAT "\n",
+                          chatTitleUpdate.chat_id_);
+        m_data.updateChatTitle(chatTitleUpdate.chat_id_, chatTitleUpdate.title_);
+        updateChat(chatTitleUpdate.chat_id_);
+        break;
+    }
 
     default:
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
@@ -443,10 +458,11 @@ void PurpleTdClient::updatePrivateChat(const td::td_api::chat &chat, const td::t
         if (chat.title_ != oldName) {
             purple_debug_misc(config::pluginId, "Renaming buddy %s '%s' to '%s'\n",
                                 purpleUserName.c_str(), oldName, chat.title_.c_str());
-            PurpleGroup *group = purple_buddy_get_group(buddy);
+            /*PurpleGroup *group = purple_buddy_get_group(buddy);
             purple_blist_remove_buddy(buddy);
             buddy = purple_buddy_new(m_account, purpleUserName.c_str(), chat.title_.c_str());
-            purple_blist_add_buddy(buddy, NULL, group, NULL);
+            purple_blist_add_buddy(buddy, NULL, group, NULL);*/
+            purple_blist_alias_buddy(buddy, chat.title_.c_str());
         }
     }
 }
@@ -1157,6 +1173,21 @@ void PurpleTdClient::notifyFailedContact(const std::string &phoneNumber, const s
 
     purple_notify_error(purple_account_get_connection(m_account),
                         _("Failed to add contact"), message.c_str(), NULL);
+}
+
+void PurpleTdClient::renameContact(const char *buddyName, const char *newAlias)
+{
+    int32_t userId = stringToUserId(buddyName);
+    if (userId == 0) {
+        purple_debug_warning("Cannot rename %s: not a valid id\n", buddyName);
+        return;
+    }
+
+    std::string firstName, lastName;
+    getNamesFromAlias(newAlias, firstName, lastName);
+    auto contact    = td::td_api::make_object<td::td_api::contact>("", firstName, lastName, "", userId);
+    auto addContact = td::td_api::make_object<td::td_api::addContact>(std::move(contact), true);
+    m_transceiver.sendQuery(std::move(addContact), nullptr);
 }
 
 bool PurpleTdClient::joinChat(const char *chatName)

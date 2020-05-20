@@ -266,6 +266,12 @@ static int tgprpl_send_chat (PurpleConnection *gc, int id, const char *message, 
     return tdClient->sendGroupMessage(id, message);
 }
 
+static void tgprpl_rename_buddy(PurpleConnection *gc, const char *who, const char *alias)
+{
+    PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    tdClient->renameContact(who, alias);
+}
+
 static PurpleRoomlist *tgprpl_roomlist_get_list (PurpleConnection *gc)
 {
     static PurpleRoomlist *roomlist = NULL; // put it on like protocol_data
@@ -382,7 +388,7 @@ static PurplePluginProtocolInfo prpl_info = {
     .register_user            = NULL,
     .get_cb_info              = NULL,
     .get_cb_away              = NULL,
-    .alias_buddy              = NULL,
+    .alias_buddy              = tgprpl_rename_buddy,
     .group_buddy              = NULL,
     .rename_group             = NULL,
     .buddy_free               = NULL,
