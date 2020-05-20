@@ -173,13 +173,6 @@ PurpleConvChat *findChatConversation(PurpleAccount *account, const td::td_api::c
     return NULL;
 }
 
-void updateChatConversationTitle(PurpleAccount *account, const td::td_api::chat &chat)
-{
-    PurpleConvChat *purpleChat = findChatConversation(account, chat);
-    if (purpleChat)
-        purple_conversation_set_title(purple_conv_chat_get_conversation(purpleChat), chat.title_.c_str());
-}
-
 void updateGroupChat(PurpleAccount *account, const td::td_api::chat &chat,
                      const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &groupStatus,
                      const char *groupType, int32_t groupId)
@@ -199,6 +192,10 @@ void updateGroupChat(PurpleAccount *account, const td::td_api::chat &chat,
         purple_blist_add_chat(purpleChat, NULL, NULL);
     } else {
         const char *oldName = purple_chat_get_name(purpleChat);
+        if (chat.title_ != oldName) {
+            purple_debug_misc(config::pluginId, "Renaming chat '%s' to '%s'\n", oldName, chat.title_.c_str());
+            purple_blist_alias_chat(purpleChat, chat.title_.c_str());
+        }
     }
 }
 

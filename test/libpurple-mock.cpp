@@ -341,6 +341,20 @@ PurpleChat *purple_blist_find_chat(PurpleAccount *account, const char *name)
     return NULL;
 }
 
+const char *purple_chat_get_name(PurpleChat *chat)
+{
+    if (chat->alias)
+        return chat->alias;
+    return getChatName(chat);
+}
+
+void purple_blist_alias_chat(PurpleChat *chat, const char *alias)
+{
+    free(chat->alias);
+    chat->alias = strdup(alias);
+    EVENT(AliasChatEvent, getChatName(chat), alias);
+}
+
 void purple_connection_error(PurpleConnection *gc, const char *reason)
 {
     // TODO event

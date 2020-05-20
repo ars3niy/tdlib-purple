@@ -135,7 +135,7 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         purple_debug_misc(config::pluginId, "Incoming update: update chat list for chat %" G_GINT64_FORMAT "\n",
                           chatListUpdate.chat_id_);
         m_data.updateChatChatList(chatListUpdate.chat_id_, std::move(chatListUpdate.chat_list_));
-        updateChat(chatListUpdate.chat_id_);
+        updateChat(chatListUpdate.chat_id_, false);
         break;
     }
 
@@ -144,7 +144,7 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         purple_debug_misc(config::pluginId, "Incoming update: update chat title for chat %" G_GINT64_FORMAT "\n",
                           chatTitleUpdate.chat_id_);
         m_data.updateChatTitle(chatTitleUpdate.chat_id_, chatTitleUpdate.title_);
-        updateChat(chatTitleUpdate.chat_id_);
+        updateChat(chatTitleUpdate.chat_id_, false);
         break;
     }
 
@@ -529,7 +529,7 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
     m_data.getActiveChats(chats);
 
     for (const td::td_api::chat *chat: chats) {
-        updateChat(chat->id_);
+        updateChat(chat->id_, true);
 
         const td::td_api::user *user = m_data.getUserByPrivateChat(*chat);
         if (user && isChatInContactList(*chat)) {
@@ -976,26 +976,29 @@ void PurpleTdClient::updateSupergroup(td::td_api::object_ptr<td::td_api::supergr
         updateSupergroupChat(id);
 }
 
-void PurpleTdClient::updateChat(int64_t chatId)
+void PurpleTdClient::updateChat(int64_t chatId, bool isNewChat)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
-    if (!chat || !isChatInContactList(*chat)) return;
+    if (!chat) return;
 
     const td::td_api::user *privateChatUser = m_data.getUserByPrivateChat(*chat);
     int32_t                 basicGroupId    = getBasicGroupId(*chat);
     int32_t                 supergroupId    = getSupergroupId(*chat);
 
+    // Not having purple_account_is_connected check here would not be wrong, but removing it
+    // would require adjusting test cases
+    if (purple_account_is_connected(m_account) && basicGroupId && isNewChat)
+        requestBasicGroupMembers(basicGroupId);
+
     // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
     // user find_buddy either
-    if (purple_account_is_connected(m_account)) {
+    if (purple_account_is_connected(m_account) && isChatInContactList(*chat)) {
         if (privateChatUser)
             updatePrivateChat(*chat, *privateChatUser);
 
         // purple_blist_find_chat doesn't work if account is not connected
-        if (basicGroupId) {
-            requestBasicGroupMembers(basicGroupId);
+        if (basicGroupId)
             updateBasicGroupChat(basicGroupId);
-        }
         if (supergroupId)
             updateSupergroupChat(supergroupId);
     }
@@ -1011,7 +1014,7 @@ void PurpleTdClient::addChat(td::td_api::object_ptr<td::td_api::chat> chat)
     purple_debug_misc(config::pluginId, "Add chat: '%s'\n", chat->title_.c_str());
     int64_t chatId = chat->id_;
     m_data.addChat(std::move(chat));
-    updateChat(chatId);
+    updateChat(chatId, true);
 }
 
 void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction)

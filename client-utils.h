@@ -36,7 +36,6 @@ PurpleConversation *getImConversation(PurpleAccount *account, const char *userna
 PurpleConvChat     *getChatConversation(PurpleAccount *account, const td::td_api::chat &chat,
                                         int chatPurpleId, TdAccountData &accountData);
 PurpleConvChat     *findChatConversation(PurpleAccount *account, const td::td_api::chat &chat);
-void                updateChatConversationTitle(PurpleAccount *account, const td::td_api::chat &chat);
 void                updateGroupChat(PurpleAccount *account, const td::td_api::chat &chat,
                                     const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &groupStatus,
                                     const char *groupType, int32_t groupId);

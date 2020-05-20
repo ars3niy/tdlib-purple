@@ -53,6 +53,7 @@ enum class PurpleEventType: uint8_t {
     AddBuddy,
     AddChat,
     RemoveChat,
+    AliasChat,
     HideAccount,
     RemoveBuddy,
     AliasBuddy,
@@ -132,6 +133,14 @@ struct RemoveChatEvent: public PurpleEvent {
 
     RemoveChatEvent(const std::string &name, const std::string &inviteLink)
     : PurpleEvent(PurpleEventType::RemoveChat), name(name), inviteLink(inviteLink) {}
+};
+
+struct AliasChatEvent: PurpleEvent {
+    std::string name;
+    std::string newAlias;
+
+    AliasChatEvent(const std::string &username, const std::string &newAlias)
+    : PurpleEvent(PurpleEventType::AliasChat), name(username), newAlias(newAlias) {}
 };
 
 struct HideAccountEvent: PurpleEvent {

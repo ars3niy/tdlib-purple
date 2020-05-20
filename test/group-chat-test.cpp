@@ -66,9 +66,8 @@ TEST_F(GroupChatTest, BasicGroupChatAppearsAfterLogin)
         groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
     )));
     prpl.verifyNoEvents();
-    tgl.verifyNoRequests();
-    tgl.update(makeUpdateChatListMain(groupChatId));
     tgl.verifyRequest(getBasicGroupFullInfo(groupId));
+    tgl.update(makeUpdateChatListMain(groupChatId));
 
     prpl.verifyEvents(AddChatEvent(
         groupChatPurpleName, groupChatTitle, account, NULL, NULL
@@ -490,4 +489,11 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
     );
 
     tgl.reply(viewMessagesRequestId, make_object<ok>());
+}
+
+TEST_F(GroupChatTest, GroupRenamed)
+{
+    loginWithBasicGroup();
+    tgl.update(make_object<updateChatTitle>(groupChatId, "New Title"));
+    prpl.verifyEvents(AliasChatEvent(groupChatPurpleName, "New Title"));
 }

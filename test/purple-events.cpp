@@ -47,6 +47,12 @@ static void compare(const RemoveChatEvent &actual, const RemoveChatEvent &expect
     COMPARE(inviteLink);
 }
 
+static void compare(const AliasChatEvent &actual, const AliasChatEvent &expected)
+{
+    COMPARE(name);
+    COMPARE(newAlias);
+}
+
 static void compare(const HideAccountEvent &actual, const HideAccountEvent &expected)
 {
     COMPARE(account);
@@ -209,6 +215,7 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(AddBuddy)
         C(AddChat)
         C(RemoveChat)
+        C(AliasChat)
         C(HideAccount)
         C(RemoveBuddy)
         C(AliasBuddy)
@@ -295,6 +302,7 @@ std::string PurpleEvent::toString() const
     C(AddBuddy)
     C(AddChat)
     C(RemoveChat)
+    C(AliasChat)
     C(HideAccount)
     C(RemoveBuddy)
     C(AliasBuddy)
