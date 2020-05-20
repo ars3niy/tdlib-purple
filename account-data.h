@@ -9,6 +9,8 @@ bool        isPhoneNumber(const char *s);
 const char *getCanonicalPhoneNumber(const char *s);
 int32_t     stringToUserId(const char *s);
 std::string getDisplayName(const td::td_api::user *user);
+bool        isPrivateChat(const td::td_api::chat &chat);
+int32_t     getUserIdByPrivateChat(const td::td_api::chat &chat); // return 0 if not private chat
 int32_t     getBasicGroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeBasicGroup
 int32_t     getSupergroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeSupergroup
 bool        isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &status);

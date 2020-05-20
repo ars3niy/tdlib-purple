@@ -578,23 +578,39 @@ static const td::td_api::file *selectPhotoSize(const td::td_api::messagePhoto &p
     return selectedSize ? selectedSize->photo_.get() : nullptr;
 }
 
+static std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,
+                                        const char *noticeText, PurpleAccount *account)
+{
+    std::string prefix;
+
+    if (message.outgoing) {
+        prefix = purple_account_get_alias(account);
+        prefix += ": ";
+    } else if (isPrivateChat(chat))
+        prefix = chat.title_ + ": ";
+    else if (!message.sender.empty())
+        prefix = message.sender + ": ";
+
+    return prefix + noticeText;
+}
+
 void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
                                       const td::td_api::messagePhoto &photo)
 {
     const td::td_api::file *file = selectPhotoSize(photo);
-    const char             *notice;
+    std::string             notice;
 
     if (!file)
-        notice = "Faulty image";
+        notice = makeNoticeWithSender(chat, message, _("Faulty image"), m_account);
     else if (file->local_ && file->local_->is_downloading_completed_)
-        notice = NULL;
+        notice.clear();
     else
-        notice = "Downloading image";
+        notice = makeNoticeWithSender(chat, message, _("Downloading image"), m_account);
 
     const char *caption = photo.caption_ ? photo.caption_->text_.c_str() : NULL;
 
-    if (notice)
-        showMessageText(m_account, chat, message, caption, notice, m_data);
+    if (!notice.empty())
+        showMessageText(m_account, chat, message, caption, notice.c_str(), m_data);
 
     if (file)
         showImage(chat, message, *file, caption);
@@ -664,7 +680,7 @@ void PurpleTdClient::showDownloadedImage(int64_t chatId, const TgMessageInfo &me
     const td::td_api::chat *chat = m_data.getChat(chatId);
     if (chat) {
         std::string  text;
-        const char  *notice = NULL;
+        std::string notice;
         gchar       *data   = NULL;
         size_t       len    = 0;
 
@@ -674,7 +690,7 @@ void PurpleTdClient::showDownloadedImage(int64_t chatId, const TgMessageInfo &me
         } else if (filePath.find('"') == std::string::npos)
             text = "<img src=\"file://" + filePath + "\">";
         else
-            notice = "Cannot show photo: file path contains quotes";
+            notice = makeNoticeWithSender(*chat, message,  "Cannot show photo: file path contains quotes", m_account);
 
         if (caption && *caption) {
             if (!text.empty())
@@ -682,15 +698,15 @@ void PurpleTdClient::showDownloadedImage(int64_t chatId, const TgMessageInfo &me
             text += caption;
         }
 
-        showMessageText(m_account, *chat, message, text.empty() ? NULL : text.c_str(), notice, m_data,
-                        PURPLE_MESSAGE_IMAGES);
+        showMessageText(m_account, *chat, message, text.empty() ? NULL : text.c_str(),
+                        notice.empty() ? NULL : notice.c_str(), m_data, PURPLE_MESSAGE_IMAGES);
     }
 }
 
 void PurpleTdClient::showDocument(const td::td_api::chat &chat, const TgMessageInfo &message,
                                   const td::td_api::messageDocument &document)
 {
-    std::string description = "Sent a file";
+    std::string description = makeNoticeWithSender(chat, message, "Sent a file", m_account);
     if (document.document_)
         description = description + ": " + document.document_->file_name_ + " [" +
         document.document_->mime_type_ + "]";
@@ -703,7 +719,7 @@ void PurpleTdClient::showDocument(const td::td_api::chat &chat, const TgMessageI
 void PurpleTdClient::showVideo(const td::td_api::chat &chat, const TgMessageInfo &message,
                                const td::td_api::messageVideo &video)
 {
-    std::string description = "Sent a video";
+    std::string description = makeNoticeWithSender(chat, message, "Sent a video", m_account);
     if (video.video_)
         description = description + ": " + video.video_->file_name_ + " [" +
         std::to_string(video.video_->width_) + "x" + std::to_string(video.video_->height_) + ", " +
@@ -795,10 +811,10 @@ void PurpleTdClient::showDownloadedInlineFile(int64_t chatId, const TgMessageInf
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
     if (chat) {
-        if (filePath.find('"') != std::string::npos)
-            showMessageText(m_account, *chat, message, NULL,
-                            "Cannot show file: path contains quotes", m_data);
-        else {
+        if (filePath.find('"') != std::string::npos) {
+            std::string notice = makeNoticeWithSender(*chat, message, "Cannot show file: path contains quotes", m_account);
+            showMessageText(m_account, *chat, message, NULL, notice.c_str(), m_data);
+        } else {
             std::string text = "<a href=\"file://" + filePath + "\">" + label + "</a>";
             showMessageText(m_account, *chat, message, text.c_str(), NULL, m_data);
         }
@@ -822,8 +838,9 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId
         messageInfo.forwardedFrom = getForwardSource(*message->forward_info_, m_data);
 
     if (message->ttl_ != 0) {
-        showMessageText(m_account, chat, messageInfo, NULL,
-                        _("Received self-destructing message, not displayed due to lack of support"), m_data);
+        const char *text   = _("Received self-destructing message, not displayed due to lack of support");
+        std::string notice = makeNoticeWithSender(chat, messageInfo, text, m_account);
+        showMessageText(m_account, chat, messageInfo, NULL, notice.c_str(), m_data);
         return;
     }
 
@@ -846,6 +863,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId
         default: {
             std::string notice = "Received unsupported message type " +
                                  messageTypeToString(*message->content_);
+            notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), m_account);
             showMessageText(m_account, chat, messageInfo, NULL, notice.c_str(), m_data);
         }
     }
@@ -1019,36 +1037,38 @@ void PurpleTdClient::addChat(td::td_api::object_ptr<td::td_api::chat> chat)
 
 void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction)
 {
-    const td::td_api::chat *chat;
-    chat = m_data.getChat(updateChatAction.chat_id_);
-
-    if (!chat)
+    const td::td_api::chat *chat = m_data.getChat(updateChatAction.chat_id_);
+    if (!chat) {
         purple_debug_warning(config::pluginId, "Got user chat action for unknown chat %" G_GUINT64_FORMAT "\n",
                              updateChatAction.chat_id_);
-    else if (chat->type_->get_id() == td::td_api::chatTypePrivate::ID) {
-        const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat->type_);
-        if (privType.user_id_ != updateChatAction.user_id_)
-            purple_debug_warning(config::pluginId, "Got user action for private chat %" G_GUINT64_FORMAT " (with user %d) for another user %d\n",
-                                 updateChatAction.chat_id_, privType.user_id_,
-                                 updateChatAction.user_id_);
-        else if (updateChatAction.action_) {
-            if (updateChatAction.action_->get_id() == td::td_api::chatActionCancel::ID) {
-                purple_debug_misc(config::pluginId, "User (id %d) stopped chat action\n",
-                                  updateChatAction.user_id_);
-                showUserChatAction(updateChatAction.user_id_, false);
-            } else if (updateChatAction.action_->get_id() == td::td_api::chatActionStartPlayingGame::ID) {
-                purple_debug_misc(config::pluginId, "User (id %d): treating chatActionStartPlayingGame as cancel\n",
-                                  updateChatAction.user_id_);
-                showUserChatAction(updateChatAction.user_id_, false);
-            } else {
-                purple_debug_misc(config::pluginId, "User (id %d) started chat action (id %d)\n",
-                                  updateChatAction.user_id_, updateChatAction.action_->get_id());
-                showUserChatAction(updateChatAction.user_id_, true);
-            }
-        }
-    } else
+        return;
+    }
+
+    int32_t chatUserId = getUserIdByPrivateChat(*chat);
+    if (chatUserId == 0) {
         purple_debug_misc(config::pluginId, "Ignoring user chat action for non-private chat %" G_GUINT64_FORMAT "\n",
                           updateChatAction.chat_id_);
+        return;
+    }
+
+    if (chatUserId != updateChatAction.user_id_)
+        purple_debug_warning(config::pluginId, "Got user action for private chat %" G_GUINT64_FORMAT " (with user %d) for another user %d\n",
+                                updateChatAction.chat_id_, chatUserId, updateChatAction.user_id_);
+    else if (updateChatAction.action_) {
+        if (updateChatAction.action_->get_id() == td::td_api::chatActionCancel::ID) {
+            purple_debug_misc(config::pluginId, "User (id %d) stopped chat action\n",
+                                updateChatAction.user_id_);
+            showUserChatAction(updateChatAction.user_id_, false);
+        } else if (updateChatAction.action_->get_id() == td::td_api::chatActionStartPlayingGame::ID) {
+            purple_debug_misc(config::pluginId, "User (id %d): treating chatActionStartPlayingGame as cancel\n",
+                                updateChatAction.user_id_);
+            showUserChatAction(updateChatAction.user_id_, false);
+        } else {
+            purple_debug_misc(config::pluginId, "User (id %d) started chat action (id %d)\n",
+                                updateChatAction.user_id_, updateChatAction.action_->get_id());
+            showUserChatAction(updateChatAction.user_id_, true);
+        }
+    }
 }
 
 void PurpleTdClient::showUserChatAction(int32_t userId, bool isTyping)

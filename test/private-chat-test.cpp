@@ -206,8 +206,11 @@ TEST_F(PrivateChatTest, Document)
     ));
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "document", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(purpleUserName(0), "", "Sent a file: doc.file.name [mime/type]",
-                               PURPLE_MESSAGE_SYSTEM, date)
+        ConversationWriteEvent(
+            purpleUserName(0), "",
+            userFirstNames[0] + " " + userLastNames[0] + ": Sent a file: doc.file.name [mime/type]",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
     );
 }
 
@@ -235,8 +238,11 @@ TEST_F(PrivateChatTest, Video)
     ));
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "video", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(purpleUserName(0), "", "Sent a video: video.avi [640x480, 120s]",
-                               PURPLE_MESSAGE_SYSTEM, date)
+        ConversationWriteEvent(
+            purpleUserName(0), "",
+            userFirstNames[0] + " " + userLastNames[0] + ": Sent a video: video.avi [640x480, 120s]",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
     );
 }
 
@@ -263,8 +269,11 @@ TEST_F(PrivateChatTest, Audio)
     ));
     prpl.verifyEvents(
         NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
-        ConversationWriteEvent(purpleUserName(0), "", "Received unsupported message type messageAudio",
-                               PURPLE_MESSAGE_SYSTEM, date)
+        ConversationWriteEvent(
+            purpleUserName(0), "",
+            userFirstNames[0] + " " + userLastNames[0] + ": Received unsupported message type messageAudio",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
     );
 }
 
@@ -372,8 +381,11 @@ TEST_F(PrivateChatTest, OtherMessage)
     ));
     prpl.verifyEvents(
         NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
-        ConversationWriteEvent(purpleUserName(0), "", "Received unsupported message type messageGame",
-                               PURPLE_MESSAGE_SYSTEM, date)
+        ConversationWriteEvent(
+            purpleUserName(0), "",
+            userFirstNames[0] + " " + userLastNames[0] + ": Received unsupported message type messageGame",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
     );
 }
 
@@ -411,7 +423,11 @@ TEST_F(PrivateChatTest, Photo)
     });
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(purpleUserName(0), "", "Downloading image", PURPLE_MESSAGE_SYSTEM, date)
+        ConversationWriteEvent(
+            purpleUserName(0), "",
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading image",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
     );
 
     tgl.reply(make_object<ok>()); // reply to viewMessages

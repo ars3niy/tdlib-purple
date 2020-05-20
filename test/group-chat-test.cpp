@@ -424,6 +424,7 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
     prpl.verifyEvents(
         ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, groupChatTitle),
         ConversationWriteEvent(groupChatPurpleName, "",
+                               selfFirstName + " " + selfLastName + ": " +
                                "Received unsupported message type messageChatJoinByLink",
                                PURPLE_MESSAGE_SYSTEM, 12345)
     );

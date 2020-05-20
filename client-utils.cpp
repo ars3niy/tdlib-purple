@@ -247,16 +247,9 @@ static void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &
     }
 
     if (notification) {
-        std::string fullText;
-        if (!(flags & PURPLE_MESSAGE_SEND)) {
-            fullText = message.sender;
-            if (!fullText.empty())
-                fullText += ": ";
-        }
-        fullText += notification;
         if (conv)
             purple_conversation_write(purple_conv_chat_get_conversation(conv), nullptr,
-                                      fullText.c_str(), PURPLE_MESSAGE_SYSTEM, message.timestamp);
+                                      notification, PURPLE_MESSAGE_SYSTEM, message.timestamp);
     }
 }
 

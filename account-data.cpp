@@ -82,6 +82,20 @@ std::string getDisplayName(const td::td_api::user *user)
     return "";
 }
 
+bool isPrivateChat(const td::td_api::chat &chat)
+{
+    return (getUserIdByPrivateChat(chat) != 0);
+}
+
+int32_t getUserIdByPrivateChat(const td::td_api::chat &chat)
+{
+    if (chat.type_ && (chat.type_->get_id() == td::td_api::chatTypePrivate::ID)) {
+        const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat.type_);
+        return privType.user_id_;
+    }
+    return 0;
+}
+
 int32_t getBasicGroupId(const td::td_api::chat &chat)
 {
     if (chat.type_ && (chat.type_->get_id() == td::td_api::chatTypeBasicGroup::ID))
@@ -269,10 +283,9 @@ const td::td_api::user *TdAccountData::getUserByPhone(const char *phoneNumber) c
 
 const td::td_api::user *TdAccountData::getUserByPrivateChat(const td::td_api::chat &chat)
 {
-    if (chat.type_ && (chat.type_->get_id() == td::td_api::chatTypePrivate::ID)) {
-        const td::td_api::chatTypePrivate &privType = static_cast<const td::td_api::chatTypePrivate &>(*chat.type_);
-        return getUser(privType.user_id_);
-    }
+    int32_t userId = getUserIdByPrivateChat(chat);
+    if (userId != 0)
+        return getUser(userId);
     return nullptr;
 }
 
