@@ -132,7 +132,6 @@ TEST_F(GroupChatTest, BasicGroupReceiveTextAndReply)
         fmt::format(replyPattern, userFirstNames[0] + " " + userLastNames[0], "Hello", "Reply"),
         PURPLE_MESSAGE_SEND, date[1]
     ));
-
 }
 
 TEST_F(GroupChatTest, BasicGroupReceivePhoto)
@@ -494,7 +493,29 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
 
 TEST_F(GroupChatTest, GroupRenamed)
 {
+    const int64_t messageId = 1;
+    const int32_t date      = 1234;
     loginWithBasicGroup();
     tgl.update(make_object<updateChatTitle>(groupChatId, "New Title"));
     prpl.verifyEvents(AliasChatEvent(groupChatPurpleName, "New Title"));
+
+    tgl.update(make_object<updateNewMessage>(
+        makeMessage(
+            messageId, userIds[0], groupChatId, false, date,
+            make_object<messageChatChangeTitle>("New Title")
+        )
+    ));
+    tgl.verifyRequest(viewMessages(
+        groupChatId,
+        {messageId},
+        true
+    ));
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, "New Title"),
+        ConversationWriteEvent(
+            groupChatPurpleName, "",
+            userFirstNames[0] + " " + userLastNames[0] + " changed group name to New Title",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
+    );
 }

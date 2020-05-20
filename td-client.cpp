@@ -578,19 +578,23 @@ static const td::td_api::file *selectPhotoSize(const td::td_api::messagePhoto &p
     return selectedSize ? selectedSize->photo_.get() : nullptr;
 }
 
+static std::string getSenderDisplayName(const td::td_api::chat &chat, const TgMessageInfo &message,
+                                        PurpleAccount *account)
+{
+    if (message.outgoing)
+        return purple_account_get_alias(account);
+    else if (isPrivateChat(chat))
+        return chat.title_;
+    else
+        return message.sender;
+}
+
 static std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,
                                         const char *noticeText, PurpleAccount *account)
 {
-    std::string prefix;
-
-    if (message.outgoing) {
-        prefix = purple_account_get_alias(account);
+    std::string prefix = getSenderDisplayName(chat, message, account);
+    if (!prefix.empty())
         prefix += ": ";
-    } else if (isPrivateChat(chat))
-        prefix = chat.title_ + ": ";
-    else if (!message.sender.empty())
-        prefix = message.sender + ": ";
-
     return prefix + noticeText;
 }
 
@@ -860,9 +864,17 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId
         case td::td_api::messageSticker::ID:
             showSticker(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message->content_));
             break;
+        case td::td_api::messageChatChangeTitle::ID: {
+            const auto &titleChange = static_cast<const td::td_api::messageChatChangeTitle &>(*message->content_);
+            std::string notice = formatMessage(_("{} changed group name to {}"),
+                                               {getSenderDisplayName(chat, messageInfo, m_account),
+                                                titleChange.title_});
+            showMessageText(m_account, chat, messageInfo, NULL, notice.c_str(), m_data);
+            break;
+        }
         default: {
-            std::string notice = "Received unsupported message type " +
-                                 messageTypeToString(*message->content_);
+            std::string notice = formatMessage(_("Received unsupported message type {}"),
+                                               messageTypeToString(*message->content_));
             notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), m_account);
             showMessageText(m_account, chat, messageInfo, NULL, notice.c_str(), m_data);
         }
