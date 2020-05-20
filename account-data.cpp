@@ -174,7 +174,7 @@ void TdAccountData::addChat(TdChatPtr chat)
         auto pContact = std::find(m_contactUserIdsNoChat.begin(), m_contactUserIdsNoChat.end(),
                                   privType.user_id_);
         if (pContact != m_contactUserIdsNoChat.end()) {
-            purple_debug_misc(config::pluginId, "Private chat (id %" G_GUINT64_FORMAT ") now known for user %d\n",
+            purple_debug_misc(config::pluginId, "Private chat (id %" G_GINT64_FORMAT ") now known for user %d\n",
                               chat->id_, (int)privType.user_id_);
             m_contactUserIdsNoChat.erase(pContact);
         }
