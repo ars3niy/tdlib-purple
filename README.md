@@ -13,6 +13,8 @@ Missing features:
 * Creating groups
 * Joining public groups/channels
 * Leaving groups
+* Renaming groups/channels
+* Chat topic (= group description)
 * User pictures
 
 ## Installation
