@@ -66,21 +66,7 @@ static GList *tgprpl_status_types (PurpleAccount *acct)
     type = purple_status_type_new_full (PURPLE_STATUS_AVAILABLE, NULL, NULL, FALSE, TRUE, FALSE);
     types = g_list_prepend (types, type);
 
-    type = purple_status_type_new_full (PURPLE_STATUS_MOBILE, NULL, NULL, FALSE, TRUE, FALSE);
-    types = g_list_prepend (types, type);
-
     type = purple_status_type_new_full (PURPLE_STATUS_OFFLINE, NULL, NULL, FALSE, TRUE, FALSE);
-    types = g_list_prepend (types, type);
-
-    /*
-    The states below are only registered internally so that we get notified about
-    state changes to away and unavailable. This is useful for deciding when to send
-    No other peer should ever have those states.
-    */
-    type = purple_status_type_new_full (PURPLE_STATUS_AWAY, NULL, NULL, FALSE, TRUE, FALSE);
-    types = g_list_prepend (types, type);
-
-    type = purple_status_type_new_full (PURPLE_STATUS_UNAVAILABLE, NULL, NULL, FALSE, TRUE, FALSE);
     types = g_list_prepend (types, type);
 
     return g_list_reverse (types);
