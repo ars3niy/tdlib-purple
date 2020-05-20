@@ -280,7 +280,8 @@ static void compare(const removeProxy &actual, const removeProxy &expected)
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
-    ASSERT_EQ(expected.get_id(), actual.get_id()) << "Wrong request type: expected " << requestToString(expected);
+    ASSERT_EQ(expected.get_id(), actual.get_id()) << "Wrong request type: got " <<
+        requestToString(actual) << " expected " << requestToString(expected);
 
 #define C(class) case class::ID: \
     compare(static_cast<const class &>(actual), static_cast<const class &>(expected)); \

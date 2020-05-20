@@ -86,6 +86,8 @@ public:
     void updateUser(TdUserPtr user);
     void setUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void updateBasicGroup(TdGroupPtr group);
+    void setBasicGroupInfoRequested(int32_t groupId);
+    bool isBasicGroupInfoRequested(int32_t groupId);
     void updateBasicGroupInfo(int32_t groupId, TdGroupInfoPtr groupInfo);
     void updateSupergroup(TdSupergroupPtr group);
 
@@ -93,9 +95,8 @@ public:
     void updateChatChatList(int64_t chatId, td::td_api::object_ptr<td::td_api::ChatList> list);
     void updateChatTitle(int64_t chatId, const std::string &title);
     void setContacts(const std::vector<std::int32_t> &userIds);
-    void setActiveChats(std::vector<std::int64_t> &&chats);
     void getContactsWithNoChat(std::vector<std::int32_t> &userIds);
-    void getActiveChats(std::vector<const td::td_api::chat *> &chats) const;
+    void getChats(std::vector<const td::td_api::chat *> &chats) const;
 
     const td::td_api::chat       *getChat(int64_t chatId) const;
     int                           getPurpleChatId(int64_t tdChatId);
@@ -147,6 +148,7 @@ private:
     struct GroupInfo {
         TdGroupPtr     group;
         TdGroupInfoPtr fullInfo;
+        bool           fullInfoRequested = false;
     };
 
     struct SendMessageInfo {
@@ -164,10 +166,6 @@ private:
 
     // List of contacts for which private chat is not known yet.
     std::vector<int32_t>               m_contactUserIdsNoChat;
-
-    // m_chatInfo can contain chats that are not in m_activeChats if some other chat contains
-    // messages forwarded from another channel
-    std::vector<int64_t>               m_activeChats;
 
     // Used to remember stuff during asynchronous communication when adding contact
     std::vector<ContactRequest>        m_addContactRequests;

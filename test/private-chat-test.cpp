@@ -47,13 +47,15 @@ TEST_F(PrivateChatTest, AddContactByPhone)
         ), true
     ));
 
-    tgl.update(make_object<updateUser>(makeUser(
+    object_ptr<user> userInfo = makeUser(
         userIds[0],
         "Local",
         "Alias",
         userPhones[0],
         make_object<userStatusOffline>()
-    )));
+    );
+    userInfo->is_contact_ = true;
+    tgl.update(make_object<updateUser>(std::move(userInfo)));
     tgl.reply(make_object<ok>());
 
     tgl.verifyRequest(createPrivateChat(userIds[0], false));
@@ -65,9 +67,8 @@ TEST_F(PrivateChatTest, AddContactByPhone)
         "Local Alias",
         nullptr, 0, 0, 0
     )));
-    prpl.verifyNoEvents();
-    tgl.update(makeUpdateChatListMain(chatIds[0]));
 
+    // is_contact was true, so add buddy
     prpl.verifyEvents(AddBuddyEvent(
         purpleUserName(0),
         "Local Alias",
@@ -181,6 +182,37 @@ TEST_F(PrivateChatTest, ContactedByNew_ImmediatePhoneNumber)
         {messageId},
         true
     ));
+}
+
+TEST_F(PrivateChatTest, ContactWithoutChatAtLogin)
+{
+    auto userUpdate = standardUpdateUser(0);
+    userUpdate->user_->is_contact_ = true;
+    login(
+        {std::move(userUpdate)},
+        make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
+        make_object<chats>(),
+        {}, {}, {}
+    );
+    tgl.verifyRequest(createPrivateChat(userIds[0], false));
+
+    tgl.update(standardPrivateChat(0));
+    prpl.verifyNoEvents();
+
+    tgl.reply(makeChat(
+        chatIds[0],
+        make_object<chatTypePrivate>(userIds[0]),
+        userFirstNames[0] + " " + userLastNames[0],
+        nullptr, 0, 0, 0
+    ));
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTED),
+        AddBuddyEvent(purpleUserName(0), userFirstNames[0] + " " + userLastNames[0],
+                      account, nullptr, nullptr, nullptr),
+        UserStatusEvent(account, purpleUserName(0), PURPLE_STATUS_OFFLINE),
+        AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
+        ShowAccountEvent(account)
+    );
 }
 
 TEST_F(PrivateChatTest, Document)

@@ -137,6 +137,21 @@ void TdAccountData::updateBasicGroup(TdGroupPtr group)
         m_groups[group->id_].group = std::move(group);
 }
 
+void TdAccountData::setBasicGroupInfoRequested(int32_t groupId)
+{
+    auto it = m_groups.find(groupId);
+    if (it != m_groups.end())
+        it->second.fullInfoRequested = true;
+}
+
+bool TdAccountData::isBasicGroupInfoRequested(int32_t groupId)
+{
+    auto it = m_groups.find(groupId);
+    if (it != m_groups.end())
+        return it->second.fullInfoRequested;
+    return false;
+}
+
 void TdAccountData::updateBasicGroupInfo(int32_t groupId, TdGroupInfoPtr groupInfo)
 {
     if (groupInfo)
@@ -196,11 +211,6 @@ void TdAccountData::setContacts(const std::vector<std::int32_t> &userIds)
             purple_debug_misc(config::pluginId, "Private chat not yet known for user %d\n", (int)userId);
             m_contactUserIdsNoChat.push_back(userId);
         }
-}
-
-void TdAccountData::setActiveChats(std::vector<std::int64_t> &&chats)
-{
-    m_activeChats = std::move(chats);
 }
 
 void TdAccountData::getContactsWithNoChat(std::vector<std::int32_t> &userIds)
@@ -375,18 +385,11 @@ bool TdAccountData::isGroupChatWithMembership(const td::td_api::chat &chat)
     return false;
 }
 
-void TdAccountData::getActiveChats(std::vector<const td::td_api::chat *> &chats) const
+void TdAccountData::getChats(std::vector<const td::td_api::chat *> &chats) const
 {
     chats.clear();
-    for (int64_t chatId: m_activeChats) {
-        const td::td_api::chat *chat = getChat(chatId);
-        if (!chat) {
-            purple_debug_warning(config::pluginId, "Received unknown chat id %" G_GINT64_FORMAT "\n", chatId);
-            continue;
-        }
-
-        chats.push_back(&*chat);
-    }
+    for (const ChatMap::value_type &item: m_chatInfo)
+        chats.push_back(item.second.chat.get());
 }
 
 std::unique_ptr<PendingRequest> TdAccountData::getPendingRequestImpl(uint64_t requestId)

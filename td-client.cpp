@@ -13,9 +13,9 @@ enum {
     FILE_DOWNLOAD_PRIORITY       = 1
 };
 
-static bool isChatInContactList(const td::td_api::chat &chat)
+static bool isChatInContactList(const td::td_api::chat &chat, const td::td_api::user *privateChatUser)
 {
-    return (chat.chat_list_ != nullptr);
+    return (chat.chat_list_ != nullptr) || (privateChatUser && privateChatUser->is_contact_);
 }
 
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)
@@ -135,7 +135,7 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         purple_debug_misc(config::pluginId, "Incoming update: update chat list for chat %" G_GINT64_FORMAT "\n",
                           chatListUpdate.chat_id_);
         m_data.updateChatChatList(chatListUpdate.chat_id_, std::move(chatListUpdate.chat_list_));
-        updateChat(chatListUpdate.chat_id_, false);
+        updateChat(m_data.getChat(chatListUpdate.chat_id_));
         break;
     }
 
@@ -144,7 +144,7 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         purple_debug_misc(config::pluginId, "Incoming update: update chat title for chat %" G_GINT64_FORMAT "\n",
                           chatTitleUpdate.chat_id_);
         m_data.updateChatTitle(chatTitleUpdate.chat_id_, chatTitleUpdate.title_);
-        updateChat(chatTitleUpdate.chat_id_, false);
+        updateChat(m_data.getChat(chatTitleUpdate.chat_id_));
         break;
     }
 
@@ -477,7 +477,6 @@ void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr
     purple_debug_misc(config::pluginId, "getChats response to request %" G_GUINT64_FORMAT "\n", requestId);
     if (object && (object->get_id() == td::td_api::chats::ID)) {
         td::td_api::object_ptr<td::td_api::chats> chats = td::move_tl_object_as<td::td_api::chats>(object);
-        m_data.setActiveChats(std::move(chats->chat_ids_));
         m_data.getContactsWithNoChat(m_usersForNewPrivateChats);
         requestMissingPrivateChats();
     } else
@@ -576,9 +575,12 @@ void PurpleTdClient::updateSupergroupChat(int32_t groupId)
 
 void PurpleTdClient::requestBasicGroupMembers(int32_t groupId)
 {
-    uint64_t requestId = m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getBasicGroupFullInfo>(groupId),
-                                                 &PurpleTdClient::groupInfoResponse);
-    m_data.addPendingRequest<GroupInfoRequest>(requestId, groupId);
+    if (!m_data.isBasicGroupInfoRequested(groupId)) {
+        m_data.setBasicGroupInfoRequested(groupId);
+        uint64_t requestId = m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getBasicGroupFullInfo>(groupId),
+                                                     &PurpleTdClient::groupInfoResponse);
+        m_data.addPendingRequest<GroupInfoRequest>(requestId, groupId);
+    }
 }
 
 // TODO process messageChatAddMembers and messageChatDeleteMember
@@ -607,13 +609,13 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
     purple_connection_set_state (purple_account_get_connection(m_account), PURPLE_CONNECTED);
 
     std::vector<const td::td_api::chat *> chats;
-    m_data.getActiveChats(chats);
+    m_data.getChats(chats);
 
     for (const td::td_api::chat *chat: chats) {
-        updateChat(chat->id_, true);
+        updateChat(chat);
 
         const td::td_api::user *user = m_data.getUserByPrivateChat(*chat);
-        if (user && isChatInContactList(*chat)) {
+        if (user && isChatInContactList(*chat, user)) {
             std::string userName = getPurpleBuddyName(*user);
             purple_prpl_got_user_status(m_account, userName.c_str(),
                                         getPurpleStatusId(*user->status_), NULL);
@@ -1045,14 +1047,15 @@ void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> userInf
 
     m_data.updateUser(std::move(userInfo));
 
-    const td::td_api::user *user = m_data.getUser(userId);
-    const td::td_api::chat *chat = m_data.getPrivateChatByUserId(userId);
-
-    // In case user gets renamed in another client maybe?
     // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
     // user find_buddy either
-    if (user && chat && purple_account_is_connected(m_account))
-        updatePrivateChat(*chat, *user);
+    if (purple_account_is_connected(m_account)) {
+        const td::td_api::user *user = m_data.getUser(userId);
+        const td::td_api::chat *chat = m_data.getPrivateChatByUserId(userId);
+
+        if (user && chat && isChatInContactList(*chat, user))
+            updatePrivateChat(*chat, *user);
+    }
 }
 
 void PurpleTdClient::updateGroup(td::td_api::object_ptr<td::td_api::basicGroup> group)
@@ -1087,29 +1090,27 @@ void PurpleTdClient::updateSupergroup(td::td_api::object_ptr<td::td_api::supergr
         updateSupergroupChat(id);
 }
 
-void PurpleTdClient::updateChat(int64_t chatId, bool isNewChat)
+void PurpleTdClient::updateChat(const td::td_api::chat *chat)
 {
-    const td::td_api::chat *chat = m_data.getChat(chatId);
     if (!chat) return;
 
     const td::td_api::user *privateChatUser = m_data.getUserByPrivateChat(*chat);
     int32_t                 basicGroupId    = getBasicGroupId(*chat);
     int32_t                 supergroupId    = getSupergroupId(*chat);
-
-    // Not having purple_account_is_connected check here would not be wrong, but removing it
-    // would require adjusting test cases
-    if (purple_account_is_connected(m_account) && basicGroupId && isNewChat)
-        requestBasicGroupMembers(basicGroupId);
+    purple_debug_misc(config::pluginId, "Update chat: %" G_GINT64_FORMAT " private user=%d basic group=%d supergroup=%d\n",
+                      chat->id_, privateChatUser ? privateChatUser->id_ : 0, basicGroupId, supergroupId);
 
     // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
     // user find_buddy either
-    if (purple_account_is_connected(m_account) && isChatInContactList(*chat)) {
+    if (purple_account_is_connected(m_account) && isChatInContactList(*chat, privateChatUser)) {
         if (privateChatUser)
             updatePrivateChat(*chat, *privateChatUser);
 
         // purple_blist_find_chat doesn't work if account is not connected
-        if (basicGroupId)
+        if (basicGroupId) {
+            requestBasicGroupMembers(basicGroupId);
             updateBasicGroupChat(basicGroupId);
+        }
         if (supergroupId)
             updateSupergroupChat(supergroupId);
     }
@@ -1125,7 +1126,7 @@ void PurpleTdClient::addChat(td::td_api::object_ptr<td::td_api::chat> chat)
     purple_debug_misc(config::pluginId, "Add chat: '%s'\n", chat->title_.c_str());
     int64_t chatId = chat->id_;
     m_data.addChat(std::move(chat));
-    updateChat(chatId, true);
+    updateChat(m_data.getChat(chatId));
 }
 
 void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction)

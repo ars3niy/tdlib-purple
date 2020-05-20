@@ -66,9 +66,10 @@ TEST_F(GroupChatTest, BasicGroupChatAppearsAfterLogin)
         groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
     )));
     prpl.verifyNoEvents();
-    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
+    tgl.verifyNoRequests();
     tgl.update(makeUpdateChatListMain(groupChatId));
 
+    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
     prpl.verifyEvents(AddChatEvent(
         groupChatPurpleName, groupChatTitle, account, NULL, NULL
     ));
