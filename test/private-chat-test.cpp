@@ -7,14 +7,16 @@ TEST_F(PrivateChatTest, AddContactByPhone)
 {
     login();
 
+    // Adding new buddy
     PurpleBuddy *buddy = purple_buddy_new(account, userPhones[0].c_str(), "Local Alias");
     purple_blist_add_buddy(buddy, NULL, &standardPurpleGroup, NULL);
     prpl.discardEvents();
-
     pluginInfo().add_buddy(connection, buddy, &standardPurpleGroup);
+
     // The buddy is deleted right away, to be replaced later
     prpl.verifyEvents(RemoveBuddyEvent(account, userPhones[0]));
 
+    // Adding user to contact list by phone number
     std::vector<object_ptr<contact>> contacts;
     contacts.push_back(make_object<contact>(
         userPhones[0],
@@ -47,6 +49,7 @@ TEST_F(PrivateChatTest, AddContactByPhone)
         ), true
     ));
 
+    // We are notified that the user is now a contact
     object_ptr<user> userInfo = makeUser(
         userIds[0],
         "Local",
@@ -56,6 +59,7 @@ TEST_F(PrivateChatTest, AddContactByPhone)
     );
     userInfo->is_contact_ = true;
     tgl.update(make_object<updateUser>(std::move(userInfo)));
+
     tgl.reply(make_object<ok>());
 
     tgl.verifyRequest(createPrivateChat(userIds[0], false));

@@ -1215,7 +1215,7 @@ void PurpleTdClient::addContact(const std::string &purpleName, const std::string
     }
 
     if (users.size() == 1)
-        addContactById(users[0]->id_, "", alias, groupName);
+        addContactById(users[0]->id_, "", purpleName, groupName);
     else {
         td::td_api::object_ptr<td::td_api::contact> contact =
             td::td_api::make_object<td::td_api::contact>(purpleName, "", "", "", 0);
@@ -1232,6 +1232,7 @@ void PurpleTdClient::addContact(const std::string &purpleName, const std::string
 void PurpleTdClient::addContactById(int32_t userId, const std::string &phoneNumber, const std::string &alias,
                                     const std::string &groupName)
 {
+    purple_debug_misc(config::pluginId, "Adding contact: id=%d alias=%s\n", userId, alias.c_str());
     std::string firstName, lastName;
     getNamesFromAlias(alias.c_str(), firstName, lastName);
 

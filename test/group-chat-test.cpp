@@ -520,3 +520,55 @@ TEST_F(GroupChatTest, GroupRenamed)
         )
     );
 }
+
+TEST_F(GroupChatTest, AddContactByGroupChatName)
+{
+    loginWithBasicGroup();
+
+    // We get to know about a non-contact because it's in group members
+    tgl.update(standardUpdateUser(1));
+    std::vector<object_ptr<chatMember>> members;
+    members.push_back(make_object<chatMember>(
+        userIds[0],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    members.push_back(make_object<chatMember>(
+        userIds[1],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusCreator>(),
+        nullptr
+    ));
+    members.push_back(make_object<chatMember>(
+        selfId,
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    tgl.reply(make_object<basicGroupFullInfo>(
+        "basic group",
+        userIds[1],
+        std::move(members),
+        ""
+    ));
+
+    // Adding him to contact list from group chat members
+    PurpleBuddy *buddy = purple_buddy_new(account, (userFirstNames[1] + " " + userLastNames[1]).c_str(), "");
+    purple_blist_add_buddy(buddy, NULL, &standardPurpleGroup, NULL);
+    prpl.discardEvents();
+    pluginInfo().add_buddy(connection, buddy, &standardPurpleGroup);
+
+    // The buddy is deleted right away, to be replaced later
+    prpl.verifyEvents(RemoveBuddyEvent(account, userFirstNames[1] + " " + userLastNames[1]));
+    tgl.verifyRequest(addContact(make_object<contact>(
+        "", userFirstNames[1], userLastNames[1], "", userIds[1]
+    ), true));
+
+    tgl.reply(make_object<ok>());
+    tgl.verifyRequest(createPrivateChat(userIds[1], false));
+    // The rest is tested elsewhere
+}
