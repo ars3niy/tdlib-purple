@@ -21,6 +21,8 @@ Missing features:
 
 RPM packages for Fedora and openSUSE are available at https://download.opensuse.org/repositories/home:/ars3n1y/ .
 
+Windows build is available from https://eion.robbmob.com/tdlib/ (copy libtelegram-tdlib.dll to libpurple plugins directory).
+
 Alternatively, build from source (see below).
 
 ## Debugging vs. privacy
