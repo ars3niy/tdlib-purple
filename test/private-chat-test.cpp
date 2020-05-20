@@ -7,7 +7,7 @@ TEST_F(PrivateChatTest, AddContactByPhone)
 {
     login();
 
-    PurpleBuddy *buddy = purple_buddy_new(account, userPhones[0].c_str(), "LocalAlias");
+    PurpleBuddy *buddy = purple_buddy_new(account, userPhones[0].c_str(), "Local Alias");
     purple_blist_add_buddy(buddy, NULL, &standardPurpleGroup, NULL);
     prpl.discardEvents();
 
@@ -40,8 +40,8 @@ TEST_F(PrivateChatTest, AddContactByPhone)
     tgl.verifyRequest(addContact(
         make_object<contact>(
             userPhones[0],
-            "LocalAlias",
-            "",
+            "Local",
+            "Alias",
             "",
             userIds[0]
         ), true
@@ -49,8 +49,8 @@ TEST_F(PrivateChatTest, AddContactByPhone)
 
     tgl.update(make_object<updateUser>(makeUser(
         userIds[0],
-        "LocalAlias",
-        "",
+        "Local",
+        "Alias",
         userPhones[0],
         make_object<userStatusOffline>()
     )));
@@ -62,7 +62,7 @@ TEST_F(PrivateChatTest, AddContactByPhone)
     tgl.update(make_object<updateNewChat>(makeChat(
         chatIds[0],
         make_object<chatTypePrivate>(userIds[0]),
-        "LocalAlias",
+        "Local Alias",
         nullptr, 0, 0, 0
     )));
     prpl.verifyNoEvents();
@@ -70,7 +70,7 @@ TEST_F(PrivateChatTest, AddContactByPhone)
 
     prpl.verifyEvents(AddBuddyEvent(
         purpleUserName(0),
-        "LocalAlias",
+        "Local Alias",
         account,
         NULL,
         &standardPurpleGroup,

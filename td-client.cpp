@@ -1127,8 +1127,11 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
     if (!isPhoneNumber(request->phoneNumber.c_str()))
         notifyFailedContact(request->phoneNumber, _("Not a valid phone number"));
     else if (userId) {
+        std::string firstName, lastName;
+        getNamesFromAlias(request->alias.c_str(), firstName, lastName);
+
         td::td_api::object_ptr<td::td_api::contact> contact =
-            td::td_api::make_object<td::td_api::contact>(request->phoneNumber, request->alias, "", "", userId);
+            td::td_api::make_object<td::td_api::contact>(request->phoneNumber, firstName, lastName, "", userId);
         td::td_api::object_ptr<td::td_api::addContact> addContact =
             td::td_api::make_object<td::td_api::addContact>(std::move(contact), true);
         uint64_t newRequestId = m_transceiver.sendQuery(std::move(addContact),
