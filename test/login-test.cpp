@@ -12,24 +12,28 @@ TEST_F(LoginTest, ConnectionReadyBeforeAuthReady)
     pluginInfo().login(account);
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
-    tgl.verifyRequest(setTdlibParameters(make_object<tdlibParameters>(
-        false,
-        std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
-        "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
-        "",
-        false,
-        false,
-        false,
-        false,
-        0,
-        "",
-        "",
-        "",
-        "",
-        "",
-        false,
-        false
-    )));
+    tgl.verifyRequests({
+        make_object<disableProxy>(),
+        make_object<getProxies>(),
+        make_object<setTdlibParameters>(make_object<tdlibParameters>(
+            false,
+            std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+            "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
+            "",
+            false,
+            false,
+            false,
+            false,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false
+        ))
+    });
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitEncryptionKey>(true)));
     tgl.reply(make_object<ok>());
 
@@ -79,24 +83,28 @@ TEST_F(LoginTest, RegisterNewAccount_ConnectionReadyBeforeAuthReady)
     pluginInfo().login(account);
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
-    tgl.verifyRequest(setTdlibParameters(make_object<tdlibParameters>(
-        false,
-        std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
-        "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
-        "",
-        false,
-        false,
-        false,
-        false,
-        0,
-        "",
-        "",
-        "",
-        "",
-        "",
-        false,
-        false
-    )));
+    tgl.verifyRequests({
+        make_object<disableProxy>(),
+        make_object<getProxies>(),
+        make_object<setTdlibParameters>(make_object<tdlibParameters>(
+            false,
+            std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+            "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
+            "",
+            false,
+            false,
+            false,
+            false,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false
+        ))
+    });
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitEncryptionKey>(true)));
     tgl.reply(make_object<ok>());
 
@@ -220,4 +228,142 @@ TEST_F(LoginTest, BuddyRenamedByServer)
     updateUser->user_->first_name_ = "New";
     updateUser->user_->last_name_ = "Name";
     tgl.update(std::move(updateUser));
+}
+
+TEST_F(LoginTest, AddedProxyCofiguration)
+{
+    char host[] = "host";
+    const int port = 10;
+    char username[] = "username";
+    char password[] = "password";
+    PurpleProxyInfo purpleProxy;
+    purpleProxy.type = PURPLE_PROXY_SOCKS5;
+    purpleProxy.host = host;
+    purpleProxy.port = port;
+    purpleProxy.username = username;
+    purpleProxy.password = password;
+    account->proxy_info = &purpleProxy;
+
+    pluginInfo().login(account);
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
+    tgl.verifyRequests({
+        make_object<disableProxy>(),
+        make_object<addProxy>(host, port, true, make_object<proxyTypeSocks5>(username, password)),
+        make_object<getProxies>(),
+        make_object<setTdlibParameters>(make_object<tdlibParameters>(
+            false,
+            std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+            "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
+            "",
+            false,
+            false,
+            false,
+            false,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false
+        ))
+    });
+
+    tgl.reply(make_object<ok>()); // reply to disableProxy
+    tgl.reply(make_object<proxy>(2, "", 0, 0, false, nullptr));
+    std::vector<object_ptr<proxy>> proxyList;
+    proxyList.push_back(make_object<proxy>(2, "", 0, 0, true, nullptr));
+    tgl.reply(make_object<proxies>(std::move(proxyList)));
+    tgl.reply(make_object<ok>());
+}
+
+TEST_F(LoginTest, ChangedProxyCofiguration)
+{
+    char host[] = "host";
+    const int port = 10;
+    char username[] = "username";
+    char password[] = "password";
+    PurpleProxyInfo purpleProxy;
+    purpleProxy.type = PURPLE_PROXY_SOCKS5;
+    purpleProxy.host = host;
+    purpleProxy.port = port;
+    purpleProxy.username = username;
+    purpleProxy.password = password;
+    account->proxy_info = &purpleProxy;
+
+    pluginInfo().login(account);
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
+    tgl.verifyRequests({
+        make_object<disableProxy>(),
+        make_object<addProxy>(host, port, true, make_object<proxyTypeSocks5>(username, password)),
+        make_object<getProxies>(),
+        make_object<setTdlibParameters>(make_object<tdlibParameters>(
+            false,
+            std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+            "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
+            "",
+            false,
+            false,
+            false,
+            false,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false
+        ))
+    });
+
+    tgl.reply(make_object<ok>()); // reply to disableProxy
+    tgl.reply(make_object<proxy>(2, "", 0, 0, false, nullptr));
+    std::vector<object_ptr<proxy>> proxyList;
+    proxyList.push_back(make_object<proxy>(1, "", 0, 0, false, nullptr));
+    proxyList.push_back(make_object<proxy>(2, "", 0, 0, true, nullptr));
+    tgl.reply(make_object<proxies>(std::move(proxyList)));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(removeProxy(1));
+}
+
+TEST_F(LoginTest, RemovedProxyCofiguration)
+{
+    pluginInfo().login(account);
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
+    tgl.verifyRequests({
+        make_object<disableProxy>(),
+        make_object<getProxies>(),
+        make_object<setTdlibParameters>(make_object<tdlibParameters>(
+            false,
+            std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+            "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
+            "",
+            false,
+            false,
+            false,
+            false,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false
+        ))
+    });
+
+    tgl.reply(make_object<ok>()); // reply to disableProxy
+    std::vector<object_ptr<proxy>> proxyList;
+    proxyList.push_back(make_object<proxy>(1, "", 0, 0, false, nullptr));
+    tgl.reply(make_object<proxies>(std::move(proxyList)));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(removeProxy(1));
 }

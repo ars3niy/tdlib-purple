@@ -26,16 +26,18 @@ public:
 };
 
 std::string         messageTypeToString(const td::td_api::MessageContent &content);
-const char         *getPurpleStatusId(const td::td_api::UserStatus &tdStatus);
+std::string         proxyTypeToString(PurpleProxyType proxyType);
+
+const char *        getPurpleStatusId(const td::td_api::UserStatus &tdStatus);
 std::string         getPurpleBuddyName(const td::td_api::user &user);
 void                getUsersByPurpleName(const char *username, std::vector<const td::td_api::user*> &users,
                                          TdAccountData &accountData);
 int64_t             getPrivateChatIdByPurpleName(const char *buddyName, TdAccountData &accountData,
                                                  const char *action);
 PurpleConversation *getImConversation(PurpleAccount *account, const char *username);
-PurpleConvChat     *getChatConversation(PurpleAccount *account, const td::td_api::chat &chat,
+PurpleConvChat *    getChatConversation(PurpleAccount *account, const td::td_api::chat &chat,
                                         int chatPurpleId, TdAccountData &accountData);
-PurpleConvChat     *findChatConversation(PurpleAccount *account, const td::td_api::chat &chat);
+PurpleConvChat *    findChatConversation(PurpleAccount *account, const td::td_api::chat &chat);
 void                updateGroupChat(PurpleAccount *account, const td::td_api::chat &chat,
                                     const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &groupStatus,
                                     const char *groupType, int32_t groupId);

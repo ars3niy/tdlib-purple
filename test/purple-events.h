@@ -166,6 +166,9 @@ struct AliasBuddyEvent: PurpleEvent {
 struct ConnectionErrorEvent: PurpleEvent {
     PurpleConnection *connection;
     std::string       message;
+
+    ConnectionErrorEvent(PurpleConnection *connection, const std::string &message)
+    : PurpleEvent(PurpleEventType::ConnectionError), connection(connection), message(message) {}
 };
 
 struct ConnectionSetStateEvent: PurpleEvent {

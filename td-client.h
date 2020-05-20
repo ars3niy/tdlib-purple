@@ -28,6 +28,10 @@ private:
     void       processAuthorizationState(td::td_api::AuthorizationState &authState);
 
     // Login sequence start
+    bool       addProxy();
+    void       addProxyResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       getProxiesResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       removeOldProxies();
     void       sendTdlibParameters();
     void       sendPhoneNumber();
     void       requestAuthCode(const td::td_api::authenticationCodeInfo *authCodeInfo);
@@ -106,6 +110,9 @@ private:
     int32_t               m_lastAuthState = 0;
     bool                  m_connectionReady = false;
     std::vector<int32_t>  m_usersForNewPrivateChats;
+    bool                  m_isProxyAdded = false;
+    td::td_api::object_ptr<td::td_api::proxy>   m_addedProxy;
+    td::td_api::object_ptr<td::td_api::proxies> m_proxies;
 };
 
 #endif

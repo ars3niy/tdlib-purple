@@ -57,6 +57,26 @@ std::string messageTypeToString(const td::td_api::MessageContent &content)
     return "id " + std::to_string(content.get_id());
 }
 
+std::string proxyTypeToString(PurpleProxyType proxyType)
+{
+    switch (proxyType) {
+    case PURPLE_PROXY_NONE:
+    case PURPLE_PROXY_USE_GLOBAL:
+    case PURPLE_PROXY_USE_ENVVAR:
+        return "unknown";
+    case PURPLE_PROXY_HTTP:
+        return "HTTP";
+    case PURPLE_PROXY_SOCKS4:
+        return "SOCKS4";
+    case PURPLE_PROXY_SOCKS5:
+        return "SOCKS5";
+    case PURPLE_PROXY_TOR:
+        return "TOR";
+    }
+
+    return "unknown";
+}
+
 const char *getPurpleStatusId(const td::td_api::UserStatus &tdStatus)
 {
     if (tdStatus.get_id() == td::td_api::userStatusOnline::ID)

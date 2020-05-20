@@ -27,6 +27,7 @@ void CommTest::TearDown()
     account->gc = NULL;
     tgl.runTimeouts();
     purple_account_destroy(account);
+    account = NULL;
 }
 
 void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, object_ptr<users> getContactsReply,
@@ -38,24 +39,28 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     pluginInfo().login(account);
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
-    tgl.verifyRequest(setTdlibParameters(make_object<tdlibParameters>(
-        false,
-        std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
-        "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
-        "",
-        false,
-        false,
-        false,
-        false,
-        0,
-        "",
-        "",
-        "",
-        "",
-        "",
-        false,
-        false
-    )));
+    tgl.verifyRequests({
+        make_object<disableProxy>(),
+        make_object<getProxies>(),
+        make_object<setTdlibParameters>(make_object<tdlibParameters>(
+            false,
+            std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+            "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
+            "",
+            false,
+            false,
+            false,
+            false,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false
+        ))
+    });
     tgl.reply(make_object<ok>());
 
     // TODO: what if is_encrypted = false?

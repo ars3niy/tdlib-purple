@@ -165,7 +165,12 @@ void PurpleTdClient::processAuthorizationState(td::td_api::AuthorizationState &a
 
     case td::td_api::authorizationStateWaitTdlibParameters::ID: 
         purple_debug_misc(config::pluginId, "Authorization state update: TDLib parameters requested\n");
-        sendTdlibParameters();
+        m_transceiver.sendQuery(td::td_api::make_object<td::td_api::disableProxy>(), nullptr);
+        if (addProxy()) {
+            m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getProxies>(),
+                                    &PurpleTdClient::getProxiesResponse);
+            sendTdlibParameters();
+        }
         break;
 
     case td::td_api::authorizationStateWaitPhoneNumber::ID:
@@ -192,6 +197,93 @@ void PurpleTdClient::processAuthorizationState(td::td_api::AuthorizationState &a
             onLoggedIn();
         break;
     }
+}
+
+bool PurpleTdClient::addProxy()
+{
+    PurpleProxyInfo *purpleProxy = purple_proxy_get_setup(m_account);
+    PurpleProxyType  proxyType   = purpleProxy ? purple_proxy_info_get_type(purpleProxy) : PURPLE_PROXY_NONE;
+    const char *     username    = purpleProxy ? purple_proxy_info_get_username(purpleProxy) : "";
+    const char *     password    = purpleProxy ? purple_proxy_info_get_password(purpleProxy) : "";
+    const char *     host        = purpleProxy ? purple_proxy_info_get_host(purpleProxy) : "";
+    int              port        = purpleProxy ? purple_proxy_info_get_port(purpleProxy) : 0;
+    if (username == NULL) username = "";
+    if (password == NULL) password = "";
+    if (host == NULL) host = "";
+    std::string errorMessage;
+
+    td::td_api::object_ptr<td::td_api::ProxyType> tdProxyType;
+    switch (proxyType) {
+    case PURPLE_PROXY_NONE:
+        tdProxyType = nullptr;
+        break;
+    case PURPLE_PROXY_SOCKS5:
+        tdProxyType = td::td_api::make_object<td::td_api::proxyTypeSocks5>(username, password);
+        break;
+    case PURPLE_PROXY_HTTP:
+        tdProxyType = td::td_api::make_object<td::td_api::proxyTypeHttp>(username, password, true);
+        break;
+    default:
+        errorMessage = formatMessage(_("Proxy type {} is not supported"), proxyTypeToString(proxyType));
+        break;
+    }
+
+    if (!errorMessage.empty()) {
+        purple_connection_error(purple_account_get_connection(m_account), errorMessage.c_str());
+        return false;
+    } else if (tdProxyType) {
+        auto addProxy = td::td_api::make_object<td::td_api::addProxy>();
+        addProxy->server_ = host;
+        addProxy->port_ = port;
+        addProxy->enable_ = true;
+        addProxy->type_ = std::move(tdProxyType);
+        m_transceiver.sendQuery(std::move(addProxy), &PurpleTdClient::addProxyResponse);
+        m_isProxyAdded = true;
+    }
+
+    return true;
+}
+
+static std::string getDisplayedError(const td::td_api::object_ptr<td::td_api::Object> &object)
+{
+    if (!object)
+        return _("No response received");
+    else if (object->get_id() == td::td_api::error::ID) {
+        const td::td_api::error &error = static_cast<const td::td_api::error &>(*object);
+        return formatMessage("code {} ({})", {std::to_string(error.code_), error.message_});
+    } else
+        return _("Unexpected response");
+}
+
+void PurpleTdClient::addProxyResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    if (object && (object->get_id() == td::td_api::proxy::ID)) {
+        m_addedProxy = td::move_tl_object_as<td::td_api::proxy>(object);
+        if (m_proxies)
+            removeOldProxies();
+    } else {
+        std::string message = formatMessage(_("Could not set proxy: {}"), getDisplayedError(object));
+        purple_connection_error(purple_account_get_connection(m_account), message.c_str());
+    }
+}
+
+void PurpleTdClient::getProxiesResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    if (object && (object->get_id() == td::td_api::proxies::ID)) {
+        m_proxies = td::move_tl_object_as<td::td_api::proxies>(object);
+        if (!m_isProxyAdded || m_addedProxy)
+            removeOldProxies();
+    } else {
+        std::string message = formatMessage(_("Could not get proxies: {}"), getDisplayedError(object));
+        purple_connection_error(purple_account_get_connection(m_account), message.c_str());
+    }
+}
+
+void PurpleTdClient::removeOldProxies()
+{
+    for (const td::td_api::object_ptr<td::td_api::proxy> &proxy: m_proxies->proxies_)
+        if (proxy && (!m_addedProxy || (proxy->id_ != m_addedProxy->id_)))
+            m_transceiver.sendQuery(td::td_api::make_object<td::td_api::removeProxy>(proxy->id_), nullptr);
 }
 
 void PurpleTdClient::sendTdlibParameters()
@@ -308,17 +400,6 @@ void PurpleTdClient::authResponse(uint64_t requestId, td::td_api::object_ptr<td:
         purple_debug_misc(config::pluginId, "Authentication success on query %lu\n", (unsigned long)requestId);
     else
         notifyAuthError(object);
-}
-
-static std::string getDisplayedError(const td::td_api::object_ptr<td::td_api::Object> &object)
-{
-    if (!object)
-        return _("No response received");
-    else if (object->get_id() == td::td_api::error::ID) {
-        const td::td_api::error &error = static_cast<const td::td_api::error &>(*object);
-        return formatMessage("code {} ({})", {std::to_string(error.code_), error.message_});
-    } else
-        return _("Unexpected response");
 }
 
 void PurpleTdClient::notifyAuthError(const td::td_api::object_ptr<td::td_api::Object> &response)

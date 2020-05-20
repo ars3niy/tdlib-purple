@@ -77,6 +77,7 @@ PurpleAccount *purple_account_new(const char *username, const char *protocol_id)
     PurpleAccount *account = new PurpleAccount;
     account->username = strdup(username);
     account->alias = nullptr;
+    account->proxy_info = NULL;
 
     g_accounts.emplace_back();
     g_accounts.back().account = account;
@@ -357,7 +358,7 @@ void purple_blist_alias_chat(PurpleChat *chat, const char *alias)
 
 void purple_connection_error(PurpleConnection *gc, const char *reason)
 {
-    // TODO event
+    EVENT(ConnectionErrorEvent, gc, reason);
 }
 
 PurpleAccount *purple_connection_get_account(const PurpleConnection *gc)
@@ -848,6 +849,36 @@ gchar *purple_markup_escape_text(const gchar *text, gssize length)
 {
     std::string s(text, length);
     return g_strdup(s.c_str());
+}
+
+PurpleProxyInfo *purple_proxy_get_setup(PurpleAccount *account)
+{
+    return account->proxy_info;
+}
+
+PurpleProxyType purple_proxy_info_get_type(const PurpleProxyInfo *info)
+{
+    return info->type;
+}
+
+const char *purple_proxy_info_get_host(const PurpleProxyInfo *info)
+{
+    return info->host;
+}
+
+int purple_proxy_info_get_port(const PurpleProxyInfo *info)
+{
+    return info->port;
+}
+
+const char *purple_proxy_info_get_username(const PurpleProxyInfo *info)
+{
+    return info->username;
+}
+
+const char *purple_proxy_info_get_password(const PurpleProxyInfo *info)
+{
+    return info->password;
 }
 
 };

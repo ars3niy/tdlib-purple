@@ -236,6 +236,47 @@ static void compare(const sendChatAction &actual, const sendChatAction &expected
     }
 }
 
+static void compare(const proxyTypeHttp &actual, const proxyTypeHttp &expected)
+{
+    COMPARE(username_);
+    COMPARE(password_);
+    COMPARE(http_only_);
+}
+
+static void compare(const proxyTypeSocks5 &actual, const proxyTypeSocks5 &expected)
+{
+    COMPARE(username_);
+    COMPARE(password_);
+}
+
+static void compare(const addProxy &actual, const addProxy &expected)
+{
+    COMPARE(server_);
+    COMPARE(port_);
+    COMPARE(enable_);
+    COMPARE(type_ != nullptr);
+    if (actual.type_ != nullptr) {
+        COMPARE(type_->get_id());
+        switch (actual.type_->get_id()) {
+            case proxyTypeHttp::ID:
+                compare(static_cast<const proxyTypeHttp &>(*actual.type_),
+                        static_cast<const proxyTypeHttp &>(*expected.type_));
+                break;
+            case proxyTypeSocks5::ID:
+                compare(static_cast<const proxyTypeSocks5 &>(*actual.type_),
+                        static_cast<const proxyTypeSocks5 &>(*expected.type_));
+                break;
+            default:
+                ASSERT_TRUE(false) << "Unsupported proxy type";
+        }
+    }
+}
+
+static void compare(const removeProxy &actual, const removeProxy &expected)
+{
+    COMPARE(proxy_id_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -266,6 +307,10 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(registerUser)
         C(getMessage)
         C(sendChatAction)
+        C(addProxy)
+        case disableProxy::ID: break; // no data fields
+        case getProxies::ID: break; // no data fields
+        C(removeProxy)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }
