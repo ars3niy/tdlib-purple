@@ -13,7 +13,7 @@ public:
 
     static void setLogLevel(int level);
     int  sendMessage(const char *buddyName, const char *message);
-    void addContact(const std::string &phoneNumber, const std::string &alias, const std::string &groupName);
+    void addContact(const std::string &purpleName, const std::string &alias, const std::string &groupName);
     void renameContact(const char *buddyName, const char *newAlias);
     bool joinChat(const char *chatName);
     int  sendGroupMessage(int purpleChatId, const char *message);
@@ -69,17 +69,19 @@ private:
     void       updatePrivateChat(const td::td_api::chat &chat, const td::td_api::user &user);
     void       updateBasicGroupChat(int32_t groupId);
     void       updateSupergroupChat(int32_t groupId);
-    void       updateChat(int64_t chatId, bool isNewChat);
+    void       updateChat(const td::td_api::chat *chat);
     void       requestBasicGroupMembers(int32_t groupId);
     void       groupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
+    void       addContactById(int32_t userId, const std::string &phoneNumber, const std::string &alias,
+                              const std::string &groupName);
     void       addChat(td::td_api::object_ptr<td::td_api::chat> chat);
     void       handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction);
     void       showUserChatAction(int32_t userId, bool isTyping);
     void       importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    void       notifyFailedContact(const std::string &phoneNumber, const std::string &errorMessage);
+    void       notifyFailedContact(const std::string &errorMessage);
     void       joinChatByLinkResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
     void       requestDownload(int32_t fileId, int64_t chatId, const TgMessageInfo &message,

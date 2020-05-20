@@ -1179,23 +1179,68 @@ void PurpleTdClient::showUserChatAction(int32_t userId, bool isTyping)
     }
 }
 
-void PurpleTdClient::addContact(const std::string &phoneNumber, const std::string &alias,
+static void showFailedContactMessage(void *handle, const std::string &errorMessage)
+{
+    std::string message = formatMessage(_("Failed to add contact: {}"), errorMessage);
+    purple_notify_error(handle, _("Failed to add contact"), message.c_str(), NULL);
+}
+
+static int failedContactIdle(gpointer userdata)
+{
+    char *message = static_cast<char *>(userdata);
+    showFailedContactMessage(NULL, message);
+    free(message);
+    return FALSE; // This idle callback will not be called again
+}
+
+static void notifyFailedContactDeferred(const std::string &message)
+{
+    g_idle_add(failedContactIdle, strdup(message.c_str()));
+}
+
+void PurpleTdClient::addContact(const std::string &purpleName, const std::string &alias,
                                 const std::string &groupName)
 {
-    if (m_data.getUserByPhone(phoneNumber.c_str())) {
-        purple_debug_info(config::pluginId, "User with phone number %s already exists\n", phoneNumber.c_str());
+    if (m_data.getUserByPhone(purpleName.c_str())) {
+        purple_debug_info(config::pluginId, "User with phone number %s already exists\n", purpleName.c_str());
         return;
     }
 
-    td::td_api::object_ptr<td::td_api::contact> contact =
-        td::td_api::make_object<td::td_api::contact>(phoneNumber, "", "", "", 0);
-    td::td_api::object_ptr<td::td_api::importContacts> importReq =
-        td::td_api::make_object<td::td_api::importContacts>();
-    importReq->contacts_.push_back(std::move(contact));
-    uint64_t requestId = m_transceiver.sendQuery(std::move(importReq),
-                                                 &PurpleTdClient::importContactResponse);
+    std::vector<const td::td_api::user *> users;
+    m_data.getUsersByDisplayName(purpleName.c_str(), users);
+    if (users.size() > 1) {
+        notifyFailedContactDeferred("More than one user known with name '" + purpleName + "'");
+        return;
+    }
 
-    m_data.addPendingRequest<ContactRequest>(requestId, phoneNumber, alias, groupName, 0);
+    if (users.size() == 1)
+        addContactById(users[0]->id_, "", alias, groupName);
+    else {
+        td::td_api::object_ptr<td::td_api::contact> contact =
+            td::td_api::make_object<td::td_api::contact>(purpleName, "", "", "", 0);
+        td::td_api::object_ptr<td::td_api::importContacts> importReq =
+            td::td_api::make_object<td::td_api::importContacts>();
+        importReq->contacts_.push_back(std::move(contact));
+        uint64_t requestId = m_transceiver.sendQuery(std::move(importReq),
+                                                     &PurpleTdClient::importContactResponse);
+
+        m_data.addPendingRequest<ContactRequest>(requestId, purpleName, alias, groupName, 0);
+    }
+}
+
+void PurpleTdClient::addContactById(int32_t userId, const std::string &phoneNumber, const std::string &alias,
+                                    const std::string &groupName)
+{
+    std::string firstName, lastName;
+    getNamesFromAlias(alias.c_str(), firstName, lastName);
+
+    td::td_api::object_ptr<td::td_api::contact> contact =
+        td::td_api::make_object<td::td_api::contact>(phoneNumber, firstName, lastName, "", userId);
+    td::td_api::object_ptr<td::td_api::addContact> addContact =
+        td::td_api::make_object<td::td_api::addContact>(std::move(contact), true);
+    uint64_t newRequestId = m_transceiver.sendQuery(std::move(addContact),
+                                                    &PurpleTdClient::addContactResponse);
+    m_data.addPendingRequest<ContactRequest>(newRequestId, phoneNumber, alias, groupName, userId);
 }
 
 void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -1214,21 +1259,11 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
 
     // For whatever reason, complaining at an earlier stage leads to error message not being shown in pidgin
     if (!isPhoneNumber(request->phoneNumber.c_str()))
-        notifyFailedContact(request->phoneNumber, _("Not a valid phone number"));
-    else if (userId) {
-        std::string firstName, lastName;
-        getNamesFromAlias(request->alias.c_str(), firstName, lastName);
-
-        td::td_api::object_ptr<td::td_api::contact> contact =
-            td::td_api::make_object<td::td_api::contact>(request->phoneNumber, firstName, lastName, "", userId);
-        td::td_api::object_ptr<td::td_api::addContact> addContact =
-            td::td_api::make_object<td::td_api::addContact>(std::move(contact), true);
-        uint64_t newRequestId = m_transceiver.sendQuery(std::move(addContact),
-                                                        &PurpleTdClient::addContactResponse);
-        m_data.addPendingRequest<ContactRequest>(newRequestId, request->phoneNumber, request->alias,
-                                                 request->groupName, userId);
-    } else
-        notifyFailedContact(request->phoneNumber, _("User not found"));
+        notifyFailedContact(formatMessage(_("{} is not a valid phone number"), request->phoneNumber));
+    else if (userId)
+        addContactById(userId, request->phoneNumber, request->alias, request->groupName);
+    else
+        notifyFailedContact(formatMessage(_("No user found with phone number '{}'"), request->phoneNumber));
 }
 
 void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -1244,7 +1279,7 @@ void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_p
                                                         &PurpleTdClient::addContactCreatePrivateChatResponse);
         m_data.addPendingRequest(newRequestId, std::move(request));
     } else
-        notifyFailedContact(request->phoneNumber, getDisplayedError(object));
+        notifyFailedContact(getDisplayedError(object));
 }
 
 void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -1256,17 +1291,13 @@ void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td:
     if (!object || (object->get_id() != td::td_api::chat::ID)) {
         purple_debug_misc(config::pluginId, "Failed to create private chat to %s\n",
                           request->phoneNumber.c_str());
-        notifyFailedContact(request->phoneNumber, getDisplayedError(object));
+        notifyFailedContact(getDisplayedError(object));
     }
 }
 
-void PurpleTdClient::notifyFailedContact(const std::string &phoneNumber, const std::string &errorMessage)
+void PurpleTdClient::notifyFailedContact(const std::string &errorMessage)
 {
-    std::string message = formatMessage(_("Failed to add contact (phone number {}): {}"),
-                                        {phoneNumber, errorMessage});
-
-    purple_notify_error(purple_account_get_connection(m_account),
-                        _("Failed to add contact"), message.c_str(), NULL);
+    showFailedContactMessage(purple_account_get_connection(m_account), errorMessage);
 }
 
 void PurpleTdClient::renameContact(const char *buddyName, const char *newAlias)
