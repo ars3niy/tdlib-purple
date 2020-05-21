@@ -135,6 +135,15 @@ static void compare(const RequestInputEvent &actual, const RequestInputEvent &ex
     COMPARE(conv);
 }
 
+static void compare(const RequestActionEvent &actual, const RequestActionEvent &expected)
+{
+    COMPARE(handle);
+    COMPARE(account);
+    COMPARE(username);
+    COMPARE(conv);
+    COMPARE(callbacks.size());
+}
+
 static void compare(const JoinChatFailedEvent &actual, const JoinChatFailedEvent &expected)
 {
     COMPARE(connection);
@@ -228,6 +237,7 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(NotifyMessage)
         C(UserStatus)
         C(RequestInput)
+        C(RequestAction)
         C(JoinChatFailed)
         C(ServGotChat)
         C(ServGotIm)
@@ -248,12 +258,18 @@ void PurpleEventReceiver::verifyEvent(const PurpleEvent &event)
     ASSERT_FALSE(m_events.empty()) << "Missing libpurple event " << event.toString();
     if (!m_events.empty()) {
         compareEvents(*m_events.front(), event);
+
         if (m_events.front()->type == PurpleEventType::RequestInput) {
             const RequestInputEvent &inputEvent = static_cast<const RequestInputEvent &>(*m_events.front());
             inputOkCb     = inputEvent.ok_cb;
             inputCancelCb = inputEvent.cancel_cb;
             inputUserData = inputEvent.user_data;
+        } else if (m_events.front()->type == PurpleEventType::RequestAction) {
+            const RequestActionEvent &actionEvent = static_cast<const RequestActionEvent &>(*m_events.front());
+            actionCallbacks = actionEvent.callbacks;
+            actionUserData  = actionEvent.user_data;
         }
+
         m_events.pop();
     }
 }
@@ -293,6 +309,14 @@ void PurpleEventReceiver::inputCancel()
     inputUserData = NULL;
 }
 
+void PurpleEventReceiver::requestedAction(unsigned index)
+{
+    ASSERT_TRUE(actionCallbacks.size() > index);
+    actionCallbacks[index](actionUserData, index);
+    actionCallbacks.clear();
+    actionUserData = NULL;
+}
+
 std::string PurpleEvent::toString() const
 {
 #define C(type) case PurpleEventType::type: return #type;
@@ -315,6 +339,7 @@ std::string PurpleEvent::toString() const
     C(NotifyMessage)
     C(UserStatus)
     C(RequestInput)
+    C(RequestAction)
     C(JoinChatFailed)
     C(ServGotChat)
     C(ServGotIm)

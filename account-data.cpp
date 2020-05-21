@@ -392,6 +392,11 @@ void TdAccountData::getChats(std::vector<const td::td_api::chat *> &chats) const
         chats.push_back(item.second.chat.get());
 }
 
+void TdAccountData::deleteChat(int64_t id)
+{
+    m_chatInfo.erase(id);
+}
+
 std::unique_ptr<PendingRequest> TdAccountData::getPendingRequestImpl(uint64_t requestId)
 {
     auto it = std::find_if(m_requests.begin(), m_requests.end(),

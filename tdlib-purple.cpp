@@ -182,22 +182,42 @@ static void tgprpl_add_buddy (PurpleConnection *gc, PurpleBuddy *buddy, PurpleGr
     tdClient->addContact(phoneNumberStr, aliasStr, groupName ? groupName : "");
 }
 
-static void request_delete_contact_on_server_yes (void *data, PurpleRequestFields* fields)
+struct DeleteRequest {
+    PurpleAccount *account;
+    std::string    buddyName;
+};
+
+static void request_delete_contact_on_server_yes (void *data, int action)
 {
+    DeleteRequest    *request    = static_cast<DeleteRequest *>(data);
+    PurpleConnection *connection = purple_account_get_connection(request->account);
+
+    if (connection && purple_connection_get_protocol_data(connection)) {
+        PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(connection));
+        tdClient->removeContactAndPrivateChat(request->buddyName);
+    }
+    delete request;
 }
 
-static void request_delete_contact_on_server_no (void *data, PurpleRequestFields* fields)
+static void request_delete_contact_on_server_no (void *data, int action)
 {
+    DeleteRequest *request = static_cast<DeleteRequest *>(data);
+    delete request;
 }
 
 static void tgprpl_request_delete_contact (PurpleConnection *gc, PurpleBuddy *buddy, PurpleGroup *group)
 {
     g_return_if_fail(buddy);
 
-    purple_request_action(gc, "Remove contact", "Remove contact", "Remove contact on the server?",
-                          0, purple_connection_get_account(gc), NULL, NULL, NULL, 2,
-                          _("_No"), request_delete_contact_on_server_yes,
-                          _("_No"), request_delete_contact_on_server_no);
+    DeleteRequest *data = new DeleteRequest;
+    data->account = purple_connection_get_account(gc);;
+    data->buddyName = purple_buddy_get_name(buddy);
+
+    purple_request_yes_no(gc, _("Remove contact"), _("Remove contact"),
+                          _("Remove from global contact list and delete chat history from the server?\n"),
+                          0, purple_connection_get_account(gc), purple_buddy_get_name(buddy),
+                          NULL, data, request_delete_contact_on_server_yes,
+                          request_delete_contact_on_server_no);
 }
 
 static std::array<const char *, 3> invitePrefixes {

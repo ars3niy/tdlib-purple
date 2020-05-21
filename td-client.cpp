@@ -1432,3 +1432,26 @@ void PurpleTdClient::sendTyping(const char *buddyName, bool isTyping)
         m_transceiver.sendQuery(std::move(sendAction), nullptr);
     }
 }
+
+void PurpleTdClient::removeContactAndPrivateChat(const std::string &buddyName)
+{
+    int32_t userId = stringToUserId(buddyName.c_str());
+    if (userId != 0) {
+        const td::td_api::chat *chat   = m_data.getPrivateChatByUserId(userId);
+        if (chat) {
+            int64_t chatId = chat->id_;
+            chat = nullptr;
+            m_data.deleteChat(chatId); // Prevent re-creating buddy if any updateChat* or updateUser arrives
+
+            auto deleteChat = td::td_api::make_object<td::td_api::deleteChatHistory>();
+            deleteChat->chat_id_ = chatId;
+            deleteChat->remove_from_chat_list_ = true;
+            deleteChat->revoke_ = false;
+            m_transceiver.sendQuery(std::move(deleteChat), nullptr);
+        }
+
+        auto removeContact = td::td_api::make_object<td::td_api::removeContacts>();
+        removeContact->user_ids_.push_back(userId);
+        m_transceiver.sendQuery(std::move(removeContact), nullptr);
+    }
+}

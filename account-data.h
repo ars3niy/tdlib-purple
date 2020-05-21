@@ -97,6 +97,7 @@ public:
     void setContacts(const std::vector<std::int32_t> &userIds);
     void getContactsWithNoChat(std::vector<std::int32_t> &userIds);
     void getChats(std::vector<const td::td_api::chat *> &chats) const;
+    void deleteChat(int64_t id);
 
     const td::td_api::chat       *getChat(int64_t chatId) const;
     int                           getPurpleChatId(int64_t tdChatId);

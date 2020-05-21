@@ -20,6 +20,7 @@ public:
     bool joinChatByLink(const char *inviteLink);
     void sendTyping(const char *buddyName, bool isTyping);
     void getUsers(const char *username, std::vector<const td::td_api::user *> &users);
+    void removeContactAndPrivateChat(const std::string &buddyName);
 private:
     using TdObjectPtr   = td::td_api::object_ptr<td::td_api::Object>;
     using ResponseCb    = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);

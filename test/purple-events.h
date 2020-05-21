@@ -32,6 +32,7 @@ public:
 
     void inputEnter(const gchar *value);
     void inputCancel();
+    void requestedAction(unsigned index);
 private:
     void verifyEvent(const PurpleEvent &event);
     void verifyEvents()
@@ -43,6 +44,9 @@ private:
     void      *inputUserData = NULL;
     GCallback  inputOkCb     = NULL;
     GCallback  inputCancelCb = NULL;
+
+    std::vector<PurpleRequestActionCb> actionCallbacks;
+    void *                             actionUserData = NULL;
 };
 
 extern PurpleEventReceiver g_purpleEvents;
@@ -66,6 +70,7 @@ enum class PurpleEventType: uint8_t {
     NotifyMessage,
     UserStatus,
     RequestInput,
+    RequestAction,
     JoinChatFailed,
     ServGotChat,
     ServGotIm,
@@ -272,6 +277,41 @@ struct RequestInputEvent: PurpleEvent {
       account(account),
       username(who ? who : ""),
       conv(conv)
+      {}
+};
+
+struct RequestActionEvent: PurpleEvent {
+    void               *handle;
+    std::string         title, primary;
+	std::string         secondary;
+	PurpleAccount      *account;
+    std::string         username;
+    PurpleConversation *conv;
+	void               *user_data;
+	std::vector<PurpleRequestActionCb> callbacks;
+
+    RequestActionEvent(void *handle, const char *title, const char *primary, const char *secondary,
+                      PurpleAccount *account, const char *who, PurpleConversation *conv,
+                      void *user_data, const std::vector<PurpleRequestActionCb> &callbacks)
+    : PurpleEvent(PurpleEventType::RequestAction),
+      handle(handle),
+      title(title ? title : ""),
+      primary(primary ? primary : ""),
+      secondary(secondary ? secondary : ""),
+      account(account),
+      username(who ? who : ""),
+      conv(conv),
+      user_data(user_data),
+      callbacks(callbacks)
+      {}
+    RequestActionEvent(void *handle, PurpleAccount *account, const char *who,
+                       PurpleConversation *conv, unsigned actionCount)
+    : PurpleEvent(PurpleEventType::RequestAction),
+      handle(handle),
+      account(account),
+      username(who ? who : ""),
+      conv(conv),
+      callbacks(actionCount, nullptr)
       {}
 };
 

@@ -785,3 +785,31 @@ TEST_F(PrivateChatTest, TypingNotification)
     pluginInfo().send_typing(connection, purpleUserName(0).c_str(), PURPLE_NOT_TYPING);
     tgl.verifyRequest(sendChatAction(chatIds[0], make_object<chatActionCancel>()));
 }
+
+TEST_F(PrivateChatTest, DeleteContact)
+{
+    loginWithOneContact();
+
+    PurpleBuddy *buddy = purple_find_buddy(account, purpleUserName(0).c_str());
+    PurpleBuddy *dup   = purple_buddy_new(account, buddy->name, buddy->alias);
+    purple_blist_remove_buddy(buddy);
+    prpl.discardEvents();
+
+    pluginInfo().remove_buddy(connection, dup, NULL);
+    purple_buddy_destroy(dup);
+    prpl.verifyEvents(RequestActionEvent(connection, account, purpleUserName(0).c_str(), NULL, 2));
+    prpl.requestedAction(0);
+
+    tgl.verifyRequests({
+        make_object<deleteChatHistory>(chatIds[0], true, false),
+        make_object<removeContacts>(std::vector<std::int32_t>(1, userIds[0]))
+    });
+
+    auto userUpdate1 = standardUpdateUser(0);
+    userUpdate1->user_->is_contact_ = true;
+    tgl.update(std::move(userUpdate1));
+    tgl.update(standardUpdateUser(0));
+    tgl.update(make_object<updateChatTitle>(chatIds[0], "New Title"));
+    tgl.update(make_object<updateChatChatList>(chatIds[0], make_object<chatListArchive>()));
+    tgl.update(make_object<updateChatChatList>(chatIds[0], nullptr));
+}

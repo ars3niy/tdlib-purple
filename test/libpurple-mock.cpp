@@ -197,11 +197,8 @@ void purple_blist_remove_buddy(PurpleBuddy *buddy)
     pAccount->buddies.erase(it);
 
     EVENT(RemoveBuddyEvent, buddy->account, buddy->name);
-
-    free(buddy->name);
-    free(buddy->alias);
     removeNode(buddy->node);
-    delete buddy;
+    purple_buddy_destroy(buddy);
 }
 
 void purple_blist_alias_buddy(PurpleBuddy *buddy, const char *alias)
@@ -286,6 +283,13 @@ PurpleBuddy *purple_buddy_new(PurpleAccount *account, const char *name, const ch
     newNode(buddy->node, PURPLE_BLIST_BUDDY_NODE);
 
     return buddy;
+}
+
+void purple_buddy_destroy(PurpleBuddy *buddy)
+{
+    free(buddy->name);
+    free(buddy->alias);
+    delete buddy;
 }
 
 PurpleChat *purple_chat_new(PurpleAccount *account, const char *alias, GHashTable *components)
@@ -612,6 +616,16 @@ void *purple_request_action(void *handle, const char *title, const char *primary
 	const char *who, PurpleConversation *conv, void *user_data,
 	size_t action_count, ...)
 {
+    std::vector<PurpleRequestActionCb> callbacks;
+    va_list ap;
+    va_start(ap, action_count);
+    for (size_t i = 0; i < action_count; i++) {
+        va_arg(ap, char*);
+        callbacks.push_back(va_arg(ap, PurpleRequestActionCb));
+    }
+    va_end(ap);
+
+    EVENT(RequestActionEvent, handle, title, primary, secondary, account, who, conv, user_data, callbacks);
     return NULL;
 }
 

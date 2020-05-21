@@ -277,6 +277,20 @@ static void compare(const removeProxy &actual, const removeProxy &expected)
     COMPARE(proxy_id_);
 }
 
+static void compare(const deleteChatHistory &actual, const deleteChatHistory &expected)
+{
+    COMPARE(chat_id_);
+    COMPARE(remove_from_chat_list_);
+    COMPARE(revoke_);
+}
+
+static void compare(const removeContacts &actual, const removeContacts &expected)
+{
+    COMPARE(user_ids_.size());
+    for (unsigned i = 0; i < actual.user_ids_.size(); i++)
+        COMPARE(user_ids_[i]);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -312,6 +326,8 @@ static void compareRequests(const Function &actual, const Function &expected,
         case disableProxy::ID: break; // no data fields
         case getProxies::ID: break; // no data fields
         C(removeProxy)
+        C(deleteChatHistory)
+        C(removeContacts)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }
