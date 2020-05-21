@@ -237,7 +237,7 @@ static void tgprpl_chat_join (PurpleConnection *gc, GHashTable *data)
 
 static char *tgprpl_get_chat_name (GHashTable * data)
 {
-    return g_strdup("test");
+    return g_strdup(getChatName(data));
 }
 
 static void tgprpl_chat_invite (PurpleConnection *gc, int id, const char *message, const char *who)
