@@ -512,67 +512,6 @@ void PurpleTdClient::loginCreatePrivateChatResponse(uint64_t requestId, td::td_a
     requestMissingPrivateChats();
 }
 
-void PurpleTdClient::updatePrivateChat(const td::td_api::chat &chat, const td::td_api::user &user)
-{
-    std::string purpleUserName = getPurpleBuddyName(user);
-
-    PurpleBuddy *buddy = purple_find_buddy(m_account, purpleUserName.c_str());
-    if (buddy == NULL) {
-        purple_debug_misc(config::pluginId, "Adding new buddy %s for user %s, chat id %" G_GINT64_FORMAT "\n",
-                          chat.title_.c_str(), purpleUserName.c_str(), chat.id_);
-
-        const ContactRequest *contactReq = m_data.findContactRequest(user.id_);
-        PurpleGroup          *group      = (contactReq && !contactReq->groupName.empty()) ?
-                                           purple_find_group(contactReq->groupName.c_str()) : NULL;
-        if (group)
-            purple_debug_misc(config::pluginId, "Adding into group %s\n", purple_group_get_name(group));
-
-        buddy = purple_buddy_new(m_account, purpleUserName.c_str(), chat.title_.c_str());
-        purple_blist_add_buddy(buddy, NULL, group, NULL);
-        // If a new buddy has been added here, it means that there was updateNewChat with the private
-        // chat. This means either we added them to contacts or started messaging them, or they
-        // messaged us. Either way, there is no need to for any extra notification about new contact
-        // because the user will be aware anyway.
-    } else {
-        const char *oldName = purple_buddy_get_alias_only(buddy);
-        if (chat.title_ != oldName) {
-            purple_debug_misc(config::pluginId, "Renaming buddy %s '%s' to '%s'\n",
-                                purpleUserName.c_str(), oldName, chat.title_.c_str());
-            /*PurpleGroup *group = purple_buddy_get_group(buddy);
-            purple_blist_remove_buddy(buddy);
-            buddy = purple_buddy_new(m_account, purpleUserName.c_str(), chat.title_.c_str());
-            purple_blist_add_buddy(buddy, NULL, group, NULL);*/
-            purple_blist_alias_buddy(buddy, chat.title_.c_str());
-        }
-    }
-}
-
-void PurpleTdClient::updateBasicGroupChat(int32_t groupId)
-{
-    const td::td_api::basicGroup *group = m_data.getBasicGroup(groupId);
-    const td::td_api::chat       *chat  = m_data.getBasicGroupChatByGroup(groupId);
-
-    if (!group)
-        purple_debug_misc(config::pluginId, "Basic group %d does not exist yet\n", groupId);
-    else if (!chat)
-        purple_debug_misc(config::pluginId, "Chat for basic group %d does not exist yet\n", groupId);
-    else
-        updateGroupChat(m_account, *chat, group->status_, "basic group", groupId);
-}
-
-void PurpleTdClient::updateSupergroupChat(int32_t groupId)
-{
-    const td::td_api::supergroup *group = m_data.getSupergroup(groupId);
-    const td::td_api::chat       *chat  = m_data.getSupergroupChatByGroup(groupId);
-
-    if (!group)
-        purple_debug_misc(config::pluginId, "Supergroup %d does not exist yet\n", groupId);
-    else if (!chat)
-        purple_debug_misc(config::pluginId, "Chat for supergroup %d does not exist yet\n", groupId);
-    else
-        updateGroupChat(m_account, *chat, group->status_, "supergroup", groupId);
-}
-
 void PurpleTdClient::requestBasicGroupMembers(int32_t groupId)
 {
     if (!m_data.isBasicGroupInfoRequested(groupId)) {
@@ -1054,7 +993,7 @@ void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> userInf
         const td::td_api::chat *chat = m_data.getPrivateChatByUserId(userId);
 
         if (user && chat && isChatInContactList(*chat, user))
-            updatePrivateChat(*chat, *user);
+            updatePrivateChat(m_account, *chat, *user, m_data);
     }
 }
 
@@ -1071,7 +1010,7 @@ void PurpleTdClient::updateGroup(td::td_api::object_ptr<td::td_api::basicGroup> 
 
     // purple_blist_find_chat doesn't work if account is not connected
     if (purple_account_is_connected(m_account))
-        updateBasicGroupChat(id);
+        updateBasicGroupChat(m_account, id, m_data);
 }
 
 void PurpleTdClient::updateSupergroup(td::td_api::object_ptr<td::td_api::supergroup> group)
@@ -1087,7 +1026,7 @@ void PurpleTdClient::updateSupergroup(td::td_api::object_ptr<td::td_api::supergr
 
     // purple_blist_find_chat doesn't work if account is not connected
     if (purple_account_is_connected(m_account))
-        updateSupergroupChat(id);
+        updateSupergroupChat(m_account, id, m_data);
 }
 
 void PurpleTdClient::updateChat(const td::td_api::chat *chat)
@@ -1104,15 +1043,15 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
     // user find_buddy either
     if (purple_account_is_connected(m_account) && isChatInContactList(*chat, privateChatUser)) {
         if (privateChatUser)
-            updatePrivateChat(*chat, *privateChatUser);
+            updatePrivateChat(m_account, *chat, *privateChatUser, m_data);
 
         // purple_blist_find_chat doesn't work if account is not connected
         if (basicGroupId) {
             requestBasicGroupMembers(basicGroupId);
-            updateBasicGroupChat(basicGroupId);
+            updateBasicGroupChat(m_account, basicGroupId, m_data);
         }
         if (supergroupId)
-            updateSupergroupChat(supergroupId);
+            updateSupergroupChat(m_account, supergroupId, m_data);
     }
 }
 

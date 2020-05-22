@@ -193,9 +193,45 @@ PurpleConvChat *findChatConversation(PurpleAccount *account, const td::td_api::c
     return NULL;
 }
 
-void updateGroupChat(PurpleAccount *account, const td::td_api::chat &chat,
-                     const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &groupStatus,
-                     const char *groupType, int32_t groupId)
+void updatePrivateChat(PurpleAccount *account, const td::td_api::chat &chat, const td::td_api::user &user,
+                       TdAccountData &accountData)
+{
+    std::string purpleUserName = getPurpleBuddyName(user);
+
+    PurpleBuddy *buddy = purple_find_buddy(account, purpleUserName.c_str());
+    if (buddy == NULL) {
+        purple_debug_misc(config::pluginId, "Adding new buddy %s for user %s, chat id %" G_GINT64_FORMAT "\n",
+                          chat.title_.c_str(), purpleUserName.c_str(), chat.id_);
+
+        const ContactRequest *contactReq = accountData.findContactRequest(user.id_);
+        PurpleGroup          *group      = (contactReq && !contactReq->groupName.empty()) ?
+                                           purple_find_group(contactReq->groupName.c_str()) : NULL;
+        if (group)
+            purple_debug_misc(config::pluginId, "Adding into group %s\n", purple_group_get_name(group));
+
+        buddy = purple_buddy_new(account, purpleUserName.c_str(), chat.title_.c_str());
+        purple_blist_add_buddy(buddy, NULL, group, NULL);
+        // If a new buddy has been added here, it means that there was updateNewChat with the private
+        // chat. This means either we added them to contacts or started messaging them, or they
+        // messaged us. Either way, there is no need to for any extra notification about new contact
+        // because the user will be aware anyway.
+    } else {
+        const char *oldName = purple_buddy_get_alias_only(buddy);
+        if (chat.title_ != oldName) {
+            purple_debug_misc(config::pluginId, "Renaming buddy %s '%s' to '%s'\n",
+                                purpleUserName.c_str(), oldName, chat.title_.c_str());
+            /*PurpleGroup *group = purple_buddy_get_group(buddy);
+            purple_blist_remove_buddy(buddy);
+            buddy = purple_buddy_new(m_account, purpleUserName.c_str(), chat.title_.c_str());
+            purple_blist_add_buddy(buddy, NULL, group, NULL);*/
+            purple_blist_alias_buddy(buddy, chat.title_.c_str());
+        }
+    }
+}
+
+static void updateGroupChat(PurpleAccount *account, const td::td_api::chat &chat,
+                            const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &groupStatus,
+                            const char *groupType, int32_t groupId)
 {
     if (!isGroupMember(groupStatus)) {
         purple_debug_misc(config::pluginId, "Skipping %s %d because we are not a member\n",
@@ -217,6 +253,32 @@ void updateGroupChat(PurpleAccount *account, const td::td_api::chat &chat,
             purple_blist_alias_chat(purpleChat, chat.title_.c_str());
         }
     }
+}
+
+void updateBasicGroupChat(PurpleAccount *account, int32_t groupId, TdAccountData &accountData)
+{
+    const td::td_api::basicGroup *group = accountData.getBasicGroup(groupId);
+    const td::td_api::chat       *chat  = accountData.getBasicGroupChatByGroup(groupId);
+
+    if (!group)
+        purple_debug_misc(config::pluginId, "Basic group %d does not exist yet\n", groupId);
+    else if (!chat)
+        purple_debug_misc(config::pluginId, "Chat for basic group %d does not exist yet\n", groupId);
+    else
+        updateGroupChat(account, *chat, group->status_, "basic group", groupId);
+}
+
+void updateSupergroupChat(PurpleAccount *account, int32_t groupId, TdAccountData &accountData)
+{
+    const td::td_api::supergroup *group = accountData.getSupergroup(groupId);
+    const td::td_api::chat       *chat  = accountData.getSupergroupChatByGroup(groupId);
+
+    if (!group)
+        purple_debug_misc(config::pluginId, "Supergroup %d does not exist yet\n", groupId);
+    else if (!chat)
+        purple_debug_misc(config::pluginId, "Chat for supergroup %d does not exist yet\n", groupId);
+    else
+        updateGroupChat(account, *chat, group->status_, "supergroup", groupId);
 }
 
 static void showMessageTextIm(PurpleAccount *account, const char *purpleUserName, const char *text,

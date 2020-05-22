@@ -67,9 +67,6 @@ private:
     void       updateUser(td::td_api::object_ptr<td::td_api::user> user);
     void       updateGroup(td::td_api::object_ptr<td::td_api::basicGroup> group);
     void       updateSupergroup(td::td_api::object_ptr<td::td_api::supergroup> group);
-    void       updatePrivateChat(const td::td_api::chat &chat, const td::td_api::user &user);
-    void       updateBasicGroupChat(int32_t groupId);
-    void       updateSupergroupChat(int32_t groupId);
     void       updateChat(const td::td_api::chat *chat);
     void       requestBasicGroupMembers(int32_t groupId);
     void       groupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
