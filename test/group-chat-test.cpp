@@ -572,3 +572,67 @@ TEST_F(GroupChatTest, AddContactByGroupChatName)
     tgl.verifyRequest(createPrivateChat(userIds[1], false));
     // The rest is tested elsewhere
 }
+
+TEST_F(GroupChatTest, CreateRemoveBasicGroupInAnotherClient)
+{
+    constexpr int32_t date[]      = {12345, 123456};
+    constexpr int64_t messageId[] = {10000, 10001};
+    loginWithOneContact();
+
+    tgl.update(make_object<updateBasicGroup>(make_object<basicGroup>(
+        groupId, 2, make_object<chatMemberStatusCreator>("", true), true, 0
+    )));
+    tgl.verifyNoRequests();
+
+    tgl.update(make_object<updateNewChat>(makeChat(
+        groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
+    )));
+    prpl.verifyNoEvents();
+    tgl.verifyNoRequests();
+
+    std::vector<int32_t> members = {selfId, userIds[0]};
+    tgl.update(make_object<updateNewMessage>(
+        makeMessage(messageId[0], selfId, groupChatId, true, date[0],
+                    make_object<messageBasicGroupChatCreate>(groupChatTitle, std::move(members)))
+    ));
+    tgl.verifyRequest(viewMessages(groupChatId, {messageId[0]}, true));
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, 2, groupChatPurpleName, groupChatPurpleName),
+        ConvSetTitleEvent(groupChatPurpleName, groupChatTitle),
+        ConversationWriteEvent(groupChatPurpleName, "",
+                               selfFirstName + " " + selfLastName +
+                               ": Received unsupported message type messageBasicGroupChatCreate",
+                               PURPLE_MESSAGE_SYSTEM, date[0])
+    );
+
+    tgl.update(makeUpdateChatListMain(groupChatId));
+    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
+    prpl.verifyEvents(AddChatEvent(
+        groupChatPurpleName, groupChatTitle, account, NULL, NULL
+    ));
+
+    tgl.update(make_object<updateBasicGroupFullInfo>(
+        groupId,
+        make_object<basicGroupFullInfo>("", selfId, std::vector<object_ptr<chatMember>>(), "")
+    ));
+    tgl.update(make_object<updateBasicGroup>(make_object<basicGroup>(
+        groupId, 0,
+        make_object<chatMemberStatusCreator>("", false),
+        true, 0
+    )));
+
+    tgl.update(make_object<updateNewMessage>(
+        makeMessage(messageId[1], selfId, groupChatId, true, date[1],
+                    make_object<messageChatDeleteMember>(selfId))
+    ));
+    tgl.verifyRequest(viewMessages(groupChatId, {messageId[1]}, true));
+    prpl.verifyEvents(
+        ConversationWriteEvent(groupChatPurpleName, "",
+                               selfFirstName + " " + selfLastName +
+                               ": Received unsupported message type messageChatDeleteMember",
+                               PURPLE_MESSAGE_SYSTEM, date[1])
+    );
+
+    tgl.update(make_object<updateChatChatList>(groupChatId, nullptr));
+    prpl.verifyEvents(RemoveChatEvent(groupChatPurpleName, ""));
+}

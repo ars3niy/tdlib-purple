@@ -228,7 +228,7 @@ void updatePrivateChat(TdAccountData &account, const td::td_api::chat &chat, con
     }
 }
 
-static void updateGroupChat(PurpleAccount *account, const td::td_api::chat &chat,
+static void updateGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat,
                             const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &groupStatus,
                             const char *groupType, int32_t groupId)
 {
@@ -239,11 +239,11 @@ static void updateGroupChat(PurpleAccount *account, const td::td_api::chat &chat
     }
 
     std::string  chatName   = getChatName(chat);
-    PurpleChat  *purpleChat = purple_blist_find_chat(account, chatName.c_str());
+    PurpleChat  *purpleChat = purple_blist_find_chat(purpleAccount, chatName.c_str());
     if (!purpleChat) {
         purple_debug_misc(config::pluginId, "Adding new chat for %s %d (%s)\n",
                           groupType, groupId, chat.title_.c_str());
-        purpleChat = purple_chat_new(account, chat.title_.c_str(), getChatComponents(chat));
+        purpleChat = purple_chat_new(purpleAccount, chat.title_.c_str(), getChatComponents(chat));
         purple_blist_add_chat(purpleChat, NULL, NULL);
     } else {
         const char *oldName = purple_chat_get_name(purpleChat);
@@ -278,6 +278,15 @@ void updateSupergroupChat(TdAccountData &account, int32_t groupId)
         purple_debug_misc(config::pluginId, "Chat for supergroup %d does not exist yet\n", groupId);
     else
         updateGroupChat(account.purpleAccount, *chat, group->status_, "supergroup", groupId);
+}
+
+void removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat)
+{
+    std::string  chatName   = getChatName(chat);
+    PurpleChat  *purpleChat = purple_blist_find_chat(purpleAccount, chatName.c_str());
+
+    if (purpleChat)
+        purple_blist_remove_chat(purpleChat);
 }
 
 static void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const char *text,

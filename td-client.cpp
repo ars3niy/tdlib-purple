@@ -1042,7 +1042,10 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
 
     // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
     // user find_buddy either
-    if (purple_account_is_connected(m_account) && isChatInContactList(*chat, privateChatUser)) {
+    if (!purple_account_is_connected(m_account))
+        return;
+
+    if (isChatInContactList(*chat, privateChatUser)) {
         if (privateChatUser)
             updatePrivateChat(m_data, *chat, *privateChatUser);
 
@@ -1053,6 +1056,8 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
         }
         if (supergroupId)
             updateSupergroupChat(m_data, supergroupId);
+    } else {
+        removeGroupChat(m_account, *chat);
     }
 }
 

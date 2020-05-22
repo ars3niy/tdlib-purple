@@ -41,6 +41,7 @@ PurpleConvChat *    findChatConversation(PurpleAccount *account, const td::td_ap
 void                updatePrivateChat(TdAccountData &account, const td::td_api::chat &chat, const td::td_api::user &user);
 void                updateBasicGroupChat(TdAccountData &account, int32_t groupId);
 void                updateSupergroupChat(TdAccountData &account, int32_t groupId);
+void                removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat);
 std::string         getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
                                         TdAccountData &account);
 std::string         getForwardSource(const td::td_api::messageForwardInfo &forwardInfo,
