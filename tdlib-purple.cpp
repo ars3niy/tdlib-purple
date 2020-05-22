@@ -43,10 +43,19 @@ static const char *getLastOnline(const td::td_api::UserStatus &status)
     return "";
 }
 
+static PurpleTdClient *getTdClient(PurpleAccount *account)
+{
+    PurpleConnection *connection = purple_account_get_connection(account);
+    if (connection)
+        return static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(connection));
+    else
+        return NULL;
+}
+
 static void tgprpl_tooltip_text (PurpleBuddy *buddy, PurpleNotifyUserInfo *info, gboolean full)
 {
-    PurpleConnection *connection = purple_account_get_connection(purple_buddy_get_account(buddy));
-    PurpleTdClient   *tdClient   = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(connection));
+    PurpleTdClient *tdClient = getTdClient(purple_buddy_get_account(buddy));
+    if (!tdClient) return;
 
     std::vector<const td::td_api::user *> users;
     tdClient->getUsers(purple_buddy_get_name(buddy), users);
@@ -70,6 +79,16 @@ static GList *tgprpl_status_types (PurpleAccount *acct)
     types = g_list_prepend (types, type);
 
     return g_list_reverse (types);
+}
+
+struct RequestData {
+    PurpleAccount *account;
+    std::string stringData;
+};
+
+static void cancelRequest(RequestData *data, int action)
+{
+    delete data;
 }
 
 static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
@@ -182,42 +201,28 @@ static void tgprpl_add_buddy (PurpleConnection *gc, PurpleBuddy *buddy, PurpleGr
     tdClient->addContact(phoneNumberStr, aliasStr, groupName ? groupName : "");
 }
 
-struct DeleteRequest {
-    PurpleAccount *account;
-    std::string    buddyName;
-};
-
-static void request_delete_contact_on_server_yes (void *data, int action)
+static void request_delete_contact_on_server_yes (RequestData *data, int action)
 {
-    DeleteRequest    *request    = static_cast<DeleteRequest *>(data);
-    PurpleConnection *connection = purple_account_get_connection(request->account);
+    std::unique_ptr<RequestData> request(data);
+    PurpleTdClient *tdClient = getTdClient(request->account);
 
-    if (connection && purple_connection_get_protocol_data(connection)) {
-        PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(connection));
-        tdClient->removeContactAndPrivateChat(request->buddyName);
-    }
-    delete request;
-}
-
-static void request_delete_contact_on_server_no (void *data, int action)
-{
-    DeleteRequest *request = static_cast<DeleteRequest *>(data);
-    delete request;
+    if (tdClient)
+        tdClient->removeContactAndPrivateChat(request->stringData);
 }
 
 static void tgprpl_request_delete_contact (PurpleConnection *gc, PurpleBuddy *buddy, PurpleGroup *group)
 {
     g_return_if_fail(buddy);
 
-    DeleteRequest *data = new DeleteRequest;
-    data->account = purple_connection_get_account(gc);;
-    data->buddyName = purple_buddy_get_name(buddy);
+    RequestData *data = new RequestData;
+    data->account = purple_connection_get_account(gc);
+    data->stringData = purple_buddy_get_name(buddy);
 
     purple_request_yes_no(gc, _("Remove contact"), _("Remove contact"),
                           _("Remove from global contact list and delete chat history from the server?\n"),
                           0, purple_connection_get_account(gc), purple_buddy_get_name(buddy),
                           NULL, data, request_delete_contact_on_server_yes,
-                          request_delete_contact_on_server_no);
+                          cancelRequest);
 }
 
 static std::array<const char *, 3> invitePrefixes {
@@ -231,6 +236,57 @@ static bool isValidInviteLink(const char *link)
     return !strncmp(link, invitePrefixes[0], strlen(invitePrefixes[0])) ||
            !strncmp(link, invitePrefixes[1], strlen(invitePrefixes[1])) ||
            !strncmp(link, invitePrefixes[2], strlen(invitePrefixes[2]));
+}
+
+static void create_group_chat_cb (RequestData *data, PurpleRequestFields* fields)
+{
+    std::unique_ptr<RequestData> request(data);
+
+    std::vector<std::string> members;
+    for (const char *label: {"user1", "user2", "user3"}) {
+        const char *userName = purple_request_fields_get_string(fields, label);
+        if (userName && *userName)
+            members.emplace_back(userName);
+    }
+
+    PurpleTdClient *tdClient = getTdClient(request->account);
+    if (tdClient)
+        tdClient->createGroup(request->stringData.c_str(), GROUP_TYPE_BASIC, members);
+}
+
+static void cancel_group_chat_cb (RequestData *data)
+{
+    delete data;
+}
+
+static void requestCreateBasicGroup(PurpleConnection *gc, const char *name)
+{
+    // Telegram doesn't allow to create chats with only one user, so we need to force
+    // the user to specify at least one other one.
+    PurpleRequestFields* fields = purple_request_fields_new ();
+    PurpleRequestFieldGroup* group = purple_request_field_group_new (
+        _("Invite at least one additional user by specifying their full name (autocompletion available)."));
+
+    PurpleRequestField *field = purple_request_field_string_new ("user1", _("Username"), NULL, FALSE);
+    purple_request_field_set_type_hint (field, "screenname");
+    purple_request_field_group_add_field (group, field);
+
+    field = purple_request_field_string_new ("user2", _("Username"), NULL, FALSE);
+    purple_request_field_set_type_hint (field, "screenname");
+    purple_request_field_group_add_field (group, field);
+
+    field = purple_request_field_string_new ("user3", _("Username"), NULL, FALSE);
+    purple_request_field_set_type_hint (field, "screenname");
+    purple_request_field_group_add_field (group, field);
+
+    purple_request_fields_add_group (fields, group);
+
+    RequestData *data = new RequestData;
+    data->account = purple_connection_get_account(gc);
+    data->stringData = name;
+    purple_request_fields (gc, _("Create group chat"), _("Invite users"), NULL, fields, _("OK"),
+                           G_CALLBACK(create_group_chat_cb), _("Cancel"), G_CALLBACK(cancel_group_chat_cb),
+                           purple_connection_get_account(gc), NULL, NULL, data);
 }
 
 static void tgprpl_chat_join (PurpleConnection *gc, GHashTable *data)
@@ -248,11 +304,25 @@ static void tgprpl_chat_join (PurpleConnection *gc, GHashTable *data)
             std::string message = formatMessage(_("Invite link must begin with {}, {}, or {}"),
                                                 {invitePrefixes[0], invitePrefixes[1], invitePrefixes[2]});
             purple_notify_error(gc, _("Failed to join chat"), message.c_str(), NULL);
-        }
-        else if (!tdClient->joinChatByLink(inviteLink))
             purple_serv_got_join_chat_failed (gc, data);
-    } else
-        purple_serv_got_join_chat_failed (gc, data);
+        }
+        else 
+            tdClient->joinChatByLink(inviteLink);
+    } else {
+        const char *groupName  = getChatGroupName(data);
+        int         groupType  = getChatGroupType(data);
+        if (groupName && *groupName && ((groupType == GROUP_TYPE_BASIC) ||
+                                        (groupType == GROUP_TYPE_SUPER) ||
+                                        (groupType == GROUP_TYPE_CHANNEL))) {
+            if (groupType == GROUP_TYPE_BASIC)
+                requestCreateBasicGroup(gc, groupName);
+            else
+                tdClient->createGroup(groupName, groupType, {});
+        } else {
+            purple_notify_error(gc, _("Failed to join chat"), _("Please enter group name and valid type"), NULL);
+            purple_serv_got_join_chat_failed (gc, data);
+        }
+    }
 }
 
 static char *tgprpl_get_chat_name (GHashTable * data)

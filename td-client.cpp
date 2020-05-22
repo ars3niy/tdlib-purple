@@ -1301,13 +1301,11 @@ int PurpleTdClient::sendGroupMessage(int purpleChatId, const char *message)
     return -1;
 }
 
-bool PurpleTdClient::joinChatByLink(const char *inviteLink)
+void PurpleTdClient::joinChatByLink(const char *inviteLink)
 {
     auto     request   = td::td_api::make_object<td::td_api::joinChatByInviteLink>(inviteLink);
     uint64_t requestId = m_transceiver.sendQuery(std::move(request), &PurpleTdClient::joinChatByLinkResponse);
     m_data.addPendingRequest<GroupJoinRequest>(requestId, inviteLink);
-
-    return true;
 }
 
 void PurpleTdClient::joinChatByLinkResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -1346,6 +1344,60 @@ void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_
     if (object && (object->get_id() == td::td_api::message::ID)) {
         const td::td_api::message &message = static_cast<td::td_api::message &>(*object);
         m_data.addTempFileUpload(message.id_, request->tempFile);
+    }
+}
+
+void PurpleTdClient::createGroup(const char *name, int type,
+                                 const std::vector<std::string> &basicGroupMembers)
+{
+    td::td_api::object_ptr<td::td_api::Function> request;
+    if (type == GROUP_TYPE_BASIC) {
+        auto createRequest = td::td_api::make_object<td::td_api::createNewBasicGroupChat>();
+        createRequest->title_ = name;
+
+        std::string errorMessage;
+        if (basicGroupMembers.empty())
+            errorMessage = _("Cannot create basic group without additional members");
+        for (const std::string &memberName: basicGroupMembers) {
+            int32_t userId = stringToUserId(memberName.c_str());
+            if (userId != 0) {
+                if (!m_data.getUser(userId))
+                    errorMessage = formatMessage(_("No known user with id {}"), std::to_string(userId));
+            } else {
+                std::vector<const td::td_api::user*> users;
+                m_data.getUsersByDisplayName(memberName.c_str(), users);
+                if (users.size() == 1)
+                    userId = users[0]->id_;
+                else if (users.empty())
+                    errorMessage = formatMessage(_("No known user by the name '{}'"), memberName);
+                else
+                    errorMessage = "More than one user known with name '" + memberName + "'";
+            }
+            if (!errorMessage.empty())
+                break;
+            createRequest->user_ids_.push_back(userId);
+        }
+
+        if (!errorMessage.empty())
+            purple_notify_error(purple_account_get_connection(m_account),
+                                _("Failed to create group"), _("Invalid group members"),
+                                errorMessage.c_str());
+        else
+            request = std::move(createRequest);
+    } else if ((type == GROUP_TYPE_SUPER) || (type == GROUP_TYPE_CHANNEL)) {
+        auto createRequest = td::td_api::make_object<td::td_api::createNewSupergroupChat>();
+        createRequest->title_ = name;
+        createRequest->is_channel_ = (type == GROUP_TYPE_CHANNEL);
+        request = std::move(createRequest);
+    }
+
+    if (request) {
+        // Same as for joining by invite link
+        std::vector<PurpleChat *> obsoleteChats = findChatsByNewGroup(name, type);
+        for (PurpleChat *chat: obsoleteChats)
+            purple_blist_remove_chat(chat);
+
+        m_transceiver.sendQuery(std::move(request), nullptr);
     }
 }
 

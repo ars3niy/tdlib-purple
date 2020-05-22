@@ -895,4 +895,53 @@ const char *purple_proxy_info_get_password(const PurpleProxyInfo *info)
     return info->password;
 }
 
+PurpleRequestFields *purple_request_fields_new(void)
+{
+    return NULL;
+}
+
+PurpleRequestFieldGroup *purple_request_field_group_new(const char *title)
+{
+    return NULL;
+}
+
+PurpleRequestField *purple_request_field_string_new(const char *id,
+												const char *text,
+												const char *default_value,
+												gboolean multiline)
+{
+    return NULL;
+}
+
+void purple_request_field_set_type_hint(PurpleRequestField *field,
+									  const char *type_hint)
+{
+}
+
+void purple_request_field_group_add_field(PurpleRequestFieldGroup *group,
+										PurpleRequestField *field)
+{
+}
+
+void purple_request_fields_add_group(PurpleRequestFields *fields,
+								   PurpleRequestFieldGroup *group)
+{
+}
+
+const char *purple_request_fields_get_string(const PurpleRequestFields *fields,
+										   const char *id)
+{
+    return "";
+}
+
+void *purple_request_fields(void *handle, const char *title, const char *primary,
+	const char *secondary, PurpleRequestFields *fields,
+	const char *ok_text, GCallback ok_cb,
+	const char *cancel_text, GCallback cancel_cb,
+	PurpleAccount *account, const char *who, PurpleConversation *conv,
+	void *user_data)
+{
+    return NULL;
+}
+
 };

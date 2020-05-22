@@ -1,17 +1,20 @@
 #include "chat-info.h"
 #include "config.h"
+#include <algorithm>
 
 static const char *_(const char *s) { return s; }
 
 static char idKey[]     = "id";
 static char inviteKey[] = "link";
+static char nameKey[]   = "name";
+static char typeKey[]   = "type";
 
 GList *getChatJoinInfo()
 {
     // First entry is the internal chat name used to look up conversations
     struct proto_chat_entry *pce;
     pce = g_new0 (struct proto_chat_entry, 1);
-    pce->label = _("Chat ID (leave empty):");
+    pce->label = _("Chat ID (don't change):");
     pce->identifier = idKey;
     pce->required = FALSE;
     GList *info = g_list_append (NULL, pce);
@@ -23,9 +26,19 @@ GList *getChatJoinInfo()
     info = g_list_append (info, pce);
 
     pce = g_new0 (struct proto_chat_entry, 1);
-    pce->label = _("Subject (if creating a group):");
-    pce->identifier = "subject";
+    pce->label = _("Group name (if creating a group):");
+    pce->identifier = nameKey;
     pce->required = FALSE;
+    info = g_list_append (info, pce);
+
+    pce = g_new0 (struct proto_chat_entry, 1);
+    pce->label = _("Group to create: 1=small 2=big 3=channel");
+    pce->identifier = typeKey;
+    pce->required = FALSE;
+    pce->is_int = TRUE;
+    static_assert((GROUP_TYPE_BASIC > 0) && (GROUP_TYPE_SUPER > 0) && (GROUP_TYPE_CHANNEL > 0), "positive please");
+    pce->min = std::min({GROUP_TYPE_BASIC, GROUP_TYPE_SUPER, GROUP_TYPE_CHANNEL});
+    pce->max = std::max({GROUP_TYPE_BASIC, GROUP_TYPE_SUPER, GROUP_TYPE_CHANNEL});
     info = g_list_append (info, pce);
 
     return info;
@@ -55,6 +68,17 @@ const char *getChatName(GHashTable *components)
 const char *getChatInviteLink(GHashTable *components)
 {
     return (const char *)g_hash_table_lookup(components, inviteKey);
+}
+
+const char *getChatGroupName(GHashTable *components)
+{
+    return (const char *)g_hash_table_lookup(components, nameKey);
+}
+
+int getChatGroupType(GHashTable *components)
+{
+    const char *s = static_cast<const char *>(g_hash_table_lookup(components, typeKey));
+    return s ? atoi(s) : 0;
 }
 
 int64_t getTdlibChatId(const char *chatName)

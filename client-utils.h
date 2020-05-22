@@ -48,6 +48,7 @@ std::string         getForwardSource(const td::td_api::messageForwardInfo &forwa
                                      TdAccountData &accountData);
 void                getNamesFromAlias(const char *alias, std::string &firstName, std::string &lastName);
 std::vector<PurpleChat *> findChatsByInviteLink(const std::string &inviteLink);
+std::vector<PurpleChat *> findChatsByNewGroup(const char *name, int type);
 
 void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const TgMessageInfo &message,
                      const char *text, const char *notification, uint32_t extraFlags = 0);

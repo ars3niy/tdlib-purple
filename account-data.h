@@ -26,7 +26,7 @@ public:
     uint64_t requestId;
 
     PendingRequest(uint64_t requestId) : requestId(requestId) {}
-    virtual ~PendingRequest() {} // for dynamic_cast
+    virtual ~PendingRequest() {}
 };
 
 class GroupInfoRequest: public PendingRequest {
