@@ -19,7 +19,8 @@ static bool isChatInContactList(const td::td_api::chat &chat, const td::td_api::
 }
 
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)
-:   m_transceiver(this, acct, &PurpleTdClient::processUpdate, testBackend)
+:   m_transceiver(this, acct, &PurpleTdClient::processUpdate, testBackend),
+    m_data(acct)
 {
     m_account = acct;
 }
@@ -580,7 +581,7 @@ void PurpleTdClient::showTextMessage(const td::td_api::chat &chat, const TgMessa
                                      const td::td_api::messageText &text)
 {
     if (text.text_)
-        showMessageText(m_account, chat, message, text.text_->text_.c_str(), NULL, m_data);
+        showMessageText(m_data, chat, message, text.text_->text_.c_str(), NULL);
 }
 
 static const td::td_api::file *selectPhotoSize(const td::td_api::messagePhoto &photo)
@@ -636,7 +637,7 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const TgMess
     const char *caption = photo.caption_ ? photo.caption_->text_.c_str() : NULL;
 
     if (!notice.empty())
-        showMessageText(m_account, chat, message, caption, notice.c_str(), m_data);
+        showMessageText(m_data, chat, message, caption, notice.c_str());
 
     if (file)
         showImage(chat, message, *file, caption);
@@ -724,8 +725,8 @@ void PurpleTdClient::showDownloadedImage(int64_t chatId, const TgMessageInfo &me
             text += caption;
         }
 
-        showMessageText(m_account, *chat, message, text.empty() ? NULL : text.c_str(),
-                        notice.empty() ? NULL : notice.c_str(), m_data, PURPLE_MESSAGE_IMAGES);
+        showMessageText(m_data, *chat, message, text.empty() ? NULL : text.c_str(),
+                        notice.empty() ? NULL : notice.c_str(), PURPLE_MESSAGE_IMAGES);
     }
 }
 
@@ -737,9 +738,9 @@ void PurpleTdClient::showDocument(const td::td_api::chat &chat, const TgMessageI
         description = description + ": " + document.document_->file_name_ + " [" +
         document.document_->mime_type_ + "]";
 
-    showMessageText(m_account, chat, message,
+    showMessageText(m_data, chat, message,
                     document.caption_ ? document.caption_->text_.c_str() : NULL,
-                    description.c_str(), m_data);
+                    description.c_str());
 }
 
 void PurpleTdClient::showVideo(const td::td_api::chat &chat, const TgMessageInfo &message,
@@ -751,8 +752,8 @@ void PurpleTdClient::showVideo(const td::td_api::chat &chat, const TgMessageInfo
         std::to_string(video.video_->width_) + "x" + std::to_string(video.video_->height_) + ", " +
         std::to_string(video.video_->duration_) + "s]";
 
-    showMessageText(m_account, chat, message, video.caption_ ? video.caption_->text_.c_str() : NULL,
-                    description.c_str(), m_data);
+    showMessageText(m_data, chat, message, video.caption_ ? video.caption_->text_.c_str() : NULL,
+                    description.c_str());
 }
 
 void PurpleTdClient::showSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
@@ -839,10 +840,10 @@ void PurpleTdClient::showDownloadedInlineFile(int64_t chatId, const TgMessageInf
     if (chat) {
         if (filePath.find('"') != std::string::npos) {
             std::string notice = makeNoticeWithSender(*chat, message, "Cannot show file: path contains quotes", m_account);
-            showMessageText(m_account, *chat, message, NULL, notice.c_str(), m_data);
+            showMessageText(m_data, *chat, message, NULL, notice.c_str());
         } else {
             std::string text = "<a href=\"file://" + filePath + "\">" + label + "</a>";
-            showMessageText(m_account, *chat, message, text.c_str(), NULL, m_data);
+            showMessageText(m_data, *chat, message, text.c_str(), NULL);
         }
     }
 }
@@ -866,7 +867,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId
     if (message->ttl_ != 0) {
         const char *text   = _("Received self-destructing message, not displayed due to lack of support");
         std::string notice = makeNoticeWithSender(chat, messageInfo, text, m_account);
-        showMessageText(m_account, chat, messageInfo, NULL, notice.c_str(), m_data);
+        showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
         return;
     }
 
@@ -891,14 +892,14 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId
             std::string notice = formatMessage(_("{} changed group name to {}"),
                                                {getSenderDisplayName(chat, messageInfo, m_account),
                                                 titleChange.title_});
-            showMessageText(m_account, chat, messageInfo, NULL, notice.c_str(), m_data);
+            showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
             break;
         }
         default: {
             std::string notice = formatMessage(_("Received unsupported message type {}"),
                                                messageTypeToString(*message->content_));
             notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), m_account);
-            showMessageText(m_account, chat, messageInfo, NULL, notice.c_str(), m_data);
+            showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
         }
     }
 }
@@ -993,7 +994,7 @@ void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> userInf
         const td::td_api::chat *chat = m_data.getPrivateChatByUserId(userId);
 
         if (user && chat && isChatInContactList(*chat, user))
-            updatePrivateChat(m_account, *chat, *user, m_data);
+            updatePrivateChat(m_data, *chat, *user);
     }
 }
 
@@ -1010,7 +1011,7 @@ void PurpleTdClient::updateGroup(td::td_api::object_ptr<td::td_api::basicGroup> 
 
     // purple_blist_find_chat doesn't work if account is not connected
     if (purple_account_is_connected(m_account))
-        updateBasicGroupChat(m_account, id, m_data);
+        updateBasicGroupChat(m_data, id);
 }
 
 void PurpleTdClient::updateSupergroup(td::td_api::object_ptr<td::td_api::supergroup> group)
@@ -1026,7 +1027,7 @@ void PurpleTdClient::updateSupergroup(td::td_api::object_ptr<td::td_api::supergr
 
     // purple_blist_find_chat doesn't work if account is not connected
     if (purple_account_is_connected(m_account))
-        updateSupergroupChat(m_account, id, m_data);
+        updateSupergroupChat(m_data, id);
 }
 
 void PurpleTdClient::updateChat(const td::td_api::chat *chat)
@@ -1043,15 +1044,15 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
     // user find_buddy either
     if (purple_account_is_connected(m_account) && isChatInContactList(*chat, privateChatUser)) {
         if (privateChatUser)
-            updatePrivateChat(m_account, *chat, *privateChatUser, m_data);
+            updatePrivateChat(m_data, *chat, *privateChatUser);
 
         // purple_blist_find_chat doesn't work if account is not connected
         if (basicGroupId) {
             requestBasicGroupMembers(basicGroupId);
-            updateBasicGroupChat(m_account, basicGroupId, m_data);
+            updateBasicGroupChat(m_data, basicGroupId);
         }
         if (supergroupId)
-            updateSupergroupChat(m_account, supergroupId, m_data);
+            updateSupergroupChat(m_data, supergroupId);
     }
 }
 
@@ -1269,7 +1270,7 @@ bool PurpleTdClient::joinChat(const char *chatName)
         purple_debug_warning(config::pluginId, "Chat %s (%s) is not a group we a member of\n",
                              chatName, chat->title_.c_str());
     else if (purpleId) {
-        conv = getChatConversation(m_account, *chat, purpleId, m_data);
+        conv = getChatConversation(m_data, *chat, purpleId);
         if (conv)
             purple_conversation_present(purple_conv_chat_get_conversation(conv));
     }

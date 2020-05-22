@@ -31,31 +31,29 @@ std::string         proxyTypeToString(PurpleProxyType proxyType);
 const char *        getPurpleStatusId(const td::td_api::UserStatus &tdStatus);
 std::string         getPurpleBuddyName(const td::td_api::user &user);
 void                getUsersByPurpleName(const char *username, std::vector<const td::td_api::user*> &users,
-                                         TdAccountData &accountData);
-int64_t             getPrivateChatIdByPurpleName(const char *buddyName, TdAccountData &accountData,
+                                         TdAccountData &account);
+int64_t             getPrivateChatIdByPurpleName(const char *buddyName, TdAccountData &account,
                                                  const char *action);
 PurpleConversation *getImConversation(PurpleAccount *account, const char *username);
-PurpleConvChat *    getChatConversation(PurpleAccount *account, const td::td_api::chat &chat,
-                                        int chatPurpleId, TdAccountData &accountData);
+PurpleConvChat *    getChatConversation(TdAccountData &account, const td::td_api::chat &chat,
+                                        int chatPurpleId);
 PurpleConvChat *    findChatConversation(PurpleAccount *account, const td::td_api::chat &chat);
-void                updatePrivateChat(PurpleAccount *account, const td::td_api::chat &chat, const td::td_api::user &user,
-                                      TdAccountData &accountData);
-void                updateBasicGroupChat(PurpleAccount *account, int32_t groupId, TdAccountData &accountData);
-void                updateSupergroupChat(PurpleAccount *account, int32_t groupId, TdAccountData &accountData);
+void                updatePrivateChat(TdAccountData &account, const td::td_api::chat &chat, const td::td_api::user &user);
+void                updateBasicGroupChat(TdAccountData &account, int32_t groupId);
+void                updateSupergroupChat(TdAccountData &account, int32_t groupId);
 std::string         getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
-                                        TdAccountData &accountData);
+                                        TdAccountData &account);
 std::string         getForwardSource(const td::td_api::messageForwardInfo &forwardInfo,
                                      TdAccountData &accountData);
 void                getNamesFromAlias(const char *alias, std::string &firstName, std::string &lastName);
 std::vector<PurpleChat *> findChatsByInviteLink(const std::string &inviteLink);
 
-void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const TgMessageInfo &message,
-                     const char *text, const char *notification, TdAccountData &accountData,
-                     uint32_t extraFlags = 0);
+void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const TgMessageInfo &message,
+                     const char *text, const char *notification, uint32_t extraFlags = 0);
 void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
-                    const TdAccountData &accountData);
+                    const TdAccountData &account);
 
 void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
-                     TdAccountData &accountData, TdTransceiver::ResponseCb response);
+                     TdAccountData &account, TdTransceiver::ResponseCb response);
 
 #endif

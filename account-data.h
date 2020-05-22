@@ -4,6 +4,7 @@
 #include <td/telegram/td_api.h>
 #include <map>
 #include <mutex>
+#include <purple.h>
 
 bool        isPhoneNumber(const char *s);
 const char *getCanonicalPhoneNumber(const char *s);
@@ -82,6 +83,9 @@ public:
     using TdGroupPtr      = td::td_api::object_ptr<td::td_api::basicGroup>;
     using TdGroupInfoPtr  = td::td_api::object_ptr<td::td_api::basicGroupFullInfo>;
     using TdSupergroupPtr = td::td_api::object_ptr<td::td_api::supergroup>;
+
+    PurpleAccount *const purpleAccount;
+    TdAccountData(PurpleAccount *purpleAccount) : purpleAccount(purpleAccount) {}
 
     void updateUser(TdUserPtr user);
     void setUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);

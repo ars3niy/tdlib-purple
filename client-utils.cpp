@@ -92,20 +92,20 @@ std::string getPurpleBuddyName(const td::td_api::user &user)
 }
 
 void getUsersByPurpleName(const char *username, std::vector<const td::td_api::user*> &users,
-                         TdAccountData &accountData)
+                         TdAccountData &account)
 {
     int32_t userId = stringToUserId(username);
 
     if (userId != 0) {
         users.clear();
-        const td::td_api::user *user = accountData.getUser(userId);
+        const td::td_api::user *user = account.getUser(userId);
         if (user)
             users.push_back(user);
     } else
-        accountData.getUsersByDisplayName(username, users);
+        account.getUsersByDisplayName(username, users);
 }
 
-int64_t getPrivateChatIdByPurpleName(const char *buddyName, TdAccountData &accountData,
+int64_t getPrivateChatIdByPurpleName(const char *buddyName, TdAccountData &account,
                                      const char *action)
 {
     int32_t userId = stringToUserId(buddyName);
@@ -113,12 +113,12 @@ int64_t getPrivateChatIdByPurpleName(const char *buddyName, TdAccountData &accou
         purple_debug_warning(config::pluginId, "Cannot %s: '%s' is not a valid user id\n", action, buddyName);
         return 0;
     }
-    const td::td_api::user *tdUser = accountData.getUser(userId);
+    const td::td_api::user *tdUser = account.getUser(userId);
     if (tdUser == nullptr) {
         purple_debug_warning(config::pluginId, "Cannot %s: no user with id %s\n", action, buddyName);
         return 0;
     }
-    const td::td_api::chat *tdChat = accountData.getPrivateChatByUserId(tdUser->id_);
+    const td::td_api::chat *tdChat = account.getPrivateChatByUserId(tdUser->id_);
     if (tdChat == nullptr) {
         purple_debug_warning(config::pluginId, "Cannot %s: no chat with user %s\n", action, buddyName);
         return 0;
@@ -135,12 +135,12 @@ PurpleConversation *getImConversation(PurpleAccount *account, const char *userna
     return conv;
 }
 
-PurpleConvChat *getChatConversation(PurpleAccount *account, const td::td_api::chat &chat,
-                                    int chatPurpleId, TdAccountData &accountData)
+PurpleConvChat *getChatConversation(TdAccountData &account, const td::td_api::chat &chat,
+                                    int chatPurpleId)
 {
     std::string chatName       = getChatName(chat);
     bool        newChatCreated = false;
-    PurpleConversation *conv = purple_find_chat(purple_account_get_connection(account), chatPurpleId);
+    PurpleConversation *conv = purple_find_chat(purple_account_get_connection(account.purpleAccount), chatPurpleId);
     if (conv == NULL) {
         if (chatPurpleId != 0) {
             purple_debug_misc(config::pluginId, "Creating conversation for chat %s (purple id %d)\n",
@@ -149,13 +149,13 @@ PurpleConvChat *getChatConversation(PurpleAccount *account, const td::td_api::ch
             // list because even it has been in the contact list since before, the chat lookup
             // doesn't work when account is not connected. Therefore, it won't know chat title and
             // would show chatXXXXXXXXXXX name in the conversation window instead.
-            serv_got_joined_chat(purple_account_get_connection(account), chatPurpleId, chatName.c_str());
-            conv = purple_find_chat(purple_account_get_connection(account), chatPurpleId);
+            serv_got_joined_chat(purple_account_get_connection(account.purpleAccount), chatPurpleId, chatName.c_str());
+            conv = purple_find_chat(purple_account_get_connection(account.purpleAccount), chatPurpleId);
             if (conv == NULL)
                 purple_debug_warning(config::pluginId, "Did not create conversation for chat %s\n", chat.title_.c_str());
             else {
                 //... so, fix conversation title if we can't find chat in contact list
-                PurpleChat *purpleChat = purple_blist_find_chat(account, chatName.c_str());
+                PurpleChat *purpleChat = purple_blist_find_chat(account.purpleAccount, chatName.c_str());
                 if (!purpleChat) {
                     purple_debug_misc(config::pluginId, "Setting conversation title to '%s'\n", chat.title_.c_str());
                     purple_conversation_set_title(conv, chat.title_.c_str());
@@ -172,9 +172,9 @@ PurpleConvChat *getChatConversation(PurpleAccount *account, const td::td_api::ch
 
         if (purpleChat && newChatCreated) {
             int32_t                               basicGroupId = getBasicGroupId(chat);
-            const td::td_api::basicGroupFullInfo *groupInfo    = basicGroupId ? accountData.getBasicGroupInfo(basicGroupId) : nullptr;
+            const td::td_api::basicGroupFullInfo *groupInfo    = basicGroupId ? account.getBasicGroupInfo(basicGroupId) : nullptr;
             if (groupInfo)
-                setChatMembers(purpleChat, *groupInfo, accountData);
+                setChatMembers(purpleChat, *groupInfo, account);
         }
 
         return purpleChat;
@@ -193,23 +193,22 @@ PurpleConvChat *findChatConversation(PurpleAccount *account, const td::td_api::c
     return NULL;
 }
 
-void updatePrivateChat(PurpleAccount *account, const td::td_api::chat &chat, const td::td_api::user &user,
-                       TdAccountData &accountData)
+void updatePrivateChat(TdAccountData &account, const td::td_api::chat &chat, const td::td_api::user &user)
 {
     std::string purpleUserName = getPurpleBuddyName(user);
 
-    PurpleBuddy *buddy = purple_find_buddy(account, purpleUserName.c_str());
+    PurpleBuddy *buddy = purple_find_buddy(account.purpleAccount, purpleUserName.c_str());
     if (buddy == NULL) {
         purple_debug_misc(config::pluginId, "Adding new buddy %s for user %s, chat id %" G_GINT64_FORMAT "\n",
                           chat.title_.c_str(), purpleUserName.c_str(), chat.id_);
 
-        const ContactRequest *contactReq = accountData.findContactRequest(user.id_);
+        const ContactRequest *contactReq = account.findContactRequest(user.id_);
         PurpleGroup          *group      = (contactReq && !contactReq->groupName.empty()) ?
                                            purple_find_group(contactReq->groupName.c_str()) : NULL;
         if (group)
             purple_debug_misc(config::pluginId, "Adding into group %s\n", purple_group_get_name(group));
 
-        buddy = purple_buddy_new(account, purpleUserName.c_str(), chat.title_.c_str());
+        buddy = purple_buddy_new(account.purpleAccount, purpleUserName.c_str(), chat.title_.c_str());
         purple_blist_add_buddy(buddy, NULL, group, NULL);
         // If a new buddy has been added here, it means that there was updateNewChat with the private
         // chat. This means either we added them to contacts or started messaging them, or they
@@ -255,33 +254,33 @@ static void updateGroupChat(PurpleAccount *account, const td::td_api::chat &chat
     }
 }
 
-void updateBasicGroupChat(PurpleAccount *account, int32_t groupId, TdAccountData &accountData)
+void updateBasicGroupChat(TdAccountData &account, int32_t groupId)
 {
-    const td::td_api::basicGroup *group = accountData.getBasicGroup(groupId);
-    const td::td_api::chat       *chat  = accountData.getBasicGroupChatByGroup(groupId);
+    const td::td_api::basicGroup *group = account.getBasicGroup(groupId);
+    const td::td_api::chat       *chat  = account.getBasicGroupChatByGroup(groupId);
 
     if (!group)
         purple_debug_misc(config::pluginId, "Basic group %d does not exist yet\n", groupId);
     else if (!chat)
         purple_debug_misc(config::pluginId, "Chat for basic group %d does not exist yet\n", groupId);
     else
-        updateGroupChat(account, *chat, group->status_, "basic group", groupId);
+        updateGroupChat(account.purpleAccount, *chat, group->status_, "basic group", groupId);
 }
 
-void updateSupergroupChat(PurpleAccount *account, int32_t groupId, TdAccountData &accountData)
+void updateSupergroupChat(TdAccountData &account, int32_t groupId)
 {
-    const td::td_api::supergroup *group = accountData.getSupergroup(groupId);
-    const td::td_api::chat       *chat  = accountData.getSupergroupChatByGroup(groupId);
+    const td::td_api::supergroup *group = account.getSupergroup(groupId);
+    const td::td_api::chat       *chat  = account.getSupergroupChatByGroup(groupId);
 
     if (!group)
         purple_debug_misc(config::pluginId, "Supergroup %d does not exist yet\n", groupId);
     else if (!chat)
         purple_debug_misc(config::pluginId, "Chat for supergroup %d does not exist yet\n", groupId);
     else
-        updateGroupChat(account, *chat, group->status_, "supergroup", groupId);
+        updateGroupChat(account.purpleAccount, *chat, group->status_, "supergroup", groupId);
 }
 
-static void showMessageTextIm(PurpleAccount *account, const char *purpleUserName, const char *text,
+static void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const char *text,
                               const char *notification, time_t timestamp, PurpleMessageFlags flags)
 {
     PurpleConversation *conv = NULL;
@@ -290,39 +289,38 @@ static void showMessageTextIm(PurpleAccount *account, const char *purpleUserName
         if (flags & PURPLE_MESSAGE_SEND) {
             // serv_got_im seems to work for messages sent from another client, but not for
             // echoed messages from this client. Therefore, this (code snippet from facebook plugin).
-            conv = getImConversation(account, purpleUserName);
-            purple_conversation_write(conv, purple_account_get_alias(account), text,
+            conv = getImConversation(account.purpleAccount, purpleUserName);
+            purple_conversation_write(conv, purple_account_get_alias(account.purpleAccount), text,
                                       flags, timestamp);
         } else {
-            serv_got_im(purple_account_get_connection(account), purpleUserName, text,
+            serv_got_im(purple_account_get_connection(account.purpleAccount), purpleUserName, text,
                         flags, timestamp);
         }
     }
 
     if (notification) {
         if (conv == NULL)
-            conv = getImConversation(account, purpleUserName);
+            conv = getImConversation(account.purpleAccount, purpleUserName);
         purple_conversation_write(conv, nullptr, notification, PURPLE_MESSAGE_SYSTEM, timestamp);
     }
 }
 
-static void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &chat,
+static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &chat,
                                 const TgMessageInfo &message, const char *text,
-                                const char *notification, PurpleMessageFlags flags,
-                                TdAccountData &accountData)
+                                const char *notification, PurpleMessageFlags flags)
 {
     // Again, doing what facebook plugin does
-    int purpleId = accountData.getPurpleChatId(chat.id_);
-    PurpleConvChat *conv = getChatConversation(account, chat, purpleId, accountData);
+    int purpleId = account.getPurpleChatId(chat.id_);
+    PurpleConvChat *conv = getChatConversation(account, chat, purpleId);
 
     if (text) {
         if (flags & PURPLE_MESSAGE_SEND) {
             if (conv)
-                purple_conv_chat_write(conv, purple_account_get_alias(account), text,
+                purple_conv_chat_write(conv, purple_account_get_alias(account.purpleAccount), text,
                                        flags, message.timestamp);
         } else {
             if (purpleId != 0)
-                serv_got_chat_in(purple_account_get_connection(account), purpleId,
+                serv_got_chat_in(purple_account_get_connection(account.purpleAccount), purpleId,
                                  message.sender.empty() ? "someone" : message.sender.c_str(),
                                  flags, text, message.timestamp);
         }
@@ -335,11 +333,11 @@ static void showMessageTextChat(PurpleAccount *account, const td::td_api::chat &
     }
 }
 
-static std::string quoteMessage(const td::td_api::message *message, TdAccountData &accountData)
+static std::string quoteMessage(const td::td_api::message *message, TdAccountData &account)
 {
     const td::td_api::user *originalAuthor = nullptr;
     if (message)
-        originalAuthor = accountData.getUser(message->sender_user_id_);
+        originalAuthor = account.getUser(message->sender_user_id_);
 
     std::string originalName;
     if (originalAuthor)
@@ -404,9 +402,8 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
     return formatMessage(_("<b>&gt; {} wrote:</b>\n&gt; {}"), {originalName, text});
 }
 
-void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const TgMessageInfo &message,
-                     const char *text, const char *notification, TdAccountData &accountData,
-                     uint32_t extraFlags)
+void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const TgMessageInfo &message,
+                     const char *text, const char *notification, uint32_t extraFlags)
 {
     // TODO: maybe set PURPLE_MESSAGE_REMOTE_SEND when appropriate
     PurpleMessageFlags directionFlag = message.outgoing ? PURPLE_MESSAGE_SEND : PURPLE_MESSAGE_RECV;
@@ -414,7 +411,7 @@ void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const
 
     std::string newText;
     if (message.repliedMessageId != 0)
-        newText = quoteMessage(accountData.findMessage(message.repliedMessageId), accountData);
+        newText = quoteMessage(account.findMessage(message.repliedMessageId), account);
     if (!message.forwardedFrom.empty()) {
         if (!newText.empty())
             newText += "\n";
@@ -428,28 +425,28 @@ void showMessageText(PurpleAccount *account, const td::td_api::chat &chat, const
     if (!newText.empty())
         text = newText.c_str();
 
-    const td::td_api::user *privateUser = accountData.getUserByPrivateChat(chat);
+    const td::td_api::user *privateUser = account.getUserByPrivateChat(chat);
     if (privateUser) {
         std::string userName = getPurpleBuddyName(*privateUser);
         showMessageTextIm(account, userName.c_str(), text, notification, message.timestamp, flags);
     }
 
     if (getBasicGroupId(chat) || getSupergroupId(chat))
-        showMessageTextChat(account, chat, message, text, notification, flags, accountData);
+        showMessageTextChat(account, chat, message, text, notification, flags);
 }
 
 std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
-                                TdAccountData &accountData)
+                                TdAccountData &account)
 {
     if (!message.is_outgoing_ && (getBasicGroupId(chat) || getSupergroupId(chat))) {
         if (message.sender_user_id_)
-            return getDisplayName(accountData.getUser(message.sender_user_id_));
+            return getDisplayName(account.getUser(message.sender_user_id_));
         else if (!message.author_signature_.empty())
             return message.author_signature_;
         else if (message.forward_info_ && message.forward_info_->origin_)
             switch (message.forward_info_->origin_->get_id()) {
             case td::td_api::messageForwardOriginUser::ID:
-                return getDisplayName(accountData.getUser(static_cast<const td::td_api::messageForwardOriginUser &>(*message.forward_info_->origin_).sender_user_id_));
+                return getDisplayName(account.getUser(static_cast<const td::td_api::messageForwardOriginUser &>(*message.forward_info_->origin_).sender_user_id_));
             case td::td_api::messageForwardOriginHiddenUser::ID:
                 return static_cast<const td::td_api::messageForwardOriginHiddenUser &>(*message.forward_info_->origin_).sender_name_;
             case td::td_api::messageForwardOriginChannel::ID:
@@ -464,18 +461,18 @@ std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::
 }
 
 std::string getForwardSource(const td::td_api::messageForwardInfo &forwardInfo,
-                             TdAccountData &accountData)
+                             TdAccountData &account)
 {
     if (!forwardInfo.origin_)
         return "";
 
     switch (forwardInfo.origin_->get_id()) {
         case td::td_api::messageForwardOriginUser::ID:
-            return getDisplayName(accountData.getUser(static_cast<const td::td_api::messageForwardOriginUser &>(*forwardInfo.origin_).sender_user_id_));
+            return getDisplayName(account.getUser(static_cast<const td::td_api::messageForwardOriginUser &>(*forwardInfo.origin_).sender_user_id_));
         case td::td_api::messageForwardOriginHiddenUser::ID:
             return static_cast<const td::td_api::messageForwardOriginHiddenUser &>(*forwardInfo.origin_).sender_name_;
         case td::td_api::messageForwardOriginChannel::ID: {
-            const td::td_api::chat *chat = accountData.getChat(static_cast<const td::td_api::messageForwardOriginChannel&>(*forwardInfo.origin_).chat_id_);
+            const td::td_api::chat *chat = account.getChat(static_cast<const td::td_api::messageForwardOriginChannel&>(*forwardInfo.origin_).chat_id_);
             if (chat)
                 return chat->title_;
         }
@@ -531,28 +528,27 @@ std::vector<PurpleChat *>findChatsByInviteLink(const std::string &inviteLink)
 }
 
 void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
-                    const TdAccountData &accountData)
+                    const TdAccountData &account)
 {
-    PurpleAccount *account = purple_conversation_get_account(purple_conv_chat_get_conversation(purpleChat));
-    GList         *flags   = NULL;
+    GList *flags = NULL;
     std::vector<std::string> nameData;
 
     for (const auto &member: groupInfo.members_) {
         if (!member || !isGroupMember(member->status_))
             continue;
 
-        const td::td_api::user *user = accountData.getUser(member->user_id_);
+        const td::td_api::user *user = account.getUser(member->user_id_);
         if (!user)
             continue;
 
         std::string userName    = getPurpleBuddyName(*user);
         const char *phoneNumber = getCanonicalPhoneNumber(user->phone_number_.c_str());
-        if (purple_find_buddy(account, userName.c_str()))
+        if (purple_find_buddy(account.purpleAccount, userName.c_str()))
             // libpurple will be able to map user name to alias because there is a buddy
             nameData.emplace_back(userName);
-        else if (!strcmp(getCanonicalPhoneNumber(purple_account_get_username(account)), phoneNumber))
+        else if (!strcmp(getCanonicalPhoneNumber(purple_account_get_username(account.purpleAccount)), phoneNumber))
             // This is us, so again libpurple will map phone number to alias
-            nameData.emplace_back(purple_account_get_username(account));
+            nameData.emplace_back(purple_account_get_username(account.purpleAccount));
         else {
             // Use first and last name instead
             std::string displayName = getDisplayName(user);
@@ -663,7 +659,7 @@ static bool saveImage(int id, char **fileName)
 }
 
 void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
-                     TdAccountData &accountData, TdTransceiver::ResponseCb response)
+                     TdAccountData &account, TdTransceiver::ResponseCb response)
 {
     std::vector<MessagePart> parts;
     parseMessage(message, parts);
@@ -699,7 +695,7 @@ void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transce
 
         uint64_t requestId = transceiver.sendQuery(std::move(sendMessageRequest), response);
         if (tempFileName) {
-            accountData.addPendingRequest<SendMessageRequest>(requestId, tempFileName);
+            account.addPendingRequest<SendMessageRequest>(requestId, tempFileName);
             g_free(tempFileName);
         }
     }
