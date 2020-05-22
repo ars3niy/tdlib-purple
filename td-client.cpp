@@ -964,6 +964,32 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
     return 0;
 }
 
+void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<SendMessageRequest> request = m_data.getPendingRequest<SendMessageRequest>(requestId);
+    if (!request)
+        return;
+    if (object && (object->get_id() == td::td_api::message::ID)) {
+        const td::td_api::message &message = static_cast<td::td_api::message &>(*object);
+        m_data.addTempFileUpload(message.id_, request->tempFile);
+    }
+}
+
+void PurpleTdClient::sendTyping(const char *buddyName, bool isTyping)
+{
+    int64_t chatId = getPrivateChatIdByPurpleName(buddyName, m_data, "send message");
+
+    if (chatId != 0) {
+        auto sendAction = td::td_api::make_object<td::td_api::sendChatAction>();
+        sendAction->chat_id_ = chatId;
+        if (isTyping)
+            sendAction->action_ = td::td_api::make_object<td::td_api::chatActionTyping>();
+        else
+            sendAction->action_ = td::td_api::make_object<td::td_api::chatActionCancel>();
+        m_transceiver.sendQuery(std::move(sendAction), nullptr);
+    }
+}
+
 void PurpleTdClient::updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status)
 {
     const td::td_api::user *user = m_data.getUser(userId);
@@ -1262,6 +1288,34 @@ void PurpleTdClient::renameContact(const char *buddyName, const char *newAlias)
     m_transceiver.sendQuery(std::move(addContact), nullptr);
 }
 
+void PurpleTdClient::removeContactAndPrivateChat(const std::string &buddyName)
+{
+    int32_t userId = stringToUserId(buddyName.c_str());
+    if (userId != 0) {
+        const td::td_api::chat *chat   = m_data.getPrivateChatByUserId(userId);
+        if (chat) {
+            int64_t chatId = chat->id_;
+            chat = nullptr;
+            m_data.deleteChat(chatId); // Prevent re-creating buddy if any updateChat* or updateUser arrives
+
+            auto deleteChat = td::td_api::make_object<td::td_api::deleteChatHistory>();
+            deleteChat->chat_id_ = chatId;
+            deleteChat->remove_from_chat_list_ = true;
+            deleteChat->revoke_ = false;
+            m_transceiver.sendQuery(std::move(deleteChat), nullptr);
+        }
+
+        auto removeContact = td::td_api::make_object<td::td_api::removeContacts>();
+        removeContact->user_ids_.push_back(userId);
+        m_transceiver.sendQuery(std::move(removeContact), nullptr);
+    }
+}
+
+void PurpleTdClient::getUsers(const char *username, std::vector<const td::td_api::user *> &users)
+{
+    getUsersByPurpleName(username, users, m_data);
+}
+
 bool PurpleTdClient::joinChat(const char *chatName)
 {
     int64_t                 id       = getTdlibChatId(chatName);
@@ -1336,17 +1390,6 @@ void PurpleTdClient::joinChatByLinkResponse(uint64_t requestId, td::td_api::obje
     }
 }
 
-void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
-{
-    std::unique_ptr<SendMessageRequest> request = m_data.getPendingRequest<SendMessageRequest>(requestId);
-    if (!request)
-        return;
-    if (object && (object->get_id() == td::td_api::message::ID)) {
-        const td::td_api::message &message = static_cast<td::td_api::message &>(*object);
-        m_data.addTempFileUpload(message.id_, request->tempFile);
-    }
-}
-
 void PurpleTdClient::createGroup(const char *name, int type,
                                  const std::vector<std::string> &basicGroupMembers)
 {
@@ -1407,48 +1450,5 @@ void PurpleTdClient::removeTempFile(int64_t messageId)
     if (!path.empty()) {
         purple_debug_misc(config::pluginId, "Removing temporary file %s\n", path.c_str());
         remove(path.c_str());
-    }
-}
-
-void PurpleTdClient::getUsers(const char *username, std::vector<const td::td_api::user *> &users)
-{
-    getUsersByPurpleName(username, users, m_data);
-}
-
-void PurpleTdClient::sendTyping(const char *buddyName, bool isTyping)
-{
-    int64_t chatId = getPrivateChatIdByPurpleName(buddyName, m_data, "send message");
-
-    if (chatId != 0) {
-        auto sendAction = td::td_api::make_object<td::td_api::sendChatAction>();
-        sendAction->chat_id_ = chatId;
-        if (isTyping)
-            sendAction->action_ = td::td_api::make_object<td::td_api::chatActionTyping>();
-        else
-            sendAction->action_ = td::td_api::make_object<td::td_api::chatActionCancel>();
-        m_transceiver.sendQuery(std::move(sendAction), nullptr);
-    }
-}
-
-void PurpleTdClient::removeContactAndPrivateChat(const std::string &buddyName)
-{
-    int32_t userId = stringToUserId(buddyName.c_str());
-    if (userId != 0) {
-        const td::td_api::chat *chat   = m_data.getPrivateChatByUserId(userId);
-        if (chat) {
-            int64_t chatId = chat->id_;
-            chat = nullptr;
-            m_data.deleteChat(chatId); // Prevent re-creating buddy if any updateChat* or updateUser arrives
-
-            auto deleteChat = td::td_api::make_object<td::td_api::deleteChatHistory>();
-            deleteChat->chat_id_ = chatId;
-            deleteChat->remove_from_chat_list_ = true;
-            deleteChat->revoke_ = false;
-            m_transceiver.sendQuery(std::move(deleteChat), nullptr);
-        }
-
-        auto removeContact = td::td_api::make_object<td::td_api::removeContacts>();
-        removeContact->user_ids_.push_back(userId);
-        m_transceiver.sendQuery(std::move(removeContact), nullptr);
     }
 }

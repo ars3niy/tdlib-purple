@@ -13,15 +13,17 @@ public:
 
     static void setLogLevel(int level);
     int  sendMessage(const char *buddyName, const char *message);
+    void sendTyping(const char *buddyName, bool isTyping);
+
     void addContact(const std::string &purpleName, const std::string &alias, const std::string &groupName);
     void renameContact(const char *buddyName, const char *newAlias);
+    void removeContactAndPrivateChat(const std::string &buddyName);
+    void getUsers(const char *username, std::vector<const td::td_api::user *> &users);
+
     bool joinChat(const char *chatName);
-    int  sendGroupMessage(int purpleChatId, const char *message);
     void joinChatByLink(const char *inviteLink);
     void createGroup(const char *name, int type, const std::vector<std::string> &basicGroupMembers);
-    void sendTyping(const char *buddyName, bool isTyping);
-    void getUsers(const char *username, std::vector<const td::td_api::user *> &users);
-    void removeContactAndPrivateChat(const std::string &buddyName);
+    int  sendGroupMessage(int purpleChatId, const char *message);
 private:
     using TdObjectPtr   = td::td_api::object_ptr<td::td_api::Object>;
     using ResponseCb    = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
