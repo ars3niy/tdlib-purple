@@ -291,6 +291,16 @@ static void compare(const removeContacts &actual, const removeContacts &expected
         COMPARE(user_ids_[i]);
 }
 
+static void compare(const leaveChat &actual, const leaveChat &expected)
+{
+    COMPARE(chat_id_);
+}
+
+static void compare(const deleteSupergroup &actual, const deleteSupergroup &expected)
+{
+    COMPARE(supergroup_id_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -328,6 +338,8 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(removeProxy)
         C(deleteChatHistory)
         C(removeContacts)
+        C(leaveChat)
+        C(deleteSupergroup)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

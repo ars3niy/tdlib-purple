@@ -91,18 +91,99 @@ static void cancelRequest(RequestData *data, int action)
     delete data;
 }
 
+static void deleteGroupConfirm(RequestData *data, int action)
+{
+    std::unique_ptr<RequestData> request(data);
+    PurpleTdClient *tdClient = getTdClient(request->account);
+
+    if (tdClient)
+        tdClient->leaveGroup(request->stringData, true);
+}
+
+static void leaveGroupConfirm(RequestData *data, int action)
+{
+    std::unique_ptr<RequestData> request(data);
+    PurpleTdClient *tdClient = getTdClient(request->account);
+
+    if (tdClient)
+        tdClient->leaveGroup(request->stringData, false);
+}
+
+static void leaveGroup(PurpleBlistNode *node, gpointer data)
+{
+    if (! PURPLE_BLIST_NODE_IS_CHAT(node))
+        return;
+
+    PurpleChat     *chat     = PURPLE_CHAT(node);
+    PurpleAccount  *account  = purple_chat_get_account(chat);
+    PurpleTdClient *tdClient = getTdClient(account);
+    if (tdClient) {
+        const char  *chatName  = getChatName(purple_chat_get_components(chat));
+        RequestData *request   = new RequestData;
+        request->account = account;
+        request->stringData = chatName ? chatName : "";
+
+        if (tdClient->getBasicGroupMembership(chatName) == BasicGroupMembership::Creator)
+            purple_request_action(purple_account_get_connection(account), _("Leaving group"),
+                                  _("Confirm deleting group"),
+                                  _("Leaving basic group you created will delete the group. Cotinue?"),
+                                  0, account, NULL, NULL, request, 2,
+                                  _("_Yes"), leaveGroupConfirm, _("_No"), cancelRequest);
+        else
+            purple_request_action(purple_account_get_connection(account), _("Leaving group"),
+                                  _("Leave the group?"), NULL,
+                                  0, account, NULL, NULL, request, 2,
+                                  _("_Yes"), leaveGroupConfirm, _("_No"), cancelRequest);
+    }
+}
+
+static void deleteGroup(PurpleBlistNode *node, gpointer data)
+{
+    if (! PURPLE_BLIST_NODE_IS_CHAT(node))
+        return;
+
+    PurpleChat     *chat     = PURPLE_CHAT(node);
+    PurpleAccount  *account  = purple_chat_get_account(chat);
+    PurpleTdClient *tdClient = getTdClient(account);
+    if (tdClient) {
+        const char  *chatName  = getChatName(purple_chat_get_components(chat));
+
+        if (tdClient->getBasicGroupMembership(chatName) == BasicGroupMembership::NonCreator)
+            purple_notify_error(account, _("Error"), _("Cannot delete group"),
+                                _("Cannot delete basic group created by someone else"));
+        else {
+            RequestData *request   = new RequestData;
+            request->account = account;
+            request->stringData = chatName ? chatName : "";
+            purple_request_action(purple_account_get_connection(account), _("Deleting group"),
+                                  _("Delete the group?"), NULL,
+                                  0, account, NULL, NULL, request, 2,
+                                  _("_Yes"), deleteGroupConfirm, _("_No"), cancelRequest);
+        }
+    }
+}
+
 static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
 {
-    /*
-  if (PURPLE_BLIST_NODE_IS_CHAT(node)) {
+    GList *menu = NULL;
 
-    // Delete self from chat
-    PurpleMenuAction* action = purple_menu_action_new (_("Delete and exit..."), PURPLE_CALLBACK(leave_and_delete_chat_gw),
-        NULL, NULL);
-    menu = g_list_append (menu, (gpointer)action);
-  }
-  */
-    return NULL;
+    if (PURPLE_BLIST_NODE_IS_CHAT(node)) {
+        PurpleChat *chat = PURPLE_CHAT(node);
+        if (getTdlibChatId(getChatName(purple_chat_get_components(chat))) == 0)
+            return menu;
+
+        PurpleMenuAction* action;
+        action = purple_menu_action_new(_("Leave group"),
+                                        PURPLE_CALLBACK(leaveGroup),
+                                        NULL, NULL);
+        menu = g_list_append(menu, action);
+        action = purple_menu_action_new(_("Delete group"),
+                                        PURPLE_CALLBACK(deleteGroup),
+                                        NULL, NULL);
+        menu = g_list_append(menu, action);
+    }
+
+    return menu;
 }
 
 static GList *tgprpl_chat_join_info (PurpleConnection *gc)

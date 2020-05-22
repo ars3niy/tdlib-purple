@@ -798,7 +798,7 @@ TEST_F(PrivateChatTest, DeleteContact)
     pluginInfo().remove_buddy(connection, dup, NULL);
     purple_buddy_destroy(dup);
     prpl.verifyEvents(RequestActionEvent(connection, account, purpleUserName(0).c_str(), NULL, 2));
-    prpl.requestedAction(0);
+    prpl.requestedAction("_Yes");
 
     tgl.verifyRequests({
         make_object<deleteChatHistory>(chatIds[0], true, false),

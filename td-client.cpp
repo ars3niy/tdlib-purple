@@ -1444,6 +1444,51 @@ void PurpleTdClient::createGroup(const char *name, int type,
     }
 }
 
+BasicGroupMembership PurpleTdClient::getBasicGroupMembership(const char *purpleChatName)
+{
+    int64_t                       chatId     = getTdlibChatId(purpleChatName);
+    const td::td_api::chat       *chat       = chatId ? m_data.getChat(chatId) : nullptr;
+    int32_t                       groupId    = chat ? getBasicGroupId(*chat) : 0;
+    const td::td_api::basicGroup *basicGroup = groupId ? m_data.getBasicGroup(groupId) : nullptr;
+
+    if (basicGroup) {
+        if (basicGroup->status_ && (basicGroup->status_->get_id() == td::td_api::chatMemberStatusCreator::ID))
+            return BasicGroupMembership::Creator;
+        else
+            return BasicGroupMembership::NonCreator;
+    }
+    return BasicGroupMembership::Invalid;
+}
+
+void PurpleTdClient::leaveGroup(const std::string &purpleChatName, bool deleteSupergroup)
+{
+    int64_t                 chatId = getTdlibChatId(purpleChatName.c_str());
+    const td::td_api::chat *chat   = chatId ? m_data.getChat(chatId) : nullptr;
+    if (!chat) return;
+
+    int32_t supergroupId = getSupergroupId(*chat);
+    if (deleteSupergroup && (supergroupId != 0)) {
+        m_transceiver.sendQuery(td::td_api::make_object<td::td_api::deleteSupergroup>(supergroupId),
+                                &PurpleTdClient::deleteSupergroupResponse);
+    } else {
+        m_transceiver.sendQuery(td::td_api::make_object<td::td_api::leaveChat>(chatId), nullptr);
+        auto deleteChatRequest = td::td_api::make_object<td::td_api::deleteChatHistory>();
+        deleteChatRequest->chat_id_ = chatId;
+        deleteChatRequest->remove_from_chat_list_ = true;
+        deleteChatRequest->revoke_ = false;
+        m_transceiver.sendQuery(std::move(deleteChatRequest), nullptr);
+    }
+}
+
+void PurpleTdClient::deleteSupergroupResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    if (!object || (object->get_id() != td::td_api::ok::ID)) {
+        std::string errorMessage = getDisplayedError(object).c_str();
+        purple_notify_error(m_account, _("Error"), _("Failed to delete group or channel"),
+                            errorMessage.c_str());
+    }
+}
+
 void PurpleTdClient::removeTempFile(int64_t messageId)
 {
     std::string path = m_data.extractTempFileUpload(messageId);

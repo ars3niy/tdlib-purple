@@ -101,8 +101,9 @@ TEST_F(GroupChatTest, ExistingBasicGroupChatAtLogin)
 
 TEST_F(GroupChatTest, BasicGroupReceiveTextAndReply)
 {
-    constexpr int32_t date[]      = {12345, 123456};
-    constexpr int64_t messageId[] = {10000, 10001};
+    constexpr int32_t date[]       = {12345, 123456};
+    constexpr int64_t messageId[]  = {10000, 10001};
+    constexpr int     purpleChatId = 1;
     loginWithBasicGroup();
 
     tgl.update(make_object<updateNewMessage>(
@@ -114,8 +115,8 @@ TEST_F(GroupChatTest, BasicGroupReceiveTextAndReply)
         true
     ));
     prpl.verifyEvents(
-        ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, groupChatTitle),
-        ServGotChatEvent(connection, 1, userFirstNames[0] + " " + userLastNames[0],
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        ServGotChatEvent(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0],
                          "Hello", PURPLE_MESSAGE_RECV, date[0])
     );
 
@@ -137,9 +138,10 @@ TEST_F(GroupChatTest, BasicGroupReceiveTextAndReply)
 
 TEST_F(GroupChatTest, BasicGroupReceivePhoto)
 {
-    const int32_t date      = 12345;
-    const int64_t messageId = 10001;
-    const int32_t fileId    = 1234;
+    const int32_t date         = 12345;
+    const int64_t messageId    = 10001;
+    const int32_t fileId       = 1234;
+    constexpr int purpleChatId = 1;
     loginWithBasicGroup();
 
     tgl.update(make_object<updateNewMessage>(makeMessage(
@@ -155,8 +157,8 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
     prpl.verifyEvents(
-        ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, groupChatTitle),
-        ServGotChatEvent(connection, 1, userFirstNames[0] + " " + userLastNames[0], "photo",
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        ServGotChatEvent(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0], "photo",
                          PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(groupChatPurpleName, "",
                                userFirstNames[0] + " " + userLastNames[0] + ": Downloading image",
@@ -177,8 +179,9 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
 
 TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
 {
-    constexpr int64_t messageId = 10001;
-    constexpr int32_t date      = 12345;
+    constexpr int64_t messageId    = 10001;
+    constexpr int32_t date         = 12345;
+    constexpr int     purpleChatId = 2;
 
     GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
     g_hash_table_insert(table, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
@@ -213,10 +216,10 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
             // chat title is wrong at this point because libpurple doesn't find the chat in contact
             // list while the contact is not online, and thus has no way of knowing the chat alias.
             // Real libpurple works like that and our mock version mirrors the behaviour.
-            std::make_unique<ServGotJoinedChatEvent>(connection, 2, groupChatPurpleName,
+            std::make_unique<ServGotJoinedChatEvent>(connection, purpleChatId, groupChatPurpleName,
                                                      groupChatPurpleName),
             std::make_unique<ConvSetTitleEvent>(groupChatPurpleName, groupChatTitle),
-            std::make_unique<ServGotChatEvent>(connection, 2, userFirstNames[0] + " " + userLastNames[0],
+            std::make_unique<ServGotChatEvent>(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0],
                                                "Hello", PURPLE_MESSAGE_RECV, date)
         },
         {make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true)}
@@ -280,8 +283,9 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
 
 TEST_F(GroupChatTest, SendMessageWithMemberList)
 {
-    constexpr int64_t messageId = 10001;
-    constexpr int32_t date      = 12345;
+    constexpr int64_t messageId    = 10001;
+    constexpr int32_t date         = 12345;
+    constexpr int     purpleChatId = 1;
 
     loginWithBasicGroup();
 
@@ -322,7 +326,7 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
 
     // Another code path: adding chat users upon opening chat, with basicGroupFullInfo before that
     prpl.verifyEvents(
-        ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, groupChatTitle),
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
         ChatClearUsersEvent(groupChatPurpleName),
         ChatAddUserEvent(
             groupChatPurpleName,
@@ -344,7 +348,7 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
     );
     tgl.verifyNoRequests();
 
-    ASSERT_EQ(0, pluginInfo().chat_send(connection, 1, "message", PURPLE_MESSAGE_SEND));
+    ASSERT_EQ(0, pluginInfo().chat_send(connection, purpleChatId, "message", PURPLE_MESSAGE_SEND));
     tgl.verifyRequest(sendMessage(
         groupChatId,
         0,
@@ -374,7 +378,8 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
 
 TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
 {
-    const char *const LINK = "https://t.me/joinchat/";
+    const char *const LINK         = "https://t.me/joinchat/";
+    constexpr int     purpleChatId = 1;
     login();
 
     // As if "Add chat" function in pidgin was used
@@ -422,7 +427,7 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
 
     // The message is shown in chat conversation
     prpl.verifyEvents(
-        ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, groupChatTitle),
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
         ConversationWriteEvent(groupChatPurpleName, "",
                                selfFirstName + " " + selfLastName + ": " +
                                "Received unsupported message type messageChatJoinByLink",
@@ -494,8 +499,10 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
 
 TEST_F(GroupChatTest, GroupRenamed)
 {
-    const int64_t messageId = 1;
-    const int32_t date      = 1234;
+    const int64_t messageId    = 1;
+    const int32_t date         = 1234;
+    constexpr int purpleChatId = 1;
+
     loginWithBasicGroup();
     tgl.update(make_object<updateChatTitle>(groupChatId, "New Title"));
     prpl.verifyEvents(AliasChatEvent(groupChatPurpleName, "New Title"));
@@ -512,7 +519,7 @@ TEST_F(GroupChatTest, GroupRenamed)
         true
     ));
     prpl.verifyEvents(
-        ServGotJoinedChatEvent(connection, 1, groupChatPurpleName, "New Title"),
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, "New Title"),
         ConversationWriteEvent(
             groupChatPurpleName, "",
             userFirstNames[0] + " " + userLastNames[0] + " changed group name to New Title",
@@ -575,8 +582,9 @@ TEST_F(GroupChatTest, AddContactByGroupChatName)
 
 TEST_F(GroupChatTest, CreateRemoveBasicGroupInAnotherClient)
 {
-    constexpr int32_t date[]      = {12345, 123456};
-    constexpr int64_t messageId[] = {10000, 10001};
+    constexpr int32_t date[]       = {12345, 123456};
+    constexpr int64_t messageId[]  = {10000, 10001};
+    constexpr int     purpleChatId = 2;
     loginWithOneContact();
 
     tgl.update(make_object<updateBasicGroup>(make_object<basicGroup>(
@@ -597,7 +605,7 @@ TEST_F(GroupChatTest, CreateRemoveBasicGroupInAnotherClient)
     ));
     tgl.verifyRequest(viewMessages(groupChatId, {messageId[0]}, true));
     prpl.verifyEvents(
-        ServGotJoinedChatEvent(connection, 2, groupChatPurpleName, groupChatPurpleName),
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatPurpleName),
         ConvSetTitleEvent(groupChatPurpleName, groupChatTitle),
         ConversationWriteEvent(groupChatPurpleName, "",
                                selfFirstName + " " + selfLastName +
@@ -637,5 +645,67 @@ TEST_F(GroupChatTest, CreateRemoveBasicGroupInAnotherClient)
     prpl.verifyEvents(RemoveChatEvent(groupChatPurpleName, ""));
 
     // There is a check that fails message sending if we are not a group member
-    ASSERT_LT(pluginInfo().chat_send(connection, 2, "message", PURPLE_MESSAGE_SEND), 0);
+    ASSERT_LT(pluginInfo().chat_send(connection, purpleChatId, "message", PURPLE_MESSAGE_SEND), 0);
+}
+
+TEST_F(GroupChatTest, DeleteBasicGroup_Creator)
+{
+    loginWithBasicGroup();
+    tgl.update(make_object<updateBasicGroup>(make_object<basicGroup>(
+        groupId, 2, make_object<chatMemberStatusCreator>("", true), true, 0
+    )));
+    PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    GList *actions = pluginInfo().blist_node_menu(&chat->node);
+
+    nodeMenuAction(&chat->node, actions, "Delete group");
+    prpl.verifyEvents(RequestActionEvent(connection, account, NULL, NULL, 2));
+    prpl.requestedAction("_No");
+    tgl.verifyNoRequests();
+    prpl.verifyNoEvents();
+
+    nodeMenuAction(&chat->node, actions, "Delete group");
+    prpl.verifyEvents(RequestActionEvent(connection, account, NULL, NULL, 2));
+    prpl.requestedAction("_Yes");
+    tgl.verifyRequests({
+        make_object<leaveChat>(groupChatId),
+        make_object<deleteChatHistory>(groupChatId, true, false)
+    });
+
+    g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);
+}
+
+TEST_F(GroupChatTest, DeleteBasicGroup_NonCreator)
+{
+    loginWithBasicGroup();
+    PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    GList *actions = pluginInfo().blist_node_menu(&chat->node);
+
+    nodeMenuAction(&chat->node, actions, "Delete group");
+    prpl.verifyNoEvents();
+    tgl.verifyNoRequests();
+
+    g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);
+}
+
+TEST_F(GroupChatTest, LeaveBasicGroup)
+{
+    loginWithBasicGroup();
+    PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    GList *actions = pluginInfo().blist_node_menu(&chat->node);
+
+    nodeMenuAction(&chat->node, actions, "Leave group");
+    prpl.verifyEvents(RequestActionEvent(connection, account, NULL, NULL, 2));
+    prpl.requestedAction("_No");
+    tgl.verifyNoRequests();
+    prpl.verifyNoEvents();
+
+    nodeMenuAction(&chat->node, actions, "Leave group");
+    prpl.verifyEvents(RequestActionEvent(connection, account, NULL, NULL, 2));
+    prpl.requestedAction("_Yes");
+    tgl.verifyRequests({
+        make_object<leaveChat>(groupChatId),
+        make_object<deleteChatHistory>(groupChatId, true, false)
+    });
+
+    g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);
 }

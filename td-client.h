@@ -6,6 +6,12 @@
 #include "client-utils.h"
 #include <purple.h>
 
+enum class BasicGroupMembership: uint8_t {
+    Invalid,
+    Creator,
+    NonCreator,
+};
+
 class PurpleTdClient {
 public:
     PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend);
@@ -23,6 +29,8 @@ public:
     bool joinChat(const char *chatName);
     void joinChatByLink(const char *inviteLink);
     void createGroup(const char *name, int type, const std::vector<std::string> &basicGroupMembers);
+    BasicGroupMembership getBasicGroupMembership(const char *purpleChatName);
+    void leaveGroup(const std::string &purpleChatName, bool deleteSupergroup);
     int  sendGroupMessage(int purpleChatId, const char *message);
 private:
     using TdObjectPtr   = td::td_api::object_ptr<td::td_api::Object>;
@@ -84,6 +92,7 @@ private:
     void       addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       notifyFailedContact(const std::string &errorMessage);
     void       joinChatByLinkResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       deleteSupergroupResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
     void       requestDownload(int32_t fileId, int64_t chatId, const TgMessageInfo &message,
                                td::td_api::object_ptr<td::td_api::file> thumbnail,

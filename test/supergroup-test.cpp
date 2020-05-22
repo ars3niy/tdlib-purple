@@ -7,9 +7,11 @@ protected:
     const int64_t     groupChatId         = -7000;
     const std::string groupChatTitle      = "Title";
     const std::string groupChatPurpleName = "chat" + std::to_string(groupChatId);
+
+    void loginWithSupergroup();
 };
 
-TEST_F(SupergroupTest, AddSupergroupChatAtLogin)
+void SupergroupTest::loginWithSupergroup()
 {
     login(
         {
@@ -45,6 +47,11 @@ TEST_F(SupergroupTest, AddSupergroupChatAtLogin)
     );
 }
 
+TEST_F(SupergroupTest, AddSupergroupChatAtLogin)
+{
+    loginWithSupergroup();
+}
+
 TEST_F(SupergroupTest, ExistingSupergroupChatAtLogin)
 {
     GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
@@ -67,4 +74,81 @@ TEST_F(SupergroupTest, ExistingSupergroupChatAtLogin)
         make_object<users>(),
         make_object<chats>(std::vector<int64_t>(1, groupChatId))
     );
+}
+
+TEST_F(SupergroupTest, DeleteSupergroup_Fail)
+{
+    loginWithSupergroup();
+    PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    GList *actions = pluginInfo().blist_node_menu(&chat->node);
+
+    nodeMenuAction(&chat->node, actions, "Delete group");
+    prpl.verifyEvents(RequestActionEvent(connection, account, NULL, NULL, 2));
+    prpl.requestedAction("_No");
+    tgl.verifyNoRequests();
+    prpl.verifyNoEvents();
+
+    nodeMenuAction(&chat->node, actions, "Delete group");
+    prpl.verifyEvents(RequestActionEvent(connection, account, NULL, NULL, 2));
+    prpl.requestedAction("_Yes");
+    tgl.verifyRequest(deleteSupergroup(groupId));
+    tgl.reply(make_object<error>(100, "error"));
+
+    g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);
+}
+
+TEST_F(SupergroupTest, LeaveSupergroup)
+{
+    const int32_t date         = 12345;
+    const int64_t messageId    = 10001;
+    constexpr int purpleChatId = 1;
+
+    loginWithSupergroup();
+    PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    GList *actions = pluginInfo().blist_node_menu(&chat->node);
+
+    nodeMenuAction(&chat->node, actions, "Leave group");
+    prpl.verifyEvents(RequestActionEvent(connection, account, NULL, NULL, 2));
+    prpl.requestedAction("_No");
+    tgl.verifyNoRequests();
+    prpl.verifyNoEvents();
+
+    nodeMenuAction(&chat->node, actions, "Leave group");
+    prpl.verifyEvents(RequestActionEvent(connection, account, NULL, NULL, 2));
+    prpl.requestedAction("_Yes");
+    tgl.verifyRequests({
+        make_object<leaveChat>(groupChatId),
+        make_object<deleteChatHistory>(groupChatId, true, false)
+    });
+
+    tgl.update(make_object<updateChatChatList>(groupChatId, nullptr));
+    prpl.verifyEvents(RemoveChatEvent(groupChatPurpleName, ""));
+    tgl.update(make_object<updateSupergroup>(make_object<supergroup>(
+        groupId, "", 0, make_object<chatMemberStatusBanned>(0), 0,
+        false, false, false, false, false, false, "", false
+    )));
+    tgl.update(make_object<updateSupergroup>(make_object<supergroup>(
+        groupId, "", 0, make_object<chatMemberStatusLeft>(), 0,
+        false, false, false, false, false, false, "", false
+    )));
+
+    prpl.verifyNoEvents();
+    tgl.update(make_object<updateNewMessage>(
+        makeMessage(messageId, selfId, groupChatId, true, date,
+                    make_object<messageChatDeleteMember>(selfId))
+    ));
+    tgl.verifyRequest(viewMessages(groupChatId, {messageId}, true));
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatPurpleName),
+        ConvSetTitleEvent(groupChatPurpleName, groupChatTitle),
+        ConversationWriteEvent(groupChatPurpleName, "",
+                               selfFirstName + " " + selfLastName +
+                               ": Received unsupported message type messageChatDeleteMember",
+                               PURPLE_MESSAGE_SYSTEM, date)
+    );
+
+    // There is a check that fails message sending if we are not a group member
+    ASSERT_LT(pluginInfo().chat_send(connection, purpleChatId, "message", PURPLE_MESSAGE_SEND), 0);
+
+    g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);
 }

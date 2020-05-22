@@ -266,7 +266,9 @@ void PurpleEventReceiver::verifyEvent(const PurpleEvent &event)
             inputUserData = inputEvent.user_data;
         } else if (m_events.front()->type == PurpleEventType::RequestAction) {
             const RequestActionEvent &actionEvent = static_cast<const RequestActionEvent &>(*m_events.front());
-            actionCallbacks = actionEvent.callbacks;
+            actionCallbacks.resize(actionEvent.callbacks.size());
+            for (unsigned i = 0; i < actionEvent.callbacks.size(); i++)
+                actionCallbacks.at(i) = (std::make_pair(actionEvent.buttons.at(i), actionEvent.callbacks.at(i)));
             actionUserData  = actionEvent.user_data;
         }
 
@@ -309,10 +311,17 @@ void PurpleEventReceiver::inputCancel()
     inputUserData = NULL;
 }
 
-void PurpleEventReceiver::requestedAction(unsigned index)
+void PurpleEventReceiver::requestedAction(const char *button)
 {
-    ASSERT_TRUE(actionCallbacks.size() > index);
-    actionCallbacks[index](actionUserData, index);
+    auto compareButton = [button](const std::pair<std::string, PurpleRequestActionCb> &item)
+                         {
+                             return (item.first == button);
+                         };
+    auto it = std::find_if(actionCallbacks.begin(), actionCallbacks.end(), compareButton);
+    ASSERT_TRUE(it != actionCallbacks.end()) << "button '" << button << "' not found";
+    ASSERT_TRUE(std::find_if(it+1, actionCallbacks.end(), compareButton) == actionCallbacks.end()) <<
+        "two '" << button << "' buttons";
+    it->second(actionUserData, it - actionCallbacks.begin());
     actionCallbacks.clear();
     actionUserData = NULL;
 }
@@ -352,4 +361,17 @@ std::string PurpleEvent::toString() const
     }
     return std::to_string((unsigned)type);
 #undef C
+}
+
+void nodeMenuAction(PurpleBlistNode *node, GList *actions, const char *label)
+{
+    for (GList *item = actions; item; item = g_list_next(item)) {
+        PurpleMenuAction *action = static_cast<PurpleMenuAction *>(item->data);
+        if (!strcmp(action->label, label)) {
+            ((void (*)(PurpleBlistNode *node, gpointer data))(action->callback))(node, action->data);
+            return;
+        }
+    }
+
+    ASSERT_FALSE(true) << " menu item '" << label << "' not found";
 }

@@ -353,6 +353,11 @@ const char *purple_chat_get_name(PurpleChat *chat)
     return getChatName(chat);
 }
 
+PurpleAccount *purple_chat_get_account(PurpleChat *chat)
+{
+    return chat->account;
+}
+
 void purple_blist_alias_chat(PurpleChat *chat, const char *alias)
 {
     free(chat->alias);
@@ -616,16 +621,17 @@ void *purple_request_action(void *handle, const char *title, const char *primary
 	const char *who, PurpleConversation *conv, void *user_data,
 	size_t action_count, ...)
 {
+    std::vector<std::string> buttons;
     std::vector<PurpleRequestActionCb> callbacks;
     va_list ap;
     va_start(ap, action_count);
     for (size_t i = 0; i < action_count; i++) {
-        va_arg(ap, char*);
+        buttons.emplace_back(va_arg(ap, char*));
         callbacks.push_back(va_arg(ap, PurpleRequestActionCb));
     }
     va_end(ap);
 
-    EVENT(RequestActionEvent, handle, title, primary, secondary, account, who, conv, user_data, callbacks);
+    EVENT(RequestActionEvent, handle, title, primary, secondary, account, who, conv, user_data, buttons, callbacks);
     return NULL;
 }
 
@@ -942,6 +948,23 @@ void *purple_request_fields(void *handle, const char *title, const char *primary
 	void *user_data)
 {
     return NULL;
+}
+
+PurpleMenuAction *purple_menu_action_new(const char *label, PurpleCallback callback,
+                                     gpointer data, GList *children)
+{
+    PurpleMenuAction *action = new PurpleMenuAction;
+    action->label = strdup(label);
+    action->callback = callback;
+    action->children = NULL;
+    action->data = data;
+    return action;
+}
+
+void purple_menu_action_free(PurpleMenuAction *act)
+{
+    free(act->label);
+    delete act;
 }
 
 };

@@ -32,7 +32,7 @@ public:
 
     void inputEnter(const gchar *value);
     void inputCancel();
-    void requestedAction(unsigned index);
+    void requestedAction(const char *button);
 private:
     void verifyEvent(const PurpleEvent &event);
     void verifyEvents()
@@ -45,9 +45,11 @@ private:
     GCallback  inputOkCb     = NULL;
     GCallback  inputCancelCb = NULL;
 
-    std::vector<PurpleRequestActionCb> actionCallbacks;
-    void *                             actionUserData = NULL;
+    std::vector<std::pair<std::string, PurpleRequestActionCb>> actionCallbacks;
+    void *actionUserData = NULL;
 };
+
+void nodeMenuAction(PurpleBlistNode *node, GList *actions, const char *label);
 
 extern PurpleEventReceiver g_purpleEvents;
 
@@ -288,11 +290,13 @@ struct RequestActionEvent: PurpleEvent {
     std::string         username;
     PurpleConversation *conv;
 	void               *user_data;
+    std::vector<std::string>           buttons;
 	std::vector<PurpleRequestActionCb> callbacks;
 
     RequestActionEvent(void *handle, const char *title, const char *primary, const char *secondary,
                       PurpleAccount *account, const char *who, PurpleConversation *conv,
-                      void *user_data, const std::vector<PurpleRequestActionCb> &callbacks)
+                      void *user_data, const std::vector<std::string> &buttons,
+                      const std::vector<PurpleRequestActionCb> &callbacks)
     : PurpleEvent(PurpleEventType::RequestAction),
       handle(handle),
       title(title ? title : ""),
@@ -302,6 +306,7 @@ struct RequestActionEvent: PurpleEvent {
       username(who ? who : ""),
       conv(conv),
       user_data(user_data),
+      buttons(buttons),
       callbacks(callbacks)
       {}
     RequestActionEvent(void *handle, PurpleAccount *account, const char *who,
@@ -311,6 +316,7 @@ struct RequestActionEvent: PurpleEvent {
       account(account),
       username(who ? who : ""),
       conv(conv),
+      buttons(actionCount, ""),
       callbacks(actionCount, nullptr)
       {}
 };
