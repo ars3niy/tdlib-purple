@@ -361,25 +361,9 @@ void PurpleTdClient::requestAuthCode(const td::td_api::authenticationCodeInfo *c
                                NULL, // conversation
                                this))
     {
-        purple_connection_set_state (purple_account_get_connection(m_account), PURPLE_CONNECTED);
-        PurpleConversation *conv = purple_conversation_new (PURPLE_CONV_TYPE_IM, m_account, "Telegram");
-        purple_conversation_write (conv, "Telegram",
-            "Authentication code needs to be entered but this libpurple won't cooperate",
-            (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_SYSTEM), 0);
-    }
-}
-
-void PurpleTdClient::registerUser()
-{
-    std::string firstName, lastName;
-    getNamesFromAlias(purple_account_get_alias(m_account), firstName, lastName);
-
-    if (firstName.empty() && lastName.empty())
         purple_connection_error(purple_account_get_connection(m_account),
-                                _("Account alias (your name) must be set to register new user"));
-    else
-        m_transceiver.sendQuery(td::td_api::make_object<td::td_api::registerUser>(firstName, lastName),
-                                &PurpleTdClient::authResponse);
+            "Authentication code is required but this libpurple doesn't support input requests");
+    }
 }
 
 void PurpleTdClient::requestCodeEntered(PurpleTdClient *self, const gchar *code)
@@ -393,6 +377,53 @@ void PurpleTdClient::requestCodeCancelled(PurpleTdClient *self)
 {
     purple_connection_error(purple_account_get_connection(self->m_account),
                             _("Authentication code required"));
+}
+
+void PurpleTdClient::registerUser()
+{
+    std::string firstName, lastName;
+    getNamesFromAlias(purple_account_get_alias(m_account), firstName, lastName);
+
+    if (firstName.empty() && lastName.empty()) {
+        if (!purple_request_input (purple_account_get_connection(m_account),
+                                _("Registration"),
+                                _("New account is being created. Please enter your display name."),
+                                NULL,
+                                NULL, // default value
+                                FALSE, // multiline input
+                                FALSE, // masked input
+                                NULL,
+                                _("OK"), G_CALLBACK(displayNameEntered),
+                                _("Cancel"), G_CALLBACK(displayNameCancelled),
+                                m_account,
+                                NULL, // buddy
+                                NULL, // conversation
+                                this))
+        {
+            purple_connection_error(purple_account_get_connection(m_account),
+                "Authentication is required but this libpurple doesn't support input requests");
+        }
+    } else
+        m_transceiver.sendQuery(td::td_api::make_object<td::td_api::registerUser>(firstName, lastName),
+                                &PurpleTdClient::authResponse);
+}
+
+void PurpleTdClient::displayNameEntered(PurpleTdClient *self, const gchar *name)
+{
+    std::string firstName, lastName;
+    getNamesFromAlias(name, firstName, lastName);
+    if (firstName.empty() && lastName.empty())
+        purple_connection_error(purple_account_get_connection(self->m_account),
+                                _("Display name is required for registration"));
+    else
+        self->m_transceiver.sendQuery(td::td_api::make_object<td::td_api::registerUser>(firstName, lastName),
+                                      &PurpleTdClient::authResponse);
+}
+
+void PurpleTdClient::displayNameCancelled(PurpleTdClient *self)
+{
+    purple_connection_error(purple_account_get_connection(self->m_account),
+                            _("Display name is required for registration"));
 }
 
 void PurpleTdClient::authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)

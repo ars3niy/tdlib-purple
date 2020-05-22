@@ -76,7 +76,7 @@ TEST_F(LoginTest, ConnectionReadyBeforeAuthReady)
     );
 }
 
-TEST_F(LoginTest, RegisterNewAccount_ConnectionReadyBeforeAuthReady)
+TEST_F(LoginTest, RegisterNewAccount_WithAlias_ConnectionReadyBeforeAuthReady)
 {
     purple_account_set_alias(account, (selfFirstName + " " + selfLastName).c_str());
     prpl.discardEvents();
@@ -108,7 +108,6 @@ TEST_F(LoginTest, RegisterNewAccount_ConnectionReadyBeforeAuthReady)
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitEncryptionKey>(true)));
     tgl.reply(make_object<ok>());
 
-    // TODO: what if is_encrypted = false?
     tgl.verifyRequest(checkDatabaseEncryptionKey(""));
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitPhoneNumber>()));
     tgl.reply(make_object<ok>());
@@ -176,6 +175,77 @@ TEST_F(LoginTest, RegisterNewAccount_ConnectionReadyBeforeAuthReady)
         AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
         ShowAccountEvent(account)
     );
+}
+
+TEST_F(LoginTest, RegisterNewAccount_NoAlias)
+{
+    pluginInfo().login(account);
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
+    tgl.verifyRequests({
+        make_object<disableProxy>(),
+        make_object<getProxies>(),
+        make_object<setTdlibParameters>(make_object<tdlibParameters>(
+            false,
+            std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+            "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
+            "",
+            false,
+            false,
+            false,
+            false,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false
+        ))
+    });
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitEncryptionKey>(true)));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(checkDatabaseEncryptionKey(""));
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitPhoneNumber>()));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(setAuthenticationPhoneNumber("+" + selfPhoneNumber, nullptr));
+
+    tgl.update(make_object<updateAuthorizationState>(
+        make_object<authorizationStateWaitCode>(
+            make_object<authenticationCodeInfo>(
+                selfPhoneNumber,
+                make_object<authenticationCodeTypeTelegramMessage>(5),
+                make_object<authenticationCodeTypeSms>(5),
+                1800
+            )
+        )
+    ));
+
+    prpl.verifyEvents(RequestInputEvent(connection, account, NULL, NULL));
+    prpl.inputEnter("12345");
+    tgl.verifyRequest(checkAuthenticationCode("12345"));
+
+    tgl.update(make_object<updateAuthorizationState>(
+        make_object<authorizationStateWaitRegistration>(
+            make_object<termsOfService>(
+                make_object<formattedText>(
+                    "Terms of service",
+                    std::vector<object_ptr<textEntity>>()
+                ),
+                0, false
+            )
+        )
+    ));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyNoRequests();
+    prpl.verifyEvents(RequestInputEvent(connection, account, NULL, NULL));
+
+    prpl.inputEnter((selfFirstName + "     " + selfLastName).c_str());
+    tgl.verifyRequest(registerUser(selfFirstName, selfLastName));
 }
 
 TEST_F(LoginTest, RenameBuddyAtConnect)

@@ -50,6 +50,8 @@ private:
     void       registerUser();
     static void requestCodeEntered(PurpleTdClient *self, const gchar *code);
     static void requestCodeCancelled(PurpleTdClient *self);
+    static void displayNameEntered(PurpleTdClient *self, const gchar *name);
+    static void displayNameCancelled(PurpleTdClient *self);
     void       authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       notifyAuthError(const td::td_api::object_ptr<td::td_api::Object> &response);
     void       connectionReady();
