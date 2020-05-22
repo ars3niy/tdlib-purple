@@ -114,8 +114,17 @@ int32_t getSupergroupId(const td::td_api::chat &chat)
 
 bool isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &status)
 {
-    return status && (status->get_id() != td::td_api::chatMemberStatusLeft::ID) &&
-                     (status->get_id() != td::td_api::chatMemberStatusBanned::ID);
+    if (!status)
+        return false;
+    else if ((status->get_id() == td::td_api::chatMemberStatusLeft::ID) ||
+             (status->get_id() == td::td_api::chatMemberStatusBanned::ID))
+        return false;
+    else if (status->get_id() == td::td_api::chatMemberStatusRestricted::ID)
+        return static_cast<const td::td_api::chatMemberStatusRestricted &>(*status).is_member_;
+    else if (status->get_id() == td::td_api::chatMemberStatusCreator::ID)
+        return static_cast<const td::td_api::chatMemberStatusCreator &>(*status).is_member_;
+    else
+        return true;
 }
 
 void TdAccountData::updateUser(TdUserPtr user)

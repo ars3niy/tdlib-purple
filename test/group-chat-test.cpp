@@ -236,7 +236,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
         userIds[1],
         userIds[1],
         0,
-        make_object<chatMemberStatusCreator>(),
+        make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
     members.push_back(make_object<chatMember>(
@@ -298,7 +298,7 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
         userIds[1],
         userIds[1],
         0,
-        make_object<chatMemberStatusCreator>(),
+        make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
     members.push_back(make_object<chatMember>(
@@ -450,7 +450,7 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
         userIds[1],
         userIds[1],
         0,
-        make_object<chatMemberStatusCreator>(),
+        make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
     members.push_back(make_object<chatMember>(
@@ -539,7 +539,7 @@ TEST_F(GroupChatTest, AddContactByGroupChatName)
         userIds[1],
         userIds[1],
         0,
-        make_object<chatMemberStatusCreator>(),
+        make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
     members.push_back(make_object<chatMember>(
@@ -617,7 +617,7 @@ TEST_F(GroupChatTest, CreateRemoveBasicGroupInAnotherClient)
     ));
     tgl.update(make_object<updateBasicGroup>(make_object<basicGroup>(
         groupId, 0,
-        make_object<chatMemberStatusCreator>("", false),
+        make_object<chatMemberStatusCreator>("", false), // We are no longer group member
         true, 0
     )));
 
@@ -635,4 +635,7 @@ TEST_F(GroupChatTest, CreateRemoveBasicGroupInAnotherClient)
 
     tgl.update(make_object<updateChatChatList>(groupChatId, nullptr));
     prpl.verifyEvents(RemoveChatEvent(groupChatPurpleName, ""));
+
+    // There is a check that fails message sending if we are not a group member
+    ASSERT_LT(pluginInfo().chat_send(connection, 2, "message", PURPLE_MESSAGE_SEND), 0);
 }

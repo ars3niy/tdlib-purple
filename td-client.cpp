@@ -1290,7 +1290,7 @@ int PurpleTdClient::sendGroupMessage(int purpleChatId, const char *message)
     if (!chat)
         purple_debug_warning(config::pluginId, "No chat found for purple id %d\n", purpleChatId);
     else if (!m_data.isGroupChatWithMembership(*chat))
-        purple_debug_warning(config::pluginId, "purple id %d (chat %s) is not a group we a member of\n",
+        purple_debug_misc(config::pluginId, "purple id %d (chat %s) is not a group we a member of\n",
                              purpleChatId, chat->title_.c_str());
     else {
         transmitMessage(chat->id_, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
