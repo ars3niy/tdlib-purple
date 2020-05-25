@@ -192,6 +192,13 @@ void PurpleTdClient::processAuthorizationState(td::td_api::AuthorizationState &a
         break;
     }
 
+    case td::td_api::authorizationStateWaitPassword::ID: {
+        purple_debug_misc(config::pluginId, "Authorization state update: password requested\n");
+        auto &pwInfo = static_cast<const td::td_api::authorizationStateWaitPassword &>(authState);
+        requestPassword(pwInfo);
+        break;
+    }
+
     case td::td_api::authorizationStateReady::ID:
         purple_debug_misc(config::pluginId, "Authorization state update: ready\n");
         if (m_connectionReady)
@@ -369,14 +376,59 @@ void PurpleTdClient::requestAuthCode(const td::td_api::authenticationCodeInfo *c
 void PurpleTdClient::requestCodeEntered(PurpleTdClient *self, const gchar *code)
 {
     purple_debug_misc(config::pluginId, "Authentication code entered: '%s'\n", code);
-    self->m_transceiver.sendQuery(td::td_api::make_object<td::td_api::checkAuthenticationCode>(code),
-                                  &PurpleTdClient::authResponse);
+    auto checkCode = td::td_api::make_object<td::td_api::checkAuthenticationCode>();
+    if (code)
+        checkCode->code_ = code;
+    self->m_transceiver.sendQuery(std::move(checkCode), &PurpleTdClient::authResponse);
 }
 
 void PurpleTdClient::requestCodeCancelled(PurpleTdClient *self)
 {
     purple_connection_error(purple_account_get_connection(self->m_account),
                             _("Authentication code required"));
+}
+
+void PurpleTdClient::passwordEntered(PurpleTdClient *self, const gchar *password)
+{
+    purple_debug_misc(config::pluginId, "Password code entered\n");
+    auto checkPassword = td::td_api::make_object<td::td_api::checkAuthenticationPassword>();
+    if (password)
+        checkPassword->password_ = password;
+    self->m_transceiver.sendQuery(std::move(checkPassword), &PurpleTdClient::authResponse);
+}
+
+void PurpleTdClient::passwordCancelled(PurpleTdClient *self)
+{
+    purple_connection_error(purple_account_get_connection(self->m_account), _("Password required"));
+}
+
+void PurpleTdClient::requestPassword(const td::td_api::authorizationStateWaitPassword &pwInfo)
+{
+    std::string hints;
+    if (!pwInfo.password_hint_.empty())
+        hints = formatMessage(_("Hint: {}"), pwInfo.password_hint_);
+    if (!pwInfo.recovery_email_address_pattern_.empty()) {
+        if (!hints.empty()) hints += '\n';
+        hints += formatMessage(_("Recovery e-mail may have been sent to {}"), pwInfo.recovery_email_address_pattern_);
+    }
+    if (!purple_request_input (purple_account_get_connection(m_account),
+                               _("Password"),
+                               _("Enter password for two-step authentication"),
+                               hints.empty() ? NULL : hints.c_str(),
+                               NULL, // default value
+                               FALSE, // multiline input
+                               FALSE, // masked input
+                               _("password"),
+                               _("OK"), G_CALLBACK(passwordEntered),
+                               _("Cancel"), G_CALLBACK(passwordCancelled),
+                               m_account,
+                               NULL, // buddy
+                               NULL, // conversation
+                               this))
+    {
+        purple_connection_error(purple_account_get_connection(m_account),
+            "Authentication code is required but this libpurple doesn't support input requests");
+    }
 }
 
 void PurpleTdClient::registerUser()

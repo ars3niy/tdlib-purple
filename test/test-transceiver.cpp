@@ -301,6 +301,11 @@ static void compare(const deleteSupergroup &actual, const deleteSupergroup &expe
     COMPARE(supergroup_id_);
 }
 
+static void compare(const checkAuthenticationPassword &actual, const checkAuthenticationPassword &expected)
+{
+    COMPARE(password_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -340,6 +345,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(removeContacts)
         C(leaveChat)
         C(deleteSupergroup)
+        C(checkAuthenticationPassword)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

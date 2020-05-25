@@ -246,6 +246,86 @@ TEST_F(LoginTest, RegisterNewAccount_NoAlias)
 
     prpl.inputEnter((selfFirstName + "     " + selfLastName).c_str());
     tgl.verifyRequest(registerUser(selfFirstName, selfLastName));
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
+    tgl.reply(make_object<ok>());
+    tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
+    tgl.verifyRequest(getContacts());
+}
+
+TEST_F(LoginTest, TwoStepAuthentication)
+{
+    purple_account_set_alias(account, (selfFirstName + " " + selfLastName).c_str());
+    prpl.discardEvents();
+    pluginInfo().login(account);
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
+    tgl.verifyRequests({
+        make_object<disableProxy>(),
+        make_object<getProxies>(),
+        make_object<setTdlibParameters>(make_object<tdlibParameters>(
+            false,
+            std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+            "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
+            "",
+            false,
+            false,
+            false,
+            false,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false
+        ))
+    });
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitEncryptionKey>(true)));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(checkDatabaseEncryptionKey(""));
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitPhoneNumber>()));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(setAuthenticationPhoneNumber("+" + selfPhoneNumber, nullptr));
+
+    tgl.update(make_object<updateAuthorizationState>(
+        make_object<authorizationStateWaitCode>(
+            make_object<authenticationCodeInfo>(
+                selfPhoneNumber,
+                make_object<authenticationCodeTypeTelegramMessage>(5),
+                make_object<authenticationCodeTypeSms>(5),
+                1800
+            )
+        )
+    ));
+
+    prpl.verifyEvents(RequestInputEvent(connection, account, NULL, NULL));
+    prpl.inputEnter("12345");
+    tgl.verifyRequest(checkAuthenticationCode("12345"));
+
+    tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 3)
+    );
+
+    tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitPassword>(
+        "hint", true, "user@example.com"
+    )));
+    tgl.reply(make_object<ok>());
+
+    prpl.verifyEvents(RequestInputEvent(connection, account, NULL, NULL));
+    prpl.inputEnter("password");
+    tgl.verifyRequest(checkAuthenticationPassword("password"));
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
+    tgl.reply(make_object<ok>());
+    tgl.verifyRequest(getContacts());
 }
 
 TEST_F(LoginTest, RenameBuddyAtConnect)
