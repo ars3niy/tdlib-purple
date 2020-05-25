@@ -1,5 +1,5 @@
-#ifndef _CHAT_INFO_H
-#define _CHAT_INFO_H
+#ifndef _PURPLE_INFO_H
+#define _PURPLE_INFO_H
 
 #include <purple.h>
 #include <td/telegram/td_api.h>

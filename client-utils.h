@@ -58,4 +58,6 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
 void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
                      TdAccountData &account, TdTransceiver::ResponseCb response);
 
+void requestRecoveryEmailConfirmation(PurpleConnection *gc, const char *emailInfo);
+
 #endif

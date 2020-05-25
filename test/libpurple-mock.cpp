@@ -924,6 +924,11 @@ void purple_request_field_set_type_hint(PurpleRequestField *field,
 {
 }
 
+void purple_request_field_string_set_masked(PurpleRequestField *field,
+										  gboolean masked)
+{
+}
+
 void purple_request_field_group_add_field(PurpleRequestFieldGroup *group,
 										PurpleRequestField *field)
 {
@@ -965,6 +970,11 @@ void purple_menu_action_free(PurpleMenuAction *act)
 {
     free(act->label);
     delete act;
+}
+
+PurplePluginAction *purple_plugin_action_new(const char* label, void (*callback)(PurplePluginAction *))
+{
+    return NULL;
 }
 
 };

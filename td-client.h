@@ -32,6 +32,9 @@ public:
     BasicGroupMembership getBasicGroupMembership(const char *purpleChatName);
     void leaveGroup(const std::string &purpleChatName, bool deleteSupergroup);
     int  sendGroupMessage(int purpleChatId, const char *message);
+
+    void setTwoStepAuth(const char *oldPassword, const char *newPassword, const char *hint,
+                        const char *email);
 private:
     using TdObjectPtr   = td::td_api::object_ptr<td::td_api::Object>;
     using ResponseCb    = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
@@ -117,6 +120,11 @@ private:
     bool       sendMessage(int64_t chatId, const char *message);
     void       sendMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       removeTempFile(int64_t messageId);
+
+    void        setTwoStepAuthResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void        requestRecoveryEmailConfirmation(const std::string &emailInfo);
+    static void verifyRecoveryEmail(PurpleTdClient *self, const char *code);
+    void        verifyRecoveryEmailResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
     PurpleAccount        *m_account;
     TdTransceiver         m_transceiver;

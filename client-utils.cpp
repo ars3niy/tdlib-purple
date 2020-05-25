@@ -1,7 +1,8 @@
 #include "client-utils.h"
-#include "chat-info.h"
+#include "purple-info.h"
 #include "config.h"
 #include "format.h"
+#include "td-client.h"
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>

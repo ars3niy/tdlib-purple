@@ -1,4 +1,4 @@
-#include "chat-info.h"
+#include "purple-info.h"
 #include "config.h"
 #include <algorithm>
 

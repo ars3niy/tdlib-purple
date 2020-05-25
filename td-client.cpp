@@ -1,5 +1,5 @@
 #include "td-client.h"
-#include "chat-info.h"
+#include "purple-info.h"
 #include "config.h"
 #include "format.h"
 #include <unistd.h>
@@ -532,7 +532,7 @@ void PurpleTdClient::requestMissingPrivateChats()
 
 void PurpleTdClient::loginCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    if (object->get_id() == td::td_api::chat::ID) {
+    if (object && (object->get_id() == td::td_api::chat::ID)) {
         td::td_api::object_ptr<td::td_api::chat> chat = td::move_tl_object_as<td::td_api::chat>(object);
         purple_debug_misc(config::pluginId, "Requested private chat received: id %" G_GINT64_FORMAT "\n",
                           chat->id_);
@@ -1254,7 +1254,7 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
         return;
 
     int32_t userId = 0;
-    if (object->get_id() == td::td_api::importedContacts::ID) {
+    if (object && (object->get_id() == td::td_api::importedContacts::ID)) {
         td::td_api::object_ptr<td::td_api::importedContacts> reply =
             td::move_tl_object_as<td::td_api::importedContacts>(object);
         if (!reply->user_ids_.empty())
@@ -1276,7 +1276,7 @@ void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_p
     if (!request)
         return;
 
-    if (object->get_id() == td::td_api::ok::ID) {
+    if (object && (object->get_id() == td::td_api::ok::ID)) {
         td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
             td::td_api::make_object<td::td_api::createPrivateChat>(request->userId, false);
         uint64_t newRequestId = m_transceiver.sendQuery(std::move(createChat),
@@ -1526,5 +1526,97 @@ void PurpleTdClient::removeTempFile(int64_t messageId)
     if (!path.empty()) {
         purple_debug_misc(config::pluginId, "Removing temporary file %s\n", path.c_str());
         remove(path.c_str());
+    }
+}
+
+void PurpleTdClient::setTwoStepAuth(const char *oldPassword, const char *newPassword,
+                                    const char *hint, const char *email)
+{
+    auto setPassword = td::td_api::make_object<td::td_api::setPassword>();
+    if (oldPassword)
+        setPassword->old_password_ = oldPassword;
+    if (newPassword)
+        setPassword->new_password_ = newPassword;
+    if (hint)
+        setPassword->new_hint_ = hint;
+    setPassword->set_recovery_email_address_ = (email && *email);
+    if (email)
+        setPassword->new_recovery_email_address_ = email;
+
+    m_transceiver.sendQuery(std::move(setPassword), &PurpleTdClient::setTwoStepAuthResponse);
+}
+
+static void inputCancelled(void *data)
+{
+}
+
+void PurpleTdClient::requestRecoveryEmailConfirmation(const std::string &emailInfo)
+{
+    std::string secondary = "Password will be changed after new e-mail is confirmed\n" + emailInfo;
+    PurpleConnection *gc = purple_account_get_connection(m_account);
+    purple_request_input(gc, _("Two-factor authentication"),
+                         _("Enter verification code received in the e-mail"), secondary.c_str(),
+                         NULL,  // default value
+                         FALSE, // multiline input
+                         FALSE, // masked input
+                         NULL,
+                         _("OK"), G_CALLBACK(PurpleTdClient::verifyRecoveryEmail),
+                         _("Cancel"), G_CALLBACK(inputCancelled),
+                         purple_connection_get_account(gc),
+                         NULL, // buddy
+                         NULL, // conversation
+                         this);
+}
+
+static void notifyPasswordChangeSuccess(PurpleAccount *account, const td::td_api::passwordState &passwordState)
+{
+    purple_notify_info(account, _("Two-step authentication"),
+                        passwordState.has_password_ ? _("Password set") : _("Password cleared"),
+                        passwordState.has_recovery_email_address_ ? _("Recovery e-mail is configured") :
+                                                                    _("No recovery e-mail configured"));
+}
+
+void PurpleTdClient::setTwoStepAuthResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    if (object && (object->get_id() == td::td_api::passwordState::ID)) {
+        const td::td_api::passwordState &passwordState = static_cast<const td::td_api::passwordState &>(*object);
+        if (passwordState.recovery_email_address_code_info_) {
+            std::string emailInfo = formatMessage(_("Code sent to {} (length: {})"),
+                                                  {passwordState.recovery_email_address_code_info_->email_address_pattern_,
+                                                   std::to_string(passwordState.recovery_email_address_code_info_->length_)});
+            requestRecoveryEmailConfirmation(emailInfo);
+        } else
+            notifyPasswordChangeSuccess(m_account, passwordState);
+    } else {
+        std::string errorMessage = getDisplayedError(object);
+        purple_notify_error(m_account, _("Two-step authentication"), _("Failed to set password"), errorMessage.c_str());
+    }
+}
+
+void PurpleTdClient::verifyRecoveryEmail(PurpleTdClient *self, const char *code)
+{
+    auto checkCode = td::td_api::make_object<td::td_api::checkRecoveryEmailAddressCode>();
+    if (code)
+        checkCode->code_ = code;
+    self->m_transceiver.sendQuery(std::move(checkCode), &PurpleTdClient::verifyRecoveryEmailResponse);
+}
+
+void PurpleTdClient::verifyRecoveryEmailResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    if (object && (object->get_id() == td::td_api::passwordState::ID)) {
+        const td::td_api::passwordState &passwordState = static_cast<const td::td_api::passwordState &>(*object);
+        if (passwordState.recovery_email_address_code_info_) {
+            if (passwordState.recovery_email_address_code_info_->length_ > 0) {
+                std::string emailInfo = formatMessage(_("E-mail address: {}"),
+                                                      passwordState.recovery_email_address_code_info_->email_address_pattern_);
+                purple_notify_info(m_account, _("Two-step authentication"),
+                                   _("For some reason, new confirmation code was sent"), emailInfo.c_str());
+            } else
+                purple_notify_error(m_account, _("Two-step authentication"), _("Looks like the code was wrong"), NULL);
+        } else
+            notifyPasswordChangeSuccess(m_account, passwordState);
+    } else {
+        std::string errorMessage = getDisplayedError(object);
+        purple_notify_error(m_account, _("Two-step authentication"), _("Failed to verify recovery e-mail"), errorMessage.c_str());
     }
 }

@@ -1,6 +1,6 @@
 #include "config.h"
 #include "td-client.h"
-#include "chat-info.h"
+#include "purple-info.h"
 #include "format.h"
 #include <purple.h>
 
@@ -84,6 +84,8 @@ static GList *tgprpl_status_types (PurpleAccount *acct)
 struct RequestData {
     PurpleAccount *account;
     std::string stringData;
+
+    RequestData(PurpleAccount *account) : account(account) {}
 };
 
 static void cancelRequest(RequestData *data, int action)
@@ -119,8 +121,7 @@ static void leaveGroup(PurpleBlistNode *node, gpointer data)
     PurpleTdClient *tdClient = getTdClient(account);
     if (tdClient) {
         const char  *chatName  = getChatName(purple_chat_get_components(chat));
-        RequestData *request   = new RequestData;
-        request->account = account;
+        RequestData *request   = new RequestData(account);
         request->stringData = chatName ? chatName : "";
 
         if (tdClient->getBasicGroupMembership(chatName) == BasicGroupMembership::Creator)
@@ -152,8 +153,7 @@ static void deleteGroup(PurpleBlistNode *node, gpointer data)
             purple_notify_error(account, _("Error"), _("Cannot delete group"),
                                 _("Cannot delete basic group created by someone else"));
         else {
-            RequestData *request   = new RequestData;
-            request->account = account;
+            RequestData *request = new RequestData(account);
             request->stringData = chatName ? chatName : "";
             purple_request_action(purple_account_get_connection(account), _("Deleting group"),
                                   _("Delete the group?"), NULL,
@@ -295,8 +295,7 @@ static void tgprpl_request_delete_contact (PurpleConnection *gc, PurpleBuddy *bu
 {
     g_return_if_fail(buddy);
 
-    RequestData *data = new RequestData;
-    data->account = purple_connection_get_account(gc);
+    RequestData *data = new RequestData(purple_connection_get_account(gc));
     data->stringData = purple_buddy_get_name(buddy);
 
     purple_request_yes_no(gc, _("Remove contact"), _("Remove contact"),
@@ -335,11 +334,6 @@ static void create_group_chat_cb (RequestData *data, PurpleRequestFields* fields
         tdClient->createGroup(request->stringData.c_str(), GROUP_TYPE_BASIC, members);
 }
 
-static void cancel_group_chat_cb (RequestData *data)
-{
-    delete data;
-}
-
 static void requestCreateBasicGroup(PurpleConnection *gc, const char *name)
 {
     // Telegram doesn't allow to create chats with only one user, so we need to force
@@ -362,11 +356,10 @@ static void requestCreateBasicGroup(PurpleConnection *gc, const char *name)
 
     purple_request_fields_add_group (fields, group);
 
-    RequestData *data = new RequestData;
-    data->account = purple_connection_get_account(gc);
+    RequestData *data = new RequestData(purple_connection_get_account(gc));
     data->stringData = name;
     purple_request_fields (gc, _("Create group chat"), _("Invite users"), NULL, fields, _("OK"),
-                           G_CALLBACK(create_group_chat_cb), _("Cancel"), G_CALLBACK(cancel_group_chat_cb),
+                           G_CALLBACK(create_group_chat_cb), _("Cancel"), G_CALLBACK(cancelRequest),
                            purple_connection_get_account(gc), NULL, NULL, data);
 }
 
@@ -603,9 +596,87 @@ static void tgprpl_init (PurplePlugin *plugin)
         PurpleTdClient::setLogLevel(1);
 }
 
+static void setTwoStepAuth(RequestData *data, PurpleRequestFields* fields);
+
+static void requestTwoStepAuth(PurpleConnection *gc, const char *primaryText, const char *email)
+{
+    PurpleRequestFields     *fields  = purple_request_fields_new();
+    PurpleRequestFieldGroup *group   = purple_request_field_group_new(NULL);
+
+    PurpleRequestField *field = purple_request_field_string_new ("oldpw", _("Current password"), NULL, FALSE);
+    purple_request_field_string_set_masked(field, TRUE);
+    purple_request_field_group_add_field (group, field);
+
+    field = purple_request_field_string_new ("pw1", _("New password"), NULL, FALSE);
+    purple_request_field_string_set_masked(field, TRUE);
+    purple_request_field_group_add_field (group, field);
+
+    field = purple_request_field_string_new ("pw2", _("Repeat password"), NULL, FALSE);
+    purple_request_field_string_set_masked(field, TRUE);
+    purple_request_field_group_add_field (group, field);
+
+    field = purple_request_field_string_new ("hint", _("Password hint"), NULL, FALSE);
+    purple_request_field_group_add_field (group, field);
+
+    field = purple_request_field_string_new ("email", _("Recovery e-mail"), email, FALSE);
+    purple_request_field_group_add_field (group, field);
+
+    purple_request_fields_add_group (fields, group);
+
+    RequestData *data = new RequestData(purple_connection_get_account(gc));
+    data->account = purple_connection_get_account(gc);
+    purple_request_fields (gc, _("Two-step authentication"), primaryText, NULL, fields, _("OK"),
+                           G_CALLBACK(setTwoStepAuth), _("Cancel"), G_CALLBACK(cancelRequest),
+                           purple_connection_get_account(gc), NULL, NULL, data);
+}
+
+static int reRequestTwoStepAuth(gpointer user_data)
+{
+    std::unique_ptr<RequestData> request(static_cast<RequestData *>(user_data));
+    requestTwoStepAuth(purple_account_get_connection(request->account),
+                        _("Please enter same password twice"), request->stringData.c_str());
+    return FALSE; // this idle handler will not be called again
+}
+
+static void setTwoStepAuth(RequestData *data, PurpleRequestFields* fields)
+{
+    std::unique_ptr<RequestData> request(data);
+    PurpleTdClient *tdClient = getTdClient(request->account);
+
+    if (tdClient) {
+        const char *oldPass   = purple_request_fields_get_string(fields, "oldpw");
+        const char *password1 = purple_request_fields_get_string(fields, "pw1");
+        const char *password2 = purple_request_fields_get_string(fields, "pw2");
+        const char *hint      = purple_request_fields_get_string(fields, "hint");
+        const char *email     = purple_request_fields_get_string(fields, "email");
+
+        if ((password1 != password2) && (!password1 || !password2 || strcmp(password1, password2))) {
+            // Calling purple_request_fields synchronously causes glitch in pidgin
+            RequestData *newRequest = new RequestData(request->account);
+            if (email)
+                newRequest->stringData = email;
+            g_idle_add(reRequestTwoStepAuth, newRequest);
+        } else if (tdClient)
+            tdClient->setTwoStepAuth(oldPass, password1, hint, email);
+    }
+}
+
+static void configureTwoStepAuth(PurplePluginAction *action)
+{
+    PurpleConnection *gc = static_cast<PurpleConnection *>(action->context);
+    requestTwoStepAuth(gc, _("Enter new password and recovery e-mail address"), NULL);
+}
+
 static GList *tgprpl_actions (PurplePlugin *plugin, gpointer context)
 {
-    return (GList *)NULL;
+    GList *actionsList = NULL;
+    PurplePluginAction *action;
+
+    action = purple_plugin_action_new(_("Configure two-step authentication..."),
+                                      configureTwoStepAuth);
+    actionsList = g_list_append(actionsList, action);
+
+    return actionsList;
 }
 
 static PurplePluginInfo plugin_info = {

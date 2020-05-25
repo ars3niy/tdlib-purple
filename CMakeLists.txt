@@ -25,7 +25,7 @@ add_library(telegram-tdlib SHARED
     td-client.cpp
     transceiver.cpp
     account-data.cpp
-    chat-info.cpp
+    purple-info.cpp
     config.cpp
     client-utils.cpp
     format.cpp
