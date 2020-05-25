@@ -149,6 +149,18 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         break;
     }
 
+    case td::td_api::updateOption::ID: {
+        const td::td_api::updateOption &option = static_cast<const td::td_api::updateOption &>(update);
+        if ((option.name_ == "version") && option.value_ &&
+            (option.value_->get_id() == td::td_api::optionValueString::ID))
+        {
+            purple_debug_misc(config::pluginId, "tdlib version: %s\n",
+                              static_cast<const td::td_api::optionValueString &>(*option.value_).value_.c_str());
+        } else
+            purple_debug_misc(config::pluginId, "Option update %s\n", option.name_.c_str());
+        break;
+    }
+
     default:
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
         break;

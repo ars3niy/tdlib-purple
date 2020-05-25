@@ -4,15 +4,6 @@ project(TdExample VERSION 1.0 LANGUAGES CXX)
 
 find_package(Td REQUIRED)
 
-if (${UNIX})
-    execute_process(COMMAND git log --pretty=format:%h -n 1 OUTPUT_VARIABLE GIT_COMMIT)
-    if (NOT "${GIT_COMMIT}" STREQUAL "")
-        set(GIT_COMMIT "-${GIT_COMMIT}")
-    endif (NOT "${GIT_COMMIT}" STREQUAL "")
-else (${UNIX})
-    set(GIT_COMMIT "")
-endif (${UNIX})
-
 if (NOT DEFINED NoPkgConfig OR NOT NoPkgConfig)
     include(FindPkgConfig)
     pkg_check_modules(Purple REQUIRED purple)
@@ -32,7 +23,7 @@ add_library(telegram-tdlib SHARED
 )
 
 target_compile_definitions(telegram-tdlib PRIVATE
-    "TD_VERSION=\"${Td_VERSION}\";GIT_COMMIT=\"${GIT_COMMIT}\""
+    "TD_VERSION=\"${Td_VERSION}\""
 )
 include_directories(telegram-tdlib ${Purple_INCLUDE_DIRS})
 target_link_libraries(telegram-tdlib PRIVATE Td::TdStatic ${Purple_LIBRARIES})
