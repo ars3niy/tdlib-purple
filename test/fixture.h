@@ -10,7 +10,6 @@ using namespace td::td_api;
 class CommTest: public testing::Test {
 public:
     CommTest();
-
 private:
     PurplePlugin      purplePlugin;
 protected:

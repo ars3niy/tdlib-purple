@@ -679,13 +679,25 @@ void PurpleTdClient::showTextMessage(const td::td_api::chat &chat, const TgMessa
         showMessageText(m_data, chat, message, text.text_->text_.c_str(), NULL);
 }
 
-static const td::td_api::file *selectPhotoSize(const td::td_api::messagePhoto &photo)
+static const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td::td_api::messagePhoto &photo)
 {
-    const td::td_api::photoSize *selectedSize = nullptr;
+    unsigned                     sizeLimit        = getAutoDownloadLimitKb(account);
+    const td::td_api::photoSize *selectedSize     = nullptr;
+    bool                         selectedFileSize = 0;
     if (photo.photo_)
         for (const auto &newSize: photo.photo_->sizes_)
-            if (newSize && newSize->photo_ && (!selectedSize || (newSize->width_ > selectedSize->width_)))
-                selectedSize = newSize.get();
+            if (newSize && newSize->photo_) {
+                unsigned fileSize            = getFileSizeKb(*newSize->photo_);
+                bool     isWithinLimit       = isSizeWithinLimit(fileSize, sizeLimit);
+                bool     selectedWithinLimit = isSizeWithinLimit(selectedFileSize, sizeLimit);
+                if (!selectedSize ||
+                    (!selectedWithinLimit && (isWithinLimit || (fileSize < selectedFileSize))) ||
+                    (selectedWithinLimit && isWithinLimit && (newSize->width_ > selectedSize->width_)))
+                {
+                    selectedSize = newSize.get();
+                    selectedFileSize = fileSize;
+                }
+            }
 
     if (selectedSize)
         purple_debug_misc(config::pluginId, "Selected size %dx%d for photo\n",
@@ -719,23 +731,42 @@ static std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMe
 void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
                                       const td::td_api::messagePhoto &photo)
 {
-    const td::td_api::file *file = selectPhotoSize(photo);
+    const td::td_api::file *file         = selectPhotoSize(m_account, photo);
     std::string             notice;
+    bool                    askDownload  = false;
+    bool                    autoDownload = false;
 
     if (!file)
         notice = makeNoticeWithSender(chat, message, _("Faulty image"), m_account);
     else if (file->local_ && file->local_->is_downloading_completed_)
         notice.clear();
-    else
-        notice = makeNoticeWithSender(chat, message, _("Downloading image"), m_account);
-
+    else {
+        if (isSizeWithinLimit(getFileSizeKb(*file), getAutoDownloadLimitKb(m_account))) {
+            notice = makeNoticeWithSender(chat, message, _("Downloading image"), m_account);
+            autoDownload = true;
+        } else if (!ignoreBigDownloads(m_account)) {
+            notice = makeNoticeWithSender(chat, message, _("Requesting image download"), m_account);
+            askDownload = true;
+        } else {
+            notice = formatMessage(_("Ignoring image download of {} kB"), std::to_string(getFileSizeKb(*file)));
+            notice = makeNoticeWithSender(chat, message, notice.c_str(), m_account);
+        }
+    }
     const char *caption = photo.caption_ ? photo.caption_->text_.c_str() : NULL;
 
     if (!notice.empty())
         showMessageText(m_data, chat, message, caption, notice.c_str());
 
-    if (file)
-        showImage(chat, message, *file, caption);
+    if (file) {
+        if (file->local_ && file->local_->is_downloading_completed_)
+            showDownloadedImage(chat.id_, message, file->local_->path_, caption);
+        else if (autoDownload) {
+            purple_debug_misc(config::pluginId, "Downloading image (file id %d)\n", (int)file->id_);
+            requestDownload(file->id_, chat.id_, message, nullptr, &PurpleTdClient::imageDownloadResponse);
+        } else if (askDownload) {
+            // TODO
+        }
+    }
 }
 
 void PurpleTdClient::requestDownload(int32_t fileId, int64_t chatId, const TgMessageInfo &message,
@@ -752,17 +783,6 @@ void PurpleTdClient::requestDownload(int32_t fileId, int64_t chatId, const TgMes
 
     uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq), responseCb);
     m_data.addPendingRequest<DownloadRequest>(requestId, chatId, message, thumbnail.release());
-}
-
-void PurpleTdClient::showImage(const td::td_api::chat &chat, const TgMessageInfo &message,
-                               const td::td_api::file &file, const char *caption)
-{
-    if (file.local_ && file.local_->is_downloading_completed_)
-        showDownloadedImage(chat.id_, message, file.local_->path_, caption);
-    else {
-        purple_debug_misc(config::pluginId, "Downloading image (file id %d)\n", (int)file.id_);
-        requestDownload(file.id_, chat.id_, message, nullptr, &PurpleTdClient::imageDownloadResponse);
-    }
 }
 
 static std::string getDownloadPath(const td::td_api::Object *object)

@@ -105,8 +105,6 @@ private:
     void       requestDownload(int32_t fileId, int64_t chatId, const TgMessageInfo &message,
                                td::td_api::object_ptr<td::td_api::file> thumbnail,
                                TdTransceiver::ResponseCb responseCb);
-    void       showImage(const td::td_api::chat &chat, const TgMessageInfo &message,
-                         const td::td_api::file &file, const char *caption);
     void       imageDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       showDownloadedImage(int64_t chatId, const TgMessageInfo &message,
                                    const std::string &filePath, const char *caption);

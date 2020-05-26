@@ -20,4 +20,16 @@ int          getChatGroupType(GHashTable *components);
 
 int64_t      getTdlibChatId(const char *chatName);
 
+namespace AccountOptions {
+    constexpr const char *AutoDownloadLimit          = "media-size-threshold";
+    constexpr const char *AutoDownloadLimitDefault   = "32";
+    constexpr const char *BigDownloadHandling        = "media-handling-behavior";
+    constexpr const char *BigDownloadHandlingAsk     = "ask";
+    constexpr const char *BigDownloadHandlingDiscard = "discard";
+};
+
+unsigned getAutoDownloadLimitKb(PurpleAccount *account);
+bool     isSizeWithinLimit(unsigned size, unsigned limit);
+bool     ignoreBigDownloads(PurpleAccount *account);
+
 #endif

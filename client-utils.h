@@ -60,4 +60,6 @@ void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transce
 
 void requestRecoveryEmailConfirmation(PurpleConnection *gc, const char *emailInfo);
 
+unsigned getFileSizeKb(const td::td_api::file &file);
+
 #endif

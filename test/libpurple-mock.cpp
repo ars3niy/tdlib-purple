@@ -9,6 +9,7 @@ struct AccountInfo {
     std::vector<PurpleBuddy *>         buddies;
     std::vector<PurpleChat *>          chats;
     std::vector<PurpleConversation *>  conversations;
+    std::map<std::string, std::string> stringsOptions;
 };
 
 std::vector<AccountInfo>  g_accounts;
@@ -975,6 +976,54 @@ void purple_menu_action_free(PurpleMenuAction *act)
 PurplePluginAction *purple_plugin_action_new(const char* label, void (*callback)(PurplePluginAction *))
 {
     return NULL;
+}
+
+PurpleAccountOption *purple_account_option_string_new(const char *text,
+	const char *pref_name, const char *default_value)
+{
+    return NULL;
+}
+
+PurpleAccountOption *purple_account_option_list_new(const char *text,
+	const char *pref_name, GList *list)
+{
+    for (GList *choice = list; choice; choice = g_list_next(choice)) {
+        PurpleKeyValuePair *kvp = static_cast<PurpleKeyValuePair *>(choice->data);
+        g_free(kvp->key);
+        g_free(kvp->value);
+        g_free(kvp);
+    }
+    g_list_free(list);
+    return NULL;
+}
+
+const char *purple_account_get_string(const PurpleAccount *account,
+									const char *name,
+									const char *default_value)
+{
+    auto it = std::find_if(g_accounts.begin(), g_accounts.end(),
+                           [account](const AccountInfo &info) { return (info.account == account); });
+    EXPECT_FALSE(it == g_accounts.end()) << "Unknown account";
+
+    if (it != g_accounts.end()) {
+        auto itOption = it->stringsOptions.find(name);
+        if (itOption != it->stringsOptions.end())
+            return itOption->second.c_str();
+    }
+
+    return default_value;
+}
+
+void purple_account_set_string(PurpleAccount *account, const char *name,
+                                                         const char *value)
+{
+    auto it = std::find_if(g_accounts.begin(), g_accounts.end(),
+                           [account](const AccountInfo &info) { return (info.account == account); });
+    EXPECT_FALSE(it == g_accounts.end()) << "Unknown account";
+
+    if (it != g_accounts.end()) {
+        it->stringsOptions[name] = value;
+    }
 }
 
 };

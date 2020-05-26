@@ -1,6 +1,8 @@
 #include "purple-info.h"
 #include "config.h"
+#include "format.h"
 #include <algorithm>
+#include <math.h>
 
 static const char *_(const char *s) { return s; }
 
@@ -90,4 +92,40 @@ int64_t getTdlibChatId(const char *chatName)
     }
 
     return 0;
+}
+
+unsigned getAutoDownloadLimitKb(PurpleAccount *account)
+{
+    std::string dlLimitStr = purple_account_get_string(account, AccountOptions::AutoDownloadLimit,
+                                                       AccountOptions::AutoDownloadLimitDefault);
+    for (size_t i = 0; i < dlLimitStr.size(); i++)
+        if (dlLimitStr[i] == ',')
+            dlLimitStr[i] = '.';
+    char *endptr;
+    float dlLimit = strtof(dlLimitStr.c_str(), &endptr);
+
+    if (*endptr != '\0') {
+        std::string message = formatMessage(_("Invalid auto-download limit '{}', resetting to default"), dlLimitStr);
+        purple_notify_warning(account, _("Download limit"), message.c_str(), NULL);
+        purple_account_set_string(account, AccountOptions::AutoDownloadLimit,
+                                  AccountOptions::AutoDownloadLimitDefault);
+        dlLimit = atof(AccountOptions::AutoDownloadLimitDefault);
+    } else if (!isfinite(dlLimit) || (dlLimit >= UINT_MAX/1024-1)) {
+        purple_account_set_string(account, AccountOptions::AutoDownloadLimit, "0");
+        dlLimit = 0;
+    }
+
+    return floorf(dlLimit*1024);
+}
+
+bool isSizeWithinLimit(unsigned size, unsigned limit)
+{
+    return (limit == 0) || (size <= limit);
+}
+
+bool ignoreBigDownloads(PurpleAccount *account)
+{
+    return !strcmp(purple_account_get_string(account, AccountOptions::BigDownloadHandling,
+                                             AccountOptions::BigDownloadHandlingAsk),
+                   AccountOptions::BigDownloadHandlingDiscard);
 }

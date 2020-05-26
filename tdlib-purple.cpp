@@ -209,6 +209,7 @@ static void tgprpl_login (PurpleAccount *acct)
     PurpleTdClient   *tdClient = new PurpleTdClient(acct, g_testBackend);
 
     purple_connection_set_protocol_data (gc, tdClient);
+    getAutoDownloadLimitKb(acct);
 }
 
 static void tgprpl_close (PurpleConnection *gc)
@@ -583,6 +584,14 @@ static gboolean tgprpl_load (PurplePlugin *plugin)
     return TRUE;
 }
 
+static void addChoice(GList *&choices, const char *description, const char *value)
+{
+    PurpleKeyValuePair *kvp = g_new0(PurpleKeyValuePair, 1);
+    kvp->key = g_strdup(description);
+    kvp->value = g_strdup(value);
+    choices = g_list_append(choices, kvp);
+}
+
 static void tgprpl_init (PurplePlugin *plugin)
 {
     if (purple_debug_is_verbose())
@@ -594,6 +603,19 @@ static void tgprpl_init (PurplePlugin *plugin)
     else
         // Log up to fatal errors and errors
         PurpleTdClient::setLogLevel(1);
+
+    // Media and documents
+    GList *choices = NULL;
+    addChoice(choices, _("Ask"), AccountOptions::BigDownloadHandlingAsk);
+    addChoice(choices, _("Discard"), AccountOptions::BigDownloadHandlingDiscard);
+
+    PurpleAccountOption  *opt = purple_account_option_string_new (_("Auto-download size limit, MB (0 for unlimited)"),
+                                                                  AccountOptions::AutoDownloadLimit,
+                                                                  AccountOptions::AutoDownloadLimitDefault);
+    prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
+
+    opt = purple_account_option_list_new (_("Bigger file transfers"), AccountOptions::BigDownloadHandling, choices);
+    prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
 }
 
 static void setTwoStepAuth(RequestData *data, PurpleRequestFields* fields);
