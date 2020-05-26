@@ -88,3 +88,46 @@ TEST_F(FileTransferTest, BigPhoto_Ignore)
         )
     );
 }
+
+TEST_F(FileTransferTest, SecretPhoto_AlreadyDownloaded)
+{
+    const int32_t date   = 10001;
+    const int32_t fileId = 1234;
+    loginWithOneContact();
+
+    std::vector<object_ptr<photoSize>> sizes;
+    sizes.push_back(make_object<photoSize>(
+        "whatever",
+        make_object<file>(
+            fileId, 10000, 10000,
+            make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+            make_object<remoteFile>("beh", "bleh", false, true, 10000)
+        ),
+        640, 480
+    ));
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messagePhoto>(
+            make_object<photo>(false, nullptr, std::move(sizes)),
+            make_object<formattedText>("caption", std::vector<object_ptr<textEntity>>()),
+            true
+        )
+    )));
+    tgl.verifyRequest(
+        viewMessages(chatIds[0], std::vector<int64_t>(1, 1), true)
+    );
+
+    // Secret photos are always ignored
+    prpl.verifyEvents(
+        ServGotImEvent(connection, purpleUserName(0), "caption", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(
+            purpleUserName(0), "",
+            userFirstNames[0] + " " + userLastNames[0] + ": Ignoring secret image",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
+    );
+}

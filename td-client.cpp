@@ -738,9 +738,12 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const TgMess
 
     if (!file)
         notice = makeNoticeWithSender(chat, message, _("Faulty image"), m_account);
-    else if (file->local_ && file->local_->is_downloading_completed_)
+    else if (photo.is_secret_)
+        notice = makeNoticeWithSender(chat, message, _("Ignoring secret image"), m_account);
+    else if (file->local_ && file->local_->is_downloading_completed_) {
+        autoDownload = true;
         notice.clear();
-    else {
+    } else {
         if (isSizeWithinLimit(getFileSizeKb(*file), getAutoDownloadLimitKb(m_account))) {
             notice = makeNoticeWithSender(chat, message, _("Downloading image"), m_account);
             autoDownload = true;
@@ -757,7 +760,7 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const TgMess
     if (!notice.empty())
         showMessageText(m_data, chat, message, caption, notice.c_str());
 
-    if (file) {
+    if (file && (autoDownload || askDownload)) {
         if (file->local_ && file->local_->is_downloading_completed_)
             showDownloadedImage(chat.id_, message, file->local_->path_, caption);
         else if (autoDownload) {
