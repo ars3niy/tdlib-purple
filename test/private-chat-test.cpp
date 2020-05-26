@@ -427,6 +427,7 @@ TEST_F(PrivateChatTest, OtherMessage)
 
 TEST_F(PrivateChatTest, Photo)
 {
+    purple_account_set_string(account, "media-size-threshold", "0");
     const int32_t date   = 10001;
     const int32_t fileId = 1234;
     loginWithOneContact();

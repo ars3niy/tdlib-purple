@@ -19,10 +19,13 @@ public:
     int64_t       chatId;
     TgMessageInfo message;
     td::td_api::object_ptr<td::td_api::file> thumbnail;
+    TdTransceiver::ResponseCb                responseCb;
 
     // Could not pass object_ptr through variadic funciton :(
-    DownloadRequest(uint64_t requestId, int64_t chatId, const TgMessageInfo &message, td::td_api::file *thumbnail)
-    : PendingRequest(requestId), chatId(chatId), message(message), thumbnail(thumbnail) {}
+    DownloadRequest(uint64_t requestId, int64_t chatId, const TgMessageInfo &message,
+                    td::td_api::file *thumbnail, TdTransceiver::ResponseCb responseCb)
+    : PendingRequest(requestId), chatId(chatId), message(message), thumbnail(thumbnail),
+      responseCb(responseCb) {}
 };
 
 std::string         messageTypeToString(const td::td_api::MessageContent &content);
@@ -60,6 +63,7 @@ void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transce
 
 void requestRecoveryEmailConfirmation(PurpleConnection *gc, const char *emailInfo);
 
+unsigned getFileSize(const td::td_api::file &file);
 unsigned getFileSizeKb(const td::td_api::file &file);
 
 #endif

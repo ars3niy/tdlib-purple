@@ -102,9 +102,14 @@ private:
     void       joinChatByLinkResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       deleteSupergroupResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
-    void       requestDownload(int32_t fileId, int64_t chatId, const TgMessageInfo &message,
-                               td::td_api::object_ptr<td::td_api::file> thumbnail,
-                               TdTransceiver::ResponseCb responseCb);
+    void       downloadFile(int32_t fileId, int64_t chatId, const TgMessageInfo &message,
+                            td::td_api::object_ptr<td::td_api::file> thumbnail,
+                            TdTransceiver::ResponseCb responseCb);
+    void       requestDownload(const char *sender, const td::td_api::file &file,
+                               const char *filename, const td::td_api::chat &chat,
+                               const TgMessageInfo &message, TdTransceiver::ResponseCb responseCb);
+    static void startDownload(void *user_data);
+    void       downloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       imageDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       showDownloadedImage(int64_t chatId, const TgMessageInfo &message,
                                    const std::string &filePath, const char *caption);

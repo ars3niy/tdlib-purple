@@ -41,8 +41,25 @@ TEST_F(FileTransferTest, BigPhoto_RequestDownload)
             purpleUserName(0), "",
             userFirstNames[0] + " " + userLastNames[0] + ": Requesting image download",
             PURPLE_MESSAGE_SYSTEM, date
-        )
+        ),
+        RequestActionEvent(connection, account, NULL, NULL, 2)
     );
+
+    prpl.requestedAction("_Yes");
+    tgl.verifyRequest(downloadFile(fileId, 1, 0, 0, true));
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        purpleUserName(0),
+        "<img src=\"file:///path\">",
+        (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
+        date
+    ));
 }
 
 TEST_F(FileTransferTest, BigPhoto_Ignore)

@@ -739,7 +739,7 @@ void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transce
     }
 }
 
-unsigned getFileSizeKb(const td::td_api::file &file)
+unsigned getFileSize(const td::td_api::file &file)
 {
     int32_t size = file.size_;
     if (size == 0)
@@ -748,5 +748,10 @@ unsigned getFileSizeKb(const td::td_api::file &file)
     if (size <= 0)
         return 0;
     else
-        return size/1024;
+        return size;
+}
+
+unsigned getFileSizeKb(const td::td_api::file &file)
+{
+    return getFileSize(file)/1024;
 }
