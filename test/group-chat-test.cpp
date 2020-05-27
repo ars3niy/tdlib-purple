@@ -161,7 +161,7 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
         ServGotChatEvent(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0], "photo",
                          PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(groupChatPurpleName, "",
-                               userFirstNames[0] + " " + userLastNames[0] + ": Downloading image",
+                               userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
                                PURPLE_MESSAGE_SYSTEM, date)
     );
 

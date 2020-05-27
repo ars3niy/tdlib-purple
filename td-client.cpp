@@ -728,49 +728,69 @@ static std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMe
     return prefix + noticeText;
 }
 
+void PurpleTdClient::showFile(const td::td_api::chat &chat, const TgMessageInfo &message,
+                              const td::td_api::file &file, const char *caption, const char *fileDesc,
+                              td::td_api::object_ptr<td::td_api::file> thumbnail,
+                              FileDownloadCb downloadCallback)
+{
+    std::string notice;
+    bool        askDownload  = false;
+    bool        autoDownload = false;
+    unsigned    fileSize     = getFileSizeKb(file);
+
+    if (file.local_ && file.local_->is_downloading_completed_) {
+        autoDownload = true;
+        notice.clear();
+    } else if (isSizeWithinLimit(fileSize, getAutoDownloadLimitKb(m_account))) {
+        notice = formatMessage(_("Downloading {}"), std::string(fileDesc));
+        autoDownload = true;
+    } else if (!ignoreBigDownloads(m_account)) {
+        notice = formatMessage(_("Requesting {} download"), std::string(fileDesc));
+        askDownload = true;
+    } else {
+        char *fileSizeStr = fileSize ? purple_str_size_to_units(fileSize) : NULL;
+        notice = formatMessage(_("Ignoring {} download ({})"),
+                               {std::string(fileDesc), fileSizeStr ? std::string(fileSizeStr) :
+                                                                     std::string(_("unknown size"))});
+        g_free(fileSizeStr);
+    }
+
+    if (caption && !notice.empty()) {
+        notice = makeNoticeWithSender(chat, message, notice.c_str(), m_account);
+        showMessageText(m_data, chat, message, caption, notice.c_str());
+    }
+
+    if (autoDownload || askDownload) {
+        if (file.local_ && file.local_->is_downloading_completed_)
+            (this->*downloadCallback)(chat.id_, message, file.local_->path_, caption, std::move(thumbnail));
+        else if (autoDownload) {
+            purple_debug_misc(config::pluginId, "Downloading %s (file id %d)\n", fileDesc, (int)file.id_);
+            downloadFile(file.id_, chat.id_, message, std::move(thumbnail), downloadCallback);
+        } else if (askDownload) {
+            std::string sender = getSenderDisplayName(chat, message, m_account);
+            requestDownload(sender.c_str(), file, fileDesc, chat, message, downloadCallback);
+        }
+    }
+
+}
+
 void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
                                       const td::td_api::messagePhoto &photo)
 {
     const td::td_api::file *file         = selectPhotoSize(m_account, photo);
-    std::string             notice;
-    bool                    askDownload  = false;
-    bool                    autoDownload = false;
+    const char *            caption      = photo.caption_ ? photo.caption_->text_.c_str() : NULL;
+    const char *            errorMessage = NULL;
 
     if (!file)
-        notice = makeNoticeWithSender(chat, message, _("Faulty image"), m_account);
+        errorMessage = _("Faulty image");
     else if (photo.is_secret_)
-        notice = makeNoticeWithSender(chat, message, _("Ignoring secret image"), m_account);
-    else if (file->local_ && file->local_->is_downloading_completed_) {
-        autoDownload = true;
-        notice.clear();
-    } else {
-        if (isSizeWithinLimit(getFileSizeKb(*file), getAutoDownloadLimitKb(m_account))) {
-            notice = makeNoticeWithSender(chat, message, _("Downloading image"), m_account);
-            autoDownload = true;
-        } else if (!ignoreBigDownloads(m_account)) {
-            notice = makeNoticeWithSender(chat, message, _("Requesting image download"), m_account);
-            askDownload = true;
-        } else {
-            notice = formatMessage(_("Ignoring image download of {} kB"), std::to_string(getFileSizeKb(*file)));
-            notice = makeNoticeWithSender(chat, message, notice.c_str(), m_account);
-        }
-    }
-    const char *caption = photo.caption_ ? photo.caption_->text_.c_str() : NULL;
+        errorMessage = _("Ignoring secret photo");
 
-    if (!notice.empty())
+    if (errorMessage) {
+        std::string notice = makeNoticeWithSender(chat, message, errorMessage, m_account);
         showMessageText(m_data, chat, message, caption, notice.c_str());
-
-    if (file && (autoDownload || askDownload)) {
-        if (file->local_ && file->local_->is_downloading_completed_)
-            showDownloadedImage(chat.id_, message, file->local_->path_, caption);
-        else if (autoDownload) {
-            purple_debug_misc(config::pluginId, "Downloading image (file id %d)\n", (int)file->id_);
-            downloadFile(file->id_, chat.id_, message, nullptr, &PurpleTdClient::imageDownloadResponse);
-        } else if (askDownload) {
-            std::string sender = getSenderDisplayName(chat, message, m_account);
-            requestDownload(sender.c_str(), *file, "Photo", chat, message, &PurpleTdClient::imageDownloadResponse);
-        }
-    }
+    } else
+        showFile(chat, message, *file, caption, _("photo"), nullptr, &PurpleTdClient::showDownloadedImage);
 }
 
 struct DownloadInfo {
@@ -778,13 +798,13 @@ struct DownloadInfo {
     int64_t         chatId;
     TgMessageInfo   message;
     PurpleTdClient *tdClient;
-    TdTransceiver::ResponseCb responseCb;
+    FileDownloadCb  callback;
 };
 
 void PurpleTdClient::startDownload(void *user_data)
 {
     std::unique_ptr<DownloadInfo> info(static_cast<DownloadInfo *>(user_data));
-    info->tdClient->downloadFile(info->fileId, info->chatId, info->message, nullptr, info->responseCb);
+    info->tdClient->downloadFile(info->fileId, info->chatId, info->message, nullptr, info->callback);
 }
 
 /*static void cancelDownload(PurpleXfer *X)
@@ -802,7 +822,7 @@ static void ignoreDownload(DownloadRequest *info)
 
 void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, const TgMessageInfo &message,
                                   td::td_api::object_ptr<td::td_api::file> thumbnail,
-                                  TdTransceiver::ResponseCb responseCb)
+                                  FileDownloadCb callback)
 {
     td::td_api::object_ptr<td::td_api::downloadFile> downloadReq =
         td::td_api::make_object<td::td_api::downloadFile>();
@@ -825,17 +845,13 @@ void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, const TgMessag
 
     uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq), &PurpleTdClient::downloadResponse);
     m_data.addPendingRequest<DownloadRequest>(requestId, chatId, message, thumbnail.release(),
-                                              responseCb);
+                                              callback);
 }
 
 void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file &file,
                                      const char *filename, const td::td_api::chat &chat,
-                                     const TgMessageInfo &message,
-                                     TdTransceiver::ResponseCb responseCb)
+                                     const TgMessageInfo &message, FileDownloadCb callback)
 {
-    /*handle, title, primary, secondary, \
-								   default_action, account, who, conv, \
-								   user_data, accept_cb, cancel_cb*/
     std::string question = formatMessage(_("Download file from {}?"),
                                          getSenderDisplayName(chat, message, m_account));
     unsigned    size     = getFileSize(file);
@@ -845,7 +861,7 @@ void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file 
                                          std::string(chatName), std::string(sizeStr)});
     g_free(sizeStr);
 
-    DownloadInfo *info = new DownloadInfo{file.id_, chat.id_, message, this, responseCb};
+    DownloadInfo *info = new DownloadInfo{file.id_, chat.id_, message, this, callback};
     purple_request_yes_no(purple_account_get_connection(m_account), _("Download"), question.c_str(),
                           fileInfo.c_str(), 0, m_account, NULL, NULL,
                           info, G_CALLBACK(startDownload), G_CALLBACK(ignoreDownload));
@@ -873,29 +889,18 @@ static std::string getDownloadPath(const td::td_api::Object *object)
 void PurpleTdClient::downloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     std::unique_ptr<DownloadRequest> request = m_data.getPendingRequest<DownloadRequest>(requestId);
-    if (request) {
+    std::string                      path    = getDownloadPath(object.get());
+    if (request && !path.empty()) {
         // TODO complete purple file transfer, if any
 
-        auto callback = request->responseCb;
-        m_data.addPendingRequest(requestId, std::move(request));
-        (this->*callback)(requestId, std::move(object));
-    }
-}
-
-void PurpleTdClient::imageDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
-{
-    std::string                      path    = getDownloadPath(object.get());
-    std::unique_ptr<DownloadRequest> request = m_data.getPendingRequest<DownloadRequest>(requestId);
-
-    if (request && !path.empty()) {
-        purple_debug_misc(config::pluginId, "Image downloaded, path: %s\n", path.c_str());
-        // For image that needed downloading, caption was shown as soon as message was received
-        showDownloadedImage(request->chatId, request->message, path, NULL);
+        (this->*(request->callback))(request->chatId, request->message, path, NULL,
+                                     std::move(request->thumbnail));
     }
 }
 
 void PurpleTdClient::showDownloadedImage(int64_t chatId, const TgMessageInfo &message,
-                                         const std::string &filePath, const char *caption)
+                                         const std::string &filePath, const char *caption,
+                                         td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
     if (chat) {
@@ -958,14 +963,8 @@ void PurpleTdClient::showSticker(const td::td_api::chat &chat, const TgMessageIn
     if (sticker.sticker_) {
         auto thumbnail = sticker.thumbnail_ ? std::move(sticker.thumbnail_->photo_) : nullptr;
 
-        if (sticker.sticker_->local_ && sticker.sticker_->local_->is_downloading_completed_)
-            showDownloadedSticker(chat.id_, message, sticker.sticker_->local_->path_,
-                                  std::move(thumbnail));
-        else {
-            purple_debug_misc(config::pluginId, "Downloading sticker (file id %d)\n", (int)sticker.sticker_->id_);
-            downloadFile(sticker.sticker_->id_, chat.id_, message, std::move(thumbnail),
-                            &PurpleTdClient::stickerDownloadResponse);
-        }
+        showFile(chat, message, *sticker.sticker_, NULL, _("sticker"), std::move(thumbnail),
+                 &PurpleTdClient::showDownloadedSticker);
     }
 }
 
@@ -979,52 +978,22 @@ static bool isTgs(const std::string &path)
 }
 
 
-void PurpleTdClient::stickerDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
-{
-    std::string                      path    = getDownloadPath(object.get());
-    std::unique_ptr<DownloadRequest> request = m_data.getPendingRequest<DownloadRequest>(requestId);
-
-    if (request && !path.empty())
-        showDownloadedSticker(request->chatId, request->message, path, std::move(request->thumbnail));
-}
-
 void PurpleTdClient::showDownloadedSticker(int64_t chatId, const TgMessageInfo &message,
-                                           const std::string &filePath,
+                                           const std::string &filePath, const char *caption,
                                            td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
     if (isTgs(filePath) && thumbnail) {
+        // Avoid message like "Downloading sticker thumbnail...
+        // Also ignore size limits, but only determined testers and crazy people would notice.
         if (thumbnail->local_ && thumbnail->local_->is_downloading_completed_)
             showDownloadedInlineFile(chatId, message, thumbnail->local_->path_, "Sticker");
         else
             downloadFile(thumbnail->id_, chatId, message, nullptr,
-                            &PurpleTdClient::stickerDownloadResponse);
+                         &PurpleTdClient::showDownloadedSticker);
     } else
         showDownloadedInlineFile(chatId, message, filePath, "Sticker");
 }
 
-
-void PurpleTdClient::showInlineFile(const td::td_api::chat &chat, const TgMessageInfo &message,
-                                    const td::td_api::file &file)
-{
-    if (file.local_ && file.local_->is_downloading_completed_)
-        showDownloadedInlineFile(chat.id_, message, file.local_->path_, "Sent file");
-    else {
-        purple_debug_misc(config::pluginId, "Downloading file (id %d)\n", (int)file.id_);
-        downloadFile(file.id_, chat.id_, message, nullptr,
-                        &PurpleTdClient::fileDownloadResponse);
-    }
-}
-
-void PurpleTdClient::fileDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
-{
-    std::string                      path    = getDownloadPath(object.get());
-    std::unique_ptr<DownloadRequest> request = m_data.getPendingRequest<DownloadRequest>(requestId);
-
-    if (request && !path.empty()) {
-        purple_debug_misc(config::pluginId, "File downloaded, path: %s\n", path.c_str());
-        showDownloadedInlineFile(request->chatId, request->message, path, "Sent file");
-    }
-}
 
 void PurpleTdClient::showDownloadedInlineFile(int64_t chatId, const TgMessageInfo &message,
                                               const std::string &filePath, const char *label)
@@ -1598,7 +1567,7 @@ void PurpleTdClient::createGroup(const char *name, int type,
             int32_t userId = stringToUserId(memberName.c_str());
             if (userId != 0) {
                 if (!m_data.getUser(userId))
-                    errorMessage = formatMessage(_("No known user with id {}"), std::to_string(userId));
+                    errorMessage = formatMessage(_("No known user with id {}"), userId);
             } else {
                 std::vector<const td::td_api::user*> users;
                 m_data.getUsersByDisplayName(memberName.c_str(), users);

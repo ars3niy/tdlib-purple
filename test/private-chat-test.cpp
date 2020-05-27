@@ -462,7 +462,7 @@ TEST_F(PrivateChatTest, Photo)
         ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
             purpleUserName(0), "",
-            userFirstNames[0] + " " + userLastNames[0] + ": Downloading image",
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
             PURPLE_MESSAGE_SYSTEM, date
         )
     );

@@ -1028,7 +1028,7 @@ void purple_account_set_string(PurpleAccount *account, const char *name,
 
 char *purple_str_size_to_units(size_t size)
 {
-    return g_strdup("size");
+    return g_strdup("purple_str_size_to_units");
 }
 
 };

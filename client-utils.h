@@ -13,19 +13,23 @@ struct TgMessageInfo {
     std::string forwardedFrom;
 };
 
+using FileDownloadCb = void (PurpleTdClient::*)(int64_t chatId, const TgMessageInfo &message,
+                                                const std::string &filePath, const char *caption,
+                                                td::td_api::object_ptr<td::td_api::file> thumbnail);
+
 // Matching completed downloads to chats they belong to
 class DownloadRequest: public PendingRequest {
 public:
-    int64_t       chatId;
-    TgMessageInfo message;
+    int64_t        chatId;
+    TgMessageInfo  message;
     td::td_api::object_ptr<td::td_api::file> thumbnail;
-    TdTransceiver::ResponseCb                responseCb;
+    FileDownloadCb callback;
 
     // Could not pass object_ptr through variadic funciton :(
     DownloadRequest(uint64_t requestId, int64_t chatId, const TgMessageInfo &message,
-                    td::td_api::file *thumbnail, TdTransceiver::ResponseCb responseCb)
+                    td::td_api::file *thumbnail, FileDownloadCb callback)
     : PendingRequest(requestId), chatId(chatId), message(message), thumbnail(thumbnail),
-      responseCb(responseCb) {}
+      callback(callback) {}
 };
 
 std::string         messageTypeToString(const td::td_api::MessageContent &content);

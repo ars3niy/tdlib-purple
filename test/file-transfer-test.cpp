@@ -39,7 +39,7 @@ TEST_F(FileTransferTest, BigPhoto_RequestDownload)
         ServGotImEvent(connection, purpleUserName(0), "caption", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
             purpleUserName(0), "",
-            userFirstNames[0] + " " + userLastNames[0] + ": Requesting image download",
+            userFirstNames[0] + " " + userLastNames[0] + ": Requesting photo download",
             PURPLE_MESSAGE_SYSTEM, date
         ),
         RequestActionEvent(connection, account, NULL, NULL, 2)
@@ -100,7 +100,7 @@ TEST_F(FileTransferTest, BigPhoto_Ignore)
         ServGotImEvent(connection, purpleUserName(0), "caption", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
             purpleUserName(0), "",
-            userFirstNames[0] + " " + userLastNames[0] + ": Ignoring image download of 640 kB",
+            userFirstNames[0] + " " + userLastNames[0] + ": Ignoring photo download (purple_str_size_to_units)",
             PURPLE_MESSAGE_SYSTEM, date
         )
     );
@@ -143,7 +143,7 @@ TEST_F(FileTransferTest, SecretPhoto_AlreadyDownloaded)
         ServGotImEvent(connection, purpleUserName(0), "caption", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
             purpleUserName(0), "",
-            userFirstNames[0] + " " + userLastNames[0] + ": Ignoring secret image",
+            userFirstNames[0] + " " + userLastNames[0] + ": Ignoring secret photo",
             PURPLE_MESSAGE_SYSTEM, date
         )
     );
