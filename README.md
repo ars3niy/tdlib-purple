@@ -7,12 +7,8 @@ There is a [telegram group](https://t.me/joinchat/BuRiSBO0mMw7Lxy0ufVO5g) (what 
 ## Functionality
 
 Missing features:
-* Removing contacts
-* Receiving files other than photos
 * Sending files other than inline images
-* Creating groups
 * Joining public groups/channels
-* Leaving groups
 * Renaming groups/channels
 * Chat topic (= group description)
 * User pictures
