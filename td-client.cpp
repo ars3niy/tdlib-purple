@@ -755,7 +755,9 @@ void PurpleTdClient::showFile(const td::td_api::chat &chat, const TgMessageInfo 
         g_free(fileSizeStr);
     }
 
-    if (caption && !notice.empty()) {
+    if (caption && (*caption == '\0'))
+        caption = NULL;
+    if (!notice.empty()) {
         notice = makeNoticeWithSender(chat, message, notice.c_str(), m_account);
         showMessageText(m_data, chat, message, caption, notice.c_str());
     }
