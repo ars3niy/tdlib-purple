@@ -221,96 +221,175 @@ TEST_F(PrivateChatTest, ContactWithoutChatAtLogin)
 
 TEST_F(PrivateChatTest, Document)
 {
-    const int32_t date = 10001;
+    const int64_t messageId = 1;
+    const int32_t date      = 10001;
+    const int32_t fileId    = 1234;
     loginWithOneContact();
 
     tgl.update(make_object<updateNewMessage>(makeMessage(
-        1,
+        messageId,
         userIds[0],
         chatIds[0],
         false,
         date,
         make_object<messageDocument>(
-            make_object<document>("doc.file.name", "mime/type", nullptr, nullptr, nullptr),
+            make_object<document>(
+                "doc.file.name", "mime/type", nullptr, nullptr,
+                make_object<file>(
+                    fileId, 10000, 10000,
+                    make_object<localFile>("", true, true, false, false, 0, 0, 0),
+                    make_object<remoteFile>("beh", "bleh", false, true, 10000)
+                )
+            ),
             make_object<formattedText>("document", std::vector<object_ptr<textEntity>>())
         )
     )));
-    tgl.verifyRequest(viewMessages(
-        chatIds[0],
-        {1},
-        true
-    ));
+    tgl.verifyRequests({
+        make_object<viewMessages>(
+            chatIds[0],
+            std::vector<int64_t>(1, messageId),
+            true
+        ),
+        make_object<downloadFile>(fileId, 1, 0, 0, true)
+    });
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "document", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
             purpleUserName(0), "",
-            userFirstNames[0] + " " + userLastNames[0] + ": Sent a file: doc.file.name [mime/type]",
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading doc.file.name [mime/type]",
             PURPLE_MESSAGE_SYSTEM, date
         )
     );
+
+    tgl.reply(make_object<ok>());
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        purpleUserName(0),
+        "<a href=\"file:///path\">doc.file.name [mime/type]</a>",
+        PURPLE_MESSAGE_RECV,
+        date
+    ));
 }
 
 TEST_F(PrivateChatTest, Video)
 {
-    const int32_t date = 10001;
+    const int64_t messageId = 1;
+    const int32_t date      = 10001;
+    const int32_t fileId    = 1234;
     loginWithOneContact();
 
     tgl.update(make_object<updateNewMessage>(makeMessage(
-        1,
+        messageId,
         userIds[0],
         chatIds[0],
         false,
         date,
         make_object<messageVideo>(
-            make_object<video>(120, 640, 480, "video.avi", "video/whatever", false, false, nullptr, nullptr, nullptr),
+            make_object<video>(
+                120, 640, 480, "video.avi", "video/whatever", false, false, nullptr, nullptr,
+                make_object<file>(
+                    fileId, 10000, 10000,
+                    make_object<localFile>("", true, true, false, false, 0, 0, 0),
+                    make_object<remoteFile>("beh", "bleh", false, true, 10000)
+                )
+            ),
             make_object<formattedText>("video", std::vector<object_ptr<textEntity>>()),
             false
         )
     )));
-    tgl.verifyRequest(viewMessages(
-        chatIds[0],
-        {1},
-        true
-    ));
+    tgl.verifyRequests({
+        make_object<viewMessages>(
+            chatIds[0],
+            std::vector<int64_t>(1, messageId),
+            true
+        ),
+        make_object<downloadFile>(fileId, 1, 0, 0, true)
+    });
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "video", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
             purpleUserName(0), "",
-            userFirstNames[0] + " " + userLastNames[0] + ": Sent a video: video.avi [640x480, 120s]",
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading video.avi [video/whatever]",
             PURPLE_MESSAGE_SYSTEM, date
         )
     );
+
+    tgl.reply(make_object<ok>());
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        purpleUserName(0),
+        "<a href=\"file:///path\">video.avi [video/whatever]</a>",
+        PURPLE_MESSAGE_RECV,
+        date
+    ));
 }
 
 TEST_F(PrivateChatTest, Audio)
 {
-    const int32_t date = 10001;
+    const int64_t messageId = 1;
+    const int32_t date      = 10001;
+    const int32_t fileId    = 1234;
     loginWithOneContact();
 
     tgl.update(make_object<updateNewMessage>(makeMessage(
-        1,
+        messageId,
         userIds[0],
         chatIds[0],
         false,
         date,
         make_object<messageAudio>(
-            make_object<audio>(25*60, "Symphony #40", "Wolfgang Amadeus Mozart", "symphony.ogg", "audio/whatever", nullptr, nullptr, nullptr),
+            make_object<audio>(
+                25*60, "Symphony #40", "Wolfgang Amadeus Mozart",
+                "symphony.ogg", "audio/whatever", nullptr, nullptr,
+                make_object<file>(
+                    fileId, 10000, 10000,
+                    make_object<localFile>("", true, true, false, false, 0, 0, 0),
+                    make_object<remoteFile>("beh", "bleh", false, true, 10000)
+                )
+            ),
             make_object<formattedText>("audio", std::vector<object_ptr<textEntity>>())
         )
     )));
-    tgl.verifyRequest(viewMessages(
-        chatIds[0],
-        {1},
-        true
-    ));
+    tgl.verifyRequests({
+        make_object<viewMessages>(
+            chatIds[0],
+            std::vector<int64_t>(1, messageId),
+            true
+        ),
+        make_object<downloadFile>(fileId, 1, 0, 0, true)
+    });
     prpl.verifyEvents(
-        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
+        ServGotImEvent(connection, purpleUserName(0), "audio", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
             purpleUserName(0), "",
-            userFirstNames[0] + " " + userLastNames[0] + ": Received unsupported message type messageAudio",
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading symphony.ogg [audio/whatever]",
             PURPLE_MESSAGE_SYSTEM, date
         )
     );
+
+    tgl.reply(make_object<ok>());
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        purpleUserName(0),
+        "<a href=\"file:///path\">symphony.ogg [audio/whatever]</a>",
+        PURPLE_MESSAGE_RECV,
+        date
+    ));
 }
 
 TEST_F(PrivateChatTest, Sticker)
@@ -359,7 +438,7 @@ TEST_F(PrivateChatTest, Sticker)
     prpl.verifyEvents(ServGotImEvent(
         connection,
         purpleUserName(0),
-        "<a href=\"file:///sticker\">Sticker</a>",
+        "<a href=\"file:///sticker\">sticker</a>",
         PURPLE_MESSAGE_RECV,
         date
     ));
@@ -399,7 +478,7 @@ TEST_F(PrivateChatTest, Sticker)
         connection,
         purpleUserName(0),
         // Sticker replaced with thumbnail because it's .tgs
-        "<a href=\"file:///thumb\">Sticker</a>",
+        "<a href=\"file:///thumb\">sticker</a>",
         PURPLE_MESSAGE_RECV,
         date
     ));

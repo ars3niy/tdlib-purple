@@ -729,7 +729,8 @@ static std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMe
 }
 
 void PurpleTdClient::showFile(const td::td_api::chat &chat, const TgMessageInfo &message,
-                              const td::td_api::file &file, const char *caption, const char *fileDesc,
+                              const td::td_api::file &file, const char *caption,
+                              const std::string &fileDesc,
                               td::td_api::object_ptr<td::td_api::file> thumbnail,
                               FileDownloadCb downloadCallback)
 {
@@ -764,10 +765,12 @@ void PurpleTdClient::showFile(const td::td_api::chat &chat, const TgMessageInfo 
 
     if (autoDownload || askDownload) {
         if (file.local_ && file.local_->is_downloading_completed_)
-            (this->*downloadCallback)(chat.id_, message, file.local_->path_, caption, std::move(thumbnail));
+            (this->*downloadCallback)(chat.id_, message, file.local_->path_, caption, fileDesc,
+                                      std::move(thumbnail));
         else if (autoDownload) {
-            purple_debug_misc(config::pluginId, "Downloading %s (file id %d)\n", fileDesc, (int)file.id_);
-            downloadFile(file.id_, chat.id_, message, std::move(thumbnail), downloadCallback);
+            purple_debug_misc(config::pluginId, "Downloading %s (file id %d)\n", fileDesc.c_str(),
+                              (int)file.id_);
+            downloadFile(file.id_, chat.id_, message, fileDesc, std::move(thumbnail), downloadCallback);
         } else if (askDownload) {
             std::string sender = getSenderDisplayName(chat, message, m_account);
             requestDownload(sender.c_str(), file, fileDesc, chat, message, downloadCallback);
@@ -784,7 +787,8 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const TgMess
     const char *            errorMessage = NULL;
 
     if (!file)
-        errorMessage = _("Faulty image");
+        // Unlikely message not worth translating
+        errorMessage = "Faulty image";
     else if (photo.is_secret_)
         errorMessage = _("Ignoring secret photo");
 
@@ -799,6 +803,7 @@ struct DownloadInfo {
     int32_t         fileId;
     int64_t         chatId;
     TgMessageInfo   message;
+    std::string     fileDescription;
     PurpleTdClient *tdClient;
     FileDownloadCb  callback;
 };
@@ -806,7 +811,8 @@ struct DownloadInfo {
 void PurpleTdClient::startDownload(void *user_data)
 {
     std::unique_ptr<DownloadInfo> info(static_cast<DownloadInfo *>(user_data));
-    info->tdClient->downloadFile(info->fileId, info->chatId, info->message, nullptr, info->callback);
+    info->tdClient->downloadFile(info->fileId, info->chatId, info->message, info->fileDescription,
+                                 nullptr, info->callback);
 }
 
 /*static void cancelDownload(PurpleXfer *X)
@@ -823,6 +829,7 @@ static void ignoreDownload(DownloadRequest *info)
 }
 
 void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, const TgMessageInfo &message,
+                                  const std::string &fileDescription,
                                   td::td_api::object_ptr<td::td_api::file> thumbnail,
                                   FileDownloadCb callback)
 {
@@ -846,24 +853,24 @@ void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, const TgMessag
     */
 
     uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq), &PurpleTdClient::downloadResponse);
-    m_data.addPendingRequest<DownloadRequest>(requestId, chatId, message, thumbnail.release(),
-                                              callback);
+    m_data.addPendingRequest<DownloadRequest>(requestId, chatId, message, fileDescription,
+                                              thumbnail.release(), callback);
 }
 
 void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file &file,
-                                     const char *filename, const td::td_api::chat &chat,
+                                     const std::string &fileDesc, const td::td_api::chat &chat,
                                      const TgMessageInfo &message, FileDownloadCb callback)
 {
     std::string question = formatMessage(_("Download file from {}?"),
                                          getSenderDisplayName(chat, message, m_account));
     unsigned    size     = getFileSize(file);
     char *      sizeStr  = size ? purple_str_size_to_units(size) : g_strdup(_("unknown"));
-    const char *chatName = isPrivateChat(chat) ? _("private chat") : chat.title_.c_str();
-    std::string fileInfo = formatMessage(_("{} posted in {}, size: {}"), {std::string(filename),
-                                         std::string(chatName), std::string(sizeStr)});
+    std::string chatName = isPrivateChat(chat) ? _("private chat") : chat.title_;
+    std::string fileInfo = formatMessage(_("{} posted in {}, size: {}"), {fileDesc,
+                                         chatName, std::string(sizeStr)});
     g_free(sizeStr);
 
-    DownloadInfo *info = new DownloadInfo{file.id_, chat.id_, message, this, callback};
+    DownloadInfo *info = new DownloadInfo{file.id_, chat.id_, message, fileDesc, this, callback};
     purple_request_yes_no(purple_account_get_connection(m_account), _("Download"), question.c_str(),
                           fileInfo.c_str(), 0, m_account, NULL, NULL,
                           info, G_CALLBACK(startDownload), G_CALLBACK(ignoreDownload));
@@ -896,12 +903,13 @@ void PurpleTdClient::downloadResponse(uint64_t requestId, td::td_api::object_ptr
         // TODO complete purple file transfer, if any
 
         (this->*(request->callback))(request->chatId, request->message, path, NULL,
-                                     std::move(request->thumbnail));
+                                     request->fileDescription, std::move(request->thumbnail));
     }
 }
 
 void PurpleTdClient::showDownloadedImage(int64_t chatId, const TgMessageInfo &message,
                                          const std::string &filePath, const char *caption,
+                                         const std::string &fileDesc,
                                          td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
@@ -930,30 +938,20 @@ void PurpleTdClient::showDownloadedImage(int64_t chatId, const TgMessageInfo &me
     }
 }
 
-void PurpleTdClient::showDocument(const td::td_api::chat &chat, const TgMessageInfo &message,
-                                  const td::td_api::messageDocument &document)
+void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
+                                     td::td_api::object_ptr<td::td_api::file> file,
+                                     td::td_api::object_ptr<td::td_api::formattedText> caption,
+                                     const std::string &fileDescription)
 {
-    std::string description = makeNoticeWithSender(chat, message, "Sent a file", m_account);
-    if (document.document_)
-        description = description + ": " + document.document_->file_name_ + " [" +
-        document.document_->mime_type_ + "]";
-
-    showMessageText(m_data, chat, message,
-                    document.caption_ ? document.caption_->text_.c_str() : NULL,
-                    description.c_str());
-}
-
-void PurpleTdClient::showVideo(const td::td_api::chat &chat, const TgMessageInfo &message,
-                               const td::td_api::messageVideo &video)
-{
-    std::string description = makeNoticeWithSender(chat, message, "Sent a video", m_account);
-    if (video.video_)
-        description = description + ": " + video.video_->file_name_ + " [" +
-        std::to_string(video.video_->width_) + "x" + std::to_string(video.video_->height_) + ", " +
-        std::to_string(video.video_->duration_) + "s]";
-
-    showMessageText(m_data, chat, message, video.caption_ ? video.caption_->text_.c_str() : NULL,
-                    description.c_str());
+    const char *captionStr = caption ? caption->text_.c_str() : NULL;
+    if (!file) {
+        // Unlikely message not worth translating
+        std::string notice = formatMessage("Faulty file: {}", fileDescription);
+        notice = makeNoticeWithSender(chat, message, notice.c_str(), m_account);
+        showMessageText(m_data, chat, message, captionStr, notice.c_str());
+    } else
+        showFile(chat, message, *file, captionStr, fileDescription, nullptr,
+                 &PurpleTdClient::showDownloadedInlineFile);
 }
 
 void PurpleTdClient::showSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
@@ -982,23 +980,28 @@ static bool isTgs(const std::string &path)
 
 void PurpleTdClient::showDownloadedSticker(int64_t chatId, const TgMessageInfo &message,
                                            const std::string &filePath, const char *caption,
+                                           const std::string &fileDescription,
                                            td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
     if (isTgs(filePath) && thumbnail) {
         // Avoid message like "Downloading sticker thumbnail...
         // Also ignore size limits, but only determined testers and crazy people would notice.
         if (thumbnail->local_ && thumbnail->local_->is_downloading_completed_)
-            showDownloadedInlineFile(chatId, message, thumbnail->local_->path_, "Sticker");
+            showDownloadedInlineFile(chatId, message, thumbnail->local_->path_, caption,
+                                     fileDescription, nullptr);
         else
-            downloadFile(thumbnail->id_, chatId, message, nullptr,
+            downloadFile(thumbnail->id_, chatId, message, fileDescription, nullptr,
                          &PurpleTdClient::showDownloadedSticker);
     } else
-        showDownloadedInlineFile(chatId, message, filePath, "Sticker");
+        showDownloadedInlineFile(chatId, message, filePath, caption, fileDescription,
+                                 std::move(thumbnail));
 }
 
 
 void PurpleTdClient::showDownloadedInlineFile(int64_t chatId, const TgMessageInfo &message,
-                                              const std::string &filePath, const char *label)
+                                              const std::string &filePath, const char *caption,
+                                              const std::string &fileDescription,
+                                              td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
     if (chat) {
@@ -1006,7 +1009,7 @@ void PurpleTdClient::showDownloadedInlineFile(int64_t chatId, const TgMessageInf
             std::string notice = makeNoticeWithSender(*chat, message, "Cannot show file: path contains quotes", m_account);
             showMessageText(m_data, *chat, message, NULL, notice.c_str());
         } else {
-            std::string text = "<a href=\"file://" + filePath + "\">" + label + "</a>";
+            std::string text = "<a href=\"file://" + filePath + "\">" + fileDescription + "</a>";
             showMessageText(m_data, *chat, message, text.c_str(), NULL);
         }
     }
@@ -1042,12 +1045,36 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId
         case td::td_api::messagePhoto::ID:
             showPhotoMessage(chat, messageInfo, static_cast<const td::td_api::messagePhoto &>(*message->content_));
             break;
-        case td::td_api::messageDocument::ID:
-            showDocument(chat, messageInfo, static_cast<const td::td_api::messageDocument &>(*message->content_));
+        case td::td_api::messageDocument::ID: {
+            td::td_api::messageDocument &document = static_cast<td::td_api::messageDocument &>(*message->content_);
+            showFileMessage(chat, messageInfo, document.document_ ? std::move(document.document_->document_) : nullptr,
+                            std::move(document.caption_), makeDocumentDescription(document.document_.get()));
             break;
-        case td::td_api::messageVideo::ID:
-            showVideo(chat, messageInfo, static_cast<const td::td_api::messageVideo &>(*message->content_));
+        }
+        case td::td_api::messageVideo::ID: {
+            td::td_api::messageVideo &video = static_cast<td::td_api::messageVideo &>(*message->content_);
+            showFileMessage(chat, messageInfo, video.video_ ? std::move(video.video_->video_) : nullptr,
+                            std::move(video.caption_), makeDocumentDescription(video.video_.get()));
             break;
+        }
+        case td::td_api::messageAnimation::ID: {
+            td::td_api::messageAnimation &animation = static_cast<td::td_api::messageAnimation &>(*message->content_);
+            showFileMessage(chat, messageInfo, animation.animation_ ? std::move(animation.animation_->animation_) : nullptr,
+                            std::move(animation.caption_), makeDocumentDescription(animation.animation_.get()));
+            break;
+        }
+        case td::td_api::messageAudio::ID: {
+            td::td_api::messageAudio &audio = static_cast<td::td_api::messageAudio &>(*message->content_);
+            showFileMessage(chat, messageInfo, audio.audio_ ? std::move(audio.audio_->audio_) : nullptr,
+                            std::move(audio.caption_), makeDocumentDescription(audio.audio_.get()));
+            break;
+        }
+        case td::td_api::messageVoiceNote::ID: {
+            td::td_api::messageVoiceNote &audio = static_cast<td::td_api::messageVoiceNote &>(*message->content_);
+            showFileMessage(chat, messageInfo, audio.voice_note_ ? std::move(audio.voice_note_->voice_) : nullptr,
+                            std::move(audio.caption_), makeDocumentDescription(audio.voice_note_.get()));
+            break;
+        }
         case td::td_api::messageSticker::ID:
             showSticker(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message->content_));
             break;

@@ -15,6 +15,7 @@ struct TgMessageInfo {
 
 using FileDownloadCb = void (PurpleTdClient::*)(int64_t chatId, const TgMessageInfo &message,
                                                 const std::string &filePath, const char *caption,
+                                                const std::string &fileDescription,
                                                 td::td_api::object_ptr<td::td_api::file> thumbnail);
 
 // Matching completed downloads to chats they belong to
@@ -22,14 +23,16 @@ class DownloadRequest: public PendingRequest {
 public:
     int64_t        chatId;
     TgMessageInfo  message;
+    std::string    fileDescription;
     td::td_api::object_ptr<td::td_api::file> thumbnail;
     FileDownloadCb callback;
 
     // Could not pass object_ptr through variadic funciton :(
     DownloadRequest(uint64_t requestId, int64_t chatId, const TgMessageInfo &message,
+                    const std::string &fileDescription,
                     td::td_api::file *thumbnail, FileDownloadCb callback)
-    : PendingRequest(requestId), chatId(chatId), message(message), thumbnail(thumbnail),
-      callback(callback) {}
+    : PendingRequest(requestId), chatId(chatId), message(message),
+      fileDescription(fileDescription), thumbnail(thumbnail), callback(callback) {}
 };
 
 std::string         messageTypeToString(const td::td_api::MessageContent &content);
@@ -69,5 +72,16 @@ void requestRecoveryEmailConfirmation(PurpleConnection *gc, const char *emailInf
 
 unsigned getFileSize(const td::td_api::file &file);
 unsigned getFileSizeKb(const td::td_api::file &file);
+
+template<typename DocumentType>
+std::string makeDocumentDescription(const DocumentType *document)
+{
+    if (!document)
+        // Unlikely error message not worth translating
+        return "(faulty file)";
+    return document->file_name_ + " [" + document->mime_type_ + "]";
+}
+
+std::string makeDocumentDescription(const td::td_api::voiceNote *document);
 
 #endif

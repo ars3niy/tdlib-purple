@@ -755,3 +755,11 @@ unsigned getFileSizeKb(const td::td_api::file &file)
 {
     return getFileSize(file)/1024;
 }
+
+std::string makeDocumentDescription(const td::td_api::voiceNote *document)
+{
+    if (!document)
+        // Unlikely error message not worth translating
+        return "faulty voice note";
+    return std::string(_("voice note")) + " [" + document->mime_type_ + "]";
+}
