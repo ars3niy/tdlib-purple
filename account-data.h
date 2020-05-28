@@ -75,6 +75,15 @@ public:
     : PendingRequest(requestId), messageId(messageId), chatId(chatId) {}
 };
 
+class UploadRequest: public PendingRequest {
+public:
+    PurpleXfer *xfer;
+    int64_t     chatId;
+
+    UploadRequest(uint64_t requestId, PurpleXfer *xfer, int64_t chatId)
+    : PendingRequest(requestId), xfer(xfer), chatId(chatId) {}
+};
+
 class TdAccountData {
 public:
     using TdUserPtr       = td::td_api::object_ptr<td::td_api::user>;
@@ -136,12 +145,18 @@ public:
         return std::unique_ptr<ReqType>(dynamic_cast<ReqType *>(getPendingRequestImpl(requestId).release()));
     }
 
-    const ContactRequest      *findContactRequest(int32_t userId);
+    const ContactRequest *     findContactRequest(int32_t userId);
     void                       addTempFileUpload(int64_t messageId, const std::string &path);
     std::string                extractTempFileUpload(int64_t messageId);
 
     void                       saveMessage(TdMessagePtr message);
-    td::td_api::message       *findMessage(int64_t messageId);
+    td::td_api::message *      findMessage(int64_t messageId);
+
+    std::unique_ptr<UploadRequest> getUploadRequest(PurpleXfer *xfer);
+    void                       addUpload(int32_t fileId, PurpleXfer *xfer, int64_t chatId);
+    bool                       getUpload(int32_t fileId, PurpleXfer *&xfer, int64_t &chatId);
+    bool                       getFileIdForUpload(PurpleXfer *xfer, int &fileId);
+    void                       removeUpload(int32_t fileId);
 private:
     struct ChatInfo {
         int32_t   purpleId;
@@ -161,6 +176,12 @@ private:
         std::string tempFile;
     };
 
+    struct UploadInfo {
+        int32_t     fileId;
+        int64_t     chatId;
+        PurpleXfer *xfer;
+    };
+
     using ChatMap = std::map<int64_t, ChatInfo>;
     using UserMap = std::map<int32_t, TdUserPtr>;
     UserMap                            m_userInfo;
@@ -178,8 +199,9 @@ private:
     std::vector<std::unique_ptr<PendingRequest>> m_requests;
     std::vector<SendMessageInfo>       m_sentMessages;
     std::map<int64_t, TdMessagePtr>    m_messages;
+    std::vector<UploadInfo>            m_uploads;
 
-    std::unique_ptr<PendingRequest>    getPendingRequestImpl(uint64_t requestId);
+    std::unique_ptr<PendingRequest> getPendingRequestImpl(uint64_t requestId);
 };
 
 #endif

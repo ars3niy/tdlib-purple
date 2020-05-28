@@ -691,13 +691,23 @@ PurpleXfer *purple_xfer_new(PurpleAccount *account,
     xfer->type = type;
     xfer->who = strdup(who);
     xfer->ref = 1;
+    xfer->local_filename = NULL;
+    xfer->status = PURPLE_XFER_STATUS_UNKNOWN;
+    xfer->size = 0;
+    memset(&xfer->ops.init, 0, sizeof(xfer->ops.init));
     return xfer;
+}
+
+void purple_xfer_ref(PurpleXfer *xfer)
+{
+    xfer->ref++;
 }
 
 void purple_xfer_unref(PurpleXfer *xfer)
 {
     if (--xfer->ref == 0) {
         free(xfer->who);
+        free(xfer->local_filename);
         delete xfer;
     }
 }
@@ -706,8 +716,21 @@ void purple_xfer_request(PurpleXfer *xfer)
 {
 }
 
+std::map<std::string, size_t> fakeFiles;
+
+void setFakeFileSize(const char *path, size_t size)
+{
+    fakeFiles[path] = size;
+}
+
 void purple_xfer_request_accepted(PurpleXfer *xfer, const char *filename)
 {
+    EVENT(XferAcceptedEvent, filename);
+    xfer->status = PURPLE_XFER_STATUS_ACCEPTED;
+    xfer->local_filename = strdup(filename);
+    xfer->size = fakeFiles.at(filename);
+    if (xfer->ops.init)
+        xfer->ops.init(xfer);
 }
 
 void purple_xfer_set_init_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *))
@@ -718,6 +741,89 @@ void purple_xfer_set_init_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *))
 void purple_xfer_set_cancel_send_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *))
 {
     xfer->ops.cancel_send = fnc;
+}
+
+const char *purple_xfer_get_remote_user(const PurpleXfer *xfer)
+{
+    return xfer->who;
+}
+
+const char *purple_xfer_get_local_filename(const PurpleXfer *xfer)
+{
+    return xfer->local_filename;
+}
+
+void purple_xfer_start(PurpleXfer *xfer, int fd, const char *ip,
+					 unsigned int port)
+{
+    EVENT(XferStartEvent, xfer->local_filename);
+    xfer->status = PURPLE_XFER_STATUS_STARTED;
+}
+
+void purple_xfer_cancel_local(PurpleXfer *xfer)
+{
+    EVENT(XferLocalCancelEvent, xfer->local_filename);
+    xfer->status = PURPLE_XFER_STATUS_CANCEL_LOCAL;
+    if ((xfer->type == PURPLE_XFER_SEND) && xfer->ops.cancel_send)
+        xfer->ops.cancel_send(xfer);
+
+    purple_xfer_unref(xfer);
+}
+
+gboolean purple_xfer_is_canceled(const PurpleXfer *xfer)
+{
+    return (xfer->status == PURPLE_XFER_STATUS_CANCEL_LOCAL) ||
+           (xfer->status == PURPLE_XFER_STATUS_CANCEL_REMOTE);
+}
+
+void purple_xfer_cancel_remote(PurpleXfer *xfer)
+{
+    EVENT(XferRemoteCancelEvent, xfer->local_filename);
+    xfer->status = PURPLE_XFER_STATUS_CANCEL_REMOTE;
+    if ((xfer->type == PURPLE_XFER_SEND) && xfer->ops.cancel_send)
+        xfer->ops.cancel_send(xfer);
+    purple_xfer_unref(xfer);
+}
+
+void purple_xfer_error(PurpleXferType type, PurpleAccount *account, const char *who, const char *msg)
+{
+    purple_notify_error(account, "Xfer error", who, msg);
+}
+
+PurpleXferType purple_xfer_get_type(const PurpleXfer *xfer)
+{
+    return xfer->type;
+}
+
+void purple_xfer_set_bytes_sent(PurpleXfer *xfer, size_t bytes_sent)
+{
+    xfer->bytes_sent = bytes_sent;
+}
+
+void purple_xfer_set_completed(PurpleXfer *xfer, gboolean completed)
+{
+    EVENT(XferCompletedEvent, xfer->local_filename, completed);
+}
+
+void purple_xfer_update_progress(PurpleXfer *xfer)
+{
+    EVENT(XferProgressEvent, xfer->local_filename, xfer->bytes_sent);
+}
+
+void purple_xfer_end(PurpleXfer *xfer)
+{
+    EVENT(XferEndEvent, xfer->local_filename);
+    purple_xfer_unref(xfer);
+}
+
+PurpleXferStatusType purple_xfer_get_status(const PurpleXfer *xfer)
+{
+    return xfer->status;
+}
+
+size_t purple_xfer_get_size(const PurpleXfer *xfer)
+{
+    return xfer->size;
 }
 
 void serv_got_chat_in(PurpleConnection *g, int id, const char *who,

@@ -1,4 +1,5 @@
 #include "fixture.h"
+#include "libpurple-mock.h"
 
 class FileTransferTest: public CommTest {};
 
@@ -205,4 +206,102 @@ TEST_F(FileTransferTest, PhotoWithoutCaption)
         (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
         date
     ));
+}
+
+TEST_F(FileTransferTest, SendFile_ErrorInUploadResponse)
+{
+    const char *const PATH = "/path";
+    loginWithOneContact();
+
+    setFakeFileSize(PATH, 9000);
+    pluginInfo().send_file(connection, purpleUserName(0).c_str(), PATH);
+    prpl.verifyEvents(XferAcceptedEvent(PATH));
+    tgl.verifyRequest(uploadFile(
+        make_object<inputFileLocal>(PATH),
+        make_object<fileTypeDocument>(),
+        1
+    ));
+
+    tgl.reply(make_object<error>(1, "error"));
+    prpl.verifyEvents(XferRemoteCancelEvent(PATH));
+}
+
+TEST_F(FileTransferTest, SendFile)
+{
+    const char *const PATH   = "/path";
+    const int32_t     fileId = 1234;
+    loginWithOneContact();
+
+    setFakeFileSize(PATH, 9000);
+    pluginInfo().send_file(connection, purpleUserName(0).c_str(), PATH);
+    prpl.verifyEvents(XferAcceptedEvent(PATH));
+    tgl.verifyRequest(uploadFile(
+        make_object<inputFileLocal>(PATH),
+        make_object<fileTypeDocument>(),
+        1
+    ));
+
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(PATH, false, false, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("", "", true, false, 0)
+    ));
+    prpl.verifyEvents(
+        XferStartEvent(PATH),
+        XferProgressEvent(PATH, 0)
+    );
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(PATH, false, false, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("", "", true, false, 5000)
+    )));
+    prpl.verifyEvents(XferProgressEvent(PATH, 5000));
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(PATH, false, false, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("", "", true, false, 9500)
+    )));
+    prpl.verifyEvents(XferProgressEvent(PATH, 9000));
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(PATH, false, false, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("", "", false, false, 10000)
+    )));
+    prpl.verifyEvents(
+        XferCompletedEvent(PATH, TRUE),
+        XferEndEvent(PATH)
+    );
+    tgl.verifyRequest(sendMessage(
+        chatIds[0],
+        0,
+        nullptr,
+        nullptr,
+        make_object<inputMessageDocument>(
+            make_object<inputFileId>(fileId),
+            nullptr,
+            make_object<formattedText>()
+        )
+    ));
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(PATH, false, false, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+}
+
+TEST_F(FileTransferTest, SendFile_UnknownPrivateChat)
+{
+    const char *const PATH = "/path";
+    loginWithOneContact();
+
+    setFakeFileSize(PATH, 9000);
+    pluginInfo().send_file(connection, "Antonie van Leeuwenhoek", PATH);
+    prpl.verifyEvents(
+        XferAcceptedEvent(PATH),
+        XferRemoteCancelEvent(PATH)
+    );
 }

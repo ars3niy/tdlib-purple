@@ -447,28 +447,41 @@ static gboolean tgprpl_can_receive_file (PurpleConnection *gc, const char *who)
     return TRUE;
 }
 
-static void tgprpl_xfer_send_init (PurpleXfer *X)
+static void startUpload(PurpleXfer *xfer)
 {
+    PurpleAccount  *account  = static_cast<PurpleAccount *>(xfer->data);
+    PurpleTdClient *tdClient = getTdClient(account);
+    const char     *username = purple_xfer_get_remote_user(xfer);
+
+    if (tdClient && username)
+        tdClient->sendFileToChat(xfer, username, PURPLE_CONV_TYPE_IM);
 }
 
-static void tgprpl_xfer_canceled (PurpleXfer *X)
+static void cancelUpload(PurpleXfer *xfer)
 {
+    PurpleAccount  *account  = static_cast<PurpleAccount *>(xfer->data);
+    PurpleTdClient *tdClient = getTdClient(account);
+
+    if (tdClient)
+        tdClient->cancelUpload(xfer);
 }
 
-static PurpleXfer *tgprpl_new_xfer (PurpleConnection *gc, const char *who)
+static PurpleXfer *newUploadTransfer(PurpleConnection *gc, const char *who)
 {
-    PurpleXfer *X = purple_xfer_new (purple_connection_get_account (gc), PURPLE_XFER_SEND, who);
-    if (X) {
-        purple_xfer_set_init_fnc (X, tgprpl_xfer_send_init);
-        purple_xfer_set_cancel_send_fnc (X, tgprpl_xfer_canceled);
+    PurpleAccount *account = purple_connection_get_account (gc);
+    PurpleXfer    *xfer    = purple_xfer_new(account, PURPLE_XFER_SEND, who);
+    if (xfer) {
+        purple_xfer_set_init_fnc(xfer, startUpload);
+        purple_xfer_set_cancel_send_fnc(xfer, cancelUpload);
+        xfer->data = account;
     }
 
-    return X;
+    return xfer;
 }
 
 static void tgprpl_send_file (PurpleConnection * gc, const char *who, const char *file)
 {
-    PurpleXfer *X = tgprpl_new_xfer (gc, who);
+    PurpleXfer *X = newUploadTransfer (gc, who);
     if (file) {
         purple_xfer_request_accepted (X, file);
     } else {
@@ -555,7 +568,7 @@ static PurplePluginProtocolInfo prpl_info = {
     .roomlist_expand_category = NULL,
     .can_receive_file         = tgprpl_can_receive_file,
     .send_file                = tgprpl_send_file,
-    .new_xfer                 = tgprpl_new_xfer,
+    .new_xfer                 = newUploadTransfer,
     .offline_message          = NULL,
     .whiteboard_prpl_ops      = NULL,
     .send_raw                 = NULL,

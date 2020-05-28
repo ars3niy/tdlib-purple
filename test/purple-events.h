@@ -82,6 +82,13 @@ enum class PurpleEventType: uint8_t {
     PresentConversation,
     ChatAddUser,
     ChatClearUsers,
+    XferAccepted,
+    XferStart,
+    XferProgress,
+    XferCompleted,
+    XferEnd,
+    XferLocalCancel,
+    XferRemoteCancel
 };
 
 struct PurpleEvent {
@@ -400,6 +407,57 @@ struct ChatClearUsersEvent: PurpleEvent {
 
     ChatClearUsersEvent(const std::string &chatName)
     : PurpleEvent(PurpleEventType::ChatClearUsers), chatName(chatName) {}
+};
+
+struct XferAcceptedEvent: PurpleEvent {
+    std::string filename;
+
+    XferAcceptedEvent(const std::string &filename)
+    : PurpleEvent(PurpleEventType::XferAccepted), filename(filename) {}
+};
+
+struct XferStartEvent: PurpleEvent {
+    std::string filename;
+
+    XferStartEvent(const std::string &filename)
+    : PurpleEvent(PurpleEventType::XferStart), filename(filename) {}
+};
+
+struct XferProgressEvent: PurpleEvent {
+    std::string filename;
+    size_t      bytesSent;
+
+    XferProgressEvent(const std::string &filename, size_t bytesSent)
+    : PurpleEvent(PurpleEventType::XferProgress), filename(filename), bytesSent(bytesSent) {}
+};
+
+struct XferCompletedEvent: PurpleEvent {
+    std::string filename;
+    bool        completed;
+
+    XferCompletedEvent(const std::string &filename, gboolean completed)
+    : PurpleEvent(PurpleEventType::XferCompleted), filename(filename), completed(completed != FALSE) {}
+};
+
+struct XferEndEvent: PurpleEvent {
+    std::string filename;
+
+    XferEndEvent(const std::string &filename)
+    : PurpleEvent(PurpleEventType::XferEnd), filename(filename) {}
+};
+
+struct XferLocalCancelEvent: PurpleEvent {
+    std::string filename;
+
+    XferLocalCancelEvent(const std::string &filename)
+    : PurpleEvent(PurpleEventType::XferLocalCancel), filename(filename) {}
+};
+
+struct XferRemoteCancelEvent: PurpleEvent {
+    std::string filename;
+
+    XferRemoteCancelEvent(const std::string &filename)
+    : PurpleEvent(PurpleEventType::XferRemoteCancel), filename(filename) {}
 };
 
 #endif

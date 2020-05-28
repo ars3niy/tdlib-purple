@@ -67,7 +67,7 @@ static void compare(const checkDatabaseEncryptionKey &actual, const checkDatabas
 static void compare(const setAuthenticationPhoneNumber &actual, const setAuthenticationPhoneNumber &expected)
 {
     COMPARE(phone_number_);
-    ASSERT_TRUE((expected.settings_ != nullptr) == (actual.settings_ != nullptr));
+    COMPARE(settings_ != nullptr);
 }
 
 static void compare(const viewMessages &actual, const viewMessages &expected)
@@ -118,6 +118,35 @@ static void compare(const inputMessageText &actual,
     COMPARE(clear_draft_);
 }
 
+static void compare(const object_ptr<InputFile> &actual, const object_ptr<InputFile> &expected)
+{
+    ASSERT_EQ(expected != nullptr, actual != nullptr);
+    if (!actual) return;
+    ASSERT_EQ(expected->get_id(), actual->get_id());
+
+    switch (actual->get_id()) {
+        case td::td_api::inputFileLocal::ID:
+            ASSERT_EQ(static_cast<const inputFileLocal &>(*expected).path_,
+                      static_cast<const inputFileLocal &>(*actual).path_);
+            break;
+        case td::td_api::inputFileId::ID:
+            ASSERT_EQ(static_cast<const inputFileId &>(*expected).id_,
+                      static_cast<const inputFileId &>(*actual).id_);
+            break;
+        default:
+            ASSERT_TRUE(false) << "not supported";
+    }
+}
+
+static void compare(const inputMessageDocument &actual,
+                    const inputMessageDocument &expected)
+{
+    compare(actual.document_, expected.document_);
+    ASSERT_EQ(nullptr, expected.thumbnail_) << "not supported";
+    ASSERT_EQ(nullptr, actual.thumbnail_) << "not supported";
+    compare(actual.caption_, expected.caption_);
+}
+
 static void compare(const inputMessagePhoto &actual, const inputMessagePhoto &expected,
                     std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -154,6 +183,9 @@ static void compare(const object_ptr<InputMessageContent> &actual,
         case inputMessagePhoto::ID:
             compare(static_cast<const inputMessagePhoto &>(*actual), static_cast<const inputMessagePhoto &>(*expected),
                     m_inputPhotoPaths);
+            break;
+        case inputMessageDocument::ID:
+            compare(static_cast<const inputMessageDocument &>(*actual), static_cast<const inputMessageDocument &>(*expected));
             break;
         default:
             ASSERT_TRUE(false) << "Unsupported input message content";
@@ -306,6 +338,18 @@ static void compare(const checkAuthenticationPassword &actual, const checkAuthen
     COMPARE(password_);
 }
 
+static void compare(const uploadFile &actual, const uploadFile &expected)
+{
+    compare(actual.file_, expected.file_);
+
+    COMPARE(file_type_ != nullptr);
+    if (actual.file_type_) {
+        COMPARE(file_type_->get_id());
+    }
+
+    COMPARE(priority_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -346,6 +390,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(leaveChat)
         C(deleteSupergroup)
         C(checkAuthenticationPassword)
+        C(uploadFile)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

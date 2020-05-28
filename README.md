@@ -7,7 +7,7 @@ There is a [telegram group](https://t.me/joinchat/BuRiSBO0mMw7Lxy0ufVO5g) (what 
 ## Functionality
 
 Missing features:
-* Sending files other than inline images
+* Sending files other than inline images to group chats
 * Joining public groups/channels
 * Renaming groups/channels
 * Chat topic (= group description)

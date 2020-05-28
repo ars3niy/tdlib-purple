@@ -2,10 +2,13 @@
 #include "purple-info.h"
 #include "config.h"
 #include "format.h"
-#include "td-client.h"
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+
+enum {
+    FILE_UPLOAD_PRIORITY = 1,
+};
 
 static const char *_(const char *s) { return s; }
 
@@ -711,7 +714,6 @@ void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transce
             hasImage = saveImage(input.imageId, &tempFileName);
 
         if (hasImage) {
-            sendMessageRequest->chat_id_ = chatId;
             td::td_api::object_ptr<td::td_api::inputMessagePhoto> content = td::td_api::make_object<td::td_api::inputMessagePhoto>();
             content->photo_ = td::td_api::make_object<td::td_api::inputFileLocal>(tempFileName);
             content->caption_ = td::td_api::make_object<td::td_api::formattedText>();
@@ -736,6 +738,83 @@ void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transce
             account.addPendingRequest<SendMessageRequest>(requestId, tempFileName);
             g_free(tempFileName);
         }
+    }
+}
+
+void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer *xfer,
+                         TdTransceiver &transceiver, TdAccountData &account,
+                         TdTransceiver::ResponseCb response)
+{
+    auto uploadRequest = td::td_api::make_object<td::td_api::uploadFile>();
+    uploadRequest->file_ = td::td_api::make_object<td::td_api::inputFileLocal>(filename);
+    uploadRequest->file_type_ = td::td_api::make_object<td::td_api::fileTypeDocument>();
+    uploadRequest->priority_ = FILE_UPLOAD_PRIORITY;
+    purple_xfer_ref(xfer);
+    uint64_t requestId = transceiver.sendQuery(std::move(uploadRequest), response);
+    account.addPendingRequest<UploadRequest>(requestId, xfer, chatId);
+}
+
+void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_api::file &file,
+                                 TdTransceiver &transceiver, TdAccountData &account)
+{
+    if (purple_xfer_is_canceled(xfer)) {
+        // Someone managed to cancel the upload REAL fast
+        auto cancelRequest = td::td_api::make_object<td::td_api::cancelUploadFile>(file.id_);
+        transceiver.sendQuery(std::move(cancelRequest), nullptr);
+        purple_xfer_unref(xfer);
+    } else {
+        purple_debug_misc(config::pluginId, "Got file id %d for uploading %s\n", (int)file.id_,
+                            purple_xfer_get_local_filename(xfer));
+        account.addUpload(file.id_, xfer, chatId);
+        updateDocumentUploadProgress(file, transceiver, account);
+    }
+}
+
+void uploadResponseError(PurpleXfer *xfer, const std::string &message, TdAccountData &account)
+{
+    purple_xfer_cancel_remote(xfer);
+    purple_xfer_error(purple_xfer_get_type(xfer), account.purpleAccount,
+                      purple_xfer_get_remote_user(xfer), message.c_str());
+    purple_xfer_unref(xfer);
+}
+
+void updateDocumentUploadProgress(const td::td_api::file &file, TdTransceiver &transceiver,
+                                  TdAccountData &account)
+{
+    PurpleXfer *upload;
+    int64_t     chatId;
+    if (!account.getUpload(file.id_, upload, chatId))
+        return;
+    size_t fileSize = purple_xfer_get_size(upload);
+
+    if (file.remote_) {
+        if (file.remote_->is_uploading_active_) {
+            if (purple_xfer_get_status(upload) != PURPLE_XFER_STATUS_STARTED) {
+                purple_debug_misc(config::pluginId, "Started uploading %s\n", purple_xfer_get_local_filename(upload));
+                purple_xfer_start(upload, -1, NULL, 0);
+            }
+            size_t bytesSent = std::max(0, file.remote_->uploaded_size_);
+            purple_xfer_set_bytes_sent(upload, std::min(fileSize, bytesSent));
+            purple_xfer_update_progress(upload);
+        } else if (file.local_ && (file.remote_->uploaded_size_ == file.local_->downloaded_size_)) {
+            purple_debug_misc(config::pluginId, "Finishing uploading %s\n", purple_xfer_get_local_filename(upload));
+            purple_xfer_set_bytes_sent(upload, fileSize);
+            purple_xfer_set_completed(upload, TRUE);
+            purple_xfer_end(upload);
+            purple_xfer_unref(upload);
+            account.removeUpload(file.id_);
+            auto sendMessageRequest = td::td_api::make_object<td::td_api::sendMessage>();
+            auto content = td::td_api::make_object<td::td_api::inputMessageDocument>();
+            content->caption_ = td::td_api::make_object<td::td_api::formattedText>();
+            content->document_ = td::td_api::make_object<td::td_api::inputFileId>(file.id_);
+            sendMessageRequest->input_message_content_ = std::move(content);
+            sendMessageRequest->chat_id_ = chatId;
+            transceiver.sendQuery(std::move(sendMessageRequest), nullptr);
+        }
+    } else {
+        purple_xfer_cancel_remote(upload);
+        purple_xfer_unref(upload);
+        account.removeUpload(file.id_);
     }
 }
 

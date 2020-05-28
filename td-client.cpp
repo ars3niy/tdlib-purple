@@ -10,7 +10,7 @@ static char *_(const char *s) { return const_cast<char *>(s); }
 enum {
     // Typing notifications seems to be resent every 5-6 seconds, so 10s timeout hould be appropriate
     REMOTE_TYPING_NOTICE_TIMEOUT = 10,
-    FILE_DOWNLOAD_PRIORITY       = 1
+    FILE_DOWNLOAD_PRIORITY       = 1,
 };
 
 static bool isChatInContactList(const td::td_api::chat &chat, const td::td_api::user *privateChatUser)
@@ -160,6 +160,15 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
             purple_debug_misc(config::pluginId, "Option update %s\n", option.name_.c_str());
         break;
     }
+
+    case td::td_api::updateFile::ID: {
+        auto &fileUpdate = static_cast<const td::td_api::updateFile &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: file update, id %d\n",
+                          fileUpdate.file_ ? fileUpdate.file_->id_ : 0);
+        if (fileUpdate.file_)
+            updateDocumentUploadProgress(*fileUpdate.file_, m_transceiver, m_data);
+        break;
+    };
 
     default:
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
@@ -1149,10 +1158,12 @@ void PurpleTdClient::findMessageResponse(uint64_t requestId, td::td_api::object_
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
 {
     int64_t chatId = getPrivateChatIdByPurpleName(buddyName, m_data, "send message");
-    transmitMessage(chatId, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
-
-    // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
-    return 0;
+    if (chatId != 0) {
+        transmitMessage(chatId, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
+        // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
+        return 0;
+    }
+    return -1;
 }
 
 void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -1778,5 +1789,57 @@ void PurpleTdClient::verifyRecoveryEmailResponse(uint64_t requestId, td::td_api:
     } else {
         std::string errorMessage = getDisplayedError(object);
         purple_notify_error(m_account, _("Two-step authentication"), _("Failed to verify recovery e-mail"), errorMessage.c_str());
+    }
+}
+
+void PurpleTdClient::sendFileToChat(PurpleXfer *xfer, const char *purpleName, PurpleConversationType type)
+{
+    const char *filename = purple_xfer_get_local_filename(xfer);
+    int64_t     chatId;
+    if (type == PURPLE_CONV_TYPE_IM)
+        chatId = getPrivateChatIdByPurpleName(purpleName, m_data, "send file");
+
+    if (filename && (chatId != 0))
+        startDocumentUpload(chatId, filename, xfer, m_transceiver, m_data, &PurpleTdClient::uploadResponse);
+    else {
+        if (!filename)
+            purple_debug_warning(config::pluginId, "Failed to send file, no file name\n");
+        else if (chatId == 0)
+            purple_debug_warning(config::pluginId, "Failed to send file %s, chat not found\n", filename);
+        purple_xfer_cancel_remote(xfer);
+    }
+}
+
+void PurpleTdClient::uploadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<UploadRequest> request = m_data.getPendingRequest<UploadRequest>(requestId);
+    const td::td_api::file        *file    = nullptr;
+
+    if (object && (object->get_id() == td::td_api::file::ID))
+        file = static_cast<const td::td_api::file *>(object.get());
+
+    if (request) {
+        if (file)
+            startDocumentUploadProgress(request->chatId, request->xfer, *file, m_transceiver, m_data);
+        else
+            uploadResponseError(request->xfer, getDisplayedError(object), m_data);
+    }
+}
+
+void PurpleTdClient::cancelUpload(PurpleXfer *xfer)
+{
+    int32_t fileId;
+    if (m_data.getFileIdForUpload(xfer, fileId)) {
+        purple_debug_misc(config::pluginId, "Cancelling upload of %s (file id %d)\n",
+                          purple_xfer_get_local_filename(xfer), fileId);
+        auto cancelRequest = td::td_api::make_object<td::td_api::cancelUploadFile>(fileId);
+        m_transceiver.sendQuery(std::move(cancelRequest), nullptr);
+        m_data.removeUpload(fileId);
+        purple_xfer_unref(xfer);
+    } else {
+        // This could mean that response to upload request has not come yet - when it does,
+        // uploadResponse will notice that the transfer is cancelled and act accordingly.
+        // Or it could just be that the upload got cancelled programmatically due to some error,
+        // in which case nothing more should be done.
     }
 }

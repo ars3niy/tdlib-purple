@@ -35,6 +35,9 @@ public:
 
     void setTwoStepAuth(const char *oldPassword, const char *newPassword, const char *hint,
                         const char *email);
+
+    void sendFileToChat(PurpleXfer *xfer, const char *purpleName, PurpleConversationType type);
+    void cancelUpload(PurpleXfer *xfer);
 private:
     using TdObjectPtr   = td::td_api::object_ptr<td::td_api::Object>;
     using ResponseCb    = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
@@ -129,6 +132,8 @@ private:
                                      const std::string &filePath, const char *caption,
                                      const std::string &fileDescription,
                                      td::td_api::object_ptr<td::td_api::file> thumbnail);
+    void       uploadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       updateFile(const td::td_api::file &file);
 
     bool       sendMessage(int64_t chatId, const char *message);
     void       sendMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);

@@ -208,6 +208,43 @@ static void compare(const ChatClearUsersEvent &actual, const ChatClearUsersEvent
     COMPARE(chatName);
 }
 
+static void compare(const XferAcceptedEvent &actual, const XferAcceptedEvent &expected)
+{
+    COMPARE(filename);
+}
+
+static void compare(const XferStartEvent &actual, const XferStartEvent &expected)
+{
+    COMPARE(filename);
+}
+
+static void compare(const XferProgressEvent &actual, const XferProgressEvent &expected)
+{
+    COMPARE(filename);
+    COMPARE(bytesSent);
+}
+
+static void compare(const XferCompletedEvent &actual, const XferCompletedEvent &expected)
+{
+    COMPARE(filename);
+    COMPARE(completed);
+}
+
+static void compare(const XferEndEvent &actual, const XferEndEvent &expected)
+{
+    COMPARE(filename);
+}
+
+static void compare(const XferLocalCancelEvent &actual, const XferLocalCancelEvent &expected)
+{
+    COMPARE(filename);
+}
+
+static void compare(const XferRemoteCancelEvent &actual, const XferRemoteCancelEvent &expected)
+{
+    COMPARE(filename);
+}
+
 static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected)
 {
     ASSERT_EQ(expected.type, actual.type) << "Unexpected libpurple event " << actual.toString() <<
@@ -247,6 +284,13 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(PresentConversation)
         C(ChatAddUser)
         C(ChatClearUsers)
+        C(XferAccepted)
+        C(XferStart)
+        C(XferProgress)
+        C(XferCompleted)
+        C(XferEnd)
+        C(XferLocalCancel)
+        C(XferRemoteCancel)
         default:
             ASSERT_TRUE(false) << "Unsupported libpurple event " << actual.toString();
     };
@@ -358,6 +402,13 @@ std::string PurpleEvent::toString() const
     C(PresentConversation)
     C(ChatAddUser)
     C(ChatClearUsers)
+    C(XferAccepted)
+    C(XferStart)
+    C(XferProgress)
+    C(XferCompleted)
+    C(XferEnd)
+    C(XferLocalCancel)
+    C(XferRemoteCancel)
     }
     return std::to_string((unsigned)type);
 #undef C
