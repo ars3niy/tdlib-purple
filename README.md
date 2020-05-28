@@ -8,6 +8,8 @@ There is a [telegram group](https://t.me/joinchat/BuRiSBO0mMw7Lxy0ufVO5g) (what 
 
 Missing features:
 * Sending files other than inline images to group chats
+* Communicating with group chat members who are not in contact list
+* Adding users to group chats and creating invite links
 * Joining public groups/channels
 * Renaming groups/channels
 * Chat topic (= group description)
