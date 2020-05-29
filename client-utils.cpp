@@ -360,7 +360,7 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
 
     std::string originalName;
     if (originalAuthor)
-        originalName = getDisplayName(originalAuthor);
+        originalName = account.getDisplayName(*originalAuthor);
     else
         originalName = _("unknown user");
 
@@ -459,13 +459,13 @@ std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::
 {
     if (!message.is_outgoing_ && (getBasicGroupId(chat) || getSupergroupId(chat))) {
         if (message.sender_user_id_)
-            return getDisplayName(account.getUser(message.sender_user_id_));
+            return account.getDisplayName(message.sender_user_id_);
         else if (!message.author_signature_.empty())
             return message.author_signature_;
         else if (message.forward_info_ && message.forward_info_->origin_)
             switch (message.forward_info_->origin_->get_id()) {
             case td::td_api::messageForwardOriginUser::ID:
-                return getDisplayName(account.getUser(static_cast<const td::td_api::messageForwardOriginUser &>(*message.forward_info_->origin_).sender_user_id_));
+                return account.getDisplayName(static_cast<const td::td_api::messageForwardOriginUser &>(*message.forward_info_->origin_).sender_user_id_);
             case td::td_api::messageForwardOriginHiddenUser::ID:
                 return static_cast<const td::td_api::messageForwardOriginHiddenUser &>(*message.forward_info_->origin_).sender_name_;
             case td::td_api::messageForwardOriginChannel::ID:
@@ -487,7 +487,7 @@ std::string getForwardSource(const td::td_api::messageForwardInfo &forwardInfo,
 
     switch (forwardInfo.origin_->get_id()) {
         case td::td_api::messageForwardOriginUser::ID:
-            return getDisplayName(account.getUser(static_cast<const td::td_api::messageForwardOriginUser &>(*forwardInfo.origin_).sender_user_id_));
+            return account.getDisplayName(static_cast<const td::td_api::messageForwardOriginUser &>(*forwardInfo.origin_).sender_user_id_);
         case td::td_api::messageForwardOriginHiddenUser::ID:
             return static_cast<const td::td_api::messageForwardOriginHiddenUser &>(*forwardInfo.origin_).sender_name_;
         case td::td_api::messageForwardOriginChannel::ID: {
@@ -598,7 +598,7 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
             nameData.emplace_back(purple_account_get_username(account.purpleAccount));
         else {
             // Use first and last name instead
-            std::string displayName = getDisplayName(user);
+            std::string displayName = account.getDisplayName(*user);
             nameData.emplace_back(displayName);
         }
 

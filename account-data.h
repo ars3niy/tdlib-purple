@@ -119,6 +119,8 @@ public:
     const td::td_api::user       *getUser(int32_t userId) const;
     const td::td_api::user       *getUserByPhone(const char *phoneNumber) const;
     const td::td_api::user       *getUserByPrivateChat(const td::td_api::chat &chat);
+    std::string                   getDisplayName(const td::td_api::user &user) const;
+    std::string                   getDisplayName(int32_t userId) const;
     void                          getUsersByDisplayName(const char *displayName,
                                                         std::vector<const td::td_api::user*> &users);
     const td::td_api::basicGroup *getBasicGroup(int32_t groupId) const;
@@ -161,6 +163,11 @@ private:
     TdAccountData(const TdAccountData &other) = delete;
     TdAccountData &operator=(const TdAccountData &other) = delete;
 
+    struct UserInfo {
+        TdUserPtr   user;
+        std::string displayName;
+    };
+
     struct ChatInfo {
         int32_t   purpleId;
         TdChatPtr chat;
@@ -186,7 +193,7 @@ private:
     };
 
     using ChatMap = std::map<int64_t, ChatInfo>;
-    using UserMap = std::map<int32_t, TdUserPtr>;
+    using UserMap = std::map<int32_t, UserInfo>;
     UserMap                            m_userInfo;
     ChatMap                            m_chatInfo;
     std::map<int32_t, GroupInfo>       m_groups;

@@ -62,26 +62,6 @@ static bool isPhoneEqual(const std::string &n1, const std::string &n2)
     return !strcmp(s1, s2);
 }
 
-std::string getDisplayName(const td::td_api::user *user)
-{
-    if (user) {
-        std::string result = user->first_name_;
-        if (!result.empty() && !user->last_name_.empty())
-            result += ' ';
-        result += user->last_name_;
-
-        // If some sneaky user sets their name equal to someone else's libpurple username, or to our
-        // phone number which is libpurple account name, make sure display name is different, because
-        // of how it is used for group chat members
-        if ((stringToUserId(result.c_str()) != 0) || isPhoneNumber(result.c_str()))
-            result += ' ';
-
-        return result;
-    }
-
-    return "";
-}
-
 bool isPrivateChat(const td::td_api::chat &chat)
 {
     return (getUserIdByPrivateChat(chat) != 0);
@@ -127,17 +107,44 @@ bool isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &s
         return true;
 }
 
+static std::string makeDisplayName(const td::td_api::user &user)
+{
+    std::string result = user.first_name_;
+    if (!result.empty() && !user.last_name_.empty())
+        result += ' ';
+    result += user.last_name_;
+
+    // If some sneaky user sets their name equal to someone else's libpurple username, or to our
+    // phone number which is libpurple account name, make sure display name is different, because
+    // of how it is used for group chat members
+    if ((stringToUserId(result.c_str()) != 0) || isPhoneNumber(result.c_str()))
+        result += ' ';
+
+    return result;
+}
+
 void TdAccountData::updateUser(TdUserPtr user)
 {
-    if (user)
-        m_userInfo[user->id_] = std::move(user);
+    if (user) {
+        int32_t userId = user->id_;
+        auto    it     = m_userInfo.find(userId);
+        if (it != m_userInfo.end())
+            it->second.user  = std::move(user);
+        else {
+            std::string displayName = makeDisplayName(*user);
+            UserInfo entry;
+            entry.user = std::move(user);
+            entry.displayName = std::move(displayName);
+            m_userInfo[userId] = std::move(entry);
+        }
+    }
 }
 
 void TdAccountData::setUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status)
 {
     auto it = m_userInfo.find(userId);
     if (it != m_userInfo.end())
-        it->second->status_ = std::move(status);
+        it->second.user->status_ = std::move(status);
 }
 
 void TdAccountData::updateBasicGroup(TdGroupPtr group)
@@ -285,19 +292,19 @@ const td::td_api::user *TdAccountData::getUser(int32_t userId) const
     if (pUser == m_userInfo.end())
         return nullptr;
     else
-        return pUser->second.get();
+        return pUser->second.user.get();
 }
 
 const td::td_api::user *TdAccountData::getUserByPhone(const char *phoneNumber) const
 {
     auto pUser = std::find_if(m_userInfo.begin(), m_userInfo.end(),
                               [phoneNumber](const UserMap::value_type &entry) {
-                                  return isPhoneEqual(entry.second->phone_number_, phoneNumber);
+                                  return isPhoneEqual(entry.second.user->phone_number_, phoneNumber);
                               });
     if (pUser == m_userInfo.end())
         return nullptr;
     else
-        return pUser->second.get();
+        return pUser->second.user.get();
 }
 
 const td::td_api::user *TdAccountData::getUserByPrivateChat(const td::td_api::chat &chat)
@@ -308,6 +315,20 @@ const td::td_api::user *TdAccountData::getUserByPrivateChat(const td::td_api::ch
     return nullptr;
 }
 
+std::string TdAccountData::getDisplayName(const td::td_api::user &user) const
+{
+    return getDisplayName(user.id_);
+}
+
+std::string TdAccountData::getDisplayName(int32_t userId) const
+{
+    auto it = m_userInfo.find(userId);
+    if (it != m_userInfo.end())
+        return it->second.displayName;
+    else
+        return std::string();
+}
+
 void TdAccountData::getUsersByDisplayName(const char *displayName,
                                          std::vector<const td::td_api::user*> &users)
 {
@@ -316,8 +337,8 @@ void TdAccountData::getUsersByDisplayName(const char *displayName,
         return;
 
     for (const UserMap::value_type &entry: m_userInfo)
-        if (getDisplayName(entry.second.get()) == displayName)
-            users.push_back(entry.second.get());
+        if (entry.second.displayName == displayName)
+            users.push_back(entry.second.user.get());
 }
 
 const td::td_api::basicGroup *TdAccountData::getBasicGroup(int32_t groupId) const
