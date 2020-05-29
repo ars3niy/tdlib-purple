@@ -13,11 +13,6 @@ enum {
     FILE_DOWNLOAD_PRIORITY       = 1,
 };
 
-static bool isChatInContactList(const td::td_api::chat &chat, const td::td_api::user *privateChatUser)
-{
-    return (chat.chat_list_ != nullptr) || (privateChatUser && privateChatUser->is_contact_);
-}
-
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)
 :   m_transceiver(this, acct, &PurpleTdClient::processUpdate, testBackend),
     m_data(acct)

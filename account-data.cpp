@@ -76,6 +76,11 @@ int32_t getUserIdByPrivateChat(const td::td_api::chat &chat)
     return 0;
 }
 
+bool isChatInContactList(const td::td_api::chat &chat, const td::td_api::user *privateChatUser)
+{
+    return (chat.chat_list_ != nullptr) || (privateChatUser && privateChatUser->is_contact_);
+}
+
 int32_t getBasicGroupId(const td::td_api::chat &chat)
 {
     if (chat.type_ && (chat.type_->get_id() == td::td_api::chatTypeBasicGroup::ID))
@@ -123,21 +128,60 @@ static std::string makeDisplayName(const td::td_api::user &user)
     return result;
 }
 
-void TdAccountData::updateUser(TdUserPtr user)
+void TdAccountData::updateUser(TdUserPtr userPtr)
 {
+    const td::td_api::user *user = userPtr.get();
     if (user) {
-        int32_t userId = user->id_;
-        auto    it     = m_userInfo.find(userId);
-        if (it != m_userInfo.end())
-            it->second.user  = std::move(user);
-        else {
-            std::string displayName = makeDisplayName(*user);
-            UserInfo entry;
-            entry.user = std::move(user);
-            entry.displayName = std::move(displayName);
-            m_userInfo[userId] = std::move(entry);
+        int32_t  userId = user->id_;
+        auto     it     = m_userInfo.find(userId);
+
+        if (it == m_userInfo.end()) {
+            auto ret = m_userInfo.emplace(std::make_pair(userId, UserInfo()));
+            it = ret.first;
         }
+
+        UserInfo &entry = it->second;
+        entry.user = std::move(userPtr);
+
+        const td::td_api::chat *privateChat = getPrivateChatByUserId(userId);
+        if (privateChat && isChatInContactList(*privateChat, user))
+            // libpurple buddy either exists for this user, or is about to be created immediately.
+            // In that case, the entry in group chat member list (the only place where display name
+            // uniqueness really matters) will use libpurple buddy name (idXXXXXXXX) instead, and
+            // buddy alias (equal to private chat title, without the suffix) will be displayed.
+            // Therefore, don't give any suffix to this user - let non-buddy group chat members have
+            // them instead.
+            setDisplayNameWithoutSuffix(entry);
+        else {
+            entry.displayName = makeDisplayName(*user);
+            for (unsigned n = 0; n != UINT32_MAX; n++) {
+                std::string displayName = entry.displayName;
+                if (n != 0) {
+                    displayName += " #";
+                    displayName += std::to_string(n);
+                }
+
+                std::vector<const td::td_api::user *> existingUsers;
+                getUsersByDisplayName(displayName.c_str(), existingUsers);
+                if (std::none_of(existingUsers.begin(), existingUsers.end(),
+                                 [user](const td::td_api::user *otherUser) {
+                                     return (otherUser != user);
+                                 }))
+                {
+                    entry.displayName = std::move(displayName);
+                    break;
+                }
+            }
+        }
+        // TODO rename non-buddy group chat member, if one corresponds to this user
     }
+}
+
+void TdAccountData::setDisplayNameWithoutSuffix(UserInfo &entry)
+{
+    entry.displayName = makeDisplayName(*entry.user);
+    // TODO: if this makes this user's display name equal to that of another user who is non-buddy
+    // group chat member, give unique suffix to that other user
 }
 
 void TdAccountData::setUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status)
@@ -193,6 +237,13 @@ void TdAccountData::addChat(TdChatPtr chat)
             purple_debug_misc(config::pluginId, "Private chat (id %" G_GINT64_FORMAT ") now known for user %d\n",
                               chat->id_, (int)privType.user_id_);
             m_contactUserIdsNoChat.erase(pContact);
+        }
+
+        // Same logic to remove suffix from display name of users as in updateUser
+        UserMap::iterator pUser = m_userInfo.find(privType.user_id_);
+        if ((pUser != m_userInfo.end()) && isChatInContactList(*chat, pUser->second.user.get())) {
+            setDisplayNameWithoutSuffix(pUser->second);
+            // TODO rename non-buddy group chat member, if one corresponds to this user
         }
     }
 
@@ -330,7 +381,7 @@ std::string TdAccountData::getDisplayName(int32_t userId) const
 }
 
 void TdAccountData::getUsersByDisplayName(const char *displayName,
-                                         std::vector<const td::td_api::user*> &users)
+                                          std::vector<const td::td_api::user*> &users)
 {
     users.clear();
     if (!displayName || (*displayName == '\0'))

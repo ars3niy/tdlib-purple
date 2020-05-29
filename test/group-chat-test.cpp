@@ -709,3 +709,78 @@ TEST_F(GroupChatTest, LeaveBasicGroup)
 
     g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);
 }
+
+TEST_F(GroupChatTest, UsersWithSameName)
+{
+    constexpr int64_t messageId    = 10001;
+    constexpr int32_t date         = 12345;
+    constexpr int     purpleChatId = 1;
+
+    loginWithBasicGroup();
+
+    // Second group chat member - same name as the first one
+    tgl.update(make_object<updateUser>(makeUser(
+        userIds[1],
+        userFirstNames[0],
+        userLastNames[0],
+        "",
+        make_object<userStatusOffline>()
+    )));
+
+    std::vector<object_ptr<chatMember>> members;
+    members.push_back(make_object<chatMember>(
+        userIds[0],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    members.push_back(make_object<chatMember>(
+        userIds[1],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusCreator>("", true),
+        nullptr
+    ));
+    members.push_back(make_object<chatMember>(
+        selfId,
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    tgl.reply(make_object<basicGroupFullInfo>(
+        "basic group",
+        userIds[1],
+        std::move(members),
+        ""
+    ));
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        ChatClearUsersEvent(groupChatPurpleName),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            userFirstNames[0] + " " + userLastNames[0],
+            "", PURPLE_CBFLAGS_NONE, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            userFirstNames[0] + " " + userLastNames[0] + " #1",
+            "", PURPLE_CBFLAGS_FOUNDER, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            // This is us (with + to match account name)
+            "+" + selfPhoneNumber,
+            "", PURPLE_CBFLAGS_NONE, false
+        ),
+        PresentConversationEvent(groupChatPurpleName)
+    );
+    tgl.verifyNoRequests();
+}
