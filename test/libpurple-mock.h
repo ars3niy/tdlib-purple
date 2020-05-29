@@ -4,6 +4,8 @@
 extern "C" {
 
 void setFakeFileSize(const char *path, size_t size);
+int  getLastImgstoreId();
+guint8 *arrayDup(gpointer data, size_t size);
 
 };
 

@@ -3,4 +3,6 @@
 
 #cmakedefine NoWebp
 
+#define TEST_SOURCE_DIR "${CMAKE_SOURCE_DIR}/test"
+
 #endif

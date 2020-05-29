@@ -946,18 +946,31 @@ struct _PurpleStoredImage {
 
 std::vector<std::unique_ptr<PurpleStoredImage>> imageStore;
 
+guint8 *arrayDup(gpointer data, size_t size)
+{
+    guint8 *result = (guint8 *)g_malloc(size);
+    memmove(result, data, size);
+    return result;
+}
+
 int purple_imgstore_add_with_id(gpointer data, size_t size, const char *filename)
 {
     imageStore.push_back(std::make_unique<PurpleStoredImage>());
     imageStore.back()->data = std::vector<uint8_t>(size);
     memmove(imageStore.back()->data.data(), data, size);
-    return imageStore.size()-1;
+    g_free(data);
+    return imageStore.size();
+}
+
+int getLastImgstoreId()
+{
+    return imageStore.size();
 }
 
 PurpleStoredImage *purple_imgstore_find_by_id(int id)
 {
-    if ((id >= 0) && ((unsigned)id < imageStore.size()))
-        return imageStore[id].get();
+    if ((id >= 1) && ((unsigned)id <= imageStore.size()))
+        return imageStore[id-1].get();
     else
         return NULL;
 }

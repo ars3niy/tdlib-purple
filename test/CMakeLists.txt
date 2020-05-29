@@ -27,7 +27,7 @@ add_executable(tests EXCLUDE_FROM_ALL
 )
 
 target_compile_definitions(tests PRIVATE
-    "TD_VERSION=\"${Td_VERSION}\";GIT_COMMIT=\"${GIT_COMMIT}\""
+    "TD_VERSION=\"${Td_VERSION}\""
 )
 set_property(TARGET tests PROPERTY CXX_STANDARD 14)
 target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR})
@@ -37,5 +37,9 @@ if (DEFINED GTEST_PATH)
     target_include_directories(tests PRIVATE ${GTEST_PATH}/include)
     link_directories(${GTEST_PATH}/lib)
 endif (DEFINED GTEST_PATH)
+
+if (NOT NoWebp)
+    target_link_libraries(tests PRIVATE ${libwebp_LIBRARIES} ${libpng_LIBRARIES})
+endif (NOT NoWebp)
 
 add_custom_target(run-tests ${CMAKE_CURRENT_BINARY_DIR}/tests DEPENDS tests)

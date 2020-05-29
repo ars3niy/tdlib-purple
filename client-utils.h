@@ -71,12 +71,12 @@ std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageIn
                                  const char *noticeText, PurpleAccount *account);
 void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const TgMessageInfo &message,
                      const char *text, const char *notification, uint32_t extraFlags = 0);
-void showGenericFile(int64_t chatId, const TgMessageInfo &message,
-                    const std::string &filePath, const std::string &fileDescription,
-                    TdAccountData &account);
-void showWebpSticker(int64_t chatId, const TgMessageInfo &message,
+void showGenericFile(const td::td_api::chat &chat, const TgMessageInfo &message,
                      const std::string &filePath, const std::string &fileDescription,
-                     TdAccountData account);
+                     TdAccountData &account);
+void showWebpSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
+                     const std::string &filePath, const std::string &fileDescription,
+                     TdAccountData &account);
 void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
                     const TdAccountData &account);
 

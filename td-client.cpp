@@ -983,9 +983,11 @@ void PurpleTdClient::showDownloadedSticker(int64_t chatId, const TgMessageInfo &
         else
             downloadFile(thumbnail->id_, chatId, message, fileDescription, nullptr,
                          &PurpleTdClient::showDownloadedSticker);
-    } else
-        showDownloadedFile(chatId, message, filePath, caption, fileDescription,
-                                 std::move(thumbnail));
+    } else {
+        const td::td_api::chat *chat = m_data.getChat(chatId);
+        if (chat)
+            showWebpSticker(*chat, message, filePath, fileDescription, m_data);
+    }
 }
 
 
@@ -994,7 +996,9 @@ void PurpleTdClient::showDownloadedFile(int64_t chatId, const TgMessageInfo &mes
                                               const std::string &fileDescription,
                                               td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
-    showGenericFile(chatId, message, filePath, fileDescription, m_data);
+    const td::td_api::chat *chat = m_data.getChat(chatId);
+    if (chat)
+        showGenericFile(*chat, message, filePath, fileDescription, m_data);
 }
 
 void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId)

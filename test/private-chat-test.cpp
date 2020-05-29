@@ -1,4 +1,5 @@
 #include "fixture.h"
+#include "libpurple-mock.h"
 #include <fmt/format.h>
 
 class PrivateChatTest: public CommTest {};
@@ -631,8 +632,9 @@ TEST_F(PrivateChatTest, SendImage)
     const int32_t messageFailureDate = 1234;
     uint8_t data1[] = {1, 2, 3, 4, 5};
     uint8_t data2[] = {11, 12, 13, 14};
-    const int id1 = purple_imgstore_add_with_id(data1, sizeof(data1), "filename1");
-    const int id2 = purple_imgstore_add_with_id(data2, sizeof(data2), "filename2");
+
+    const int id1 = purple_imgstore_add_with_id(arrayDup(data1, sizeof(data1)), sizeof(data1), "filename1");
+    const int id2 = purple_imgstore_add_with_id(arrayDup(data2, sizeof(data2)), sizeof(data2), "filename2");
     const std::string messageText = fmt::format("prefix<img id=\"{}\">caption1<img id=\"{}\">caption2", id1, id2);
 
     ASSERT_EQ(0, pluginInfo().send_im(connection, purpleUserName(0).c_str(), messageText.c_str(), PURPLE_MESSAGE_SEND));

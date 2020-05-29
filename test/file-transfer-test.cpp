@@ -1,5 +1,6 @@
 #include "fixture.h"
 #include "libpurple-mock.h"
+#include "buildopt.h"
 
 class FileTransferTest: public CommTest {};
 
@@ -304,4 +305,40 @@ TEST_F(FileTransferTest, SendFile_UnknownPrivateChat)
         XferAcceptedEvent(PATH),
         XferRemoteCancelEvent(PATH)
     );
+}
+
+#ifndef NoWebp
+TEST_F(FileTransferTest, WebpStickerDecode)
+#else
+TEST_F(FileTransferTest, DISABLED_WebpStickerDecode)
+#endif
+{
+    const int32_t date      = 10001;
+    const int32_t fileId    = 1234;
+    loginWithOneContact();
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messageSticker>(make_object<sticker>(
+            0, 320, 200, "", true, false, nullptr,
+            nullptr,
+            make_object<file>(
+                fileId, 10000, 10000,
+                make_object<localFile>(TEST_SOURCE_DIR "/test.webp", true, true, false, true, 0, 10000, 10000),
+                make_object<remoteFile>("beh", "bleh", false, true, 10000)
+            )
+        ))
+    )));
+    tgl.verifyRequest(viewMessages(chatIds[0], {1}, true));
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        purpleUserName(0),
+        "\n<img id=\"" + std::to_string(getLastImgstoreId()) + "\">",
+        PURPLE_MESSAGE_RECV,
+        date
+    ));
 }

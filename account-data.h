@@ -158,6 +158,9 @@ public:
     bool                       getFileIdForUpload(PurpleXfer *xfer, int &fileId);
     void                       removeUpload(int32_t fileId);
 private:
+    TdAccountData(const TdAccountData &other) = delete;
+    TdAccountData &operator=(const TdAccountData &other) = delete;
+
     struct ChatInfo {
         int32_t   purpleId;
         TdChatPtr chat;
