@@ -6,6 +6,11 @@
 #include <purple.h>
 
 struct TgMessageInfo {
+    enum class Type {
+        Sticker,
+        Other
+    };
+    Type        type;
     std::string sender;
     time_t      timestamp;
     bool        outgoing;

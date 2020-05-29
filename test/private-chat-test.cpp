@@ -419,15 +419,8 @@ TEST_F(PrivateChatTest, Sticker)
         make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
         make_object<downloadFile>(fileId[0], 1, 0, 0, true)
     });
+    prpl.verifyNoEvents();
 
-    prpl.verifyEvents(
-        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
-        ConversationWriteEvent(
-            purpleUserName(0), "",
-            userFirstNames[0] + " " + userLastNames[0] + ": Downloading sticker",
-            PURPLE_MESSAGE_SYSTEM, date
-        )
-    );
     tgl.reply(make_object<ok>()); // reply to viewMessages
     tgl.reply(make_object<file>(
         fileId[0], 10000, 10000,

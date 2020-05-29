@@ -748,11 +748,15 @@ void PurpleTdClient::showFile(const td::td_api::chat &chat, const TgMessageInfo 
     bool        autoDownload = false;
     unsigned    fileSize     = getFileSizeKb(file);
 
+    if (caption && (*caption == '\0'))
+        caption = NULL;
+
     if (file.local_ && file.local_->is_downloading_completed_) {
         autoDownload = true;
         notice.clear();
     } else if (isSizeWithinLimit(fileSize, getAutoDownloadLimitKb(m_account))) {
-        notice = formatMessage(_("Downloading {}"), std::string(fileDesc));
+        if (!((message.type == TgMessageInfo::Type::Sticker) && !caption))
+            notice = formatMessage(_("Downloading {}"), std::string(fileDesc));
         autoDownload = true;
     } else if (!ignoreBigDownloads(m_account)) {
         notice = formatMessage(_("Requesting {} download"), std::string(fileDesc));
@@ -765,8 +769,6 @@ void PurpleTdClient::showFile(const td::td_api::chat &chat, const TgMessageInfo 
         g_free(fileSizeStr);
     }
 
-    if (caption && (*caption == '\0'))
-        caption = NULL;
     if (!notice.empty()) {
         notice = makeNoticeWithSender(chat, message, notice.c_str(), m_account);
         showMessageText(m_data, chat, message, caption, notice.c_str());
@@ -1032,6 +1034,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId
     purple_debug_misc(config::pluginId, "Displaying message %" G_GINT64_FORMAT "\n", messageId);
 
     TgMessageInfo messageInfo;
+    messageInfo.type             = TgMessageInfo::Type::Other;
     messageInfo.sender           = getSenderPurpleName(chat, *message, m_data);
     messageInfo.timestamp        = message->date_;
     messageInfo.outgoing         = message->is_outgoing_;
@@ -1085,6 +1088,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId
             break;
         }
         case td::td_api::messageSticker::ID:
+            messageInfo.type = TgMessageInfo::Type::Sticker;
             showSticker(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message->content_));
             break;
         case td::td_api::messageChatChangeTitle::ID: {
