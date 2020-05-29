@@ -6,6 +6,11 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "buildopt.h"
+#ifndef NoWebp
+#include <webp/decode.h>
+#endif
+
 enum {
     FILE_UPLOAD_PRIORITY = 1,
 };
@@ -841,4 +846,48 @@ std::string makeDocumentDescription(const td::td_api::voiceNote *document)
         // Unlikely error message not worth translating
         return "faulty voice note";
     return std::string(_("voice note")) + " [" + document->mime_type_ + "]";
+}
+
+std::string getSenderDisplayName(const td::td_api::chat &chat, const TgMessageInfo &message,
+                                 PurpleAccount *account)
+{
+    if (message.outgoing)
+        return purple_account_get_alias(account);
+    else if (isPrivateChat(chat))
+        return chat.title_;
+    else
+        return message.sender;
+}
+
+std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,
+                                 const char *noticeText, PurpleAccount *account)
+{
+    std::string prefix = getSenderDisplayName(chat, message, account);
+    if (!prefix.empty())
+        prefix += ": ";
+    return prefix + noticeText;
+}
+
+void showGenericFile(int64_t chatId, const TgMessageInfo &message,
+                    const std::string &filePath, const std::string &fileDescription,
+                    TdAccountData &account)
+{
+    const td::td_api::chat *chat = account.getChat(chatId);
+    if (chat) {
+        if (filePath.find('"') != std::string::npos) {
+            std::string notice = makeNoticeWithSender(*chat, message, "Cannot show file: path contains quotes",
+                                                      account.purpleAccount);
+            showMessageText(account, *chat, message, NULL, notice.c_str());
+        } else {
+            std::string text = "<a href=\"file://" + filePath + "\">" + fileDescription + "</a>";
+            showMessageText(account, *chat, message, text.c_str(), NULL);
+        }
+    }
+}
+
+void showWebpSticker(int64_t chatId, const TgMessageInfo &message,
+                     const std::string &filePath, const std::string &fileDescription,
+                     TdAccountData account)
+{
+    showGenericFile(chatId, message, filePath, fileDescription, account);
 }

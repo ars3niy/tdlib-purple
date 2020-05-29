@@ -1,0 +1,6 @@
+#ifndef _BUILDOPT_H
+#define _BUILDOPT_H
+
+#cmakedefine NoWebp
+
+#endif

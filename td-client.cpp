@@ -717,26 +717,6 @@ static const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td:
     return selectedSize ? selectedSize->photo_.get() : nullptr;
 }
 
-static std::string getSenderDisplayName(const td::td_api::chat &chat, const TgMessageInfo &message,
-                                        PurpleAccount *account)
-{
-    if (message.outgoing)
-        return purple_account_get_alias(account);
-    else if (isPrivateChat(chat))
-        return chat.title_;
-    else
-        return message.sender;
-}
-
-static std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,
-                                        const char *noticeText, PurpleAccount *account)
-{
-    std::string prefix = getSenderDisplayName(chat, message, account);
-    if (!prefix.empty())
-        prefix += ": ";
-    return prefix + noticeText;
-}
-
 void PurpleTdClient::showFile(const td::td_api::chat &chat, const TgMessageInfo &message,
                               const td::td_api::file &file, const char *caption,
                               const std::string &fileDesc,
@@ -962,10 +942,10 @@ void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, const TgMessa
         showMessageText(m_data, chat, message, captionStr, notice.c_str());
     } else
         showFile(chat, message, *file, captionStr, fileDescription, nullptr,
-                 &PurpleTdClient::showDownloadedInlineFile);
+                 &PurpleTdClient::showDownloadedFile);
 }
 
-void PurpleTdClient::showSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
+void PurpleTdClient::showStickerMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
                                  td::td_api::messageSticker &stickerContent)
 {
     if (!stickerContent.sticker_) return;
@@ -998,32 +978,23 @@ void PurpleTdClient::showDownloadedSticker(int64_t chatId, const TgMessageInfo &
         // Avoid message like "Downloading sticker thumbnail...
         // Also ignore size limits, but only determined testers and crazy people would notice.
         if (thumbnail->local_ && thumbnail->local_->is_downloading_completed_)
-            showDownloadedInlineFile(chatId, message, thumbnail->local_->path_, caption,
+            showDownloadedSticker(chatId, message, thumbnail->local_->path_, caption,
                                      fileDescription, nullptr);
         else
             downloadFile(thumbnail->id_, chatId, message, fileDescription, nullptr,
                          &PurpleTdClient::showDownloadedSticker);
     } else
-        showDownloadedInlineFile(chatId, message, filePath, caption, fileDescription,
+        showDownloadedFile(chatId, message, filePath, caption, fileDescription,
                                  std::move(thumbnail));
 }
 
 
-void PurpleTdClient::showDownloadedInlineFile(int64_t chatId, const TgMessageInfo &message,
+void PurpleTdClient::showDownloadedFile(int64_t chatId, const TgMessageInfo &message,
                                               const std::string &filePath, const char *caption,
                                               const std::string &fileDescription,
                                               td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
-    const td::td_api::chat *chat = m_data.getChat(chatId);
-    if (chat) {
-        if (filePath.find('"') != std::string::npos) {
-            std::string notice = makeNoticeWithSender(*chat, message, "Cannot show file: path contains quotes", m_account);
-            showMessageText(m_data, *chat, message, NULL, notice.c_str());
-        } else {
-            std::string text = "<a href=\"file://" + filePath + "\">" + fileDescription + "</a>";
-            showMessageText(m_data, *chat, message, text.c_str(), NULL);
-        }
-    }
+    showGenericFile(chatId, message, filePath, fileDescription, m_data);
 }
 
 void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId)
@@ -1089,7 +1060,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId
         }
         case td::td_api::messageSticker::ID:
             messageInfo.type = TgMessageInfo::Type::Sticker;
-            showSticker(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message->content_));
+            showStickerMessage(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message->content_));
             break;
         case td::td_api::messageChatChangeTitle::ID: {
             const auto &titleChange = static_cast<const td::td_api::messageChatChangeTitle &>(*message->content_);

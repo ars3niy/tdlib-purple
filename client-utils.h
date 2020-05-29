@@ -65,8 +65,18 @@ void                getNamesFromAlias(const char *alias, std::string &firstName,
 std::vector<PurpleChat *> findChatsByInviteLink(const std::string &inviteLink);
 std::vector<PurpleChat *> findChatsByNewGroup(const char *name, int type);
 
+std::string getSenderDisplayName(const td::td_api::chat &chat, const TgMessageInfo &message,
+                                 PurpleAccount *account);
+std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,
+                                 const char *noticeText, PurpleAccount *account);
 void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const TgMessageInfo &message,
                      const char *text, const char *notification, uint32_t extraFlags = 0);
+void showGenericFile(int64_t chatId, const TgMessageInfo &message,
+                    const std::string &filePath, const std::string &fileDescription,
+                    TdAccountData &account);
+void showWebpSticker(int64_t chatId, const TgMessageInfo &message,
+                     const std::string &filePath, const std::string &fileDescription,
+                     TdAccountData account);
 void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
                     const TdAccountData &account);
 

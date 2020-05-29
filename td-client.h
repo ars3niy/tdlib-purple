@@ -83,7 +83,7 @@ private:
                                td::td_api::object_ptr<td::td_api::file> file,
                                td::td_api::object_ptr<td::td_api::formattedText> caption,
                                const std::string &fileDescription);
-    void       showSticker(const td::td_api::chat &chat, const TgMessageInfo &message, td::td_api::messageSticker &sticker);
+    void       showStickerMessage(const td::td_api::chat &chat, const TgMessageInfo &message, td::td_api::messageSticker &sticker);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
     void       findMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
@@ -124,7 +124,7 @@ private:
                                    const std::string &filePath, const char *caption,
                                    const std::string &fileDesc,
                                    td::td_api::object_ptr<td::td_api::file> thumbnail);
-    void       showDownloadedInlineFile(int64_t chatId, const TgMessageInfo &message,
+    void       showDownloadedFile(int64_t chatId, const TgMessageInfo &message,
                                         const std::string &filePath, const char *caption,
                                         const std::string &fileDescription,
                                         td::td_api::object_ptr<td::td_api::file> thumbnail);

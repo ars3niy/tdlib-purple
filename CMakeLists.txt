@@ -4,12 +4,24 @@ project(TdExample VERSION 1.0 LANGUAGES CXX)
 
 find_package(Td REQUIRED)
 
-if (NOT DEFINED NoPkgConfig OR NOT NoPkgConfig)
+set(NoPkgConfig FALSE CACHE BOOL "Do not use pkg-config")
+set(NoWebp FALSE CACHE BOOL "Do not decode webp stickers")
+
+if (NOT NoPkgConfig)
     include(FindPkgConfig)
     pkg_check_modules(Purple REQUIRED purple)
+    if (NOT NoWebp)
+        pkg_check_modules(libwebp libwebp)
+    endif (NOT NoWebp)
     pkg_get_variable(PURPLE_PLUGIN_DIR purple plugindir)
     pkg_get_variable(PURPLE_DATA_DIR purple datarootdir)
-endif (NOT DEFINED NoPkgConfig OR NOT NoPkgConfig)
+endif (NOT NoPkgConfig)
+
+if (NoWebp AND ("${libwebp_LIBRARIES}" STREQUAL ""))
+    message(FATAL_ERROR "Webp library not found, build with -DNoWebp=TRUE to disable webp sticker decoding")
+endif (NoWebp AND ("${libwebp_LIBRARIES}" STREQUAL ""))
+
+configure_file(buildopt.h.in buildopt.h)
 
 add_library(telegram-tdlib SHARED
     tdlib-purple.cpp
@@ -25,8 +37,15 @@ add_library(telegram-tdlib SHARED
 target_compile_definitions(telegram-tdlib PRIVATE
     "TD_VERSION=\"${Td_VERSION}\""
 )
-include_directories(telegram-tdlib ${Purple_INCLUDE_DIRS})
+
+include_directories(telegram-tdlib ${Purple_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 target_link_libraries(telegram-tdlib PRIVATE Td::TdStatic ${Purple_LIBRARIES})
+
+if (NOT NoWebp)
+    include_directories(telegram-tdlib ${libwebp_INCLUDE_DIRS})
+    target_link_libraries(telegram-tdlib PRIVATE ${libwebp_LIBRARIES})
+endif (NOT NoWebp)
+
 set_property(TARGET telegram-tdlib PROPERTY CXX_STANDARD 14)
 
 set(BUILD_SHARED_LIBS OFF)
