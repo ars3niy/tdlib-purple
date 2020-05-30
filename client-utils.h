@@ -15,10 +15,11 @@ struct TgMessageInfo {
     time_t      timestamp;
     bool        outgoing;
     int64_t     repliedMessageId;
+    td::td_api::object_ptr<td::td_api::message> repliedMessage;
     std::string forwardedFrom;
 };
 
-using FileDownloadCb = void (PurpleTdClient::*)(int64_t chatId, const TgMessageInfo &message,
+using FileDownloadCb = void (PurpleTdClient::*)(int64_t chatId, TgMessageInfo &message,
                                                 const std::string &filePath, const char *caption,
                                                 const std::string &fileDescription,
                                                 td::td_api::object_ptr<td::td_api::file> thumbnail);
@@ -33,10 +34,10 @@ public:
     FileDownloadCb callback;
 
     // Could not pass object_ptr through variadic funciton :(
-    DownloadRequest(uint64_t requestId, int64_t chatId, const TgMessageInfo &message,
+    DownloadRequest(uint64_t requestId, int64_t chatId, TgMessageInfo &message,
                     const std::string &fileDescription,
                     td::td_api::file *thumbnail, FileDownloadCb callback)
-    : PendingRequest(requestId), chatId(chatId), message(message),
+    : PendingRequest(requestId), chatId(chatId), message(std::move(message)),
       fileDescription(fileDescription), thumbnail(thumbnail), callback(callback) {}
 };
 

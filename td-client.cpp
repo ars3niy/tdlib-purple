@@ -712,7 +712,7 @@ static const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td:
     return selectedSize ? selectedSize->photo_.get() : nullptr;
 }
 
-void PurpleTdClient::showFile(const td::td_api::chat &chat, const TgMessageInfo &message,
+void PurpleTdClient::showFile(const td::td_api::chat &chat, TgMessageInfo &message,
                               const td::td_api::file &file, const char *caption,
                               const std::string &fileDesc,
                               td::td_api::object_ptr<td::td_api::file> thumbnail,
@@ -765,7 +765,7 @@ void PurpleTdClient::showFile(const td::td_api::chat &chat, const TgMessageInfo 
 
 }
 
-void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
+void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, TgMessageInfo &message,
                                       const td::td_api::messagePhoto &photo)
 {
     const td::td_api::file *file         = selectPhotoSize(m_account, photo);
@@ -814,7 +814,7 @@ static void ignoreDownload(DownloadRequest *info)
     delete info;
 }
 
-void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, const TgMessageInfo &message,
+void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, TgMessageInfo &message,
                                   const std::string &fileDescription,
                                   td::td_api::object_ptr<td::td_api::file> thumbnail,
                                   FileDownloadCb callback)
@@ -839,13 +839,14 @@ void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, const TgMessag
     */
 
     uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq), &PurpleTdClient::downloadResponse);
-    m_data.addPendingRequest<DownloadRequest>(requestId, chatId, message, fileDescription,
+    std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, chatId, message, fileDescription,
                                               thumbnail.release(), callback);
+    m_data.addPendingRequest<DownloadRequest>(requestId, std::move(request));
 }
 
 void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file &file,
                                      const std::string &fileDesc, const td::td_api::chat &chat,
-                                     const TgMessageInfo &message, FileDownloadCb callback)
+                                     TgMessageInfo &message, FileDownloadCb callback)
 {
     std::string question = formatMessage(_("Download file from {}?"),
                                          getSenderDisplayName(chat, message, m_account));
@@ -856,7 +857,14 @@ void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file 
                                          chatName, std::string(sizeStr)});
     g_free(sizeStr);
 
-    DownloadInfo *info = new DownloadInfo{file.id_, chat.id_, message, fileDesc, this, callback};
+    DownloadInfo *info = new DownloadInfo;
+    info->fileId = file.id_;
+    info->chatId = chat.id_;
+    info->message = std::move(message);
+    info->fileDescription = fileDesc;
+    info->tdClient = this;
+    info->callback = callback;
+
     purple_request_yes_no(purple_account_get_connection(m_account), _("Download"), question.c_str(),
                           fileInfo.c_str(), 0, m_account, NULL, NULL,
                           info, G_CALLBACK(startDownload), G_CALLBACK(ignoreDownload));
@@ -893,7 +901,7 @@ void PurpleTdClient::downloadResponse(uint64_t requestId, td::td_api::object_ptr
     }
 }
 
-void PurpleTdClient::showDownloadedImage(int64_t chatId, const TgMessageInfo &message,
+void PurpleTdClient::showDownloadedImage(int64_t chatId, TgMessageInfo &message,
                                          const std::string &filePath, const char *caption,
                                          const std::string &fileDesc,
                                          td::td_api::object_ptr<td::td_api::file> thumbnail)
@@ -924,7 +932,7 @@ void PurpleTdClient::showDownloadedImage(int64_t chatId, const TgMessageInfo &me
     }
 }
 
-void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
+void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo &message,
                                      td::td_api::object_ptr<td::td_api::file> file,
                                      td::td_api::object_ptr<td::td_api::formattedText> caption,
                                      const std::string &fileDescription)
@@ -940,8 +948,8 @@ void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, const TgMessa
                  &PurpleTdClient::showDownloadedFile);
 }
 
-void PurpleTdClient::showStickerMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
-                                 td::td_api::messageSticker &stickerContent)
+void PurpleTdClient::showStickerMessage(const td::td_api::chat &chat, TgMessageInfo &message,
+                                        td::td_api::messageSticker &stickerContent)
 {
     if (!stickerContent.sticker_) return;
     td::td_api::sticker &sticker = *stickerContent.sticker_;
@@ -964,7 +972,7 @@ static bool isTgs(const std::string &path)
 }
 
 
-void PurpleTdClient::showDownloadedSticker(int64_t chatId, const TgMessageInfo &message,
+void PurpleTdClient::showDownloadedSticker(int64_t chatId, TgMessageInfo &message,
                                            const std::string &filePath, const char *caption,
                                            const std::string &fileDescription,
                                            td::td_api::object_ptr<td::td_api::file> thumbnail)
@@ -986,83 +994,84 @@ void PurpleTdClient::showDownloadedSticker(int64_t chatId, const TgMessageInfo &
 }
 
 
-void PurpleTdClient::showDownloadedFile(int64_t chatId, const TgMessageInfo &message,
-                                              const std::string &filePath, const char *caption,
-                                              const std::string &fileDescription,
-                                              td::td_api::object_ptr<td::td_api::file> thumbnail)
+void PurpleTdClient::showDownloadedFile(int64_t chatId, TgMessageInfo &message,
+                                        const std::string &filePath, const char *caption,
+                                        const std::string &fileDescription,
+                                        td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
     if (chat)
         showGenericFile(*chat, message, filePath, fileDescription, m_data);
 }
 
-void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId)
+void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::message &message,
+                                 td::td_api::object_ptr<td::td_api::message> repliedMessage)
 {
-    td::td_api::message *message = m_data.findMessage(messageId);
-    if (!message || !message->content_)
+    if (!message.content_)
         return;
-    purple_debug_misc(config::pluginId, "Displaying message %" G_GINT64_FORMAT "\n", messageId);
+    purple_debug_misc(config::pluginId, "Displaying message %" G_GINT64_FORMAT "\n", message.id_);
 
     TgMessageInfo messageInfo;
     messageInfo.type             = TgMessageInfo::Type::Other;
-    messageInfo.sender           = getSenderPurpleName(chat, *message, m_data);
-    messageInfo.timestamp        = message->date_;
-    messageInfo.outgoing         = message->is_outgoing_;
-    messageInfo.repliedMessageId = message->reply_to_message_id_;
+    messageInfo.sender           = getSenderPurpleName(chat, message, m_data);
+    messageInfo.timestamp        = message.date_;
+    messageInfo.outgoing         = message.is_outgoing_;
+    messageInfo.repliedMessageId = message.reply_to_message_id_;
+    messageInfo.repliedMessage   = std::move(repliedMessage);
 
-    if (message->forward_info_)
-        messageInfo.forwardedFrom = getForwardSource(*message->forward_info_, m_data);
+    if (message.forward_info_)
+        messageInfo.forwardedFrom = getForwardSource(*message.forward_info_, m_data);
 
-    if (message->ttl_ != 0) {
+    if (message.ttl_ != 0) {
         const char *text   = _("Received self-destructing message, not displayed due to lack of support");
         std::string notice = makeNoticeWithSender(chat, messageInfo, text, m_account);
         showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
         return;
     }
 
-    switch (message->content_->get_id()) {
+    switch (message.content_->get_id()) {
         case td::td_api::messageText::ID:
-            showTextMessage(chat, messageInfo, static_cast<const td::td_api::messageText &>(*message->content_));
+            showTextMessage(chat, messageInfo, static_cast<const td::td_api::messageText &>(*message.content_));
             break;
         case td::td_api::messagePhoto::ID:
-            showPhotoMessage(chat, messageInfo, static_cast<const td::td_api::messagePhoto &>(*message->content_));
+            showPhotoMessage(chat, messageInfo, static_cast<const td::td_api::messagePhoto &>(*message.content_));
             break;
         case td::td_api::messageDocument::ID: {
-            td::td_api::messageDocument &document = static_cast<td::td_api::messageDocument &>(*message->content_);
+            td::td_api::messageDocument &document = static_cast<td::td_api::messageDocument &>(*message.content_);
             showFileMessage(chat, messageInfo, document.document_ ? std::move(document.document_->document_) : nullptr,
                             std::move(document.caption_), makeDocumentDescription(document.document_.get()));
             break;
         }
         case td::td_api::messageVideo::ID: {
-            td::td_api::messageVideo &video = static_cast<td::td_api::messageVideo &>(*message->content_);
+            td::td_api::messageVideo &video = static_cast<td::td_api::messageVideo &>(*message.content_);
             showFileMessage(chat, messageInfo, video.video_ ? std::move(video.video_->video_) : nullptr,
                             std::move(video.caption_), makeDocumentDescription(video.video_.get()));
             break;
         }
         case td::td_api::messageAnimation::ID: {
-            td::td_api::messageAnimation &animation = static_cast<td::td_api::messageAnimation &>(*message->content_);
+            td::td_api::messageAnimation &animation = static_cast<td::td_api::messageAnimation &>(*message.content_);
             showFileMessage(chat, messageInfo, animation.animation_ ? std::move(animation.animation_->animation_) : nullptr,
                             std::move(animation.caption_), makeDocumentDescription(animation.animation_.get()));
             break;
         }
         case td::td_api::messageAudio::ID: {
-            td::td_api::messageAudio &audio = static_cast<td::td_api::messageAudio &>(*message->content_);
+            td::td_api::messageAudio &audio = static_cast<td::td_api::messageAudio &>(*message.content_);
             showFileMessage(chat, messageInfo, audio.audio_ ? std::move(audio.audio_->audio_) : nullptr,
                             std::move(audio.caption_), makeDocumentDescription(audio.audio_.get()));
             break;
         }
         case td::td_api::messageVoiceNote::ID: {
-            td::td_api::messageVoiceNote &audio = static_cast<td::td_api::messageVoiceNote &>(*message->content_);
+            td::td_api::messageVoiceNote &audio = static_cast<td::td_api::messageVoiceNote &>(*message.content_);
             showFileMessage(chat, messageInfo, audio.voice_note_ ? std::move(audio.voice_note_->voice_) : nullptr,
                             std::move(audio.caption_), makeDocumentDescription(audio.voice_note_.get()));
             break;
         }
         case td::td_api::messageSticker::ID:
             messageInfo.type = TgMessageInfo::Type::Sticker;
-            showStickerMessage(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message->content_));
+            showStickerMessage(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message.content_));
             break;
         case td::td_api::messageChatChangeTitle::ID: {
-            const auto &titleChange = static_cast<const td::td_api::messageChatChangeTitle &>(*message->content_);
+            const auto &titleChange = static_cast<const td::td_api::messageChatChangeTitle &>(*message.content_);
             std::string notice = formatMessage(_("{} changed group name to {}"),
                                                {getSenderDisplayName(chat, messageInfo, m_account),
                                                 titleChange.title_});
@@ -1071,7 +1080,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, int64_t messageId
         }
         default: {
             std::string notice = formatMessage(_("Received unsupported message type {}"),
-                                               messageTypeToString(*message->content_));
+                                               messageTypeToString(*message.content_));
             notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), m_account);
             showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
         }
@@ -1098,9 +1107,8 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
 
     int64_t messageId      = message->id_;
     int64_t replyMessageId = message->reply_to_message_id_;
-    m_data.saveMessage(std::move(message));
 
-    if (replyMessageId && !m_data.findMessage(replyMessageId)) {
+    if (replyMessageId) {
         purple_debug_misc(config::pluginId, "Fetching message %" G_GINT64_FORMAT " which message %" G_GINT64_FORMAT " replies to\n",
                           replyMessageId, messageId);
         td::td_api::object_ptr<td::td_api::getMessage> getMessageReq = td::td_api::make_object<td::td_api::getMessage>();
@@ -1108,25 +1116,26 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
         getMessageReq->message_id_ = replyMessageId;
         uint64_t requestId = m_transceiver.sendQueryWithTimeout(std::move(getMessageReq),
                                                                 &PurpleTdClient::findMessageResponse, 1);
-        m_data.addPendingRequest<PendingMessage>(requestId, messageId, chat->id_);
+        m_data.addPendingRequest<PendingMessage>(requestId, message.release());
     } else
-        showMessage(*chat, messageId);
+        showMessage(*chat, *message, nullptr);
 }
 
 void PurpleTdClient::findMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     std::unique_ptr<PendingMessage> messageInfo = m_data.getPendingRequest<PendingMessage>(requestId);
-    if (!messageInfo) return;
+    if (!messageInfo || !messageInfo->message) return;
+    td::td_api::object_ptr<td::td_api::message> repliedMessage;
 
     if (object && (object->get_id() == td::td_api::message::ID))
-        m_data.saveMessage(td::move_tl_object_as<td::td_api::message>(object));
+        repliedMessage = td::move_tl_object_as<td::td_api::message>(object);
     else
         purple_debug_misc(config::pluginId, "Failed to fetch reply source for message %" G_GINT64_FORMAT "\n",
-                          messageInfo->messageId);
+                          messageInfo->message->id_);
 
-    const td::td_api::chat *chat = m_data.getChat(messageInfo->chatId);
+    const td::td_api::chat *chat = m_data.getChat(messageInfo->message->chat_id_);
     if (chat)
-        showMessage(*chat, messageInfo->messageId);
+        showMessage(*chat, *messageInfo->message, std::move(repliedMessage));
 }
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)

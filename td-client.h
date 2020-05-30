@@ -76,14 +76,15 @@ private:
     void       updatePurpleChatListAndReportConnected();
     // Login sequence end
 
-    void       showMessage(const td::td_api::chat &chat, int64_t messageId);
+    void       showMessage(const td::td_api::chat &chat, td::td_api::message &message,
+                           td::td_api::object_ptr<td::td_api::message> repliedMessage);
     void       showTextMessage(const td::td_api::chat &chat, const TgMessageInfo &message,const td::td_api::messageText &text);
-    void       showPhotoMessage(const td::td_api::chat &chat, const TgMessageInfo &message, const td::td_api::messagePhoto &photo);
-    void       showFileMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
+    void       showPhotoMessage(const td::td_api::chat &chat, TgMessageInfo &message, const td::td_api::messagePhoto &photo);
+    void       showFileMessage(const td::td_api::chat &chat, TgMessageInfo &message,
                                td::td_api::object_ptr<td::td_api::file> file,
                                td::td_api::object_ptr<td::td_api::formattedText> caption,
                                const std::string &fileDescription);
-    void       showStickerMessage(const td::td_api::chat &chat, const TgMessageInfo &message, td::td_api::messageSticker &sticker);
+    void       showStickerMessage(const td::td_api::chat &chat, TgMessageInfo &message, td::td_api::messageSticker &sticker);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
     void       findMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
@@ -107,28 +108,28 @@ private:
     void       joinChatByLinkResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       deleteSupergroupResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
-    void       showFile(const td::td_api::chat &chat, const TgMessageInfo &message,
+    void       showFile(const td::td_api::chat &chat, TgMessageInfo &message,
                         const td::td_api::file &file, const char *caption, const std::string &fileDesc,
                         td::td_api::object_ptr<td::td_api::file> thumbnail,
                         FileDownloadCb downloadCallback);
-    void       downloadFile(int32_t fileId, int64_t chatId, const TgMessageInfo &message,
+    void       downloadFile(int32_t fileId, int64_t chatId, TgMessageInfo &message,
                             const std::string &fileDescription,
                             td::td_api::object_ptr<td::td_api::file> thumbnail,
                             FileDownloadCb callback);
     void       requestDownload(const char *sender, const td::td_api::file &file,
                                const std::string &fileDesc, const td::td_api::chat &chat,
-                               const TgMessageInfo &message, FileDownloadCb callback);
+                               TgMessageInfo &message, FileDownloadCb callback);
     static void startDownload(void *user_data);
     void       downloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    void       showDownloadedImage(int64_t chatId, const TgMessageInfo &message,
+    void       showDownloadedImage(int64_t chatId, TgMessageInfo &message,
                                    const std::string &filePath, const char *caption,
                                    const std::string &fileDesc,
                                    td::td_api::object_ptr<td::td_api::file> thumbnail);
-    void       showDownloadedFile(int64_t chatId, const TgMessageInfo &message,
+    void       showDownloadedFile(int64_t chatId, TgMessageInfo &message,
                                         const std::string &filePath, const char *caption,
                                         const std::string &fileDescription,
                                         td::td_api::object_ptr<td::td_api::file> thumbnail);
-    void       showDownloadedSticker(int64_t chatId, const TgMessageInfo &message,
+    void       showDownloadedSticker(int64_t chatId, TgMessageInfo &message,
                                      const std::string &filePath, const char *caption,
                                      const std::string &fileDescription,
                                      td::td_api::object_ptr<td::td_api::file> thumbnail);

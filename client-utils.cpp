@@ -430,7 +430,7 @@ void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const
 
     std::string newText;
     if (message.repliedMessageId != 0)
-        newText = quoteMessage(account.findMessage(message.repliedMessageId), account);
+        newText = quoteMessage(message.repliedMessage.get(), account);
     if (!message.forwardedFrom.empty()) {
         if (!newText.empty())
             newText += "\n";

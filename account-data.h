@@ -69,11 +69,10 @@ public:
 
 class PendingMessage: public PendingRequest {
 public:
-    int64_t messageId;
-    int64_t chatId;
+    td::td_api::object_ptr<td::td_api::message> message;
 
-    PendingMessage(uint64_t requestId, int64_t messageId, int64_t chatId)
-    : PendingRequest(requestId), messageId(messageId), chatId(chatId) {}
+    PendingMessage(uint64_t requestId, td::td_api::message *message)
+    : PendingRequest(requestId), message(message) {}
 };
 
 class UploadRequest: public PendingRequest {
@@ -89,7 +88,6 @@ class TdAccountData {
 public:
     using TdUserPtr       = td::td_api::object_ptr<td::td_api::user>;
     using TdChatPtr       = td::td_api::object_ptr<td::td_api::chat>;
-    using TdMessagePtr    = td::td_api::object_ptr<td::td_api::message>;
     using TdGroupPtr      = td::td_api::object_ptr<td::td_api::basicGroup>;
     using TdGroupInfoPtr  = td::td_api::object_ptr<td::td_api::basicGroupFullInfo>;
     using TdSupergroupPtr = td::td_api::object_ptr<td::td_api::supergroup>;
@@ -152,9 +150,6 @@ public:
     void                       addTempFileUpload(int64_t messageId, const std::string &path);
     std::string                extractTempFileUpload(int64_t messageId);
 
-    void                       saveMessage(TdMessagePtr message);
-    td::td_api::message *      findMessage(int64_t messageId);
-
     std::unique_ptr<UploadRequest> getUploadRequest(PurpleXfer *xfer);
     void                       addUpload(int32_t fileId, PurpleXfer *xfer, int64_t chatId);
     bool                       getUpload(int32_t fileId, PurpleXfer *&xfer, int64_t &chatId);
@@ -209,7 +204,6 @@ private:
 
     std::vector<std::unique_ptr<PendingRequest>> m_requests;
     std::vector<SendMessageInfo>       m_sentMessages;
-    std::map<int64_t, TdMessagePtr>    m_messages;
     std::vector<UploadInfo>            m_uploads;
 
     std::unique_ptr<PendingRequest> getPendingRequestImpl(uint64_t requestId);

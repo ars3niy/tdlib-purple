@@ -124,11 +124,18 @@ TEST_F(GroupChatTest, BasicGroupReceiveTextAndReply)
                                             makeTextMessage("Reply"));
     reply->reply_to_message_id_ = messageId[0];
     tgl.update(make_object<updateNewMessage>(std::move(reply)));
-    tgl.verifyRequest(viewMessages(
-        groupChatId,
-        {messageId[1]},
-        true
-    ));
+    tgl.verifyRequests({
+        make_object<viewMessages>(
+            groupChatId,
+            std::vector<int64_t>(1, messageId[1]),
+            true
+        ),
+        make_object<getMessage>(groupChatId, messageId[0])
+    });
+    prpl.verifyNoEvents();
+
+    tgl.reply(make_object<ok>());
+    tgl.reply(makeMessage(messageId[0], userIds[0], groupChatId, false, date[0], makeTextMessage("Hello")));
     prpl.verifyEvents(ConversationWriteEvent(
         groupChatPurpleName, selfFirstName + " " + selfLastName,
         fmt::format(replyPattern, userFirstNames[0] + " " + userLastNames[0], "Hello", "Reply"),
