@@ -107,5 +107,6 @@ std::string makeDocumentDescription(const DocumentType *document)
 }
 
 std::string makeDocumentDescription(const td::td_api::voiceNote *document);
+std::string makeDocumentDescription(const td::td_api::videoNote *document);
 
 #endif

@@ -846,7 +846,15 @@ std::string makeDocumentDescription(const td::td_api::voiceNote *document)
     if (!document)
         // Unlikely error message not worth translating
         return "faulty voice note";
-    return std::string(_("voice note")) + " [" + document->mime_type_ + "]";
+    return formatMessage(_("voice note [{}]"), document->mime_type_);
+}
+
+std::string makeDocumentDescription(const td::td_api::videoNote *document)
+{
+    if (!document)
+        // Unlikely error message not worth translating
+        return "faulty voice note";
+    return formatMessage(_("video note [{} s]"), document->duration_);
 }
 
 std::string getSenderDisplayName(const td::td_api::chat &chat, const TgMessageInfo &message,

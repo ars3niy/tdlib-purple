@@ -1066,6 +1066,12 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
                             std::move(audio.caption_), makeDocumentDescription(audio.voice_note_.get()));
             break;
         }
+        case td::td_api::messageVideoNote::ID: {
+            td::td_api::messageVideoNote &video = static_cast<td::td_api::messageVideoNote &>(*message.content_);
+            showFileMessage(chat, messageInfo, video.video_note_ ? std::move(video.video_note_->video_) : nullptr,
+                            nullptr, makeDocumentDescription(video.video_note_.get()));
+            break;
+        }
         case td::td_api::messageSticker::ID:
             messageInfo.type = TgMessageInfo::Type::Sticker;
             showStickerMessage(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message.content_));
