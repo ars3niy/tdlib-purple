@@ -170,6 +170,7 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         purple_debug_misc(config::pluginId, "Incoming update: secret chat, id %d\n",
                           chatUpdate.secret_chat_ ? chatUpdate.secret_chat_->id_ : 0);
         updateSecretChat(std::move(chatUpdate.secret_chat_), m_transceiver, m_data);
+        break;
     };
 
     default:
@@ -1791,7 +1792,7 @@ void PurpleTdClient::verifyRecoveryEmailResponse(uint64_t requestId, td::td_api:
 void PurpleTdClient::sendFileToChat(PurpleXfer *xfer, const char *purpleName, PurpleConversationType type)
 {
     const char *filename = purple_xfer_get_local_filename(xfer);
-    int64_t     chatId;
+    int64_t     chatId   = 0;
     if (type == PURPLE_CONV_TYPE_IM)
         chatId = getPrivateChatIdByPurpleName(purpleName, m_data, "send file");
 

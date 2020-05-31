@@ -719,8 +719,6 @@ TEST_F(GroupChatTest, LeaveBasicGroup)
 
 TEST_F(GroupChatTest, UsersWithSameName)
 {
-    constexpr int64_t messageId    = 10001;
-    constexpr int32_t date         = 12345;
     constexpr int     purpleChatId = 1;
 
     loginWithBasicGroup();
