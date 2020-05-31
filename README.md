@@ -14,6 +14,7 @@ Missing features:
 * Renaming groups/channels
 * Chat topic (= group description)
 * User pictures
+* Secret chats
 
 ## Installation
 

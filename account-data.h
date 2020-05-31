@@ -4,12 +4,12 @@
 #include <td/telegram/td_api.h>
 #include <map>
 #include <mutex>
+#include <set>
 #include <purple.h>
 
 bool        isPhoneNumber(const char *s);
 const char *getCanonicalPhoneNumber(const char *s);
 int32_t     stringToUserId(const char *s);
-std::string getDisplayName(const td::td_api::user *user);
 bool        isPrivateChat(const td::td_api::chat &chat);
 int32_t     getUserIdByPrivateChat(const td::td_api::chat &chat); // return 0 if not private chat
 bool        isChatInContactList(const td::td_api::chat &chat, const td::td_api::user *privateChatUser);
@@ -155,6 +155,9 @@ public:
     bool                       getUpload(int32_t fileId, PurpleXfer *&xfer, int64_t &chatId);
     bool                       getFileIdForUpload(PurpleXfer *xfer, int &fileId);
     void                       removeUpload(int32_t fileId);
+
+    void                       addSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat);
+    bool                       getSecretChat(int32_t id);
 private:
     TdAccountData(const TdAccountData &other) = delete;
     TdAccountData &operator=(const TdAccountData &other) = delete;
@@ -194,6 +197,7 @@ private:
     ChatMap                            m_chatInfo;
     std::map<int32_t, GroupInfo>       m_groups;
     std::map<int32_t, TdSupergroupPtr> m_supergroups;
+    std::set<int32_t>                  m_secretChats;
     int                                m_lastChatPurpleId = 0;
 
     // List of contacts for which private chat is not known yet.
@@ -203,7 +207,12 @@ private:
     std::vector<ContactRequest>        m_addContactRequests;
 
     std::vector<std::unique_ptr<PendingRequest>> m_requests;
+
+    // Newly sent messages containing inline images, for which a temporary file must be removed when
+    // transfer is completed
     std::vector<SendMessageInfo>       m_sentMessages;
+
+    // Currently active file uploads other than inline images, for which PurpleXfer is used
     std::vector<UploadInfo>            m_uploads;
 
     std::unique_ptr<PendingRequest> getPendingRequestImpl(uint64_t requestId);

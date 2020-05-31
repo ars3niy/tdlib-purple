@@ -617,7 +617,8 @@ static void tgprpl_init (PurplePlugin *plugin)
         // Log up to fatal errors and errors
         PurpleTdClient::setLogLevel(1);
 
-    // Media and documents
+    static_assert(AccountOptions::BigDownloadHandlingDefault == AccountOptions::BigDownloadHandlingAsk,
+                  "default choice must be first");
     GList *choices = NULL;
     addChoice(choices, _("Ask"), AccountOptions::BigDownloadHandlingAsk);
     addChoice(choices, _("Discard"), AccountOptions::BigDownloadHandlingDiscard);
@@ -629,6 +630,16 @@ static void tgprpl_init (PurplePlugin *plugin)
 
     opt = purple_account_option_list_new (_("Bigger file transfers"), AccountOptions::BigDownloadHandling, choices);
     prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
+
+    static_assert(AccountOptions::AcceptSecretChatsDefault == AccountOptions::AcceptSecretChatsAsk,
+                  "default choice must be first");
+    choices = NULL;
+    addChoice(choices, _("Ask"), AccountOptions::AcceptSecretChatsAsk);
+    addChoice(choices, _("Always"), AccountOptions::AcceptSecretChatsAlways);
+    addChoice(choices, _("Never"), AccountOptions::AcceptSecretChatsNever);
+
+    opt = purple_account_option_list_new (_("Accept secret chats"), AccountOptions::AcceptSecretChats, choices);
+    prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
 }
 
 static void setTwoFactorAuth(RequestData *data, PurpleRequestFields* fields);

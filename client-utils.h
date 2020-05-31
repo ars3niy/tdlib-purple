@@ -109,4 +109,7 @@ std::string makeDocumentDescription(const DocumentType *document)
 std::string makeDocumentDescription(const td::td_api::voiceNote *document);
 std::string makeDocumentDescription(const td::td_api::videoNote *document);
 
+void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
+                      TdTransceiver &transceiver, TdAccountData &account);
+
 #endif

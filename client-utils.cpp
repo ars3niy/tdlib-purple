@@ -1042,3 +1042,76 @@ void showWebpSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
     } else
         showGenericFile(chat, message, filePath, fileDescription, account);
 }
+
+static void closeSecretChat(int32_t secretChatId, TdTransceiver &transceiver)
+{
+    transceiver.sendQuery(td::td_api::make_object<td::td_api::closeSecretChat>(secretChatId), nullptr);
+}
+
+static void secretChatNotSupported(int32_t secretChatId, const std::string &userDescription,
+                                   TdTransceiver &transceiver, PurpleAccount *purpleAccount)
+{
+    closeSecretChat(secretChatId, transceiver);
+    std::string message = formatMessage(_("Rejected secret chat with {}"), userDescription);
+    purple_notify_info(purple_account_get_connection(purpleAccount),
+                        _("Secret chat"), message.c_str(), "Secret chats not supported");
+}
+
+struct SecretChatInfo {
+    int32_t        secretChatId;
+    std::string    userDescription;
+    TdTransceiver *transceiver;
+    PurpleAccount *purpleAccount;
+};
+
+static void acceptSecretChatCb(SecretChatInfo *data)
+{
+    std::unique_ptr<SecretChatInfo> info(data);
+    secretChatNotSupported(info->secretChatId, info->userDescription, *info->transceiver, info->purpleAccount);
+}
+
+static void discardSecretChatCb(SecretChatInfo *data)
+{
+    std::unique_ptr<SecretChatInfo> info(data);
+    closeSecretChat(info->secretChatId, *info->transceiver);
+}
+
+void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
+                      TdTransceiver &transceiver, TdAccountData &account)
+{
+    if (!secretChat) return;
+
+    int32_t secretChatId = secretChat->id_;
+    bool    isExisting   = account.getSecretChat(secretChatId);
+    const td::td_api::user *user = account.getUser(secretChat->user_id_);
+    account.addSecretChat(std::move(secretChat));
+
+    std::string userDescription;
+    if (user)
+        userDescription = '\'' + account.getDisplayName(*user) + '\'';
+    else
+        userDescription = _("(unknown user)");
+
+    if (!isExisting) {
+        const char *secretChatHandling = purple_account_get_string(account.purpleAccount,
+                                                                   AccountOptions::AcceptSecretChats,
+                                                                   AccountOptions::AcceptSecretChatsDefault);
+        if (!strcmp(secretChatHandling, AccountOptions::AcceptSecretChatsNever)) {
+            closeSecretChat(secretChatId, transceiver);
+            std::string message = formatMessage(_("Rejected secret chat with {}"), userDescription);
+            purple_notify_info(purple_account_get_connection(account.purpleAccount),
+                               _("Secret chat"), message.c_str(), NULL);
+        } else if (!strcmp(secretChatHandling, AccountOptions::AcceptSecretChatsAlways))
+            secretChatNotSupported(secretChatId, userDescription, transceiver, account.purpleAccount);
+        else {
+            std::string message = formatMessage(_("Accept secret chat with {} on this device?"), userDescription);
+            SecretChatInfo *data = new SecretChatInfo{secretChatId, userDescription, &transceiver, account.purpleAccount};
+            purple_request_accept_cancel(purple_account_get_connection(account.purpleAccount),
+                _("Secret chat"), message.c_str(), _("Secret chats can only have one "
+                "end point. If you accept a secret chat on this device, its messages will not be available anywhere "
+                "else. If you decline, you can still accept the chat on other devices."),
+                0, account.purpleAccount, NULL, NULL, data,
+                G_CALLBACK(acceptSecretChatCb), G_CALLBACK(discardSecretChatCb));
+        }
+    }
+}

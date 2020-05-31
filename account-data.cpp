@@ -590,3 +590,14 @@ void TdAccountData::removeUpload(int32_t fileId)
     if (it != m_uploads.end())
         m_uploads.erase(it);
 }
+
+void TdAccountData::addSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat)
+{
+    if (secretChat)
+        m_secretChats.insert(secretChat->id_);
+}
+
+bool TdAccountData::getSecretChat(int32_t id)
+{
+    return (m_secretChats.find(id) != m_secretChats.end());
+}

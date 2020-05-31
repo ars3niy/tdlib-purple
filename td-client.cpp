@@ -165,6 +165,13 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         break;
     };
 
+    case td::td_api::updateSecretChat::ID: {
+        auto &chatUpdate = static_cast<td::td_api::updateSecretChat &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: secret chat, id %d\n",
+                          chatUpdate.secret_chat_ ? chatUpdate.secret_chat_->id_ : 0);
+        updateSecretChat(std::move(chatUpdate.secret_chat_), m_transceiver, m_data);
+    };
+
     default:
         purple_debug_misc(config::pluginId, "Incoming update: ignorig ID=%d\n", update.get_id());
         break;

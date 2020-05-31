@@ -126,6 +126,6 @@ bool isSizeWithinLimit(unsigned size, unsigned limit)
 bool ignoreBigDownloads(PurpleAccount *account)
 {
     return !strcmp(purple_account_get_string(account, AccountOptions::BigDownloadHandling,
-                                             AccountOptions::BigDownloadHandlingAsk),
+                                             AccountOptions::BigDownloadHandlingDefault),
                    AccountOptions::BigDownloadHandlingDiscard);
 }

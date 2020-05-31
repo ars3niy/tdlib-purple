@@ -350,6 +350,11 @@ static void compare(const uploadFile &actual, const uploadFile &expected)
     COMPARE(priority_);
 }
 
+static void compare(const closeSecretChat &actual, const closeSecretChat &expected)
+{
+    COMPARE(secret_chat_id_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -391,6 +396,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(deleteSupergroup)
         C(checkAuthenticationPassword)
         C(uploadFile)
+        C(closeSecretChat)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

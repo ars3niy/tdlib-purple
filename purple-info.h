@@ -26,6 +26,12 @@ namespace AccountOptions {
     constexpr const char *BigDownloadHandling        = "media-handling-behavior";
     constexpr const char *BigDownloadHandlingAsk     = "ask";
     constexpr const char *BigDownloadHandlingDiscard = "discard";
+    constexpr const char *BigDownloadHandlingDefault = BigDownloadHandlingAsk;
+    constexpr const char *AcceptSecretChats          = "accept-secret-chats";
+    constexpr const char *AcceptSecretChatsAsk       = "ask";
+    constexpr const char *AcceptSecretChatsAlways    = "always";
+    constexpr const char *AcceptSecretChatsNever     = "never";
+    constexpr const char *AcceptSecretChatsDefault   = AcceptSecretChatsAsk;
 };
 
 unsigned getAutoDownloadLimitKb(PurpleAccount *account);
