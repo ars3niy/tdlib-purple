@@ -33,7 +33,7 @@ public:
     void leaveGroup(const std::string &purpleChatName, bool deleteSupergroup);
     int  sendGroupMessage(int purpleChatId, const char *message);
 
-    void setTwoStepAuth(const char *oldPassword, const char *newPassword, const char *hint,
+    void setTwoFactorAuth(const char *oldPassword, const char *newPassword, const char *hint,
                         const char *email);
 
     void sendFileToChat(PurpleXfer *xfer, const char *purpleName, PurpleConversationType type);
@@ -140,7 +140,7 @@ private:
     void       sendMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       removeTempFile(int64_t messageId);
 
-    void        setTwoStepAuthResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void        setTwoFactorAuthResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void        requestRecoveryEmailConfirmation(const std::string &emailInfo);
     static void verifyRecoveryEmail(PurpleTdClient *self, const char *code);
     void        verifyRecoveryEmailResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);

@@ -631,9 +631,9 @@ static void tgprpl_init (PurplePlugin *plugin)
     prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
 }
 
-static void setTwoStepAuth(RequestData *data, PurpleRequestFields* fields);
+static void setTwoFactorAuth(RequestData *data, PurpleRequestFields* fields);
 
-static void requestTwoStepAuth(PurpleConnection *gc, const char *primaryText, const char *email)
+static void requestTwoFactorAuth(PurpleConnection *gc, const char *primaryText, const char *email)
 {
     PurpleRequestFields     *fields  = purple_request_fields_new();
     PurpleRequestFieldGroup *group   = purple_request_field_group_new(NULL);
@@ -660,20 +660,20 @@ static void requestTwoStepAuth(PurpleConnection *gc, const char *primaryText, co
 
     RequestData *data = new RequestData(purple_connection_get_account(gc));
     data->account = purple_connection_get_account(gc);
-    purple_request_fields (gc, _("Two-step authentication"), primaryText, NULL, fields, _("OK"),
-                           G_CALLBACK(setTwoStepAuth), _("Cancel"), G_CALLBACK(cancelRequest),
+    purple_request_fields (gc, _("Two-factor authentication"), primaryText, NULL, fields, _("OK"),
+                           G_CALLBACK(setTwoFactorAuth), _("Cancel"), G_CALLBACK(cancelRequest),
                            purple_connection_get_account(gc), NULL, NULL, data);
 }
 
-static int reRequestTwoStepAuth(gpointer user_data)
+static int reRequestTwoFactorAuth(gpointer user_data)
 {
     std::unique_ptr<RequestData> request(static_cast<RequestData *>(user_data));
-    requestTwoStepAuth(purple_account_get_connection(request->account),
+    requestTwoFactorAuth(purple_account_get_connection(request->account),
                         _("Please enter same password twice"), request->stringData.c_str());
     return FALSE; // this idle handler will not be called again
 }
 
-static void setTwoStepAuth(RequestData *data, PurpleRequestFields* fields)
+static void setTwoFactorAuth(RequestData *data, PurpleRequestFields* fields)
 {
     std::unique_ptr<RequestData> request(data);
     PurpleTdClient *tdClient = getTdClient(request->account);
@@ -690,16 +690,16 @@ static void setTwoStepAuth(RequestData *data, PurpleRequestFields* fields)
             RequestData *newRequest = new RequestData(request->account);
             if (email)
                 newRequest->stringData = email;
-            g_idle_add(reRequestTwoStepAuth, newRequest);
+            g_idle_add(reRequestTwoFactorAuth, newRequest);
         } else if (tdClient)
-            tdClient->setTwoStepAuth(oldPass, password1, hint, email);
+            tdClient->setTwoFactorAuth(oldPass, password1, hint, email);
     }
 }
 
-static void configureTwoStepAuth(PurplePluginAction *action)
+static void configureTwoFactorAuth(PurplePluginAction *action)
 {
     PurpleConnection *gc = static_cast<PurpleConnection *>(action->context);
-    requestTwoStepAuth(gc, _("Enter new password and recovery e-mail address"), NULL);
+    requestTwoFactorAuth(gc, _("Enter new password and recovery e-mail address"), NULL);
 }
 
 static GList *tgprpl_actions (PurplePlugin *plugin, gpointer context)
@@ -707,8 +707,8 @@ static GList *tgprpl_actions (PurplePlugin *plugin, gpointer context)
     GList *actionsList = NULL;
     PurplePluginAction *action;
 
-    action = purple_plugin_action_new(_("Configure two-step authentication..."),
-                                      configureTwoStepAuth);
+    action = purple_plugin_action_new(_("Configure two-factor authentication..."),
+                                      configureTwoFactorAuth);
     actionsList = g_list_append(actionsList, action);
 
     return actionsList;

@@ -253,7 +253,7 @@ TEST_F(LoginTest, RegisterNewAccount_NoAlias)
     tgl.verifyRequest(getContacts());
 }
 
-TEST_F(LoginTest, TwoStepAuthentication)
+TEST_F(LoginTest, TwoFactorAuthentication)
 {
     purple_account_set_alias(account, (selfFirstName + " " + selfLastName).c_str());
     prpl.discardEvents();

@@ -429,7 +429,7 @@ void PurpleTdClient::requestPassword(const td::td_api::authorizationStateWaitPas
     }
     if (!purple_request_input (purple_account_get_connection(m_account),
                                _("Password"),
-                               _("Enter password for two-step authentication"),
+                               _("Enter password for two-factor authentication"),
                                hints.empty() ? NULL : hints.c_str(),
                                NULL, // default value
                                FALSE, // multiline input
@@ -1683,7 +1683,7 @@ void PurpleTdClient::removeTempFile(int64_t messageId)
     }
 }
 
-void PurpleTdClient::setTwoStepAuth(const char *oldPassword, const char *newPassword,
+void PurpleTdClient::setTwoFactorAuth(const char *oldPassword, const char *newPassword,
                                     const char *hint, const char *email)
 {
     auto setPassword = td::td_api::make_object<td::td_api::setPassword>();
@@ -1697,7 +1697,7 @@ void PurpleTdClient::setTwoStepAuth(const char *oldPassword, const char *newPass
     if (email)
         setPassword->new_recovery_email_address_ = email;
 
-    m_transceiver.sendQuery(std::move(setPassword), &PurpleTdClient::setTwoStepAuthResponse);
+    m_transceiver.sendQuery(std::move(setPassword), &PurpleTdClient::setTwoFactorAuthResponse);
 }
 
 static void inputCancelled(void *data)
@@ -1724,13 +1724,13 @@ void PurpleTdClient::requestRecoveryEmailConfirmation(const std::string &emailIn
 
 static void notifyPasswordChangeSuccess(PurpleAccount *account, const td::td_api::passwordState &passwordState)
 {
-    purple_notify_info(account, _("Two-step authentication"),
+    purple_notify_info(account, _("Two-factor authentication"),
                         passwordState.has_password_ ? _("Password set") : _("Password cleared"),
                         passwordState.has_recovery_email_address_ ? _("Recovery e-mail is configured") :
                                                                     _("No recovery e-mail configured"));
 }
 
-void PurpleTdClient::setTwoStepAuthResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+void PurpleTdClient::setTwoFactorAuthResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     if (object && (object->get_id() == td::td_api::passwordState::ID)) {
         const td::td_api::passwordState &passwordState = static_cast<const td::td_api::passwordState &>(*object);
@@ -1743,7 +1743,7 @@ void PurpleTdClient::setTwoStepAuthResponse(uint64_t requestId, td::td_api::obje
             notifyPasswordChangeSuccess(m_account, passwordState);
     } else {
         std::string errorMessage = getDisplayedError(object);
-        purple_notify_error(m_account, _("Two-step authentication"), _("Failed to set password"), errorMessage.c_str());
+        purple_notify_error(m_account, _("Two-factor authentication"), _("Failed to set password"), errorMessage.c_str());
     }
 }
 
@@ -1763,15 +1763,15 @@ void PurpleTdClient::verifyRecoveryEmailResponse(uint64_t requestId, td::td_api:
             if (passwordState.recovery_email_address_code_info_->length_ > 0) {
                 std::string emailInfo = formatMessage(_("E-mail address: {}"),
                                                       passwordState.recovery_email_address_code_info_->email_address_pattern_);
-                purple_notify_info(m_account, _("Two-step authentication"),
+                purple_notify_info(m_account, _("Two-factor authentication"),
                                    _("For some reason, new confirmation code was sent"), emailInfo.c_str());
             } else
-                purple_notify_error(m_account, _("Two-step authentication"), _("Looks like the code was wrong"), NULL);
+                purple_notify_error(m_account, _("Two-factor authentication"), _("Looks like the code was wrong"), NULL);
         } else
             notifyPasswordChangeSuccess(m_account, passwordState);
     } else {
         std::string errorMessage = getDisplayedError(object);
-        purple_notify_error(m_account, _("Two-step authentication"), _("Failed to verify recovery e-mail"), errorMessage.c_str());
+        purple_notify_error(m_account, _("Two-factor authentication"), _("Failed to verify recovery e-mail"), errorMessage.c_str());
     }
 }
 
