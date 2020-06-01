@@ -32,6 +32,7 @@ public:
     BasicGroupMembership getBasicGroupMembership(const char *purpleChatName);
     void leaveGroup(const std::string &purpleChatName, bool deleteSupergroup);
     int  sendGroupMessage(int purpleChatId, const char *message);
+    void setGroupDescription(int purpleChatId, const char *description);
 
     void setTwoFactorAuth(const char *oldPassword, const char *newPassword, const char *hint,
                         const char *email);
@@ -109,6 +110,7 @@ private:
     void       notifyFailedContact(const std::string &errorMessage);
     void       joinChatByLinkResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       deleteSupergroupResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       setGroupDescriptionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
     void       showFile(const td::td_api::chat &chat, TgMessageInfo &message,
                         const td::td_api::file &file, const char *caption, const std::string &fileDesc,

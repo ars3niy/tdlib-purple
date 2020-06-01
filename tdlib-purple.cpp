@@ -498,6 +498,12 @@ static GHashTable *tgprpl_get_account_text_table (PurpleAccount *pa)
     return HT;
 }
 
+static void tgprpl_set_chat_topic(PurpleConnection *gc, int id, const char *topic)
+{
+    PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    tdClient->setGroupDescription(id, topic);
+}
+
 static char png[] = "png";
 
 static PurplePluginProtocolInfo prpl_info = {
@@ -561,7 +567,7 @@ static PurplePluginProtocolInfo prpl_info = {
     .set_buddy_icon           = NULL,
     .remove_group             = NULL,
     .get_cb_real_name         = NULL,
-    .set_chat_topic           = NULL,
+    .set_chat_topic           = tgprpl_set_chat_topic,
     .find_blist_chat          = NULL,
     .roomlist_get_list        = tgprpl_roomlist_get_list,
     .roomlist_cancel          = tgprpl_roomlist_cancel,

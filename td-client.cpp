@@ -1719,6 +1719,30 @@ void PurpleTdClient::deleteSupergroupResponse(uint64_t requestId, td::td_api::ob
     }
 }
 
+void PurpleTdClient::setGroupDescription(int purpleChatId, const char *description)
+{
+    const td::td_api::chat *chat = m_data.getChatByPurpleId(purpleChatId);
+    if (!chat) {
+        purple_debug_warning(config::pluginId, "Unknown libpurple chat id %d\n", purpleChatId);
+        return;
+    }
+
+    if (getBasicGroupId(*chat) || getSupergroupId(*chat)) {
+        auto request = td::td_api::make_object<td::td_api::setChatDescription>();
+        request->chat_id_ = chat->id_;
+        request->description_ =  description ? description : "";
+        m_transceiver.sendQuery(std::move(request), &PurpleTdClient::setGroupDescriptionResponse);
+    }
+}
+
+void PurpleTdClient::setGroupDescriptionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    if (!object || (object->get_id() != td::td_api::ok::ID)) {
+        std::string message = getDisplayedError(object);
+        purple_notify_error(m_account, _("Error"), _("Failed to set group description"), message.c_str());
+    }
+}
+
 void PurpleTdClient::removeTempFile(int64_t messageId)
 {
     std::string path = m_data.extractTempFileUpload(messageId);
