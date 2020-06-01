@@ -501,7 +501,7 @@ static GHashTable *tgprpl_get_account_text_table (PurpleAccount *pa)
 static char png[] = "png";
 
 static PurplePluginProtocolInfo prpl_info = {
-    .options          = (PurpleProtocolOptions)(OPT_PROTO_NO_PASSWORD | OPT_PROTO_IM_IMAGE),
+    .options          = (PurpleProtocolOptions)(OPT_PROTO_NO_PASSWORD | OPT_PROTO_IM_IMAGE | OPT_PROTO_CHAT_TOPIC),
     .user_splits      = NULL, // was initialized in tgprpl_init()
     .protocol_options = NULL, // was initialized in tgprpl_init()
 

@@ -94,7 +94,9 @@ private:
     void       updateSupergroup(td::td_api::object_ptr<td::td_api::supergroup> group);
     void       updateChat(const td::td_api::chat *chat);
     void       requestBasicGroupMembers(int32_t groupId);
+    void       requestSupergroupFullInfo(int32_t groupId);
     void       groupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       supergroupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
     void       addContactById(int32_t userId, const std::string &phoneNumber, const std::string &alias,
                               const std::string &groupName);

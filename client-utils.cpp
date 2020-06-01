@@ -185,6 +185,11 @@ PurpleConvChat *getChatConversation(TdAccountData &account, const td::td_api::ch
             const td::td_api::basicGroupFullInfo *groupInfo    = basicGroupId ? account.getBasicGroupInfo(basicGroupId) : nullptr;
             if (groupInfo)
                 setChatMembers(purpleChat, *groupInfo, account);
+
+            int32_t                               supergroupId   = getSupergroupId(chat);
+            const td::td_api::supergroupFullInfo *supergroupInfo = supergroupId ? account.getSupergroupInfo(supergroupId) : nullptr;
+            if (supergroupInfo)
+                purple_conv_chat_set_topic(purpleChat, NULL, supergroupInfo->description_.c_str());
         }
 
         return purpleChat;

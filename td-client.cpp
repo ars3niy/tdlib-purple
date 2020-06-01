@@ -630,6 +630,16 @@ void PurpleTdClient::requestBasicGroupMembers(int32_t groupId)
     }
 }
 
+void PurpleTdClient::requestSupergroupFullInfo(int32_t groupId)
+{
+    if (!m_data.isSupergroupInfoRequested(groupId)) {
+        m_data.setSupergroupInfoRequested(groupId);
+        uint64_t requestId = m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getSupergroupFullInfo>(groupId),
+                                                     &PurpleTdClient::supergroupInfoResponse);
+        m_data.addPendingRequest<GroupInfoRequest>(requestId, groupId);
+    }
+}
+
 // TODO process messageChatAddMembers and messageChatDeleteMember
 // TODO process messageChatUpgradeTo and messageChatUpgradeFrom
 void PurpleTdClient::groupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -648,6 +658,25 @@ void PurpleTdClient::groupInfoResponse(uint64_t requestId, td::td_api::object_pt
         }
 
         m_data.updateBasicGroupInfo(request->groupId, std::move(groupInfo));
+    }
+}
+
+void PurpleTdClient::supergroupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<GroupInfoRequest> request = m_data.getPendingRequest<GroupInfoRequest>(requestId);
+
+    if (request && object && (object->get_id() == td::td_api::supergroupFullInfo::ID)) {
+        td::td_api::object_ptr<td::td_api::supergroupFullInfo> groupInfo =
+            td::move_tl_object_as<td::td_api::supergroupFullInfo>(object);
+        const td::td_api::chat *chat = m_data.getSupergroupChatByGroup(request->groupId);
+
+        if (chat) {
+            PurpleConvChat *purpleChat = findChatConversation(m_account, *chat);
+            if (purpleChat)
+                purple_conv_chat_set_topic(purpleChat, NULL, groupInfo->description_.c_str());
+        }
+
+        m_data.updateSupergroupInfo(request->groupId, std::move(groupInfo));
     }
 }
 
@@ -1279,8 +1308,10 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
             requestBasicGroupMembers(basicGroupId);
             updateBasicGroupChat(m_data, basicGroupId);
         }
-        if (supergroupId)
+        if (supergroupId) {
+            requestSupergroupFullInfo(supergroupId);
             updateSupergroupChat(m_data, supergroupId);
+        }
     } else {
         removeGroupChat(m_account, *chat);
     }

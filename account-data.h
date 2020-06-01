@@ -86,11 +86,12 @@ public:
 
 class TdAccountData {
 public:
-    using TdUserPtr       = td::td_api::object_ptr<td::td_api::user>;
-    using TdChatPtr       = td::td_api::object_ptr<td::td_api::chat>;
-    using TdGroupPtr      = td::td_api::object_ptr<td::td_api::basicGroup>;
-    using TdGroupInfoPtr  = td::td_api::object_ptr<td::td_api::basicGroupFullInfo>;
-    using TdSupergroupPtr = td::td_api::object_ptr<td::td_api::supergroup>;
+    using TdUserPtr           = td::td_api::object_ptr<td::td_api::user>;
+    using TdChatPtr           = td::td_api::object_ptr<td::td_api::chat>;
+    using TdGroupPtr          = td::td_api::object_ptr<td::td_api::basicGroup>;
+    using TdGroupInfoPtr      = td::td_api::object_ptr<td::td_api::basicGroupFullInfo>;
+    using TdSupergroupPtr     = td::td_api::object_ptr<td::td_api::supergroup>;
+    using TdSupergroupInfoPtr = td::td_api::object_ptr<td::td_api::supergroupFullInfo>;
 
     PurpleAccount *const purpleAccount;
     TdAccountData(PurpleAccount *purpleAccount) : purpleAccount(purpleAccount) {}
@@ -102,6 +103,9 @@ public:
     bool isBasicGroupInfoRequested(int32_t groupId);
     void updateBasicGroupInfo(int32_t groupId, TdGroupInfoPtr groupInfo);
     void updateSupergroup(TdSupergroupPtr group);
+    void setSupergroupInfoRequested(int32_t groupId);
+    bool isSupergroupInfoRequested(int32_t groupId);
+    void updateSupergroupInfo(int32_t groupId, TdSupergroupInfoPtr groupInfo);
 
     void addChat(TdChatPtr chat); // Updates existing chat if any
     void updateChatChatList(int64_t chatId, td::td_api::object_ptr<td::td_api::ChatList> list);
@@ -125,6 +129,7 @@ public:
     const td::td_api::basicGroup *getBasicGroup(int32_t groupId) const;
     const td::td_api::basicGroupFullInfo *getBasicGroupInfo(int32_t groupId) const;
     const td::td_api::supergroup *getSupergroup(int32_t groupId) const;
+    const td::td_api::supergroupFullInfo *getSupergroupInfo(int32_t groupId) const;
     const td::td_api::chat       *getBasicGroupChatByGroup(int32_t groupId) const;
     const td::td_api::chat       *getSupergroupChatByGroup(int32_t groupId) const;
     bool                          isGroupChatWithMembership(const td::td_api::chat &chat);
@@ -180,6 +185,12 @@ private:
         bool           fullInfoRequested = false;
     };
 
+    struct SupergroupInfo {
+        TdSupergroupPtr     group;
+        TdSupergroupInfoPtr fullInfo;
+        bool                fullInfoRequested = false;
+    };
+
     struct SendMessageInfo {
         int64_t     messageId;
         std::string tempFile;
@@ -196,7 +207,7 @@ private:
     UserMap                            m_userInfo;
     ChatMap                            m_chatInfo;
     std::map<int32_t, GroupInfo>       m_groups;
-    std::map<int32_t, TdSupergroupPtr> m_supergroups;
+    std::map<int32_t, SupergroupInfo>  m_supergroups;
     std::set<int32_t>                  m_secretChats;
     int                                m_lastChatPurpleId = 0;
 

@@ -82,6 +82,7 @@ enum class PurpleEventType: uint8_t {
     PresentConversation,
     ChatAddUser,
     ChatClearUsers,
+    ChatSetTopic,
     XferAccepted,
     XferStart,
     XferProgress,
@@ -407,6 +408,15 @@ struct ChatClearUsersEvent: PurpleEvent {
 
     ChatClearUsersEvent(const std::string &chatName)
     : PurpleEvent(PurpleEventType::ChatClearUsers), chatName(chatName) {}
+};
+
+struct ChatSetTopicEvent: PurpleEvent {
+    std::string chatName;
+    std::string newTopic;
+    std::string who;
+
+    ChatSetTopicEvent(const std::string &chatName, const std::string &newTopic, const std::string &who)
+    : PurpleEvent(PurpleEventType::ChatSetTopic), newTopic(newTopic), who(who) {}
 };
 
 struct XferAcceptedEvent: PurpleEvent {

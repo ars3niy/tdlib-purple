@@ -45,11 +45,35 @@ void SupergroupTest::loginWithSupergroup()
             std::make_unique<ShowAccountEvent>(account)
         }
     );
+
+    tgl.verifyRequest(getSupergroupFullInfo(groupId));
 }
 
 TEST_F(SupergroupTest, AddSupergroupChatAtLogin)
 {
     loginWithSupergroup();
+}
+
+TEST_F(SupergroupTest, AddSupergroupChatAtLogin_OpenChatAfterFullInfo)
+{
+    constexpr int     purpleChatId = 1;
+
+    loginWithSupergroup();
+    auto fullInfo = make_object<supergroupFullInfo>();
+    fullInfo->description_ = "Description";
+    tgl.reply(std::move(fullInfo));
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        ChatSetTopicEvent(groupChatPurpleName, "Description", ""),
+        PresentConversationEvent(groupChatPurpleName)
+    );
+    tgl.verifyNoRequests();
 }
 
 TEST_F(SupergroupTest, ExistingSupergroupChatAtLogin)
@@ -74,6 +98,59 @@ TEST_F(SupergroupTest, ExistingSupergroupChatAtLogin)
         make_object<users>(),
         make_object<chats>(std::vector<int64_t>(1, groupChatId))
     );
+
+    tgl.verifyRequest(getSupergroupFullInfo(groupId));
+}
+
+TEST_F(SupergroupTest, ExistingSupergroupReceiveMessageAtLogin_OpenChatBeforeFullInfo)
+{
+    constexpr int64_t messageId    = 10001;
+    constexpr int32_t date         = 12345;
+    constexpr int     purpleChatId = 1;
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), components), NULL, NULL);
+    prpl.discardEvents();
+
+    login(
+        {
+            make_object<updateSupergroup>(make_object<supergroup>(
+                groupId, "", 0, make_object<chatMemberStatusMember>(), 2,
+                false, false, false, false, false, false, "", false
+            )),
+            make_object<updateNewChat>(makeChat(
+                groupChatId, make_object<chatTypeSupergroup>(groupId, false), groupChatTitle,
+                nullptr, 0, 0, 0
+            )),
+            makeUpdateChatListMain(groupChatId),
+            standardUpdateUser(0), // Incoming message will be from this guy
+            make_object<updateNewMessage>(
+                makeMessage(messageId, userIds[0], groupChatId, false, date, makeTextMessage("Hello"))
+            )
+        },
+        make_object<users>(),
+        make_object<chats>(std::vector<int64_t>(1, groupChatId)),
+        {
+            // chat title is wrong at this point because libpurple doesn't find the chat in contact
+            // list while the contact is not online, and thus has no way of knowing the chat alias.
+            // Real libpurple works like that and our mock version mirrors the behaviour.
+            std::make_unique<ServGotJoinedChatEvent>(connection, purpleChatId, groupChatPurpleName,
+                                                     groupChatPurpleName),
+            // Now chat title is corrected
+            std::make_unique<ConvSetTitleEvent>(groupChatPurpleName, groupChatTitle),
+            std::make_unique<ServGotChatEvent>(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0],
+                                               "Hello", PURPLE_MESSAGE_RECV, date)
+        },
+        {make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true)}
+    );
+
+    tgl.verifyRequest(getSupergroupFullInfo(groupId));
+    auto fullInfo = make_object<supergroupFullInfo>();
+    fullInfo->description_ = "Description";
+    tgl.reply(std::move(fullInfo));
+
+    prpl.verifyEvents(ChatSetTopicEvent(groupChatPurpleName, "Description", ""));
 }
 
 TEST_F(SupergroupTest, DeleteSupergroup_Fail)

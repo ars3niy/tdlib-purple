@@ -225,6 +225,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
             // Real libpurple works like that and our mock version mirrors the behaviour.
             std::make_unique<ServGotJoinedChatEvent>(connection, purpleChatId, groupChatPurpleName,
                                                      groupChatPurpleName),
+            // Now chat title is corrected
             std::make_unique<ConvSetTitleEvent>(groupChatPurpleName, groupChatTitle),
             std::make_unique<ServGotChatEvent>(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0],
                                                "Hello", PURPLE_MESSAGE_RECV, date)

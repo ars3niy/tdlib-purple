@@ -221,7 +221,28 @@ void TdAccountData::updateBasicGroupInfo(int32_t groupId, TdGroupInfoPtr groupIn
 void TdAccountData::updateSupergroup(TdSupergroupPtr group)
 {
     if (group)
-        m_supergroups[group->id_] = std::move(group);
+        m_supergroups[group->id_].group = std::move(group);
+}
+
+void TdAccountData::setSupergroupInfoRequested(int32_t groupId)
+{
+    auto it = m_supergroups.find(groupId);
+    if (it != m_supergroups.end())
+        it->second.fullInfoRequested = true;
+}
+
+bool TdAccountData::isSupergroupInfoRequested(int32_t groupId)
+{
+    auto it = m_supergroups.find(groupId);
+    if (it != m_supergroups.end())
+        return it->second.fullInfoRequested;
+    return false;
+}
+
+void TdAccountData::updateSupergroupInfo(int32_t groupId, TdSupergroupInfoPtr groupInfo)
+{
+    if (groupInfo)
+        m_supergroups[groupId].fullInfo = std::move(groupInfo);
 }
 
 void TdAccountData::addChat(TdChatPtr chat)
@@ -414,7 +435,16 @@ const td::td_api::supergroup *TdAccountData::getSupergroup(int32_t groupId) cons
 {
     auto it = m_supergroups.find(groupId);
     if (it != m_supergroups.end())
-        return it->second.get();
+        return it->second.group.get();
+    else
+        return nullptr;
+}
+
+const td::td_api::supergroupFullInfo *TdAccountData::getSupergroupInfo(int32_t groupId) const
+{
+    auto it = m_supergroups.find(groupId);
+    if (it != m_supergroups.end())
+        return it->second.fullInfo.get();
     else
         return nullptr;
 }

@@ -208,6 +208,13 @@ static void compare(const ChatClearUsersEvent &actual, const ChatClearUsersEvent
     COMPARE(chatName);
 }
 
+static void compare(const ChatSetTopicEvent &actual, const ChatSetTopicEvent &expected)
+{
+    COMPARE(chatName);
+    COMPARE(newTopic);
+    COMPARE(who);
+}
+
 static void compare(const XferAcceptedEvent &actual, const XferAcceptedEvent &expected)
 {
     COMPARE(filename);
@@ -284,6 +291,7 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(PresentConversation)
         C(ChatAddUser)
         C(ChatClearUsers)
+        C(ChatSetTopic)
         C(XferAccepted)
         C(XferStart)
         C(XferProgress)
@@ -402,6 +410,7 @@ std::string PurpleEvent::toString() const
     C(PresentConversation)
     C(ChatAddUser)
     C(ChatClearUsers)
+    C(ChatSetTopic)
     C(XferAccepted)
     C(XferStart)
     C(XferProgress)

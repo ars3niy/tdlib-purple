@@ -493,6 +493,12 @@ void purple_conv_chat_write(PurpleConvChat *chat, const char *who,
     purple_conversation_write(purple_conv_chat_get_conversation(chat), who, message, flags, mtime);
 }
 
+void purple_conv_chat_set_topic(PurpleConvChat *chat, const char *who,
+							  const char *topic)
+{
+    EVENT(ChatSetTopicEvent, chat->conv->name, topic ? topic : "", who ? who : "");
+}
+
 gboolean purple_debug_is_enabled(void)
 {
     return true;

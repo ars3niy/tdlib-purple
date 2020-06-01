@@ -355,6 +355,11 @@ static void compare(const closeSecretChat &actual, const closeSecretChat &expect
     COMPARE(secret_chat_id_);
 }
 
+static void compare(const getSupergroupFullInfo &actual, const getSupergroupFullInfo &expected)
+{
+    COMPARE(supergroup_id_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -397,6 +402,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(checkAuthenticationPassword)
         C(uploadFile)
         C(closeSecretChat)
+        C(getSupergroupFullInfo)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }
@@ -444,7 +450,7 @@ object_ptr<user> makeUser(std::int32_t id_, std::string const &first_name_,
     return make_object<user>(
         id_, first_name_, last_name_, "", phone_number_, std::move(status_),
         nullptr,
-        false,
+        false, // is_contact
         false,
         false,
         false,
