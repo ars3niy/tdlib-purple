@@ -549,6 +549,19 @@ TEST_F(PrivateChatTest, Photo)
     );
 
     tgl.reply(make_object<ok>()); // reply to viewMessages
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, true, false, 0, 0, 2000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, true, false, 0, 0, 5000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+
     tgl.reply(make_object<file>(
         fileId, 10000, 10000,
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
@@ -562,6 +575,12 @@ TEST_F(PrivateChatTest, Photo)
         (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
         date
     ));
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
 }
 
 TEST_F(PrivateChatTest, AlreadyDownloadedPhoto)

@@ -178,10 +178,8 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         auto &fileUpdate = static_cast<const td::td_api::updateFile &>(update);
         purple_debug_misc(config::pluginId, "Incoming update: file update, id %d\n",
                           fileUpdate.file_ ? fileUpdate.file_->id_ : 0);
-        if (fileUpdate.file_) {
-            updateDocumentUploadProgress(*fileUpdate.file_, m_transceiver, m_data);
-            updateDownloadProgress(*fileUpdate.file_, m_transceiver, m_data);
-        }
+        if (fileUpdate.file_)
+            updateFileTransferProgress(*fileUpdate.file_, m_transceiver, m_data);
         break;
     };
 

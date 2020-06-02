@@ -93,11 +93,9 @@ void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer
 void uploadResponseError(PurpleXfer *xfer, const std::string &message, TdAccountData &account);
 void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_api::file &file,
                                  TdTransceiver &transceiver, TdAccountData &account);
-void updateDocumentUploadProgress(const td::td_api::file &file, TdTransceiver &transceiver,
-                                  TdAccountData &account);
 void startDownloadProgress(int32_t fileId, TdAccountData &account);
-void updateDownloadProgress(const td::td_api::file &file, TdTransceiver &transceiver,
-                            TdAccountData &account);
+void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &transceiver,
+                                TdAccountData &account);
 void finishDownloadProgress(int32_t fileId, TdAccountData &account);
 
 void requestRecoveryEmailConfirmation(PurpleConnection *gc, const char *emailInfo);
