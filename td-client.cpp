@@ -30,6 +30,11 @@ void PurpleTdClient::setLogLevel(int level)
     td::Client::execute({0, td::td_api::make_object<td::td_api::setLogVerbosityLevel>(level)});
 }
 
+void PurpleTdClient::setTdlibFatalErrorCallback(td::Log::FatalErrorCallbackPtr callback)
+{
+    td::Log::set_fatal_error_callback(callback);
+}
+
 void PurpleTdClient::processUpdate(td::td_api::Object &update)
 {
     purple_debug_misc(config::pluginId, "Incoming update\n");
@@ -318,12 +323,16 @@ void PurpleTdClient::removeOldProxies()
             m_transceiver.sendQuery(td::td_api::make_object<td::td_api::removeProxy>(proxy->id_), nullptr);
 }
 
+std::string PurpleTdClient::getBaseDatabasePath()
+{
+    return std::string(purple_user_dir()) + G_DIR_SEPARATOR_S + config::configSubdir;
+}
+
 void PurpleTdClient::sendTdlibParameters()
 {
     auto parameters = td::td_api::make_object<td::td_api::tdlibParameters>();
     const char *username = purple_account_get_username(m_account);
-    parameters->database_directory_ = std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
-                                      config::configSubdir + G_DIR_SEPARATOR_S + username;
+    parameters->database_directory_ = getBaseDatabasePath() + G_DIR_SEPARATOR_S + username;
     purple_debug_misc(config::pluginId, "Account %s using database directory %s\n",
                       username, parameters->database_directory_.c_str());
     parameters->use_message_database_ = true;

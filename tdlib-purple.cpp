@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 #include <ctype.h>
+#include <unistd.h>
 
 static char *_(const char *s) { return const_cast<char *>(s); }
 
@@ -611,6 +612,36 @@ static void addChoice(GList *&choices, const char *description, const char *valu
     choices = g_list_append(choices, kvp);
 }
 
+static PurplePluginInfo *getPluginInfo();
+
+static gboolean tdlibFatalErrorHandler(void *data)
+{
+    char *message = static_cast<char *>(data);
+    const char *dbMessage =
+        _("The error may be caused by corrupt account data. "
+          "If this is the case, it could be fixed by removing account data under {} . "
+          "You will be required to log in into the account again.");
+
+    std::string details = formatMessage(_("tdlib error: {}"), std::string(message));
+    details += '\n';
+    details += formatMessage(dbMessage, PurpleTdClient::getBaseDatabasePath());
+
+    purple_notify_error(getPluginInfo(), _("Telegram plugin"),
+                        _("Fatal error encountered in telegram plugin"),
+                        details.c_str());
+
+    free(message);
+    return FALSE; // this idle handler will not be called again
+}
+
+static void tdlibFatalErrorCallback(const char *message)
+{
+    g_idle_add(tdlibFatalErrorHandler, strdup(message));
+    // The error must have come either from the poll thread or from one of the threads created by tdlib.
+    // So, hang the thread to avoid crash.
+    while (1) sleep(1000);
+}
+
 static void tgprpl_init (PurplePlugin *plugin)
 {
     if (purple_debug_is_verbose())
@@ -622,6 +653,7 @@ static void tgprpl_init (PurplePlugin *plugin)
     else
         // Log up to fatal errors and errors
         PurpleTdClient::setLogLevel(1);
+    PurpleTdClient::setTdlibFatalErrorCallback(tdlibFatalErrorCallback);
 
     static_assert(AccountOptions::BigDownloadHandlingDefault == AccountOptions::BigDownloadHandlingAsk,
                   "default choice must be first");
@@ -762,4 +794,9 @@ static PurplePluginInfo plugin_info = {
 
 extern "C" {
     PURPLE_INIT_PLUGIN (telegram_tdlib, tgprpl_init, plugin_info)
+}
+
+static PurplePluginInfo *getPluginInfo()
+{
+    return &plugin_info;
 }
