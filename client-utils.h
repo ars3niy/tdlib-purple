@@ -78,7 +78,9 @@ void showGenericFile(const td::td_api::chat &chat, const TgMessageInfo &message,
 void showWebpSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
                      const std::string &filePath, const std::string &fileDescription,
                      TdAccountData &account);
-void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
+void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
+                    const TdAccountData &account);
+void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::supergroupFullInfo &groupInfo,
                     const TdAccountData &account);
 
 void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,

@@ -267,6 +267,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
     // One code path: adding chat users upon receiving getBasicGroupFullInfo reply, because the chat
     // window is already open due to the received message
     prpl.verifyEvents(
+        ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
         ChatClearUsersEvent(groupChatPurpleName),
         ChatAddUserEvent(
             groupChatPurpleName,
@@ -335,6 +336,7 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
     // Another code path: adding chat users upon opening chat, with basicGroupFullInfo before that
     prpl.verifyEvents(
         ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
         ChatClearUsersEvent(groupChatPurpleName),
         ChatAddUserEvent(
             groupChatPurpleName,
@@ -481,6 +483,7 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
     ));
 
     prpl.verifyEvents(
+        ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
         ChatClearUsersEvent(groupChatPurpleName),
         ChatAddUserEvent(
             groupChatPurpleName,
@@ -629,7 +632,7 @@ TEST_F(GroupChatTest, CreateRemoveBasicGroupInAnotherClient)
 
     tgl.update(make_object<updateBasicGroupFullInfo>(
         groupId,
-        make_object<basicGroupFullInfo>("", selfId, std::vector<object_ptr<chatMember>>(), "")
+        make_object<basicGroupFullInfo>("basic group", selfId, std::vector<object_ptr<chatMember>>(), "")
     ));
     tgl.update(make_object<updateBasicGroup>(make_object<basicGroup>(
         groupId, 0,
@@ -643,6 +646,8 @@ TEST_F(GroupChatTest, CreateRemoveBasicGroupInAnotherClient)
     ));
     tgl.verifyRequest(viewMessages(groupChatId, {messageId[1]}, true));
     prpl.verifyEvents(
+        ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
+        ChatClearUsersEvent(groupChatPurpleName),
         ConversationWriteEvent(groupChatPurpleName, "",
                                selfFirstName + " " + selfLastName +
                                ": Received unsupported message type messageChatDeleteMember",
@@ -769,6 +774,7 @@ TEST_F(GroupChatTest, UsersWithSameName)
 
     prpl.verifyEvents(
         ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
         ChatClearUsersEvent(groupChatPurpleName),
         ChatAddUserEvent(
             groupChatPurpleName,

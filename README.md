@@ -12,7 +12,6 @@ Missing features:
 * Adding users to group chats and creating invite links
 * Joining public groups/channels
 * Renaming groups/channels
-* Chat topic (= group description)
 * User pictures
 * Secret chats
 

@@ -184,12 +184,12 @@ PurpleConvChat *getChatConversation(TdAccountData &account, const td::td_api::ch
             int32_t                               basicGroupId = getBasicGroupId(chat);
             const td::td_api::basicGroupFullInfo *groupInfo    = basicGroupId ? account.getBasicGroupInfo(basicGroupId) : nullptr;
             if (groupInfo)
-                setChatMembers(purpleChat, *groupInfo, account);
+                updateChatConversation(purpleChat, *groupInfo, account);
 
             int32_t                               supergroupId   = getSupergroupId(chat);
             const td::td_api::supergroupFullInfo *supergroupInfo = supergroupId ? account.getSupergroupInfo(supergroupId) : nullptr;
             if (supergroupInfo)
-                purple_conv_chat_set_topic(purpleChat, NULL, supergroupInfo->description_.c_str());
+                updateChatConversation(purpleChat, *supergroupInfo, account);
         }
 
         return purpleChat;
@@ -579,8 +579,8 @@ std::vector<PurpleChat *> findChatsByNewGroup(const char *name, int type)
     return result;
 }
 
-void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
-                    const TdAccountData &account)
+static void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
+                           const TdAccountData &account)
 {
     GList *flags = NULL;
     std::vector<std::string> nameData;
@@ -626,6 +626,20 @@ void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFull
     g_list_free(names);
     g_list_free(flags);
 }
+
+void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
+                    const TdAccountData &account)
+{
+    purple_conv_chat_set_topic(purpleChat, NULL, groupInfo.description_.c_str());
+    setChatMembers(purpleChat, groupInfo, account);
+}
+
+void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::supergroupFullInfo &groupInfo,
+                    const TdAccountData &account)
+{
+    purple_conv_chat_set_topic(purpleChat, NULL, groupInfo.description_.c_str());
+}
+
 
 struct MessagePart {
     bool        isImage;
