@@ -790,7 +790,7 @@ void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_
     } else {
         purple_debug_misc(config::pluginId, "Got file id %d for uploading %s\n", (int)file.id_,
                             purple_xfer_get_local_filename(xfer));
-        account.addUpload(file.id_, xfer, chatId);
+        account.addFileTransfer(file.id_, xfer, chatId);
         updateDocumentUploadProgress(file, transceiver, account);
     }
 }
@@ -808,7 +808,7 @@ void updateDocumentUploadProgress(const td::td_api::file &file, TdTransceiver &t
 {
     PurpleXfer *upload;
     int64_t     chatId;
-    if (!account.getUpload(file.id_, upload, chatId))
+    if (!account.getFileTransfer(file.id_, upload, chatId))
         return;
     size_t fileSize = purple_xfer_get_size(upload);
 
@@ -827,7 +827,7 @@ void updateDocumentUploadProgress(const td::td_api::file &file, TdTransceiver &t
             purple_xfer_set_completed(upload, TRUE);
             purple_xfer_end(upload);
             purple_xfer_unref(upload);
-            account.removeUpload(file.id_);
+            account.removeFileTransfer(file.id_);
             auto sendMessageRequest = td::td_api::make_object<td::td_api::sendMessage>();
             auto content = td::td_api::make_object<td::td_api::inputMessageDocument>();
             content->caption_ = td::td_api::make_object<td::td_api::formattedText>();
@@ -839,8 +839,59 @@ void updateDocumentUploadProgress(const td::td_api::file &file, TdTransceiver &t
     } else {
         purple_xfer_cancel_remote(upload);
         purple_xfer_unref(upload);
-        account.removeUpload(file.id_);
+        account.removeFileTransfer(file.id_);
     }
+}
+
+/*static void cancelDownload(PurpleXfer *X)
+{
+    purple_debug_misc(config::pluginId, "Cancel download\n");
+    DownloadInfo *info = static_cast<DownloadInfo *>(X->data);
+    delete info;
+    X->data = NULL;
+}*/
+
+void startDownloadProgress(int32_t fileId, TdAccountData &account)
+{
+    account.addFileTransfer(fileId, NULL, 0);
+}
+
+void updateDownloadProgress(const td::td_api::file &file, TdTransceiver &transceiver,
+                            TdAccountData &account)
+{
+    PurpleXfer *xfer;
+    int64_t     chatId;
+    if (! account.getFileTransfer(file.id_, xfer, chatId))
+        return;
+
+    if (!xfer) {
+        // TODO
+        /*xfer = purple_xfer_new (m_account, PURPLE_XFER_RECEIVE, sender);
+        purple_xfer_set_init_fnc(xfer, startDownload);
+        purple_xfer_set_cancel_recv_fnc(xfer, cancelDownload);
+        purple_xfer_set_filename(xfer, filename);
+        purple_xfer_set_size(xfer, getFileSize(file));
+        xfer->data = new DownloadInfo{file.id_, chatId, message, this, responseCb};
+        purple_xfer_request_accepted(xfer, a temporary file name);
+        purple_xfer_start(xfer, -1, NULL, 0);
+        delete the temporary file when completed
+        */
+        account.addPurpleFileTransfer(file.id_, xfer);
+    }
+}
+
+void finishDownloadProgress(int32_t fileId, TdAccountData& account)
+{
+    PurpleXfer *xfer;
+    int64_t     chatId;
+    if (! account.getFileTransfer(fileId, xfer, chatId))
+        return;
+
+    // TODO
+    //purple_xfer_set_completed(upload, TRUE);
+    //purple_xfer_end(upload);
+    //purple_xfer_unref(upload);
+    account.removeFileTransfer(fileId);
 }
 
 unsigned getFileSize(const td::td_api::file &file)

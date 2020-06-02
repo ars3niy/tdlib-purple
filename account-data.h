@@ -150,16 +150,21 @@ public:
     {
         return std::unique_ptr<ReqType>(dynamic_cast<ReqType *>(getPendingRequestImpl(requestId).release()));
     }
+    template<typename ReqType>
+    ReqType *findPendingRequest(uint64_t requestId)
+    {
+        return dynamic_cast<ReqType *>(findPendingRequestImpl(requestId));
+    }
 
     const ContactRequest *     findContactRequest(int32_t userId);
     void                       addTempFileUpload(int64_t messageId, const std::string &path);
     std::string                extractTempFileUpload(int64_t messageId);
 
-    std::unique_ptr<UploadRequest> getUploadRequest(PurpleXfer *xfer);
-    void                       addUpload(int32_t fileId, PurpleXfer *xfer, int64_t chatId);
-    bool                       getUpload(int32_t fileId, PurpleXfer *&xfer, int64_t &chatId);
-    bool                       getFileIdForUpload(PurpleXfer *xfer, int &fileId);
-    void                       removeUpload(int32_t fileId);
+    void                       addFileTransfer(int32_t fileId, PurpleXfer *xfer, int64_t chatId);
+    void                       addPurpleFileTransfer(int32_t fileId, PurpleXfer *xfer);
+    bool                       getFileTransfer(int32_t fileId, PurpleXfer *&xfer, int64_t &chatId);
+    bool                       getFileIdForTransfer(PurpleXfer *xfer, int &fileId);
+    void                       removeFileTransfer(int32_t fileId);
 
     void                       addSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat);
     bool                       getSecretChat(int32_t id);
@@ -196,7 +201,7 @@ private:
         std::string tempFile;
     };
 
-    struct UploadInfo {
+    struct FileTransferInfo {
         int32_t     fileId;
         int64_t     chatId;
         PurpleXfer *xfer;
@@ -223,10 +228,11 @@ private:
     // transfer is completed
     std::vector<SendMessageInfo>       m_sentMessages;
 
-    // Currently active file uploads other than inline images, for which PurpleXfer is used
-    std::vector<UploadInfo>            m_uploads;
+    // Currently active file transfers for which PurpleXfer is used
+    std::vector<FileTransferInfo>      m_fileTransfers;
 
     std::unique_ptr<PendingRequest> getPendingRequestImpl(uint64_t requestId);
+    PendingRequest *                findPendingRequestImpl(uint64_t requestId);
     void                            setDisplayNameWithoutSuffix(UserInfo &entry);
 };
 

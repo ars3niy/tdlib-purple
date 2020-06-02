@@ -5,7 +5,10 @@ struct TimerCallbackData {
     std::string accountUserName;
     std::string accountProtocolId;
     uint64_t    requestId;
-    TdTransceiver::ResponseCb callback;
+    union {
+        TdTransceiver::ResponseCb callback;
+        TdTransceiver::TimerCb    timerCallback;
+    };
 };
 
 static gboolean timerCallback(gpointer userdata)
@@ -216,6 +219,21 @@ uint64_t TdTransceiver::sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::
         m_testBackend->addTimeout(timeoutSeconds, timerCallback, data);
 
     return queryId;
+}
+
+void TdTransceiver::setQueryTimer(uint64_t queryId, TimerCb handler, unsigned timeoutSeconds)
+{
+    TimerCallbackData *data = new TimerCallbackData;
+
+    data->accountUserName   = purple_account_get_username(m_account);
+    data->accountProtocolId = purple_account_get_protocol_id(m_account);
+    data->requestId         = queryId;
+    data->timerCallback     = handler;
+
+    if (!m_testBackend)
+        g_timeout_add_seconds(timeoutSeconds, timerCallback, data);
+    else
+        m_testBackend->addTimeout(timeoutSeconds, timerCallback, data);
 }
 
 void ITransceiverBackend::receive(td::Client::Response response)

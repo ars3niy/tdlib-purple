@@ -178,8 +178,10 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         auto &fileUpdate = static_cast<const td::td_api::updateFile &>(update);
         purple_debug_misc(config::pluginId, "Incoming update: file update, id %d\n",
                           fileUpdate.file_ ? fileUpdate.file_->id_ : 0);
-        if (fileUpdate.file_)
+        if (fileUpdate.file_) {
             updateDocumentUploadProgress(*fileUpdate.file_, m_transceiver, m_data);
+            updateDownloadProgress(*fileUpdate.file_, m_transceiver, m_data);
+        }
         break;
     };
 
@@ -870,14 +872,6 @@ void PurpleTdClient::startDownload(void *user_data)
                                  nullptr, info->callback);
 }
 
-/*static void cancelDownload(PurpleXfer *X)
-{
-    purple_debug_misc(config::pluginId, "Cancel download\n");
-    DownloadInfo *info = static_cast<DownloadInfo *>(X->data);
-    delete info;
-    X->data = NULL;
-}*/
-
 static void ignoreDownload(DownloadRequest *info)
 {
     delete info;
@@ -896,21 +890,12 @@ void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, TgMessageInfo 
     downloadReq->limit_       = 0;
     downloadReq->synchronous_ = true;
 
-    /*PurpleXfer *xfer = purple_xfer_new (m_account, PURPLE_XFER_RECEIVE, sender);
-    purple_xfer_set_init_fnc(xfer, startDownload);
-    purple_xfer_set_cancel_recv_fnc(xfer, cancelDownload);
-    purple_xfer_set_filename(xfer, filename);
-    purple_xfer_set_size(xfer, getFileSize(file));
-    xfer->data = new DownloadInfo{file.id_, chatId, message, this, responseCb};
-    purple_xfer_request_accepted(xfer, a temporary file name);
-    purple_xfer_start(xfer, -1, NULL, 0);
-    delete the temporary file when completed
-    */
-
     uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq), &PurpleTdClient::downloadResponse);
-    std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, chatId, message, fileDescription,
-                                              thumbnail.release(), callback);
+    std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, chatId,
+                                               message, fileId, fileDescription, thumbnail.release(),
+                                               callback);
     m_data.addPendingRequest<DownloadRequest>(requestId, std::move(request));
+    m_transceiver.setQueryTimer(requestId, &PurpleTdClient::startDownloadProgress, 1);
 }
 
 void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file &file,
@@ -939,6 +924,13 @@ void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file 
                           info, G_CALLBACK(startDownload), G_CALLBACK(ignoreDownload));
 }
 
+void PurpleTdClient::startDownloadProgress(uint64_t requestId)
+{
+    DownloadRequest *request = m_data.findPendingRequest<DownloadRequest>(requestId);
+    if (request)
+        ::startDownloadProgress(request->fileId, m_data);
+}
+
 static std::string getDownloadPath(const td::td_api::Object *object)
 {
     if (!object)
@@ -963,7 +955,7 @@ void PurpleTdClient::downloadResponse(uint64_t requestId, td::td_api::object_ptr
     std::unique_ptr<DownloadRequest> request = m_data.getPendingRequest<DownloadRequest>(requestId);
     std::string                      path    = getDownloadPath(object.get());
     if (request && !path.empty()) {
-        // TODO complete purple file transfer, if any
+        finishDownloadProgress(request->fileId, m_data);
 
         (this->*(request->callback))(request->chatId, request->message, path, NULL,
                                      request->fileDescription, std::move(request->thumbnail));
@@ -1913,12 +1905,12 @@ void PurpleTdClient::uploadResponse(uint64_t requestId, td::td_api::object_ptr<t
 void PurpleTdClient::cancelUpload(PurpleXfer *xfer)
 {
     int32_t fileId;
-    if (m_data.getFileIdForUpload(xfer, fileId)) {
+    if (m_data.getFileIdForTransfer(xfer, fileId)) {
         purple_debug_misc(config::pluginId, "Cancelling upload of %s (file id %d)\n",
                           purple_xfer_get_local_filename(xfer), fileId);
         auto cancelRequest = td::td_api::make_object<td::td_api::cancelUploadFile>(fileId);
         m_transceiver.sendQuery(std::move(cancelRequest), nullptr);
-        m_data.removeUpload(fileId);
+        m_data.removeFileTransfer(fileId);
         purple_xfer_unref(xfer);
     } else {
         // This could mean that response to upload request has not come yet - when it does,

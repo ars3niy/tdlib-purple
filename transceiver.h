@@ -34,15 +34,18 @@ private:
 public:
     using ResponseCb = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
     using UpdateCb   = void (PurpleTdClient::*)(td::td_api::Object &object);
+    using TimerCb    = void (PurpleTdClient::*)(uint64_t requestId);
 
     TdTransceiver(PurpleTdClient *owner, PurpleAccount *account, UpdateCb updateCb,
                   ITransceiverBackend *testBackend);
     ~TdTransceiver();
     uint64_t sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler);
 
-    // WARNING: receiving response does not cancel timeout callback
+    // WARNING: receiving response does not cancel timeout callback, nor does timeout prevent
+    // response callback if response is received later
     uint64_t sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::Function> f,
                                   ResponseCb handler, unsigned timeoutSeconds);
+    void     setQueryTimer(uint64_t queryId, TimerCb handler, unsigned timeoutSeconds);
 private:
     void  pollThreadLoop();
     void *queueResponse(td::Client::Response &&response);

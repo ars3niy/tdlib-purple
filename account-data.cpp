@@ -524,6 +524,19 @@ std::unique_ptr<PendingRequest> TdAccountData::getPendingRequestImpl(uint64_t re
     return nullptr;
 }
 
+PendingRequest *TdAccountData::findPendingRequestImpl(uint64_t requestId)
+{
+    auto it = std::find_if(m_requests.begin(), m_requests.end(),
+                           [requestId](const std::unique_ptr<PendingRequest> &req) {
+                               return (req->requestId == requestId);
+                           });
+
+    if (it != m_requests.end())
+        return it->get();
+
+    return nullptr;
+}
+
 const ContactRequest *TdAccountData::findContactRequest(int32_t userId)
 {
     auto it = std::find_if(m_requests.begin(), m_requests.end(),
@@ -560,40 +573,34 @@ std::string TdAccountData::extractTempFileUpload(int64_t messageId)
     return result;
 }
 
-std::unique_ptr<UploadRequest> TdAccountData::getUploadRequest(PurpleXfer *xfer)
+void TdAccountData::addFileTransfer(int32_t fileId, PurpleXfer *xfer, int64_t chatId)
 {
-    auto it = std::find_if(m_requests.begin(), m_requests.end(),
-                           [xfer](const std::unique_ptr<PendingRequest> &req) {
-                               const UploadRequest *uploadReq = dynamic_cast<const UploadRequest *>(req.get());
-                               return (uploadReq && (uploadReq->xfer == xfer));
-                           });
-
-    if (it != m_requests.end()) {
-        UploadRequest *result = static_cast<UploadRequest *>(it->release());
-        m_requests.erase(it);
-        return std::unique_ptr<UploadRequest>(result);
-    }
-    return nullptr;
-}
-
-void TdAccountData::addUpload(int32_t fileId, PurpleXfer *xfer, int64_t chatId)
-{
-    if (std::find_if(m_uploads.begin(), m_uploads.end(),
-                    [fileId](const UploadInfo &upload) {
+    if (std::find_if(m_fileTransfers.begin(), m_fileTransfers.end(),
+                    [fileId](const FileTransferInfo &upload) {
                         return (upload.fileId == fileId);
-                    }) == m_uploads.end()) {
-        m_uploads.emplace_back();
-        m_uploads.back().fileId = fileId;
-        m_uploads.back().xfer = xfer;
-        m_uploads.back().chatId = chatId;
+                    }) == m_fileTransfers.end()) {
+        m_fileTransfers.emplace_back();
+        m_fileTransfers.back().fileId = fileId;
+        m_fileTransfers.back().xfer = xfer;
+        m_fileTransfers.back().chatId = chatId;
     }
 }
 
-bool TdAccountData::getUpload(int32_t fileId, PurpleXfer *&xfer, int64_t &chatId)
+void TdAccountData::addPurpleFileTransfer(int32_t fileId, PurpleXfer *xfer)
 {
-    auto it = std::find_if(m_uploads.begin(), m_uploads.end(),
-                           [fileId](const UploadInfo &upload) { return (upload.fileId == fileId); });
-    if (it != m_uploads.end()) {
+    auto it = std::find_if(m_fileTransfers.begin(), m_fileTransfers.end(),
+                           [fileId](const FileTransferInfo &upload) {
+                               return (upload.fileId == fileId);
+                           });
+    if (it != m_fileTransfers.end())
+        it->xfer = xfer;
+}
+
+bool TdAccountData::getFileTransfer(int32_t fileId, PurpleXfer *&xfer, int64_t &chatId)
+{
+    auto it = std::find_if(m_fileTransfers.begin(), m_fileTransfers.end(),
+                           [fileId](const FileTransferInfo &upload) { return (upload.fileId == fileId); });
+    if (it != m_fileTransfers.end()) {
         xfer = it->xfer;
         chatId = it->chatId;
         return true;
@@ -602,23 +609,23 @@ bool TdAccountData::getUpload(int32_t fileId, PurpleXfer *&xfer, int64_t &chatId
     return false;
 }
 
-bool TdAccountData::getFileIdForUpload(PurpleXfer *xfer, int &fileId)
+bool TdAccountData::getFileIdForTransfer(PurpleXfer *xfer, int &fileId)
 {
-    auto it = std::find_if(m_uploads.begin(), m_uploads.end(),
-                           [xfer](const UploadInfo &upload) { return (upload.xfer == xfer); });
-    if (it != m_uploads.end()) {
+    auto it = std::find_if(m_fileTransfers.begin(), m_fileTransfers.end(),
+                           [xfer](const FileTransferInfo &upload) { return (upload.xfer == xfer); });
+    if (it != m_fileTransfers.end()) {
         fileId = it->fileId;
         return true;
     } else
         return false;
 }
 
-void TdAccountData::removeUpload(int32_t fileId)
+void TdAccountData::removeFileTransfer(int32_t fileId)
 {
-    auto it = std::find_if(m_uploads.begin(), m_uploads.end(),
-                           [fileId](const UploadInfo &upload) { return (upload.fileId == fileId); });
-    if (it != m_uploads.end())
-        m_uploads.erase(it);
+    auto it = std::find_if(m_fileTransfers.begin(), m_fileTransfers.end(),
+                           [fileId](const FileTransferInfo &upload) { return (upload.fileId == fileId); });
+    if (it != m_fileTransfers.end())
+        m_fileTransfers.erase(it);
 }
 
 void TdAccountData::addSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat)

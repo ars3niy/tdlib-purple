@@ -129,6 +129,7 @@ private:
                                const std::string &fileDesc, const td::td_api::chat &chat,
                                TgMessageInfo &message, FileDownloadCb callback);
     static void startDownload(void *user_data);
+    void       startDownloadProgress(uint64_t requestId);
     void       downloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       showDownloadedImage(int64_t chatId, TgMessageInfo &message,
                                    const std::string &filePath, const char *caption,

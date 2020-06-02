@@ -24,20 +24,22 @@ using FileDownloadCb = void (PurpleTdClient::*)(int64_t chatId, TgMessageInfo &m
                                                 const std::string &fileDescription,
                                                 td::td_api::object_ptr<td::td_api::file> thumbnail);
 
-// Matching completed downloads to chats they belong to
+// Used for matching completed downloads to chats they belong to, and for starting PurpleXfer for
+// time-consuming downloads
 class DownloadRequest: public PendingRequest {
 public:
     int64_t        chatId;
     TgMessageInfo  message;
+    int32_t        fileId;
     std::string    fileDescription;
     td::td_api::object_ptr<td::td_api::file> thumbnail;
     FileDownloadCb callback;
 
     // Could not pass object_ptr through variadic funciton :(
     DownloadRequest(uint64_t requestId, int64_t chatId, TgMessageInfo &message,
-                    const std::string &fileDescription,
+                    int32_t fileId, const std::string &fileDescription,
                     td::td_api::file *thumbnail, FileDownloadCb callback)
-    : PendingRequest(requestId), chatId(chatId), message(std::move(message)),
+    : PendingRequest(requestId), chatId(chatId), message(std::move(message)), fileId(fileId),
       fileDescription(fileDescription), thumbnail(thumbnail), callback(callback) {}
 };
 
@@ -93,6 +95,10 @@ void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_
                                  TdTransceiver &transceiver, TdAccountData &account);
 void updateDocumentUploadProgress(const td::td_api::file &file, TdTransceiver &transceiver,
                                   TdAccountData &account);
+void startDownloadProgress(int32_t fileId, TdAccountData &account);
+void updateDownloadProgress(const td::td_api::file &file, TdTransceiver &transceiver,
+                            TdAccountData &account);
+void finishDownloadProgress(int32_t fileId, TdAccountData &account);
 
 void requestRecoveryEmailConfirmation(PurpleConnection *gc, const char *emailInfo);
 
