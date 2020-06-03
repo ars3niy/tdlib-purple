@@ -217,17 +217,31 @@ static void compare(const ChatSetTopicEvent &actual, const ChatSetTopicEvent &ex
 
 static void compare(const XferAcceptedEvent &actual, const XferAcceptedEvent &expected)
 {
-    COMPARE(filename);
+    if (!expected.filename.empty()) {
+        COMPARE(filename);
+    }
+
+    if (expected.getFileName)
+        *expected.getFileName = actual.filename;
 }
 
 static void compare(const XferStartEvent &actual, const XferStartEvent &expected)
 {
-    COMPARE(filename);
+    if (!expected.filename.empty()) {
+        COMPARE(filename);
+    }
+
+    if (expected.filenamePtr) {
+        ASSERT_EQ(*expected.filenamePtr, actual.filename);
+    }
 }
 
 static void compare(const XferProgressEvent &actual, const XferProgressEvent &expected)
 {
-    COMPARE(filename);
+    if (!expected.filename.empty()) {
+        COMPARE(filename);
+    }
+
     COMPARE(bytesSent);
 }
 
@@ -235,6 +249,7 @@ static void compare(const XferCompletedEvent &actual, const XferCompletedEvent &
 {
     COMPARE(filename);
     COMPARE(completed);
+    COMPARE(bytesSent);
 }
 
 static void compare(const XferEndEvent &actual, const XferEndEvent &expected)
@@ -322,6 +337,9 @@ void PurpleEventReceiver::verifyEvent(const PurpleEvent &event)
             for (unsigned i = 0; i < actionEvent.callbacks.size(); i++)
                 actionCallbacks.at(i) = (std::make_pair(actionEvent.buttons.at(i), actionEvent.callbacks.at(i)));
             actionUserData  = actionEvent.user_data;
+        } else if (m_events.front()->type == PurpleEventType::XferAccepted) {
+            const XferAcceptedEvent &xferEvent = static_cast<const XferAcceptedEvent &>(*m_events.front());
+            lastXfer = xferEvent.xfer;
         }
 
         m_events.pop();

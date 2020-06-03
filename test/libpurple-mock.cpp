@@ -731,10 +731,11 @@ void setFakeFileSize(const char *path, size_t size)
 
 void purple_xfer_request_accepted(PurpleXfer *xfer, const char *filename)
 {
-    EVENT(XferAcceptedEvent, filename);
+    EVENT(XferAcceptedEvent, xfer, filename);
     xfer->status = PURPLE_XFER_STATUS_ACCEPTED;
     xfer->local_filename = strdup(filename);
-    xfer->size = fakeFiles.at(filename);
+    if (xfer->type == PURPLE_XFER_SEND)
+        xfer->size = fakeFiles.at(filename);
     if (xfer->ops.init)
         xfer->ops.init(xfer);
 }
@@ -749,6 +750,11 @@ void purple_xfer_set_cancel_send_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *)
     xfer->ops.cancel_send = fnc;
 }
 
+void purple_xfer_set_cancel_recv_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *))
+{
+    xfer->ops.cancel_recv = fnc;
+}
+
 const char *purple_xfer_get_remote_user(const PurpleXfer *xfer)
 {
     return xfer->who;
@@ -757,6 +763,15 @@ const char *purple_xfer_get_remote_user(const PurpleXfer *xfer)
 const char *purple_xfer_get_local_filename(const PurpleXfer *xfer)
 {
     return xfer->local_filename;
+}
+
+void purple_xfer_set_filename(PurpleXfer *xfer, const char *filename)
+{
+}
+
+void purple_xfer_set_size(PurpleXfer *xfer, size_t size)
+{
+    xfer->size = size;
 }
 
 void purple_xfer_start(PurpleXfer *xfer, int fd, const char *ip,
@@ -772,6 +787,8 @@ void purple_xfer_cancel_local(PurpleXfer *xfer)
     xfer->status = PURPLE_XFER_STATUS_CANCEL_LOCAL;
     if ((xfer->type == PURPLE_XFER_SEND) && xfer->ops.cancel_send)
         xfer->ops.cancel_send(xfer);
+    if ((xfer->type == PURPLE_XFER_RECEIVE) && xfer->ops.cancel_recv)
+        xfer->ops.cancel_recv(xfer);
 
     purple_xfer_unref(xfer);
 }
@@ -788,6 +805,8 @@ void purple_xfer_cancel_remote(PurpleXfer *xfer)
     xfer->status = PURPLE_XFER_STATUS_CANCEL_REMOTE;
     if ((xfer->type == PURPLE_XFER_SEND) && xfer->ops.cancel_send)
         xfer->ops.cancel_send(xfer);
+    if ((xfer->type == PURPLE_XFER_RECEIVE) && xfer->ops.cancel_recv)
+        xfer->ops.cancel_recv(xfer);
     purple_xfer_unref(xfer);
 }
 
@@ -808,7 +827,7 @@ void purple_xfer_set_bytes_sent(PurpleXfer *xfer, size_t bytes_sent)
 
 void purple_xfer_set_completed(PurpleXfer *xfer, gboolean completed)
 {
-    EVENT(XferCompletedEvent, xfer->local_filename, completed);
+    EVENT(XferCompletedEvent, xfer->local_filename, completed, xfer->bytes_sent);
 }
 
 void purple_xfer_update_progress(PurpleXfer *xfer)

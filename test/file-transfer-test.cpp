@@ -272,7 +272,7 @@ TEST_F(FileTransferTest, SendFile)
         make_object<remoteFile>("", "", false, false, 10000)
     )));
     prpl.verifyEvents(
-        XferCompletedEvent(PATH, TRUE),
+        XferCompletedEvent(PATH, TRUE, 9000),
         XferEndEvent(PATH)
     );
     tgl.verifyRequest(sendMessage(
@@ -343,7 +343,7 @@ TEST_F(FileTransferTest, DISABLED_WebpStickerDecode)
     ));
 }
 
-TEST_F(FileTransferTest, Photo_DownloadProgress)
+TEST_F(FileTransferTest, Photo_DownloadProgress_StuckAtStart)
 {
     const int32_t date   = 10001;
     const int32_t fileId = 1234;
@@ -386,6 +386,97 @@ TEST_F(FileTransferTest, Photo_DownloadProgress)
 
     tgl.reply(make_object<ok>()); // reply to viewMessages
     tgl.runTimeouts();
+    std::string tempFileName;
+    prpl.verifyEvents(
+        XferAcceptedEvent(&tempFileName)
+    );
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, true, false, 0, 0, 2000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+    prpl.verifyEvents(
+        XferStartEvent(tempFileName),
+        XferProgressEvent(tempFileName, 2000)
+    );
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, true, false, 0, 0, 5000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+    prpl.verifyEvents(
+        XferProgressEvent(tempFileName, 5000)
+    );
+
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    ASSERT_FALSE(g_file_test(tempFileName.c_str(), G_FILE_TEST_EXISTS));
+    prpl.verifyEvents(
+        XferCompletedEvent(tempFileName, TRUE, 10000),
+        XferEndEvent(tempFileName),
+        ServGotImEvent(
+            connection,
+            purpleUserName(0),
+            "<img src=\"file:///path\">",
+            (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
+            date
+        )
+    );
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+}
+
+TEST_F(FileTransferTest, Photo_DownloadProgress)
+{
+    const int32_t date   = 10001;
+    const int32_t fileId = 1234;
+    loginWithOneContact();
+
+    std::vector<object_ptr<photoSize>> sizes;
+    sizes.push_back(make_object<photoSize>(
+        "whatever",
+        make_object<file>(
+            fileId, 10000, 10000,
+            make_object<localFile>("", true, true, false, false, 0, 0, 0),
+            make_object<remoteFile>("beh", "bleh", false, true, 10000)
+        ),
+        640, 480
+    ));
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messagePhoto>(
+            make_object<photo>(false, nullptr, std::move(sizes)),
+            make_object<formattedText>("photo", std::vector<object_ptr<textEntity>>()),
+            false
+        )
+    )));
+    tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
+        make_object<downloadFile>(fileId, 1, 0, 0, true)
+    });
+    prpl.verifyEvents(
+        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(
+            purpleUserName(0), "",
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
+    );
+
+    tgl.reply(make_object<ok>()); // reply to viewMessages
 
     tgl.update(make_object<updateFile>(make_object<file>(
         fileId, 10000, 10000,
@@ -393,29 +484,183 @@ TEST_F(FileTransferTest, Photo_DownloadProgress)
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     )));
 
+    tgl.runTimeouts();
+    std::string tempFileName;
+    prpl.verifyEvents(
+        XferAcceptedEvent(&tempFileName),
+        XferStartEvent(&tempFileName)
+    );
+
     tgl.update(make_object<updateFile>(make_object<file>(
         fileId, 10000, 10000,
         make_object<localFile>("/path", true, true, true, false, 0, 0, 5000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     )));
 
+    prpl.verifyEvents(
+        XferProgressEvent(tempFileName, 5000)
+    );
+
     tgl.reply(make_object<file>(
         fileId, 10000, 10000,
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     ));
-
-    prpl.verifyEvents(ServGotImEvent(
-        connection,
-        purpleUserName(0),
-        "<img src=\"file:///path\">",
-        (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
-        date
-    ));
+    ASSERT_FALSE(g_file_test(tempFileName.c_str(), G_FILE_TEST_EXISTS));
+    prpl.verifyEvents(
+        XferCompletedEvent(tempFileName, TRUE, 10000),
+        XferEndEvent(tempFileName),
+        ServGotImEvent(
+            connection,
+            purpleUserName(0),
+            "<img src=\"file:///path\">",
+            (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
+            date
+        )
+    );
 
     tgl.update(make_object<updateFile>(make_object<file>(
         fileId, 10000, 10000,
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+}
+
+TEST_F(FileTransferTest, Photo_DownloadProgress_StuckAtStart_Cancel)
+{
+    const int32_t date   = 10001;
+    const int32_t fileId = 1234;
+    loginWithOneContact();
+
+    std::vector<object_ptr<photoSize>> sizes;
+    sizes.push_back(make_object<photoSize>(
+        "whatever",
+        make_object<file>(
+            fileId, 10000, 10000,
+            make_object<localFile>("", true, true, false, false, 0, 0, 0),
+            make_object<remoteFile>("beh", "bleh", false, true, 10000)
+        ),
+        640, 480
+    ));
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messagePhoto>(
+            make_object<photo>(false, nullptr, std::move(sizes)),
+            make_object<formattedText>("photo", std::vector<object_ptr<textEntity>>()),
+            false
+        )
+    )));
+    tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
+        make_object<downloadFile>(fileId, 1, 0, 0, true)
+    });
+    prpl.verifyEvents(
+        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(
+            purpleUserName(0), "",
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
+    );
+
+    tgl.reply(make_object<ok>()); // reply to viewMessages
+    tgl.runTimeouts();
+    std::string tempFileName;
+    prpl.verifyEvents(
+        XferAcceptedEvent(&tempFileName)
+    );
+
+    purple_xfer_cancel_local(prpl.getLastXfer());
+    prpl.verifyEvents(XferLocalCancelEvent(tempFileName));
+    tgl.reply(make_object<error>(400, "Download cancelled"));
+    ASSERT_FALSE(g_file_test(tempFileName.c_str(), G_FILE_TEST_EXISTS));
+    tgl.verifyRequest(cancelDownloadFile(fileId, false));
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, false, false, 0, 1000, 1000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+}
+
+TEST_F(FileTransferTest, Photo_DownloadProgress_Cancel)
+{
+    const int32_t date   = 10001;
+    const int32_t fileId = 1234;
+    loginWithOneContact();
+
+    std::vector<object_ptr<photoSize>> sizes;
+    sizes.push_back(make_object<photoSize>(
+        "whatever",
+        make_object<file>(
+            fileId, 10000, 10000,
+            make_object<localFile>("", true, true, false, false, 0, 0, 0),
+            make_object<remoteFile>("beh", "bleh", false, true, 10000)
+        ),
+        640, 480
+    ));
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messagePhoto>(
+            make_object<photo>(false, nullptr, std::move(sizes)),
+            make_object<formattedText>("photo", std::vector<object_ptr<textEntity>>()),
+            false
+        )
+    )));
+    tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
+        make_object<downloadFile>(fileId, 1, 0, 0, true)
+    });
+    prpl.verifyEvents(
+        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(
+            purpleUserName(0), "",
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
+    );
+
+    tgl.reply(make_object<ok>()); // reply to viewMessages
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, true, false, 0, 0, 2000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+
+    tgl.runTimeouts();
+    std::string tempFileName;
+    prpl.verifyEvents(
+        XferAcceptedEvent(&tempFileName),
+        XferStartEvent(&tempFileName)
+    );
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, true, false, 0, 0, 5000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+
+    prpl.verifyEvents(
+        XferProgressEvent(tempFileName, 5000)
+    );
+
+    purple_xfer_cancel_local(prpl.getLastXfer());
+    prpl.verifyEvents(XferLocalCancelEvent(tempFileName));
+    tgl.reply(make_object<error>(400, "Download cancelled"));
+    ASSERT_FALSE(g_file_test(tempFileName.c_str(), G_FILE_TEST_EXISTS));
+    tgl.verifyRequest(cancelDownloadFile(fileId, false));
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, false, false, 0, 6000, 6000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     )));
 }

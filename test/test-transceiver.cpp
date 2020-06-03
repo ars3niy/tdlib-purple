@@ -360,6 +360,12 @@ static void compare(const getSupergroupFullInfo &actual, const getSupergroupFull
     COMPARE(supergroup_id_);
 }
 
+static void compare(const cancelDownloadFile &actual, const cancelDownloadFile &expected)
+{
+    COMPARE(file_id_);
+    COMPARE(only_if_pending_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -403,6 +409,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(uploadFile)
         C(closeSecretChat)
         C(getSupergroupFullInfo)
+        C(cancelDownloadFile)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

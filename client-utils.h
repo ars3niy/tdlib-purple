@@ -5,44 +5,6 @@
 #include "transceiver.h"
 #include <purple.h>
 
-struct TgMessageInfo {
-    enum class Type {
-        Sticker,
-        Other
-    };
-    Type        type;
-    std::string sender;
-    time_t      timestamp;
-    bool        outgoing;
-    int64_t     repliedMessageId;
-    td::td_api::object_ptr<td::td_api::message> repliedMessage;
-    std::string forwardedFrom;
-};
-
-using FileDownloadCb = void (PurpleTdClient::*)(int64_t chatId, TgMessageInfo &message,
-                                                const std::string &filePath, const char *caption,
-                                                const std::string &fileDescription,
-                                                td::td_api::object_ptr<td::td_api::file> thumbnail);
-
-// Used for matching completed downloads to chats they belong to, and for starting PurpleXfer for
-// time-consuming downloads
-class DownloadRequest: public PendingRequest {
-public:
-    int64_t        chatId;
-    TgMessageInfo  message;
-    int32_t        fileId;
-    std::string    fileDescription;
-    td::td_api::object_ptr<td::td_api::file> thumbnail;
-    FileDownloadCb callback;
-
-    // Could not pass object_ptr through variadic funciton :(
-    DownloadRequest(uint64_t requestId, int64_t chatId, TgMessageInfo &message,
-                    int32_t fileId, const std::string &fileDescription,
-                    td::td_api::file *thumbnail, FileDownloadCb callback)
-    : PendingRequest(requestId), chatId(chatId), message(std::move(message)), fileId(fileId),
-      fileDescription(fileDescription), thumbnail(thumbnail), callback(callback) {}
-};
-
 std::string         messageTypeToString(const td::td_api::MessageContent &content);
 std::string         proxyTypeToString(PurpleProxyType proxyType);
 
@@ -93,10 +55,10 @@ void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer
 void uploadResponseError(PurpleXfer *xfer, const std::string &message, TdAccountData &account);
 void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_api::file &file,
                                  TdTransceiver &transceiver, TdAccountData &account);
-void startDownloadProgress(int32_t fileId, TdAccountData &account);
+void startDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver, TdAccountData &account);
 void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &transceiver,
                                 TdAccountData &account);
-void finishDownloadProgress(int32_t fileId, TdAccountData &account);
+void finishDownloadProgress(DownloadRequest &downloadReq, TdAccountData &account);
 
 void requestRecoveryEmailConfirmation(PurpleConnection *gc, const char *emailInfo);
 

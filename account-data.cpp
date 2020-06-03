@@ -550,6 +550,19 @@ const ContactRequest *TdAccountData::findContactRequest(int32_t userId)
     return nullptr;
 }
 
+DownloadRequest* TdAccountData::findDownloadRequest(int32_t fileId)
+{
+    auto it = std::find_if(m_requests.begin(), m_requests.end(),
+                           [fileId](const std::unique_ptr<PendingRequest> &req) {
+                               DownloadRequest *downloadReq = dynamic_cast<DownloadRequest *>(req.get());
+                               return (downloadReq && (downloadReq->fileId == fileId));
+                           });
+
+    if (it != m_requests.end())
+        return static_cast<DownloadRequest *>(it->get());
+    return nullptr;
+}
+
 void TdAccountData::addTempFileUpload(int64_t messageId, const std::string &path)
 {
     m_sentMessages.emplace_back();

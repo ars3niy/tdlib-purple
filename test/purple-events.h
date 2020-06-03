@@ -33,6 +33,7 @@ public:
     void inputEnter(const gchar *value);
     void inputCancel();
     void requestedAction(const char *button);
+    PurpleXfer *getLastXfer() { return lastXfer; }
 private:
     void verifyEvent(const PurpleEvent &event);
     void verifyEvents()
@@ -44,6 +45,7 @@ private:
     void      *inputUserData = NULL;
     GCallback  inputOkCb     = NULL;
     GCallback  inputCancelCb = NULL;
+    PurpleXfer *lastXfer     = NULL;
 
     std::vector<std::pair<std::string, PurpleRequestActionCb>> actionCallbacks;
     void *actionUserData = NULL;
@@ -420,17 +422,28 @@ struct ChatSetTopicEvent: PurpleEvent {
 };
 
 struct XferAcceptedEvent: PurpleEvent {
+    PurpleXfer *xfer = NULL;
     std::string filename;
+    std::string *getFileName = NULL;
+
+    XferAcceptedEvent(PurpleXfer *xfer, const std::string &filename)
+    : PurpleEvent(PurpleEventType::XferAccepted), xfer(xfer), filename(filename) {}
 
     XferAcceptedEvent(const std::string &filename)
     : PurpleEvent(PurpleEventType::XferAccepted), filename(filename) {}
+
+    XferAcceptedEvent(std::string *getFileName)
+    : PurpleEvent(PurpleEventType::XferAccepted), getFileName(getFileName) {}
 };
 
 struct XferStartEvent: PurpleEvent {
     std::string filename;
+    std::string *filenamePtr;
 
     XferStartEvent(const std::string &filename)
-    : PurpleEvent(PurpleEventType::XferStart), filename(filename) {}
+    : PurpleEvent(PurpleEventType::XferStart), filename(filename), filenamePtr(nullptr) {}
+    XferStartEvent(std::string *filenamePtr)
+    : PurpleEvent(PurpleEventType::XferStart), filenamePtr(filenamePtr) {}
 };
 
 struct XferProgressEvent: PurpleEvent {
@@ -444,9 +457,11 @@ struct XferProgressEvent: PurpleEvent {
 struct XferCompletedEvent: PurpleEvent {
     std::string filename;
     bool        completed;
+    size_t      bytesSent;
 
-    XferCompletedEvent(const std::string &filename, gboolean completed)
-    : PurpleEvent(PurpleEventType::XferCompleted), filename(filename), completed(completed != FALSE) {}
+    XferCompletedEvent(const std::string &filename, gboolean completed, size_t bytesSent)
+    : PurpleEvent(PurpleEventType::XferCompleted), filename(filename), completed(completed != FALSE),
+      bytesSent(bytesSent) {}
 };
 
 struct XferEndEvent: PurpleEvent {

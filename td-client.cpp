@@ -890,7 +890,7 @@ void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, TgMessageInfo 
 
     uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq), &PurpleTdClient::downloadResponse);
     std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, chatId,
-                                               message, fileId, fileDescription, thumbnail.release(),
+                                               message, fileId, 0, fileDescription, thumbnail.release(),
                                                callback);
     m_data.addPendingRequest<DownloadRequest>(requestId, std::move(request));
     m_transceiver.setQueryTimer(requestId, &PurpleTdClient::startDownloadProgress, 1);
@@ -926,7 +926,7 @@ void PurpleTdClient::startDownloadProgress(uint64_t requestId)
 {
     DownloadRequest *request = m_data.findPendingRequest<DownloadRequest>(requestId);
     if (request)
-        ::startDownloadProgress(request->fileId, m_data);
+        ::startDownloadProgress(*request, m_transceiver, m_data);
 }
 
 static std::string getDownloadPath(const td::td_api::Object *object)
@@ -952,11 +952,12 @@ void PurpleTdClient::downloadResponse(uint64_t requestId, td::td_api::object_ptr
 {
     std::unique_ptr<DownloadRequest> request = m_data.getPendingRequest<DownloadRequest>(requestId);
     std::string                      path    = getDownloadPath(object.get());
-    if (request && !path.empty()) {
-        finishDownloadProgress(request->fileId, m_data);
+    if (request) {
+        finishDownloadProgress(*request, m_data);
 
-        (this->*(request->callback))(request->chatId, request->message, path, NULL,
-                                     request->fileDescription, std::move(request->thumbnail));
+        if (!path.empty())
+            (this->*(request->callback))(request->chatId, request->message, path, NULL,
+                                        request->fileDescription, std::move(request->thumbnail));
     }
 }
 

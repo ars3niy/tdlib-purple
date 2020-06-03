@@ -84,6 +84,50 @@ public:
     : PendingRequest(requestId), xfer(xfer), chatId(chatId) {}
 };
 
+struct TgMessageInfo {
+    enum class Type {
+        Sticker,
+        Other
+    };
+    Type        type;
+    std::string sender;
+    time_t      timestamp;
+    bool        outgoing;
+    int64_t     repliedMessageId;
+    td::td_api::object_ptr<td::td_api::message> repliedMessage;
+    std::string forwardedFrom;
+};
+
+class PurpleTdClient;
+using FileDownloadCb = void (PurpleTdClient::*)(int64_t chatId, TgMessageInfo &message,
+                                                const std::string &filePath, const char *caption,
+                                                const std::string &fileDescription,
+                                                td::td_api::object_ptr<td::td_api::file> thumbnail);
+
+// Used for matching completed downloads to chats they belong to, and for starting PurpleXfer for
+// time-consuming downloads
+class DownloadRequest: public PendingRequest {
+public:
+    int64_t        chatId;
+    TgMessageInfo  message;
+    int32_t        fileId;
+    int32_t        fileSize;
+    int32_t        downloadedSize;
+    std::string    fileDescription;
+    int            tempFd = -1;
+    std::string    tempFileName;
+    td::td_api::object_ptr<td::td_api::file> thumbnail;
+    FileDownloadCb callback;
+
+    // Could not pass object_ptr through variadic funciton :(
+    DownloadRequest(uint64_t requestId, int64_t chatId, TgMessageInfo &message,
+                    int32_t fileId, int32_t fileSize, const std::string &fileDescription,
+                    td::td_api::file *thumbnail, FileDownloadCb callback)
+    : PendingRequest(requestId), chatId(chatId), message(std::move(message)), fileId(fileId),
+      fileSize(fileSize), downloadedSize(0), fileDescription(fileDescription),
+      thumbnail(thumbnail), callback(callback) {}
+};
+
 class TdAccountData {
 public:
     using TdUserPtr           = td::td_api::object_ptr<td::td_api::user>;
@@ -159,6 +203,7 @@ public:
     const ContactRequest *     findContactRequest(int32_t userId);
     void                       addTempFileUpload(int64_t messageId, const std::string &path);
     std::string                extractTempFileUpload(int64_t messageId);
+    DownloadRequest *          findDownloadRequest(int32_t fileId);
 
     void                       addFileTransfer(int32_t fileId, PurpleXfer *xfer, int64_t chatId);
     void                       addPurpleFileTransfer(int32_t fileId, PurpleXfer *xfer);
