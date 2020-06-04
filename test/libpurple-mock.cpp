@@ -432,6 +432,10 @@ static PurpleConversation *purple_conversation_new_impl(PurpleConversationType t
     conv->account = account;
     conv->name = strdup(name);
     conv->title = NULL;
+    if (conv->type == PURPLE_CONV_TYPE_IM) {
+        conv->u.im = new PurpleConvIm;
+        conv->u.im->conv = conv;
+    }
     if (conv->type == PURPLE_CONV_TYPE_CHAT) {
         conv->u.chat = new PurpleConvChat;
         conv->u.chat->conv = conv;
@@ -470,9 +474,19 @@ void purple_conversation_destroy(PurpleConversation *conv)
 
     free(conv->name);
     free(conv->title);
+    if (conv->type == PURPLE_CONV_TYPE_IM)
+        delete conv->u.im;
     if (conv->type == PURPLE_CONV_TYPE_CHAT)
         delete conv->u.chat;
     delete conv;
+}
+
+PurpleConvIm *purple_conversation_get_im_data(const PurpleConversation *conv)
+{
+    if (conv->type == PURPLE_CONV_TYPE_IM)
+        return conv->u.im;
+
+    return NULL;
 }
 
 PurpleConvChat *purple_conversation_get_chat_data(const PurpleConversation *conv)
@@ -501,9 +515,21 @@ void purple_conversation_write(PurpleConversation *conv, const char *who,
     EVENT(ConversationWriteEvent, conv->name, who ? who : "", message, flags, mtime);
 }
 
+PurpleConversation *purple_conv_im_get_conversation(const PurpleConvIm *im)
+{
+    return im->conv;
+}
+
 PurpleConversation *purple_conv_chat_get_conversation(const PurpleConvChat *chat)
 {
     return chat->conv;
+}
+
+void purple_conv_im_write(PurpleConvIm *im, const char *who,
+						const char *message, PurpleMessageFlags flags,
+						time_t mtime)
+{
+    purple_conversation_write(purple_conv_im_get_conversation(im), who, message, flags, mtime);
 }
 
 void purple_conv_chat_write(PurpleConvChat *chat, const char *who,

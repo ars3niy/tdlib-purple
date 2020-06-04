@@ -378,8 +378,9 @@ static void showMessageTextIm(TdAccountData &account, const char *purpleUserName
             // serv_got_im seems to work for messages sent from another client, but not for
             // echoed messages from this client. Therefore, this (code snippet from facebook plugin).
             conv = getImConversation(account.purpleAccount, purpleUserName);
-            purple_conversation_write(conv, purple_account_get_alias(account.purpleAccount), text,
-                                      flags, timestamp);
+            purple_conv_im_write(purple_conversation_get_im_data(conv),
+                                 purple_account_get_alias(account.purpleAccount),
+                                 text, flags, timestamp);
         } else {
             serv_got_im(purple_account_get_connection(account.purpleAccount), purpleUserName, text,
                         flags, timestamp);
@@ -389,7 +390,8 @@ static void showMessageTextIm(TdAccountData &account, const char *purpleUserName
     if (notification) {
         if (conv == NULL)
             conv = getImConversation(account.purpleAccount, purpleUserName);
-        purple_conversation_write(conv, nullptr, notification, PURPLE_MESSAGE_SYSTEM, timestamp);
+        purple_conv_im_write(purple_conversation_get_im_data(conv), nullptr, notification,
+                             PURPLE_MESSAGE_SYSTEM, timestamp);
     }
 }
 
@@ -416,8 +418,8 @@ static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &
 
     if (notification) {
         if (conv)
-            purple_conversation_write(purple_conv_chat_get_conversation(conv), nullptr,
-                                      notification, PURPLE_MESSAGE_SYSTEM, message.timestamp);
+            purple_conv_chat_write(conv, nullptr, notification,
+                                   PURPLE_MESSAGE_SYSTEM, message.timestamp);
     }
 }
 
