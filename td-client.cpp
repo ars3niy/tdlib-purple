@@ -1270,8 +1270,59 @@ void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> userInf
         const td::td_api::user *user = m_data.getUser(userId);
         const td::td_api::chat *chat = m_data.getPrivateChatByUserId(userId);
 
-        if (user && chat && isChatInContactList(*chat, user))
+        if (user && chat && isChatInContactList(*chat, user)) {
+            downloadProfilePhoto(*user);
             updatePrivateChat(m_data, *chat, *user);
+        }
+    }
+}
+
+static bool shouldDownloadAvatar(const td::td_api::file &file)
+{
+    return (file.local_ && !file.local_->is_downloading_completed_ &&
+            !file.local_->is_downloading_active_ && file.remote_ && file.remote_->is_uploading_completed_ &&
+            file.local_->can_be_downloaded_);
+}
+
+void PurpleTdClient::downloadProfilePhoto(const td::td_api::user &user)
+{
+    if (user.profile_photo_ && user.profile_photo_->small_ &&
+        shouldDownloadAvatar(*user.profile_photo_->small_))
+    {
+        auto downloadReq = td::td_api::make_object<td::td_api::downloadFile>();
+        downloadReq->file_id_ = user.profile_photo_->small_->id_;
+        downloadReq->priority_ = FILE_DOWNLOAD_PRIORITY;
+        downloadReq->synchronous_ = true;
+        uint64_t queryId = m_transceiver.sendQuery(std::move(downloadReq), &PurpleTdClient::avatarDownloadResponse);
+        m_data.addPendingRequest<AvatarDownloadRequest>(queryId, &user);
+    }
+}
+
+void PurpleTdClient::avatarDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<AvatarDownloadRequest> request = m_data.getPendingRequest<AvatarDownloadRequest>(requestId);
+    if (request && object && (object->get_id() == td::td_api::file::ID)) {
+        auto file = td::move_tl_object_as<td::td_api::file>(object);
+        if (file->local_ && file->local_->is_downloading_completed_) {
+            if (request->userId) {
+                m_data.updateSmallProfilePhoto(request->userId, std::move(file));
+                const td::td_api::user *user = m_data.getUser(request->userId);
+                const td::td_api::chat *chat = m_data.getPrivateChatByUserId(request->userId);
+                if (user && chat && isChatInContactList(*chat, user))
+                    updatePrivateChat(m_data, *chat, *user);
+            } else if (request->chatId) {
+                m_data.updateSmallChatPhoto(request->chatId, std::move(file));
+                const td::td_api::chat *chat = m_data.getPrivateChatByUserId(request->userId);
+                if (chat && isChatInContactList(*chat, nullptr)) {
+                    int32_t basicGroupId = getBasicGroupId(*chat);
+                    int32_t supergroupId = getSupergroupId(*chat);
+                    if (basicGroupId)
+                        updateBasicGroupChat(m_data, basicGroupId);
+                    if (supergroupId)
+                        updateSupergroupChat(m_data, supergroupId);
+                }
+            }
+        }
     }
 }
 
@@ -1317,14 +1368,19 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
     purple_debug_misc(config::pluginId, "Update chat: %" G_GINT64_FORMAT " private user=%d basic group=%d supergroup=%d\n",
                       chat->id_, privateChatUser ? privateChatUser->id_ : 0, basicGroupId, supergroupId);
 
+    if (!privateChatUser)
+        downloadChatPhoto(*chat);
+
     // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
     // user find_buddy either
     if (!purple_account_is_connected(m_account))
         return;
 
     if (isChatInContactList(*chat, privateChatUser)) {
-        if (privateChatUser)
+        if (privateChatUser) {
+            downloadProfilePhoto(*privateChatUser);
             updatePrivateChat(m_data, *chat, *privateChatUser);
+        }
 
         // purple_blist_find_chat doesn't work if account is not connected
         if (basicGroupId) {
@@ -1337,6 +1393,18 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
         }
     } else {
         removeGroupChat(m_account, *chat);
+    }
+}
+
+void PurpleTdClient::downloadChatPhoto(const td::td_api::chat &chat)
+{
+    if (chat.photo_ && chat.photo_->small_ && shouldDownloadAvatar(*chat.photo_->small_)) {
+        auto downloadReq = td::td_api::make_object<td::td_api::downloadFile>();
+        downloadReq->file_id_ = chat.photo_->small_->id_;
+        downloadReq->priority_ = FILE_DOWNLOAD_PRIORITY;
+        downloadReq->synchronous_ = true;
+        uint64_t queryId = m_transceiver.sendQuery(std::move(downloadReq), &PurpleTdClient::avatarDownloadResponse);
+        m_data.addPendingRequest<AvatarDownloadRequest>(queryId, &chat);
     }
 }
 

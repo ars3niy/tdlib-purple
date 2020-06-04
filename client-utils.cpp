@@ -240,6 +240,40 @@ void updatePrivateChat(TdAccountData &account, const td::td_api::chat &chat, con
             purple_blist_add_buddy(buddy, NULL, group, NULL);*/
             purple_blist_alias_buddy(buddy, chat.title_.c_str());
         }
+
+        const char *oldPhotoIdStr = purple_blist_node_get_string(PURPLE_BLIST_NODE(buddy), BuddyOptions::ProfilePhotoId);
+        int64_t     oldPhotoId    = 0;
+        if (oldPhotoIdStr)
+            sscanf(oldPhotoIdStr, "%" G_GINT64_FORMAT, &oldPhotoId);
+        if (user.profile_photo_ && user.profile_photo_->small_)
+        {
+            const td::td_api::file &photo = *user.profile_photo_->small_;
+            if (photo.local_ && photo.local_->is_downloading_completed_ &&
+                (user.profile_photo_->id_ != oldPhotoId))
+            {
+                gchar  *img = NULL;
+                size_t  len;
+                GError *err = NULL;
+                g_file_get_contents(photo.local_->path_.c_str(), &img, &len, &err);
+                if (err) {
+                    purple_debug_warning(config::pluginId, "Failed to load profile photo %s for %s: %s\n",
+                                         photo.local_->path_.c_str(), purpleUserName.c_str(),  err->message);
+                    g_error_free(err);
+                } else {
+                    std::string newPhotoIdStr = std::to_string(user.profile_photo_->id_);
+                    purple_blist_node_set_string(PURPLE_BLIST_NODE(buddy), BuddyOptions::ProfilePhotoId,
+                                                 newPhotoIdStr.c_str());
+                    purple_debug_info(config::pluginId, "Loaded new profile photo for %s (id %s)\n",
+                                      purpleUserName.c_str(), newPhotoIdStr.c_str());
+                    purple_buddy_icons_set_for_user(account.purpleAccount, purpleUserName.c_str(),
+                                                    img, len, NULL);
+                }
+            }
+        } else if (oldPhotoId) {
+            purple_debug_info(config::pluginId, "Removing profile photo from %s\n", purpleUserName.c_str());
+            purple_blist_node_remove_setting(PURPLE_BLIST_NODE(buddy), BuddyOptions::ProfilePhotoId);
+            purple_buddy_icons_set_for_user(account.purpleAccount, purpleUserName.c_str(), NULL, 0, NULL);
+        }
     }
 }
 
@@ -266,6 +300,36 @@ static void updateGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat
             purple_debug_misc(config::pluginId, "Renaming chat '%s' to '%s'\n", oldName, chat.title_.c_str());
             purple_blist_alias_chat(purpleChat, chat.title_.c_str());
         }
+    }
+
+    const char *oldPhotoId = purple_blist_node_get_string(PURPLE_BLIST_NODE(purpleChat), BuddyOptions::ProfilePhotoId);
+    if (chat.photo_ && chat.photo_->small_)
+    {
+        const td::td_api::file &photo = *chat.photo_->small_;
+        if (photo.local_ && photo.local_->is_downloading_completed_ && photo.remote_ &&
+            !photo.remote_->unique_id_.empty() && (!oldPhotoId || (photo.remote_->unique_id_ != oldPhotoId)))
+        {
+            gchar  *img = NULL;
+            size_t  len;
+            GError *err = NULL;
+            g_file_get_contents(photo.local_->path_.c_str(), &img, &len, &err);
+            if (err) {
+                purple_debug_warning(config::pluginId, "Failed to load chat photo %s for %s: %s\n",
+                                        photo.local_->path_.c_str(), chat.title_.c_str(),  err->message);
+                g_error_free(err);
+            } else {
+                purple_blist_node_set_string(PURPLE_BLIST_NODE(purpleChat), BuddyOptions::ProfilePhotoId,
+                                             photo.remote_->unique_id_.c_str());
+                purple_debug_info(config::pluginId, "Loaded new chat photo for %s (id %s)\n",
+                                  chat.title_.c_str(), photo.remote_->unique_id_.c_str());
+                purple_buddy_icons_node_set_custom_icon(PURPLE_BLIST_NODE(purpleChat),
+                                                        reinterpret_cast<guchar *>(img), len);
+            }
+        }
+    } else if (oldPhotoId) {
+        purple_debug_info(config::pluginId, "Removing chat photo from %s\n", chat.title_.c_str());
+        purple_blist_node_remove_setting(PURPLE_BLIST_NODE(purpleChat), BuddyOptions::ProfilePhotoId);
+        purple_buddy_icons_node_set_custom_icon(PURPLE_BLIST_NODE(purpleChat), NULL, 0);
     }
 }
 

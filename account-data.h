@@ -128,6 +128,17 @@ public:
       thumbnail(thumbnail), callback(callback) {}
 };
 
+class AvatarDownloadRequest: public PendingRequest {
+public:
+    int32_t userId;
+    int64_t chatId;
+
+    AvatarDownloadRequest(uint64_t requestId, const td::td_api::user *user)
+    : PendingRequest(requestId), userId(user->id_), chatId(0) {}
+    AvatarDownloadRequest(uint64_t requestId, const td::td_api::chat *chat)
+    : PendingRequest(requestId), userId(0), chatId(chat->id_) {}
+};
+
 class TdAccountData {
 public:
     using TdUserPtr           = td::td_api::object_ptr<td::td_api::user>;
@@ -142,6 +153,7 @@ public:
 
     void updateUser(TdUserPtr user);
     void setUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
+    void updateSmallProfilePhoto(int32_t userId, td::td_api::object_ptr<td::td_api::file> photo);
     void updateBasicGroup(TdGroupPtr group);
     void setBasicGroupInfoRequested(int32_t groupId);
     bool isBasicGroupInfoRequested(int32_t groupId);
@@ -154,6 +166,7 @@ public:
     void addChat(TdChatPtr chat); // Updates existing chat if any
     void updateChatChatList(int64_t chatId, td::td_api::object_ptr<td::td_api::ChatList> list);
     void updateChatTitle(int64_t chatId, const std::string &title);
+    void updateSmallChatPhoto(int64_t chatId, td::td_api::object_ptr<td::td_api::file> photo);
     void setContacts(const std::vector<std::int32_t> &userIds);
     void getContactsWithNoChat(std::vector<std::int32_t> &userIds);
     void getChats(std::vector<const td::td_api::chat *> &chats) const;

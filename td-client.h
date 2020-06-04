@@ -94,9 +94,12 @@ private:
 
     void       updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void       updateUser(td::td_api::object_ptr<td::td_api::user> user);
+    void       downloadProfilePhoto(const td::td_api::user &user);
+    void       avatarDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       updateGroup(td::td_api::object_ptr<td::td_api::basicGroup> group);
     void       updateSupergroup(td::td_api::object_ptr<td::td_api::supergroup> group);
     void       updateChat(const td::td_api::chat *chat);
+    void       downloadChatPhoto(const td::td_api::chat &chat);
     void       requestBasicGroupFullInfo(int32_t groupId);
     void       requestSupergroupFullInfo(int32_t groupId);
     void       groupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);

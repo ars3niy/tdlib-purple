@@ -436,6 +436,7 @@ std::string PurpleEvent::toString() const
     C(XferEnd)
     C(XferLocalCancel)
     C(XferRemoteCancel)
+    C(SetUserPhoto)
     }
     return std::to_string((unsigned)type);
 #undef C

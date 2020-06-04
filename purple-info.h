@@ -34,6 +34,10 @@ namespace AccountOptions {
     constexpr const char *AcceptSecretChatsDefault   = AcceptSecretChatsAsk;
 };
 
+namespace BuddyOptions {
+    constexpr const char *ProfilePhotoId = "tdlib-profile-photo-id";
+};
+
 unsigned getAutoDownloadLimitKb(PurpleAccount *account);
 bool     isSizeWithinLimit(unsigned size, unsigned limit);
 bool     ignoreBigDownloads(PurpleAccount *account);

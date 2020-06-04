@@ -236,6 +236,7 @@ void purple_blist_remove_chat(PurpleChat *chat)
     free(chat->alias);
     g_hash_table_destroy(chat->components);
     removeNode(chat->node);
+    g_hash_table_destroy(chat->node.settings);
     delete chat;
 }
 
@@ -271,6 +272,7 @@ static void newNode(PurpleBlistNode &node, PurpleBlistNodeType type)
     node.parent = NULL;
     node.prev = NULL;
     node.type = type;
+    node.settings = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_free);
 }
 
 PurpleBuddy *purple_buddy_new(PurpleAccount *account, const char *name, const char *alias)
@@ -290,7 +292,25 @@ void purple_buddy_destroy(PurpleBuddy *buddy)
 {
     free(buddy->name);
     free(buddy->alias);
+    g_hash_table_destroy(buddy->node.settings);
     delete buddy;
+}
+
+void
+purple_buddy_icons_set_for_user(PurpleAccount *account, const char *username,
+                                void *icon_data, size_t icon_len,
+                                const char *checksum)
+{
+    EVENT(SetUserPhotoEvent, account, username, icon_data, icon_len);
+}
+
+PurpleStoredImage *
+purple_buddy_icons_node_set_custom_icon(PurpleBlistNode *node,
+                                        guchar *icon_data, size_t icon_len)
+{
+    EXPECT_TRUE(PURPLE_BLIST_NODE_IS_CHAT(node));
+    EVENT(SetUserPhotoEvent, PURPLE_CHAT(node)->account, getChatName(PURPLE_CHAT(node)), icon_data, icon_len);
+    return NULL;
 }
 
 PurpleChat *purple_chat_new(PurpleAccount *account, const char *alias, GHashTable *components)
@@ -941,6 +961,22 @@ GHashTable *purple_chat_get_components(PurpleChat *chat)
 PurpleBlistNode *purple_blist_node_get_first_child(PurpleBlistNode *node)
 {
     return node->child;
+}
+
+void purple_blist_node_set_string(PurpleBlistNode *node, const char *key,
+		const char *value)
+{
+    g_hash_table_insert(node->settings, (void *)key, g_strdup(value));
+}
+
+const char *purple_blist_node_get_string(PurpleBlistNode *node, const char *key)
+{
+    return static_cast<const char *>(g_hash_table_lookup(node->settings, key));
+}
+
+void purple_blist_node_remove_setting(PurpleBlistNode *node, const char *key)
+{
+    g_hash_table_remove(node->settings, key);
 }
 
 static char groupName[] = "Group";

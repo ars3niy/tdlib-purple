@@ -191,6 +191,16 @@ void TdAccountData::setUserStatus(int32_t userId, td::td_api::object_ptr<td::td_
         it->second.user->status_ = std::move(status);
 }
 
+void TdAccountData::updateSmallProfilePhoto(int32_t userId, td::td_api::object_ptr<td::td_api::file> photo)
+{
+    auto it = m_userInfo.find(userId);
+    if (it != m_userInfo.end()) {
+        td::td_api::user &user = *it->second.user;
+        if (user.profile_photo_)
+            user.profile_photo_->small_ = std::move(photo);
+    }
+}
+
 void TdAccountData::updateBasicGroup(TdGroupPtr group)
 {
     if (group)
@@ -290,6 +300,16 @@ void TdAccountData::updateChatTitle(int64_t chatId, const std::string &title)
     auto it = m_chatInfo.find(chatId);
     if (it != m_chatInfo.end())
         it->second.chat->title_ = title;
+}
+
+void TdAccountData::updateSmallChatPhoto(int64_t chatId, td::td_api::object_ptr<td::td_api::file> photo)
+{
+    auto it = m_chatInfo.find(chatId);
+    if (it != m_chatInfo.end()) {
+        td::td_api::chat &chat = *it->second.chat;
+        if (chat.photo_)
+            chat.photo_->small_ = std::move(photo);
+    }
 }
 
 void TdAccountData::setContacts(const std::vector<std::int32_t> &userIds)

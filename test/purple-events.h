@@ -91,7 +91,8 @@ enum class PurpleEventType: uint8_t {
     XferCompleted,
     XferEnd,
     XferLocalCancel,
-    XferRemoteCancel
+    XferRemoteCancel,
+    SetUserPhoto
 };
 
 struct PurpleEvent {
@@ -483,6 +484,19 @@ struct XferRemoteCancelEvent: PurpleEvent {
 
     XferRemoteCancelEvent(const std::string &filename)
     : PurpleEvent(PurpleEventType::XferRemoteCancel), filename(filename) {}
+};
+
+struct SetUserPhotoEvent: PurpleEvent {
+    PurpleAccount *account;
+    std::string    username;
+    std::vector<uint8_t> data;
+
+    SetUserPhotoEvent(PurpleAccount *account, const std::string &username, const void *data, size_t datalen)
+    : PurpleEvent(PurpleEventType::SetUserPhoto), username(username)
+    {
+        this->data.resize(datalen);
+        memmove(this->data.data(), data, datalen);
+    }
 };
 
 #endif
