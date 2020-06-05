@@ -18,14 +18,14 @@ if (NOT NoPkgConfig)
     pkg_get_variable(PURPLE_DATA_DIR purple datarootdir)
 endif (NOT NoPkgConfig)
 
-if (NoWebp)
+if (NOT NoWebp)
     if ("${libwebp_LIBRARIES}" STREQUAL "")
         message(FATAL_ERROR "Webp library not found, build with -DNoWebp=TRUE to disable webp sticker decoding")
     endif ("${libwebp_LIBRARIES}" STREQUAL "")
     if ("${libpng_LIBRARIES}" STREQUAL "")
         message(FATAL_ERROR "libpng not found, build with -DNoWebp=TRUE to disable webp sticker decoding")
     endif ("${libwebp_LIBRARIES}" STREQUAL "")
-endif (NoWebp)
+endif (NOT NoWebp)
 
 configure_file(buildopt.h.in buildopt.h)
 
