@@ -312,6 +312,13 @@ void TdAccountData::updateSmallChatPhoto(int64_t chatId, td::td_api::object_ptr<
     }
 }
 
+void TdAccountData::updateChatOrder(int64_t chatId, int64_t order)
+{
+    auto it = m_chatInfo.find(chatId);
+    if (it != m_chatInfo.end())
+        it->second.chat->order_ = order;
+}
+
 void TdAccountData::setContacts(const std::vector<std::int32_t> &userIds)
 {
     for (int32_t userId: userIds)
@@ -526,6 +533,24 @@ void TdAccountData::getChats(std::vector<const td::td_api::chat *> &chats) const
 void TdAccountData::deleteChat(int64_t id)
 {
     m_chatInfo.erase(id);
+}
+
+void TdAccountData::getSmallestOrderChat(const td::td_api::ChatList &list, int64_t &chatId, int64_t &order)
+{
+    int64_t minOrder = INT64_MAX;
+    int64_t id       = 0;
+    for (const ChatMap::value_type &entry: m_chatInfo) {
+        int64_t order = entry.second.chat->order_;
+        if (entry.second.chat->chat_list_ && (entry.second.chat->chat_list_->get_id() == list.get_id()) &&
+            (order < minOrder))
+        {
+            minOrder = order;
+            id = entry.first;
+        }
+    }
+
+    chatId = id;
+    order  = minOrder;
 }
 
 std::unique_ptr<PendingRequest> TdAccountData::getPendingRequestImpl(uint64_t requestId)

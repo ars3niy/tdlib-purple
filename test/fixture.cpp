@@ -100,8 +100,13 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     tgl.reply(std::move(getContactsReply));
 
     tgl.verifyRequest(getChats());
-
+    bool hasChats = !getChatsReply->chat_ids_.empty();
     tgl.reply(std::move(getChatsReply));
+    if (hasChats) {
+        tgl.verifyRequest(getChats());
+        tgl.reply(make_object<chats>());
+    }
+
     if ((postLoginEvents.size() == 1) && (*postLoginEvents.begin() == nullptr))
         prpl.verifyEvents(
             ConnectionSetStateEvent(connection, PURPLE_CONNECTED),
@@ -141,14 +146,16 @@ object_ptr<updateUser> CommTest::standardUpdateUser(unsigned index)
     ));
 }
 
-object_ptr<updateNewChat> CommTest::standardPrivateChat(unsigned index)
+object_ptr<updateNewChat> CommTest::standardPrivateChat(unsigned index, object_ptr<ChatList> chatList)
 {
-    return make_object<updateNewChat>(makeChat(
+    object_ptr<chat> chat = makeChat(
         chatIds[0],
         make_object<chatTypePrivate>(userIds[0]),
         userFirstNames[0] + " " + userLastNames[0],
         nullptr, 0, 0, 0
-    ));
+    );
+    chat->chat_list_ = std::move(chatList);
+    return make_object<updateNewChat>(std::move(chat));
 }
 
 PurplePluginProtocolInfo &CommTest::pluginInfo()

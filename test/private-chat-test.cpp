@@ -893,6 +893,7 @@ TEST_F(PrivateChatTest, DeleteContact)
     loginWithOneContact();
 
     PurpleBuddy *buddy = purple_find_buddy(account, purpleUserName(0).c_str());
+    ASSERT_NE(nullptr, buddy);
     PurpleBuddy *dup   = purple_buddy_new(account, buddy->name, buddy->alias);
     purple_blist_remove_buddy(buddy);
     prpl.discardEvents();

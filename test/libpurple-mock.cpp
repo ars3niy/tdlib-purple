@@ -204,6 +204,7 @@ void purple_blist_remove_buddy(PurpleBuddy *buddy)
 
 void purple_blist_alias_buddy(PurpleBuddy *buddy, const char *alias)
 {
+    ASSERT_NE(nullptr, buddy);
     free(buddy->alias);
     buddy->alias = strdup(alias);
     EVENT(AliasBuddyEvent, buddy->name, alias);

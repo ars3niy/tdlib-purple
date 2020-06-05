@@ -165,6 +165,7 @@ private:
     bool                  m_connectionReady = false;
     std::vector<int32_t>  m_usersForNewPrivateChats;
     bool                  m_isProxyAdded = false;
+    int64_t               m_lastChatOrderOffset = 0;
     td::td_api::object_ptr<td::td_api::proxy>   m_addedProxy;
     td::td_api::object_ptr<td::td_api::proxies> m_proxies;
 };

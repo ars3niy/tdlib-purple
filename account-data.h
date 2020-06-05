@@ -168,10 +168,12 @@ public:
     void updateChatChatList(int64_t chatId, td::td_api::object_ptr<td::td_api::ChatList> list);
     void updateChatTitle(int64_t chatId, const std::string &title);
     void updateSmallChatPhoto(int64_t chatId, td::td_api::object_ptr<td::td_api::file> photo);
+    void updateChatOrder(int64_t chatId, int64_t order);
     void setContacts(const std::vector<std::int32_t> &userIds);
     void getContactsWithNoChat(std::vector<std::int32_t> &userIds);
     void getChats(std::vector<const td::td_api::chat *> &chats) const;
     void deleteChat(int64_t id);
+    void getSmallestOrderChat(const td::td_api::ChatList &list, int64_t &chatId, int64_t &order);
 
     const td::td_api::chat       *getChat(int64_t chatId) const;
     int                           getPurpleChatId(int64_t tdChatId);

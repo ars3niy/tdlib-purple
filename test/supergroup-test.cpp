@@ -157,6 +157,7 @@ TEST_F(SupergroupTest, DeleteSupergroup_Fail)
 {
     loginWithSupergroup();
     PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    ASSERT_NE(nullptr, chat);
     GList *actions = pluginInfo().blist_node_menu(&chat->node);
 
     nodeMenuAction(&chat->node, actions, "Delete group");
@@ -182,6 +183,7 @@ TEST_F(SupergroupTest, LeaveSupergroup)
 
     loginWithSupergroup();
     PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    ASSERT_NE(nullptr, chat);
     GList *actions = pluginInfo().blist_node_menu(&chat->node);
 
     nodeMenuAction(&chat->node, actions, "Leave group");

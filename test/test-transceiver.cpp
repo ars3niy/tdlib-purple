@@ -70,6 +70,19 @@ static void compare(const setAuthenticationPhoneNumber &actual, const setAuthent
     COMPARE(settings_ != nullptr);
 }
 
+static void compare(const getChats &actual, const getChats &expected)
+{
+    if (expected.limit_ || expected.offset_order_) {
+        COMPARE(chat_list_ != nullptr);
+        if (expected.chat_list_) {
+            COMPARE(chat_list_->get_id());
+        }
+        COMPARE(offset_order_);
+        COMPARE(offset_chat_id_);
+        COMPARE(limit_);
+    }
+}
+
 static void compare(const viewMessages &actual, const viewMessages &expected)
 {
     COMPARE(chat_id_);
@@ -381,7 +394,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(checkDatabaseEncryptionKey)
         C(setAuthenticationPhoneNumber)
         case getContacts::ID: break;
-        case getChats::ID: break;
+        C(getChats)
         C(viewMessages)
         C(downloadFile)
         case sendMessage::ID:

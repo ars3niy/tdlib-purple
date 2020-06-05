@@ -517,3 +517,97 @@ TEST_F(LoginTest, RemovedProxyCofiguration)
 
     tgl.verifyRequest(removeProxy(1));
 }
+
+TEST_F(LoginTest, getChatsSequence)
+{
+    pluginInfo().login(account);
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
+    tgl.verifyRequests({
+        make_object<disableProxy>(),
+        make_object<getProxies>(),
+        make_object<setTdlibParameters>(make_object<tdlibParameters>(
+            false,
+            std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+            "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
+            "",
+            false,
+            false,
+            false,
+            false,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false
+        ))
+    });
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitEncryptionKey>(true)));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(checkDatabaseEncryptionKey(""));
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitPhoneNumber>()));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(setAuthenticationPhoneNumber("+" + selfPhoneNumber, nullptr));
+    tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 3)
+    );
+
+    tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
+    tgl.verifyNoRequests();
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(getContacts());
+    tgl.update(make_object<updateUser>(makeUser(
+        selfId,
+        selfFirstName,
+        selfLastName,
+        selfPhoneNumber, // Phone number here without + to make it more interesting
+        make_object<userStatusOffline>()
+    )));
+    tgl.reply(make_object<users>());
+
+    tgl.verifyRequest(getChats(
+        make_object<chatListMain>(),
+        INT64_MAX, 0,
+        200
+    ));
+
+    object_ptr<updateNewChat> chat1 = standardPrivateChat(0, make_object<chatListMain>());
+    object_ptr<updateNewChat> chat2 = standardPrivateChat(1, make_object<chatListMain>());
+    object_ptr<updateNewChat> chat3 = standardPrivateChat(1, make_object<chatListMain>());
+    chat1->chat_->order_ = 10;
+    chat2->chat_->order_ = 20;
+    chat3->chat_->order_ = 30;
+    chat3->chat_->id_ = chatIds[1]+1;
+    tgl.update(std::move(chat1));
+    tgl.update(std::move(chat2));
+    tgl.update(std::move(chat3));
+    tgl.update(make_object<updateChatOrder>(chatIds[1]+1, 15));
+    tgl.update(make_object<updateChatChatList>(chatIds[0], make_object<chatListArchive>()));
+    std::vector<int64_t> chatList1 = {chatIds[0], chatIds[1], chatIds[1]+1};
+    tgl.reply(make_object<chats>(std::move(chatList1)));
+
+    tgl.verifyRequest(getChats(
+        make_object<chatListMain>(),
+        15, chatIds[1]+1,
+        200
+    ));
+    tgl.update(standardPrivateChat(1));
+    tgl.reply(make_object<chats>(std::vector<int64_t>()));
+
+    // updateUser were missing (not realistic though), so no buddies
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTED),
+        AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
+        ShowAccountEvent(account)
+    );
+}

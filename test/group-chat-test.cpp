@@ -668,6 +668,7 @@ TEST_F(GroupChatTest, DeleteBasicGroup_Creator)
         groupId, 2, make_object<chatMemberStatusCreator>("", true), true, 0
     )));
     PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    ASSERT_NE(nullptr, chat);
     GList *actions = pluginInfo().blist_node_menu(&chat->node);
 
     nodeMenuAction(&chat->node, actions, "Delete group");
@@ -691,6 +692,7 @@ TEST_F(GroupChatTest, DeleteBasicGroup_NonCreator)
 {
     loginWithBasicGroup();
     PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    ASSERT_NE(nullptr, chat);
     GList *actions = pluginInfo().blist_node_menu(&chat->node);
 
     nodeMenuAction(&chat->node, actions, "Delete group");
@@ -704,6 +706,7 @@ TEST_F(GroupChatTest, LeaveBasicGroup)
 {
     loginWithBasicGroup();
     PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    ASSERT_NE(nullptr, chat);
     GList *actions = pluginInfo().blist_node_menu(&chat->node);
 
     nodeMenuAction(&chat->node, actions, "Leave group");
