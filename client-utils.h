@@ -5,6 +5,8 @@
 #include "transceiver.h"
 #include <purple.h>
 
+const char *errorCodeMessage();
+
 std::string         messageTypeToString(const td::td_api::MessageContent &content);
 std::string         proxyTypeToString(PurpleProxyType proxyType);
 
@@ -42,6 +44,7 @@ void showGenericFile(const td::td_api::chat &chat, const TgMessageInfo &message,
 void showWebpSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
                      const std::string &filePath, const std::string &fileDescription,
                      TdAccountData &account);
+void notifySendFailed(const td::td_api::updateMessageSendFailed &sendFailed, TdAccountData &account);
 void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
                     const TdAccountData &account);
 void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::supergroupFullInfo &groupInfo,
@@ -54,10 +57,11 @@ void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer
                          TdTransceiver::ResponseCb response);
 void uploadResponseError(PurpleXfer *xfer, const std::string &message, TdAccountData &account);
 void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_api::file &file,
-                                 TdTransceiver &transceiver, TdAccountData &account);
+                                 TdTransceiver &transceiver, TdAccountData &account,
+                                 TdTransceiver::ResponseCb sendMessageResponse);
 void startDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver, TdAccountData &account);
 void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &transceiver,
-                                TdAccountData &account);
+                                TdAccountData &account, TdTransceiver::ResponseCb sendMessageResponse);
 void finishDownloadProgress(DownloadRequest &downloadReq, TdAccountData &account);
 
 void requestRecoveryEmailConfirmation(PurpleConnection *gc, const char *emailInfo);

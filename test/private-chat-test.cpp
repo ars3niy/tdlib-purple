@@ -767,15 +767,15 @@ TEST_F(PrivateChatTest, SendImage)
             )
         ),
         msgIdOld[2],
-        1, "whatever error"
+        100, "whatever error"
     ));
     ASSERT_FALSE(g_file_test(tgl.getInputPhotoPath(1).c_str(), G_FILE_TEST_EXISTS));
 
-    // TODO maybe implement this
-    //prpl.verifyEvents(
-    //    ConversationWriteEvent(purpleUserName(0), "", "Failed to send message: whatever error",
-    //                           PURPLE_MESSAGE_SYSTEM, messageFailureDate)
-    //);
+    prpl.verifyEvents(
+        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
+        ConversationWriteEvent(purpleUserName(0), "", "Failed to send message: code 100 (whatever error)",
+                               PURPLE_MESSAGE_SYSTEM, messageFailureDate)
+    );
 }
 
 TEST_F(PrivateChatTest, ReplyToOldMessage)
@@ -914,4 +914,31 @@ TEST_F(PrivateChatTest, DeleteContact)
     tgl.update(make_object<updateChatTitle>(chatIds[0], "New Title"));
     tgl.update(make_object<updateChatChatList>(chatIds[0], make_object<chatListArchive>()));
     tgl.update(make_object<updateChatChatList>(chatIds[0], nullptr));
+}
+
+TEST_F(PrivateChatTest, MessageSendResponseError)
+{
+    loginWithOneContact();
+
+    ASSERT_EQ(0, pluginInfo().send_im(connection, purpleUserName(0).c_str(), "message", PURPLE_MESSAGE_SEND));
+    tgl.verifyRequest(sendMessage(
+        chatIds[0],
+        0,
+        nullptr,
+        nullptr,
+        make_object<inputMessageText>(
+            make_object<formattedText>("message", std::vector<object_ptr<textEntity>>()),
+            false, false
+        )
+    ));
+
+    tgl.reply(make_object<error>(100, "error"));
+    prpl.verifyEvents(
+        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
+        ConversationWriteEvent(
+            purpleUserName(0), "",
+            "Failed to send message: code 100 (error)",
+            PURPLE_MESSAGE_SYSTEM, 0
+        )
+    );
 }

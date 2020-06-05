@@ -18,6 +18,11 @@ enum {
 
 static const char *_(const char *s) { return s; }
 
+const char *errorCodeMessage()
+{
+    return _("code {} ({})");
+}
+
 std::string messageTypeToString(const td::td_api::MessageContent &content)
 {
 #define C(type) case td::td_api::type::ID: return #type;
@@ -765,7 +770,7 @@ static void parseMessage(const char *message, std::vector<MessagePart> &parts)
 static bool saveImage(int id, char **fileName)
 {
     *fileName = NULL;
-    char *tempFileName;
+    char *tempFileName = NULL;
 
     PurpleStoredImage *psi = purple_imgstore_find_by_id (id);
     if (!psi) {
@@ -788,6 +793,18 @@ static bool saveImage(int id, char **fileName)
 
     *fileName = tempFileName;
     return true;
+}
+
+static void transmitMessage(td::td_api::object_ptr<td::td_api::sendMessage> sendMessageRequest,
+                            const char *tempFileName, TdTransceiver &transceiver,
+                            TdAccountData &account, TdTransceiver::ResponseCb response)
+{
+    int64_t  chatId    = sendMessageRequest->chat_id_;
+    uint64_t requestId = transceiver.sendQuery(std::move(sendMessageRequest), response);
+    if (tempFileName)
+        account.addPendingRequest<SendMessageRequest>(requestId, chatId, tempFileName);
+    else
+        account.addPendingRequest<SendMessageRequest>(requestId, chatId);
 }
 
 void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
@@ -823,12 +840,9 @@ void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transce
         // when one with is_uploading_active comes, can delete temproray file
         // and if not is_uploading_completed, show error message
         // Or updateMessageContent, or updateMessageSendSucceeded
-
-        uint64_t requestId = transceiver.sendQuery(std::move(sendMessageRequest), response);
-        if (tempFileName) {
-            account.addPendingRequest<SendMessageRequest>(requestId, tempFileName);
+        transmitMessage(std::move(sendMessageRequest), tempFileName, transceiver, account, response);
+        if (tempFileName)
             g_free(tempFileName);
-        }
     }
 }
 
@@ -846,10 +860,12 @@ void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer
 }
 
 static void updateDocumentUploadProgress(const td::td_api::file &file, PurpleXfer *xfer, int64_t chatId,
-                                         TdTransceiver &transceiver, TdAccountData &account);
+                                         TdTransceiver &transceiver, TdAccountData &account,
+                                         TdTransceiver::ResponseCb sendMessageResponse);
 
 void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_api::file &file,
-                                 TdTransceiver &transceiver, TdAccountData &account)
+                                 TdTransceiver &transceiver, TdAccountData &account,
+                                 TdTransceiver::ResponseCb sendMessageResponse)
 {
     if (purple_xfer_is_canceled(xfer)) {
         // Someone managed to cancel the upload REAL fast
@@ -860,7 +876,7 @@ void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_
         purple_debug_misc(config::pluginId, "Got file id %d for uploading %s\n", (int)file.id_,
                             purple_xfer_get_local_filename(xfer));
         account.addFileTransfer(file.id_, xfer, chatId);
-        updateDocumentUploadProgress(file, xfer, chatId, transceiver, account);
+        updateDocumentUploadProgress(file, xfer, chatId, transceiver, account, sendMessageResponse);
     }
 }
 
@@ -873,7 +889,8 @@ void uploadResponseError(PurpleXfer *xfer, const std::string &message, TdAccount
 }
 
 static void updateDocumentUploadProgress(const td::td_api::file &file, PurpleXfer *upload, int64_t chatId,
-                                         TdTransceiver &transceiver, TdAccountData &account)
+                                         TdTransceiver &transceiver, TdAccountData &account,
+                                         TdTransceiver::ResponseCb sendMessageResponse)
 {
     size_t fileSize = purple_xfer_get_size(upload);
 
@@ -899,7 +916,7 @@ static void updateDocumentUploadProgress(const td::td_api::file &file, PurpleXfe
             content->document_ = td::td_api::make_object<td::td_api::inputFileId>(file.id_);
             sendMessageRequest->input_message_content_ = std::move(content);
             sendMessageRequest->chat_id_ = chatId;
-            transceiver.sendQuery(std::move(sendMessageRequest), nullptr);
+            transmitMessage(std::move(sendMessageRequest), NULL, transceiver, account, sendMessageResponse);
         }
     } else {
         purple_xfer_cancel_remote(upload);
@@ -1006,13 +1023,13 @@ static void updateDownloadProgress(const td::td_api::file &file, PurpleXfer *xfe
 }
 
 void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &transceiver,
-                                TdAccountData &account)
+                                TdAccountData &account, TdTransceiver::ResponseCb sendMessageResponse)
 {
     PurpleXfer *xfer = NULL;
     int64_t     chatId;
     if (account.getFileTransfer(file.id_, xfer, chatId)) {
         if (xfer && (purple_xfer_get_type(xfer) == PURPLE_XFER_SEND))
-            updateDocumentUploadProgress(file, xfer, chatId, transceiver, account);
+            updateDocumentUploadProgress(file, xfer, chatId, transceiver, account, sendMessageResponse);
     }
 
     updateDownloadProgress(file, xfer, account);
@@ -1258,6 +1275,23 @@ void showWebpSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
         showMessageText(account, chat, message, text.c_str(), NULL);
     } else
         showGenericFile(chat, message, filePath, fileDescription, account);
+}
+
+void notifySendFailed(const td::td_api::updateMessageSendFailed &sendFailed, TdAccountData &account)
+{
+    if (sendFailed.message_) {
+        const td::td_api::chat *chat = account.getChat(sendFailed.message_->chat_id_);
+        if (chat) {
+            TgMessageInfo messageInfo;
+            messageInfo.type = TgMessageInfo::Type::Other;
+            messageInfo.timestamp = sendFailed.message_->date_;
+            messageInfo.outgoing = true;
+            std::string errorMessage = formatMessage(errorCodeMessage(), {std::to_string(sendFailed.error_code_),
+                                                     sendFailed.error_message_});
+            errorMessage = formatMessage(_("Failed to send message: {}"), errorMessage);
+            showMessageText(account, *chat, messageInfo, NULL, errorMessage.c_str());
+        }
+    }
 }
 
 static void closeSecretChat(int32_t secretChatId, TdTransceiver &transceiver)

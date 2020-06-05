@@ -227,7 +227,7 @@ TEST_F(FileTransferTest, SendFile_ErrorInUploadResponse)
     prpl.verifyEvents(XferRemoteCancelEvent(PATH));
 }
 
-TEST_F(FileTransferTest, SendFile)
+TEST_F(FileTransferTest, SendFile_SendMessageResponseError)
 {
     const char *const PATH   = "/path";
     const int32_t     fileId = 1234;
@@ -292,6 +292,16 @@ TEST_F(FileTransferTest, SendFile)
         make_object<localFile>(PATH, false, false, false, true, 0, 10000, 10000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     )));
+
+    tgl.reply(make_object<error>(100, "error"));
+    prpl.verifyEvents(
+        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
+        ConversationWriteEvent(
+            purpleUserName(0), "",
+            "Failed to send message: code 100 (error)",
+            PURPLE_MESSAGE_SYSTEM, 0
+        )
+    );
 }
 
 TEST_F(FileTransferTest, SendFile_UnknownPrivateChat)

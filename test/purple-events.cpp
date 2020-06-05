@@ -102,7 +102,9 @@ static void compare(const ConversationWriteEvent &actual, const ConversationWrit
     COMPARE(username);
     COMPARE(message);
     COMPARE(flags);
-    COMPARE(mtime);
+    if (expected.mtime) {
+        COMPARE(mtime);
+    }
 }
 
 static void compare(const ConvSetTitleEvent &actual, const ConvSetTitleEvent &expected)

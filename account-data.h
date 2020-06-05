@@ -61,10 +61,11 @@ public:
 
 class SendMessageRequest: public PendingRequest {
 public:
+    int64_t     chatId;
     std::string tempFile;
 
-    SendMessageRequest(uint64_t requestId, const std::string &tempFile)
-    : PendingRequest(requestId), tempFile(tempFile) {}
+    SendMessageRequest(uint64_t requestId, int64_t chatId, const std::string &tempFile = "")
+    : PendingRequest(requestId), chatId(chatId), tempFile(tempFile) {}
 };
 
 class PendingMessage: public PendingRequest {
@@ -93,7 +94,7 @@ struct TgMessageInfo {
     std::string sender;
     time_t      timestamp;
     bool        outgoing;
-    int64_t     repliedMessageId;
+    int64_t     repliedMessageId = 0;
     td::td_api::object_ptr<td::td_api::message> repliedMessage;
     std::string forwardedFrom;
 };

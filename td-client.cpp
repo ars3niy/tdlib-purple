@@ -140,6 +140,7 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         purple_debug_misc(config::pluginId, "Incoming update: message %" G_GINT64_FORMAT " send failed\n",
                           sendFailed.old_message_id_);
         removeTempFile(sendFailed.old_message_id_);
+        notifySendFailed(sendFailed, m_data);
         // TODO notify in chat
         break;
     }
@@ -179,7 +180,8 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         purple_debug_misc(config::pluginId, "Incoming update: file update, id %d\n",
                           fileUpdate.file_ ? fileUpdate.file_->id_ : 0);
         if (fileUpdate.file_)
-            updateFileTransferProgress(*fileUpdate.file_, m_transceiver, m_data);
+            updateFileTransferProgress(*fileUpdate.file_, m_transceiver, m_data,
+                                       &PurpleTdClient::sendMessageResponse);
         break;
     };
 
@@ -300,7 +302,7 @@ static std::string getDisplayedError(const td::td_api::object_ptr<td::td_api::Ob
         return _("No response received");
     else if (object->get_id() == td::td_api::error::ID) {
         const td::td_api::error &error = static_cast<const td::td_api::error &>(*object);
-        return formatMessage("code {} ({})", {std::to_string(error.code_), error.message_});
+        return formatMessage(errorCodeMessage(), {std::to_string(error.code_), error.message_});
     } else
         return _("Unexpected response");
 }
@@ -1221,8 +1223,20 @@ void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_
     if (!request)
         return;
     if (object && (object->get_id() == td::td_api::message::ID)) {
-        const td::td_api::message &message = static_cast<td::td_api::message &>(*object);
-        m_data.addTempFileUpload(message.id_, request->tempFile);
+        if (!request->tempFile.empty()) {
+            const td::td_api::message &message = static_cast<td::td_api::message &>(*object);
+            m_data.addTempFileUpload(message.id_, request->tempFile);
+        }
+    } else {
+        std::string errorMessage = formatMessage(_("Failed to send message: {}"), getDisplayedError(object));
+        const td::td_api::chat *chat = m_data.getChat(request->chatId);
+        if (chat) {
+            TgMessageInfo messageInfo;
+            messageInfo.type = TgMessageInfo::Type::Other;
+            messageInfo.outgoing = true;
+            messageInfo.timestamp = time(NULL);
+            showMessageText(m_data, *chat, messageInfo, NULL, errorMessage.c_str());
+        }
     }
 }
 
@@ -1962,7 +1976,8 @@ void PurpleTdClient::uploadResponse(uint64_t requestId, td::td_api::object_ptr<t
 
     if (request) {
         if (file)
-            startDocumentUploadProgress(request->chatId, request->xfer, *file, m_transceiver, m_data);
+            startDocumentUploadProgress(request->chatId, request->xfer, *file, m_transceiver, m_data,
+                                        &PurpleTdClient::sendMessageResponse);
         else
             uploadResponseError(request->xfer, getDisplayedError(object), m_data);
     }
