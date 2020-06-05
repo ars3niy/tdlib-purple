@@ -1669,7 +1669,6 @@ int PurpleTdClient::sendGroupMessage(int purpleChatId, const char *message)
                              purpleChatId, chat->title_.c_str());
     else {
         transmitMessage(chat->id_, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
-        // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
         return 0;
     }
 
