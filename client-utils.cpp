@@ -664,7 +664,7 @@ static void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGr
             continue;
 
         const td::td_api::user *user = account.getUser(member->user_id_);
-        if (!user)
+        if (!user || (user->type_ && (user->type_->get_id() == td::td_api::userTypeDeleted::ID)))
             continue;
 
         std::string userName    = getPurpleBuddyName(*user);

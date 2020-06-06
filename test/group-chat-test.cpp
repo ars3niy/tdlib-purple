@@ -803,25 +803,29 @@ TEST_F(GroupChatTest, WriteToNonContact)
     // Login and get member list for the basic group
     loginWithBasicGroup();
     tgl.update(standardUpdateUserNoPhone(0));
-    tgl.update(standardUpdateUserNoPhone(1));
+
+    auto deletedUser = makeUser(userIds[1], "", "", "", nullptr);
+    deletedUser->type_ = make_object<userTypeDeleted>();
+    tgl.update(make_object<updateUser>(std::move(deletedUser)));
+
     std::vector<object_ptr<chatMember>> members;
     members.push_back(make_object<chatMember>(
         userIds[0],
-        userIds[1],
-        0,
-        make_object<chatMemberStatusMember>(),
-        nullptr
-    ));
-    members.push_back(make_object<chatMember>(
-        userIds[1],
-        userIds[1],
+        userIds[0],
         0,
         make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
     members.push_back(make_object<chatMember>(
-        selfId,
         userIds[1],
+        userIds[0],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    members.push_back(make_object<chatMember>(
+        selfId,
+        userIds[0],
         0,
         make_object<chatMemberStatusMember>(),
         nullptr
@@ -846,11 +850,6 @@ TEST_F(GroupChatTest, WriteToNonContact)
         ChatAddUserEvent(
             groupChatPurpleName,
             userFirstNames[0] + " " + userLastNames[0],
-            "", PURPLE_CBFLAGS_NONE, false
-        ),
-        ChatAddUserEvent(
-            groupChatPurpleName,
-            userFirstNames[1] + " " + userLastNames[1],
             "", PURPLE_CBFLAGS_FOUNDER, false
         ),
         ChatAddUserEvent(
