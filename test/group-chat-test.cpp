@@ -16,14 +16,7 @@ void GroupChatTest::loginWithBasicGroup()
 {
     login(
         {
-            make_object<updateUser>(makeUser(
-                // Chat member
-                userIds[0],
-                userFirstNames[0],
-                userLastNames[0],
-                "",
-                make_object<userStatusOffline>()
-            )),
+            standardUpdateUserNoPhone(0),
             make_object<updateBasicGroup>(make_object<basicGroup>(
                 groupId, 2, make_object<chatMemberStatusMember>(), true, 0
             )),
@@ -298,7 +291,8 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
 
     loginWithBasicGroup();
 
-    tgl.update(standardUpdateUser(1));
+    tgl.update(standardUpdateUserNoPhone(0));
+    tgl.update(standardUpdateUserNoPhone(1));
     std::vector<object_ptr<chatMember>> members;
     members.push_back(make_object<chatMember>(
         userIds[0],
@@ -798,4 +792,178 @@ TEST_F(GroupChatTest, UsersWithSameName)
         PresentConversationEvent(groupChatPurpleName)
     );
     tgl.verifyNoRequests();
+}
+
+TEST_F(GroupChatTest, WriteToNonContact)
+{
+    constexpr int64_t echoMessageId[2] = {10, 11};
+    constexpr int32_t echoDate[2]      = {123456, 123457};
+    constexpr int     purpleChatId     = 1;
+
+    // Login and get member list for the basic group
+    loginWithBasicGroup();
+    tgl.update(standardUpdateUserNoPhone(0));
+    tgl.update(standardUpdateUserNoPhone(1));
+    std::vector<object_ptr<chatMember>> members;
+    members.push_back(make_object<chatMember>(
+        userIds[0],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    members.push_back(make_object<chatMember>(
+        userIds[1],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusCreator>("", true),
+        nullptr
+    ));
+    members.push_back(make_object<chatMember>(
+        selfId,
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    tgl.reply(make_object<basicGroupFullInfo>(
+        "basic group",
+        userIds[1],
+        std::move(members),
+        ""
+    ));
+
+    // Open chat
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
+        ChatClearUsersEvent(groupChatPurpleName),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            userFirstNames[0] + " " + userLastNames[0],
+            "", PURPLE_CBFLAGS_NONE, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            userFirstNames[1] + " " + userLastNames[1],
+            "", PURPLE_CBFLAGS_FOUNDER, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            // This is us (with + to match account name)
+            "+" + selfPhoneNumber,
+            "", PURPLE_CBFLAGS_NONE, false
+        ),
+        PresentConversationEvent(groupChatPurpleName)
+    );
+    tgl.verifyNoRequests();
+
+    // Send message to chat member
+    ASSERT_EQ(0, pluginInfo().send_im(
+        connection,
+        (userFirstNames[0] + " " + userLastNames[0]).c_str(),
+        "message",
+        PURPLE_MESSAGE_SEND
+    ));
+    tgl.verifyRequest(createPrivateChat(userIds[0], false));
+
+    tgl.update(standardPrivateChat(0));
+    tgl.reply(makeChat(
+        chatIds[0],
+        make_object<chatTypePrivate>(userIds[0]),
+        userFirstNames[0] + " " + userLastNames[0],
+        nullptr, 0, 0, 0
+    ));
+    tgl.verifyRequest(sendMessage(
+        chatIds[0],
+        0,
+        nullptr,
+        nullptr,
+        make_object<inputMessageText>(
+            make_object<formattedText>("message", std::vector<object_ptr<textEntity>>()),
+            false,
+            false
+        )
+    ));
+
+    // Our own message is sent to us
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        echoMessageId[0],
+        selfId,
+        chatIds[0],
+        true,
+        echoDate[0],
+        makeTextMessage("message")
+    )));
+    tgl.verifyRequest(viewMessages(chatIds[0], {echoMessageId[0]}, true));
+    prpl.verifyEvents(
+        NewConversationEvent(
+            PURPLE_CONV_TYPE_IM, account,
+            // No buddy yet – display name is used as user name
+            userFirstNames[0] + " " + userLastNames[0]
+        ),
+        ConversationWriteEvent(
+            // ditto
+            userFirstNames[0] + " " + userLastNames[0],
+            selfFirstName + " " + selfLastName,
+            "message",
+            PURPLE_MESSAGE_SEND, echoDate[0]
+        )
+    );
+
+    tgl.update(make_object<updateChatChatList>(chatIds[0], make_object<chatListMain>()));
+    prpl.verifyEvents(
+        AddBuddyEvent(
+            purpleUserName(0),
+            userFirstNames[0] + " " + userLastNames[0],
+            account, NULL, NULL, NULL
+        )
+    );
+
+    ASSERT_EQ(0, pluginInfo().send_im(
+        connection,
+        (userFirstNames[0] + " " + userLastNames[0]).c_str(),
+        "message2",
+        PURPLE_MESSAGE_SEND
+    ));
+    tgl.verifyRequest(sendMessage(
+        chatIds[0],
+        0,
+        nullptr,
+        nullptr,
+        make_object<inputMessageText>(
+            make_object<formattedText>("message2", std::vector<object_ptr<textEntity>>()),
+            false,
+            false
+        )
+    ));
+    // Our own message is sent to us
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        echoMessageId[1],
+        selfId,
+        chatIds[0],
+        true,
+        echoDate[1],
+        makeTextMessage("message2")
+    )));
+    tgl.verifyRequest(viewMessages(chatIds[0], {echoMessageId[1]}, true));
+    prpl.verifyEvents(
+        NewConversationEvent(
+            PURPLE_CONV_TYPE_IM, account,
+            // Now there is buddy, so use user-id user name
+            purpleUserName(0)
+        ),
+        ConversationWriteEvent(
+            // same here
+            purpleUserName(0),
+            selfFirstName + " " + selfLastName,
+            "message2",
+            PURPLE_MESSAGE_SEND, echoDate[1]
+        )
+    );
 }

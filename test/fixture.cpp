@@ -146,6 +146,17 @@ object_ptr<updateUser> CommTest::standardUpdateUser(unsigned index)
     ));
 }
 
+object_ptr<updateUser> CommTest::standardUpdateUserNoPhone(unsigned index)
+{
+    return make_object<updateUser>(makeUser(
+        userIds[index],
+        userFirstNames[index],
+        userLastNames[index],
+        "",
+        make_object<userStatusOffline>()
+    ));
+}
+
 object_ptr<updateNewChat> CommTest::standardPrivateChat(unsigned index, object_ptr<ChatList> chatList)
 {
     object_ptr<chat> chat = makeChat(

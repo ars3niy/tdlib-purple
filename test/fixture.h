@@ -44,6 +44,7 @@ protected:
     void runTimeouts() { tgl.runTimeouts(); }
 
     object_ptr<updateUser>     standardUpdateUser(unsigned index);
+    object_ptr<updateUser>     standardUpdateUserNoPhone(unsigned index);
     object_ptr<updateNewChat>  standardPrivateChat(unsigned index, object_ptr<ChatList> chatList = nullptr);
     PurplePluginProtocolInfo  &pluginInfo();
 };
