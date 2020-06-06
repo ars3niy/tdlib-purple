@@ -23,7 +23,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     ../transceiver.cpp
     ../account-data.cpp
     ../purple-info.cpp
-    ../config.cpp
+    ${CMAKE_BINARY_DIR}/config.cpp
     ../client-utils.cpp
     ../format.cpp
 )

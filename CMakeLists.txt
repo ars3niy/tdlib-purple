@@ -6,6 +6,8 @@ find_package(Td REQUIRED)
 
 set(NoPkgConfig FALSE CACHE BOOL "Do not use pkg-config")
 set(NoWebp FALSE CACHE BOOL "Do not decode webp stickers")
+set(API_ID 94575 CACHE STRING "API id")
+set(API_HASH a3406de8d171bb422bb6ddf3bbd800e2 CACHE STRING "API hash")
 
 if (NOT NoPkgConfig)
     include(FindPkgConfig)
@@ -24,10 +26,11 @@ if (NOT NoWebp)
     endif ("${libwebp_LIBRARIES}" STREQUAL "")
     if ("${libpng_LIBRARIES}" STREQUAL "")
         message(FATAL_ERROR "libpng not found, build with -DNoWebp=TRUE to disable webp sticker decoding")
-    endif ("${libwebp_LIBRARIES}" STREQUAL "")
+    endif ("${libpng_LIBRARIES}" STREQUAL "")
 endif (NOT NoWebp)
 
 configure_file(buildopt.h.in buildopt.h)
+configure_file(config.cpp.in config.cpp)
 
 add_library(telegram-tdlib SHARED
     tdlib-purple.cpp
@@ -35,13 +38,9 @@ add_library(telegram-tdlib SHARED
     transceiver.cpp
     account-data.cpp
     purple-info.cpp
-    config.cpp
+    ${CMAKE_BINARY_DIR}/config.cpp
     client-utils.cpp
     format.cpp
-)
-
-target_compile_definitions(telegram-tdlib PRIVATE
-    "TD_VERSION=\"${Td_VERSION}\""
 )
 
 include_directories(${Purple_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})

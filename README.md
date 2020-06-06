@@ -48,9 +48,13 @@ Building this plugin:
 ```
 mkdir build
 cd build
-cmake -DTd_DIR=/path/to/tdlib/usr/local/lib/cmake/Td ..
+cmake -DTd_DIR=/path/to/tdlib/usr/local/lib/cmake/Td -DAPI_ID=<api id> -DAPI_HASH=<api hash> ..
 make
 ```
+
+Maybe I will man up and include my API id in the source code in the future.
+If built without `-DAPI_ID` and `-DAPI_HASH`, test API id will be used, which
+is is severely rate limited and may not work.
 
 To install, copy the .so to libpurple plugins directory, or run `make install`.
 
