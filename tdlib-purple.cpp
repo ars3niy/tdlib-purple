@@ -301,11 +301,12 @@ static void tgprpl_request_delete_contact (PurpleConnection *gc, PurpleBuddy *bu
     RequestData *data = new RequestData(purple_connection_get_account(gc));
     data->stringData = purple_buddy_get_name(buddy);
 
-    purple_request_yes_no(gc, _("Remove contact"), _("Remove contact"),
-                          _("Remove from global contact list and delete chat history from the server?\n"),
-                          0, purple_connection_get_account(gc), purple_buddy_get_name(buddy),
-                          NULL, data, request_delete_contact_on_server_yes,
-                          cancelRequest);
+//     purple_request_yes_no(gc, _("Remove contact"), _("Remove contact"),
+//                           _("Remove from global contact list and delete chat history from the server?\n"),
+//                           0, purple_connection_get_account(gc), purple_buddy_get_name(buddy),
+//                           NULL, data, request_delete_contact_on_server_yes,
+//                           cancelRequest);
+    request_delete_contact_on_server_yes(data, 0);
 }
 
 static std::array<const char *, 3> invitePrefixes {
