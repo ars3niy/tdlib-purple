@@ -171,13 +171,7 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
 
     case td::td_api::updateOption::ID: {
         const td::td_api::updateOption &option = static_cast<const td::td_api::updateOption &>(update);
-        if ((option.name_ == "version") && option.value_ &&
-            (option.value_->get_id() == td::td_api::optionValueString::ID))
-        {
-            purple_debug_misc(config::pluginId, "tdlib version: %s\n",
-                              static_cast<const td::td_api::optionValueString &>(*option.value_).value_.c_str());
-        } else
-            purple_debug_misc(config::pluginId, "Option update %s\n", option.name_.c_str());
+        updateOption(option, m_data);
         break;
     }
 
@@ -1241,7 +1235,9 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
 {
     int64_t chatId = getPrivateChatIdByPurpleName(buddyName, m_data, "send message");
     if (chatId != 0) {
-        transmitMessage(chatId, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
+        int ret = transmitMessage(chatId, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
+        if (ret < 0)
+            return ret;
         // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
         return 0;
     }
@@ -1713,7 +1709,9 @@ int PurpleTdClient::sendGroupMessage(int purpleChatId, const char *message)
         purple_debug_misc(config::pluginId, "purple id %d (chat %s) is not a group we a member of\n",
                              purpleChatId, chat->title_.c_str());
     else {
-        transmitMessage(chat->id_, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
+        int ret = transmitMessage(chat->id_, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
+        if (ret < 0)
+            return ret;
         return 0;
     }
 

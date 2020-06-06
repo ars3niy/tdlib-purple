@@ -51,7 +51,7 @@ void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::basicG
 void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::supergroupFullInfo &groupInfo,
                     const TdAccountData &account);
 
-void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
+int  transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
                      TdAccountData &account, TdTransceiver::ResponseCb response);
 void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer *xfer,
                          TdTransceiver &transceiver, TdAccountData &account,
@@ -84,5 +84,6 @@ std::string makeDocumentDescription(const td::td_api::videoNote *document);
 
 void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
                       TdTransceiver &transceiver, TdAccountData &account);
+void updateOption(const td::td_api::updateOption &option, TdAccountData &account);
 
 #endif

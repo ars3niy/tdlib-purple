@@ -15,6 +15,7 @@
 
 enum {
     FILE_UPLOAD_PRIORITY = 1,
+    MAX_MESSAGE_PARTS    = 10,
 };
 
 static const char *_(const char *s) { return s; }
@@ -718,24 +719,72 @@ void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::superg
 
 
 struct MessagePart {
-    bool        isImage;
-    int         imageId;
+    bool        isImage = false;
+    int         imageId = 0;
     std::string text;
 };
 
-static void appendText(std::vector<MessagePart> &parts, const char *s, size_t len)
+static size_t splitTextChunk(MessagePart &part, const char *text, size_t length, TdAccountData &account)
+{
+    enum {MIN_LENGTH_LIMIT = 8};
+    unsigned lengthLimit = part.isImage ? account.options.maxCaptionLength : account.options.maxMessageLength;
+    if (lengthLimit == 0)
+        purple_debug_warning(config::pluginId, "No %s length limit\n", part.isImage ? "caption" : "message");
+    else if (lengthLimit <= MIN_LENGTH_LIMIT)
+        purple_debug_warning(config::pluginId, "%u is a ridiculous %s length limit\n",
+                             lengthLimit, part.isImage ? "caption" : "message");
+    if ((lengthLimit <= MIN_LENGTH_LIMIT) || (length <= lengthLimit)) {
+        part.text = std::string(text, length);
+        return length;
+    }
+
+    // Try to truncate at a line break, with no lower length limit in case of image caption
+    unsigned newlineSplitLowerLimit = part.isImage ? 1 : lengthLimit/2;
+    for (unsigned chunkLength = lengthLimit; chunkLength >= newlineSplitLowerLimit; chunkLength--)
+        if (text[chunkLength-1] == '\n') {
+            part.text = std::string(text, chunkLength-1);
+            return chunkLength;
+        }
+
+    // Try to truncate to a whole number of utf-8 characters
+    size_t      chunkLen;
+    const char *pos = g_utf8_find_prev_char(text, text+lengthLimit);
+    if (pos != NULL) {
+        const char *next = g_utf8_find_next_char(pos, NULL);
+        if (next == text+lengthLimit)
+            chunkLen = lengthLimit;
+        else
+            chunkLen = pos-text;
+    } else
+        chunkLen = lengthLimit;
+    part.text = std::string(text, chunkLen);
+    return chunkLen;
+}
+
+static void appendText(std::vector<MessagePart> &parts, const char *s, size_t len, TdAccountData &account)
 {
     if (len != 0) {
         if (parts.empty())
             parts.emplace_back();
+
         std::string sourceText(s, len);
         char *newText = purple_unescape_html(sourceText.c_str());
-        parts.back().text = newText;
+
+        const char *remaining    = newText;
+        size_t      lenRemaining = strlen(newText);
+        while (lenRemaining) {
+            size_t chunkLength = splitTextChunk(parts.back(), remaining, lenRemaining, account);
+            lenRemaining -= chunkLength;
+            remaining += chunkLength;
+            if (lenRemaining)
+                parts.emplace_back();
+        }
+
         g_free(newText);
     }
 }
 
-static void parseMessage(const char *message, std::vector<MessagePart> &parts)
+static void parseMessage(const char *message, std::vector<MessagePart> &parts, TdAccountData &account)
 {
     parts.clear();
     if (!message)
@@ -758,11 +807,13 @@ static void parseMessage(const char *message, std::vector<MessagePart> &parts)
             {
                 isImage = true;
                 pastImage += 2;
+                if (*pastImage == '\n')
+                    pastImage++;
             }
         }
 
         if (isImage) {
-            appendText(parts, textStart, s-textStart);
+            appendText(parts, textStart, s-textStart, account);
             parts.emplace_back();
             parts.back().isImage = true;
             parts.back().imageId = imageId;
@@ -772,7 +823,7 @@ static void parseMessage(const char *message, std::vector<MessagePart> &parts)
             s++;
     }
 
-    appendText(parts, textStart, s-textStart);
+    appendText(parts, textStart, s-textStart, account);
 }
 
 static bool saveImage(int id, char **fileName)
@@ -815,11 +866,14 @@ static void transmitMessage(td::td_api::object_ptr<td::td_api::sendMessage> send
         account.addPendingRequest<SendMessageRequest>(requestId, chatId);
 }
 
-void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
-                     TdAccountData &account, TdTransceiver::ResponseCb response)
+int transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
+                    TdAccountData &account, TdTransceiver::ResponseCb response)
 {
     std::vector<MessagePart> parts;
-    parseMessage(message, parts);
+    parseMessage(message, parts, account);
+    if (parts.size() > MAX_MESSAGE_PARTS)
+        return -E2BIG;
+
     for (const MessagePart &input: parts) {
         td::td_api::object_ptr<td::td_api::sendMessage> sendMessageRequest = td::td_api::make_object<td::td_api::sendMessage>();
         sendMessageRequest->chat_id_ = chatId;
@@ -852,6 +906,8 @@ void transmitMessage(int64_t chatId, const char *message, TdTransceiver &transce
         if (tempFileName)
             g_free(tempFileName);
     }
+
+    return 0;
 }
 
 void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer *xfer,
@@ -1373,4 +1429,23 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
                 G_CALLBACK(acceptSecretChatCb), G_CALLBACK(discardSecretChatCb));
         }
     }
+}
+
+void updateOption(const td::td_api::updateOption &option, TdAccountData &account)
+{
+    if ((option.name_ == "version") && option.value_ &&
+        (option.value_->get_id() == td::td_api::optionValueString::ID))
+    {
+        purple_debug_misc(config::pluginId, "tdlib version: %s\n",
+                            static_cast<const td::td_api::optionValueString &>(*option.value_).value_.c_str());
+    } else if ((option.name_ == "message_caption_length_max") && option.value_ &&
+        (option.value_->get_id() == td::td_api::optionValueInteger::ID))
+    {
+        account.options.maxCaptionLength = std::max(0, static_cast<const td::td_api::optionValueInteger &>(*option.value_).value_);
+    } else if ((option.name_ == "message_text_length_max") && option.value_ &&
+        (option.value_->get_id() == td::td_api::optionValueInteger::ID))
+    {
+        account.options.maxMessageLength = std::max(0, static_cast<const td::td_api::optionValueInteger &>(*option.value_).value_);
+    } else
+        purple_debug_misc(config::pluginId, "Option update %s\n", option.name_.c_str());
 }

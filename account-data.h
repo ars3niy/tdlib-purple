@@ -149,6 +149,11 @@ public:
     using TdSupergroupPtr     = td::td_api::object_ptr<td::td_api::supergroup>;
     using TdSupergroupInfoPtr = td::td_api::object_ptr<td::td_api::supergroupFullInfo>;
 
+    struct {
+        unsigned maxCaptionLength = 0;
+        unsigned maxMessageLength = 0;
+    } options;
+
     PurpleAccount *const purpleAccount;
     TdAccountData(PurpleAccount *purpleAccount) : purpleAccount(purpleAccount) {}
 
