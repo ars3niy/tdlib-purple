@@ -316,7 +316,6 @@ private:
 
     std::unique_ptr<PendingRequest> getPendingRequestImpl(uint64_t requestId);
     PendingRequest *                findPendingRequestImpl(uint64_t requestId);
-    void                            setDisplayNameWithoutSuffix(UserInfo &entry);
 };
 
 #endif

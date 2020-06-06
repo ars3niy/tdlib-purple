@@ -976,6 +976,11 @@ TEST_F(GroupChatTest, WriteToNonContact)
             userFirstNames[0] + " " + userLastNames[0],
             account, NULL, NULL, NULL
         ),
+        ConversationWriteEvent(
+            userFirstNames[0] + " " + userLastNames[0], "",
+            "Future messages in this conversation will be shown in a different tab",
+            PURPLE_MESSAGE_SYSTEM, 0
+        ),
         ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
         ChatClearUsersEvent(groupChatPurpleName),
         // This group member has become a libpurple buddy, so member username will now be changed

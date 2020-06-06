@@ -228,6 +228,16 @@ void updatePrivateChat(TdAccountData &account, const td::td_api::chat &chat, con
         // chat. This means either we added them to contacts or started messaging them, or they
         // messaged us. Either way, there is no need to for any extra notification about new contact
         // because the user will be aware anyway.
+
+        // Now, in case this buddy resulted from sending a message to group chat member
+        std::string displayName = account.getDisplayName(user);
+        PurpleConversation *oldConv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, displayName.c_str(),
+                                                                            account.purpleAccount);
+        if (oldConv) {
+            purple_conv_im_write(purple_conversation_get_im_data(oldConv), nullptr,
+                                 _("Future messages in this conversation will be shown in a different tab"),
+                                 PURPLE_MESSAGE_SYSTEM, time(NULL));
+        }
     } else {
         const char *oldName = purple_buddy_get_alias_only(buddy);
         if (chat.title_ != oldName) {
