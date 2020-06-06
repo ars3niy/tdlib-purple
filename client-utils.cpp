@@ -122,25 +122,18 @@ void getUsersByPurpleName(const char *username, std::vector<const td::td_api::us
         account.getUsersByDisplayName(username, users);
 }
 
-int64_t getPrivateChatIdByPurpleName(const char *buddyName, TdAccountData &account,
-                                     const char *action)
+const td::td_api::user *getUserByPurpleName(const char *buddyName, TdAccountData &account,
+                                            const char *action)
 {
     int32_t userId = stringToUserId(buddyName);
     if (userId == 0) {
         purple_debug_warning(config::pluginId, "Cannot %s: '%s' is not a valid user id\n", action, buddyName);
-        return 0;
+        return nullptr;
     }
     const td::td_api::user *tdUser = account.getUser(userId);
-    if (tdUser == nullptr) {
+    if (tdUser == nullptr)
         purple_debug_warning(config::pluginId, "Cannot %s: no user with id %s\n", action, buddyName);
-        return 0;
-    }
-    const td::td_api::chat *tdChat = account.getPrivateChatByUserId(tdUser->id_);
-    if (tdChat == nullptr) {
-        purple_debug_warning(config::pluginId, "Cannot %s: no chat with user %s\n", action, buddyName);
-        return 0;
-    }
-    return tdChat->id_;
+    return tdUser;
 }
 
 PurpleConversation *getImConversation(PurpleAccount *account, const char *username)

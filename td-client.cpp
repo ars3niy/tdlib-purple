@@ -1233,9 +1233,13 @@ void PurpleTdClient::findMessageResponse(uint64_t requestId, td::td_api::object_
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
 {
-    int64_t chatId = getPrivateChatIdByPurpleName(buddyName, m_data, "send message");
-    if (chatId != 0) {
-        int ret = transmitMessage(chatId, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
+    const td::td_api::user *user = getUserByPurpleName(buddyName, m_data, "send message");
+    if (!user)
+        return -1;
+
+    const td::td_api::chat *chat = m_data.getPrivateChatByUserId(user->id_);
+    if (chat) {
+        int ret = transmitMessage(chat->id_, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
         if (ret < 0)
             return ret;
         // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
@@ -1269,11 +1273,12 @@ void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_
 
 void PurpleTdClient::sendTyping(const char *buddyName, bool isTyping)
 {
-    int64_t chatId = getPrivateChatIdByPurpleName(buddyName, m_data, "send message");
+    const td::td_api::user *user = getUserByPurpleName(buddyName, m_data, "send typing notification");
+    const td::td_api::chat *chat = user ? m_data.getPrivateChatByUserId(user->id_) : nullptr;
 
-    if (chatId != 0) {
+    if (chat) {
         auto sendAction = td::td_api::make_object<td::td_api::sendChatAction>();
-        sendAction->chat_id_ = chatId;
+        sendAction->chat_id_ = chat->id_;
         if (isTyping)
             sendAction->action_ = td::td_api::make_object<td::td_api::chatActionTyping>();
         else
@@ -1980,16 +1985,19 @@ void PurpleTdClient::verifyRecoveryEmailResponse(uint64_t requestId, td::td_api:
 void PurpleTdClient::sendFileToChat(PurpleXfer *xfer, const char *purpleName, PurpleConversationType type)
 {
     const char *filename = purple_xfer_get_local_filename(xfer);
-    int64_t     chatId   = 0;
-    if (type == PURPLE_CONV_TYPE_IM)
-        chatId = getPrivateChatIdByPurpleName(purpleName, m_data, "send file");
+    const td::td_api::user *privateUser = nullptr;
+    const td::td_api::chat *chat        = nullptr;
+    if (type == PURPLE_CONV_TYPE_IM) {
+        privateUser = getUserByPurpleName(purpleName, m_data, "send file");
+        chat = privateUser ? m_data.getPrivateChatByUserId(privateUser->id_) : nullptr;
+    }
 
-    if (filename && (chatId != 0))
-        startDocumentUpload(chatId, filename, xfer, m_transceiver, m_data, &PurpleTdClient::uploadResponse);
+    if (filename && chat)
+        startDocumentUpload(chat->id_, filename, xfer, m_transceiver, m_data, &PurpleTdClient::uploadResponse);
     else {
         if (!filename)
             purple_debug_warning(config::pluginId, "Failed to send file, no file name\n");
-        else if (chatId == 0)
+        else if (!chat)
             purple_debug_warning(config::pluginId, "Failed to send file %s, chat not found\n", filename);
         purple_xfer_cancel_remote(xfer);
     }

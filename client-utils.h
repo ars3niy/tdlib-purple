@@ -14,8 +14,8 @@ const char *        getPurpleStatusId(const td::td_api::UserStatus &tdStatus);
 std::string         getPurpleBuddyName(const td::td_api::user &user);
 void                getUsersByPurpleName(const char *username, std::vector<const td::td_api::user*> &users,
                                          TdAccountData &account);
-int64_t             getPrivateChatIdByPurpleName(const char *buddyName, TdAccountData &account,
-                                                 const char *action);
+const td::td_api::user *getUserByPurpleName(const char *buddyName, TdAccountData &account,
+                                            const char *action);
 PurpleConversation *getImConversation(PurpleAccount *account, const char *username);
 PurpleConvChat *    getChatConversation(TdAccountData &account, const td::td_api::chat &chat,
                                         int chatPurpleId);
