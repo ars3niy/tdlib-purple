@@ -99,6 +99,7 @@ private:
     void       updateGroup(td::td_api::object_ptr<td::td_api::basicGroup> group);
     void       updateSupergroup(td::td_api::object_ptr<td::td_api::supergroup> group);
     void       updateChat(const td::td_api::chat *chat);
+    void       updateUserInfo(const td::td_api::user &user, const td::td_api::chat *privateChat);
     void       downloadChatPhoto(const td::td_api::chat &chat);
     void       requestBasicGroupFullInfo(int32_t groupId);
     void       requestSupergroupFullInfo(int32_t groupId);

@@ -1330,10 +1330,8 @@ void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> userInf
         const td::td_api::user *user = m_data.getUser(userId);
         const td::td_api::chat *chat = m_data.getPrivateChatByUserId(userId);
 
-        if (user && chat && isChatInContactList(*chat, user)) {
-            downloadProfilePhoto(*user);
-            updatePrivateChat(m_data, *chat, *user);
-        }
+        if (user)
+            updateUserInfo(*user, chat);
     }
 }
 
@@ -1436,12 +1434,10 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
     if (!purple_account_is_connected(m_account))
         return;
 
-    if (isChatInContactList(*chat, privateChatUser)) {
-        if (privateChatUser) {
-            downloadProfilePhoto(*privateChatUser);
-            updatePrivateChat(m_data, *chat, *privateChatUser);
-        }
+    if (privateChatUser)
+        updateUserInfo(*privateChatUser, chat);
 
+    if (isChatInContactList(*chat, privateChatUser)) {
         // purple_blist_find_chat doesn't work if account is not connected
         if (basicGroupId) {
             requestBasicGroupFullInfo(basicGroupId);
@@ -1453,6 +1449,14 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
         }
     } else {
         removeGroupChat(m_account, *chat);
+    }
+}
+
+void PurpleTdClient::updateUserInfo(const td::td_api::user &user, const td::td_api::chat *privateChat)
+{
+    if (privateChat && isChatInContactList(*privateChat, &user)) {
+        downloadProfilePhoto(user);
+        updatePrivateChat(m_data, *privateChat, user);
     }
 }
 
