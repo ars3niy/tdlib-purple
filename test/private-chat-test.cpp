@@ -990,3 +990,166 @@ TEST_F(PrivateChatTest, ReceiveMessage_SpecialCharacters)
     ));
     tgl.verifyRequest(viewMessages(chatIds[0], {messageId}, true));
 }
+
+TEST_F(PrivateChatTest, WriteToNonContact)
+{
+    constexpr int64_t echoMessageId[2] = {10, 11};
+    constexpr int32_t echoDate[2]      = {123456, 123457};
+    login();
+
+    // Normaly users without chats have to be group chat members, but for the test it doesn't matter
+    tgl.update(standardUpdateUser(0));
+
+    ASSERT_EQ(0, pluginInfo().send_im(
+        connection,
+        (userFirstNames[0] + " " + userLastNames[0]).c_str(),
+        "message",
+        PURPLE_MESSAGE_SEND
+    ));
+    tgl.verifyRequest(createPrivateChat(userIds[0], false));
+
+    tgl.update(standardPrivateChat(0));
+    tgl.reply(makeChat(
+        chatIds[0],
+        make_object<chatTypePrivate>(userIds[0]),
+        userFirstNames[0] + " " + userLastNames[0],
+        nullptr, 0, 0, 0
+    ));
+    tgl.verifyRequest(sendMessage(
+        chatIds[0],
+        0,
+        nullptr,
+        nullptr,
+        make_object<inputMessageText>(
+            make_object<formattedText>("message", std::vector<object_ptr<textEntity>>()),
+            false,
+            false
+        )
+    ));
+
+    // Our own message is sent to us
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        echoMessageId[0],
+        selfId,
+        chatIds[0],
+        true,
+        echoDate[0],
+        makeTextMessage("message")
+    )));
+    tgl.verifyRequest(viewMessages(chatIds[0], {echoMessageId[0]}, true));
+    prpl.verifyEvents(
+        NewConversationEvent(
+            PURPLE_CONV_TYPE_IM, account,
+            // No buddy yet – display name is used as user name
+            userFirstNames[0] + " " + userLastNames[0]
+        ),
+        ConversationWriteEvent(
+            // ditto
+            userFirstNames[0] + " " + userLastNames[0],
+            selfFirstName + " " + selfLastName,
+            "message",
+            PURPLE_MESSAGE_SEND, echoDate[0]
+        )
+    );
+
+    tgl.update(make_object<updateChatChatList>(chatIds[0], make_object<chatListMain>()));
+    prpl.verifyEvents(
+        AddBuddyEvent(
+            purpleUserName(0),
+            userFirstNames[0] + " " + userLastNames[0],
+            account, NULL, NULL, NULL
+        )
+    );
+
+    ASSERT_EQ(0, pluginInfo().send_im(
+        connection,
+        (userFirstNames[0] + " " + userLastNames[0]).c_str(),
+        "message2",
+        PURPLE_MESSAGE_SEND
+    ));
+    tgl.verifyRequest(sendMessage(
+        chatIds[0],
+        0,
+        nullptr,
+        nullptr,
+        make_object<inputMessageText>(
+            make_object<formattedText>("message2", std::vector<object_ptr<textEntity>>()),
+            false,
+            false
+        )
+    ));
+    // Our own message is sent to us
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        echoMessageId[1],
+        selfId,
+        chatIds[0],
+        true,
+        echoDate[1],
+        makeTextMessage("message2")
+    )));
+    tgl.verifyRequest(viewMessages(chatIds[0], {echoMessageId[1]}, true));
+    prpl.verifyEvents(
+        NewConversationEvent(
+            PURPLE_CONV_TYPE_IM, account,
+            // Now there is buddy, so use user-id user name
+            purpleUserName(0)
+        ),
+        ConversationWriteEvent(
+            // same here
+            purpleUserName(0),
+            selfFirstName + " " + selfLastName,
+            "message2",
+            PURPLE_MESSAGE_SEND, echoDate[1]
+        )
+    );
+}
+
+TEST_F(PrivateChatTest, WriteToNonContact_CreatePrivateChatFail)
+{
+    login();
+    tgl.update(standardUpdateUser(1));
+
+    ASSERT_EQ(0, pluginInfo().send_im(
+        connection,
+        (userFirstNames[1] + " " + userLastNames[1]).c_str(),
+        "message",
+        PURPLE_MESSAGE_SEND
+    ));
+    tgl.verifyRequest(createPrivateChat(userIds[1], false));
+
+    tgl.reply(make_object<error>(100, "error"));
+    prpl.verifyEvents(
+        NewConversationEvent(
+            PURPLE_CONV_TYPE_IM, account,
+            userFirstNames[1] + " " + userLastNames[1]
+        ),
+        ConversationWriteEvent(
+            userFirstNames[1] + " " + userLastNames[1], "",
+            "Failed to open chat: code 100 (error)",
+            PURPLE_MESSAGE_ERROR, 0
+        )
+    );
+}
+
+TEST_F(PrivateChatTest, WriteToUnknownUser)
+{
+    login();
+    ASSERT_EQ(-1, pluginInfo().send_im(
+        connection,
+        "Antonie van Leeuwenhoek",
+        "message",
+        PURPLE_MESSAGE_SEND
+    ));
+
+    prpl.verifyEvents(
+        NewConversationEvent(
+            PURPLE_CONV_TYPE_IM, account,
+            "Antonie van Leeuwenhoek"
+        ),
+        ConversationWriteEvent(
+            "Antonie van Leeuwenhoek", "",
+            "User not found",
+            PURPLE_MESSAGE_ERROR, 0
+        )
+    );
+}

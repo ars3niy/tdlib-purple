@@ -1233,19 +1233,33 @@ void PurpleTdClient::findMessageResponse(uint64_t requestId, td::td_api::object_
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
 {
-    const td::td_api::user *user = getUserByPurpleName(buddyName, m_data, "send message");
-    if (!user)
+    std::vector<const td::td_api::user *> users = getUsersByPurpleName(buddyName, m_data, "send message");
+    if (users.size() != 1) {
+        // Unlikely error messages not worth translating
+        std::string errorMessage;
+        if (users.empty())
+            errorMessage = "User not found";
+        else
+            errorMessage = formatMessage("More than one user known with name '{}'", std::string(buddyName));
+        showMessageTextIm(m_data, buddyName, NULL, errorMessage.c_str(), time(NULL), PURPLE_MESSAGE_ERROR);
         return -1;
+    }
 
-    const td::td_api::chat *chat = m_data.getPrivateChatByUserId(user->id_);
+    const td::td_api::chat *chat = m_data.getPrivateChatByUserId(users[0]->id_);
     if (chat) {
         int ret = transmitMessage(chat->id_, message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
         if (ret < 0)
             return ret;
         // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
         return 0;
+    } else {
+        purple_debug_misc(config::pluginId, "Requesting private chat for user id %d\n", (int)users[0]->id_);
+        td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
+            td::td_api::make_object<td::td_api::createPrivateChat>(users[0]->id_, false);
+        uint64_t requestId = m_transceiver.sendQuery(std::move(createChat), &PurpleTdClient::sendMessageCreatePrivateChatResponse);
+        m_data.addPendingRequest<NewPrivateChatForMessage>(requestId, buddyName, message);
+        return 0;
     }
-    return -1;
 }
 
 void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -1273,8 +1287,8 @@ void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_
 
 void PurpleTdClient::sendTyping(const char *buddyName, bool isTyping)
 {
-    const td::td_api::user *user = getUserByPurpleName(buddyName, m_data, "send typing notification");
-    const td::td_api::chat *chat = user ? m_data.getPrivateChatByUserId(user->id_) : nullptr;
+    std::vector<const td::td_api::user *> users = getUsersByPurpleName(buddyName, m_data, "send typing notification");
+    const td::td_api::chat *chat = (users.size() == 1) ? m_data.getPrivateChatByUserId(users[0]->id_) : nullptr;
 
     if (chat) {
         auto sendAction = td::td_api::make_object<td::td_api::sendChatAction>();
@@ -1548,7 +1562,7 @@ void PurpleTdClient::addContact(const std::string &purpleName, const std::string
     std::vector<const td::td_api::user *> users;
     m_data.getUsersByDisplayName(purpleName.c_str(), users);
     if (users.size() > 1) {
-        notifyFailedContactDeferred("More than one user known with name '" + purpleName + "'");
+        notifyFailedContactDeferred(formatMessage("More than one user known with name '{}'", purpleName));
         return;
     }
 
@@ -1680,7 +1694,7 @@ void PurpleTdClient::removeContactAndPrivateChat(const std::string &buddyName)
 
 void PurpleTdClient::getUsers(const char *username, std::vector<const td::td_api::user *> &users)
 {
-    getUsersByPurpleName(username, users, m_data);
+    users = getUsersByPurpleName(username, m_data, NULL);
 }
 
 bool PurpleTdClient::joinChat(const char *chatName)
@@ -1987,19 +2001,75 @@ void PurpleTdClient::sendFileToChat(PurpleXfer *xfer, const char *purpleName, Pu
     const char *filename = purple_xfer_get_local_filename(xfer);
     const td::td_api::user *privateUser = nullptr;
     const td::td_api::chat *chat        = nullptr;
+
     if (type == PURPLE_CONV_TYPE_IM) {
-        privateUser = getUserByPurpleName(purpleName, m_data, "send file");
-        chat = privateUser ? m_data.getPrivateChatByUserId(privateUser->id_) : nullptr;
+        std::vector<const td::td_api::user *> users = getUsersByPurpleName(purpleName, m_data, "send message");
+        if (users.size() == 1) {
+            privateUser = users[0];
+            chat = m_data.getPrivateChatByUserId(privateUser->id_);
+        }
     }
 
     if (filename && chat)
         startDocumentUpload(chat->id_, filename, xfer, m_transceiver, m_data, &PurpleTdClient::uploadResponse);
-    else {
+    else if (filename && privateUser) {
+        purple_debug_misc(config::pluginId, "Requesting private chat for user id %d\n", (int)privateUser->id_);
+        td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
+            td::td_api::make_object<td::td_api::createPrivateChat>(privateUser->id_, false);
+        uint64_t requestId = m_transceiver.sendQuery(std::move(createChat), &PurpleTdClient::sendMessageCreatePrivateChatResponse);
+        purple_xfer_ref(xfer);
+        m_data.addPendingRequest<NewPrivateChatForMessage>(requestId, purpleName, xfer);
+    } else {
         if (!filename)
             purple_debug_warning(config::pluginId, "Failed to send file, no file name\n");
         else if (!chat)
             purple_debug_warning(config::pluginId, "Failed to send file %s, chat not found\n", filename);
-        purple_xfer_cancel_remote(xfer);
+        purple_xfer_cancel_local(xfer);
+    }
+}
+
+void PurpleTdClient::sendMessageCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<NewPrivateChatForMessage> request = m_data.getPendingRequest<NewPrivateChatForMessage>(requestId);
+    if (!request) return;
+    auto chat = (object && (object->get_id() == td::td_api::chat::ID)) ?
+                static_cast<const td::td_api::chat *>(object.get()) : nullptr;
+
+    if (request->fileUpload) {
+        if (purple_xfer_is_canceled(request->fileUpload)) {
+            // User cancelled the upload really fast
+        } else if (chat) {
+            const char *filename = purple_xfer_get_local_filename(request->fileUpload);
+            if (filename)
+                startDocumentUpload(chat->id_, filename, request->fileUpload, m_transceiver, m_data,
+                                    &PurpleTdClient::uploadResponse);
+            else
+                purple_xfer_cancel_local(request->fileUpload);
+        } else {
+            std::string message = getDisplayedError(object);
+            purple_xfer_cancel_local(request->fileUpload);
+            purple_xfer_error(purple_xfer_get_type(request->fileUpload), m_account,
+                              request->username.c_str(), message.c_str());
+        }
+
+        purple_xfer_unref(request->fileUpload);
+    } else {
+        std::string errorMessage;
+
+        if (chat) {
+            int ret = transmitMessage(chat->id_, request->message.c_str(), m_transceiver, m_data,
+                                      &PurpleTdClient::sendMessageResponse);
+            // Messages copied from libpurple
+            if (ret == -E2BIG)
+                errorMessage = _("Unable to send message: The message is too large.");
+            else if (ret < 0)
+                errorMessage = _("Unable to send message.");
+        } else
+            errorMessage = formatMessage(_("Failed to open chat: {}"), getDisplayedError(object));
+
+        if (!errorMessage.empty())
+            showMessageTextIm(m_data, request->username.c_str(), NULL, errorMessage.c_str(),
+                              time(NULL), PURPLE_MESSAGE_ERROR);
     }
 }
 

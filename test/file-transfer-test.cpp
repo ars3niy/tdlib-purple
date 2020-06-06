@@ -304,16 +304,16 @@ TEST_F(FileTransferTest, SendFile_SendMessageResponseError)
     );
 }
 
-TEST_F(FileTransferTest, SendFile_UnknownPrivateChat)
+TEST_F(FileTransferTest, SendFile_UnknownUser)
 {
     const char *const PATH = "/path";
-    loginWithOneContact();
+    login();
 
     setFakeFileSize(PATH, 9000);
     pluginInfo().send_file(connection, "Antonie van Leeuwenhoek", PATH);
     prpl.verifyEvents(
         XferAcceptedEvent(PATH),
-        XferRemoteCancelEvent(PATH)
+        XferLocalCancelEvent(PATH)
     );
 }
 
@@ -673,4 +673,143 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_Cancel)
         make_object<localFile>("/path", true, true, false, false, 0, 6000, 6000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     )));
+}
+
+TEST_F(FileTransferTest, SendFileToNonContact)
+{
+    const char *const PATH   = "/path";
+    const int32_t     fileId = 1234;
+    setFakeFileSize(PATH, 10000);
+
+    login();
+
+    // Normaly users without chats have to be group chat members, but for the test it doesn't matter
+    tgl.update(standardUpdateUser(0));
+
+    // Send ﬁle successfully
+    pluginInfo().send_file(
+        connection,
+        (userFirstNames[0] + " " + userLastNames[0]).c_str(),
+        PATH
+    );
+    prpl.verifyEvents(
+        XferAcceptedEvent(PATH)
+    );
+    tgl.verifyRequest(createPrivateChat(userIds[0], false));
+
+    tgl.update(standardPrivateChat(0));
+    tgl.reply(makeChat(
+        chatIds[0],
+        make_object<chatTypePrivate>(userIds[0]),
+        userFirstNames[0] + " " + userLastNames[0],
+        nullptr, 0, 0, 0
+    ));
+    tgl.verifyRequest(uploadFile(
+        make_object<inputFileLocal>(PATH),
+        make_object<fileTypeDocument>(),
+        1
+    ));
+
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(PATH, false, false, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("", "", true, false, 0)
+    ));
+    prpl.verifyEvents(
+        XferStartEvent(PATH),
+        XferProgressEvent(PATH, 0)
+    );
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(PATH, false, false, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("", "", false, false, 10000)
+    )));
+    prpl.verifyEvents(
+        XferCompletedEvent(PATH, TRUE, 10000),
+        XferEndEvent(PATH)
+    );
+    tgl.verifyRequest(sendMessage(
+        chatIds[0],
+        0,
+        nullptr,
+        nullptr,
+        make_object<inputMessageDocument>(
+            make_object<inputFileId>(fileId),
+            nullptr,
+            make_object<formattedText>()
+        )
+    ));
+    ASSERT_EQ(0, pluginInfo().send_im(
+        connection,
+        (userFirstNames[0] + " " + userLastNames[0]).c_str(),
+        "message2",
+        PURPLE_MESSAGE_SEND
+    ));
+    tgl.verifyRequest(sendMessage(
+        chatIds[0],
+        0,
+        nullptr,
+        nullptr,
+        make_object<inputMessageText>(
+            make_object<formattedText>("message2", std::vector<object_ptr<textEntity>>()),
+            false,
+            false
+        )
+    ));
+}
+
+TEST_F(FileTransferTest, SendFileToNonContact_CreatePrivateChatFail)
+{
+    const char *const PATH   = "/path";
+    setFakeFileSize(PATH, 10000);
+
+    login();
+
+    // Normaly users without chats have to be group chat members, but for the test it doesn't matter
+    tgl.update(standardUpdateUser(1));
+
+    pluginInfo().send_file(
+        connection,
+        (userFirstNames[1] + " " + userLastNames[1]).c_str(),
+        PATH
+    );
+    prpl.verifyEvents(
+        XferAcceptedEvent(PATH)
+    );
+    tgl.verifyRequest(createPrivateChat(userIds[1], false));
+
+    tgl.reply(make_object<error>(100, "error"));
+    prpl.verifyEvents(XferLocalCancelEvent(PATH));
+}
+
+TEST_F(FileTransferTest, SendFileToNonContact_TurboCancel)
+{
+    const char *const PATH   = "/path";
+    setFakeFileSize(PATH, 10000);
+
+    login();
+
+    // Normaly users without chats have to be group chat members, but for the test it doesn't matter
+    tgl.update(standardUpdateUser(1));
+
+    pluginInfo().send_file(
+        connection,
+        (userFirstNames[1] + " " + userLastNames[1]).c_str(),
+        PATH
+    );
+    prpl.verifyEvents(
+        XferAcceptedEvent(PATH)
+    );
+    tgl.verifyRequest(createPrivateChat(userIds[1], false));
+
+    purple_xfer_cancel_local(prpl.getLastXfer());
+    prpl.discardEvents();
+
+    tgl.update(standardPrivateChat(0));
+    tgl.reply(makeChat(
+        chatIds[0],
+        make_object<chatTypePrivate>(userIds[0]),
+        userFirstNames[0] + " " + userLastNames[0],
+        nullptr, 0, 0, 0
+    ));
 }

@@ -146,6 +146,7 @@ private:
                                      const std::string &filePath, const char *caption,
                                      const std::string &fileDescription,
                                      td::td_api::object_ptr<td::td_api::file> thumbnail);
+    void       sendMessageCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       uploadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       updateFile(const td::td_api::file &file);
 

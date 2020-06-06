@@ -108,32 +108,31 @@ std::string getPurpleBuddyName(const td::td_api::user &user)
     return "id" + std::to_string(user.id_);
 }
 
-void getUsersByPurpleName(const char *username, std::vector<const td::td_api::user*> &users,
-                         TdAccountData &account)
+std::vector<const td::td_api::user *> getUsersByPurpleName(const char *buddyName, TdAccountData &account,
+                                                           const char *action)
 {
-    int32_t userId = stringToUserId(username);
+    std::vector<const td::td_api::user *> result;
 
-    if (userId != 0) {
-        users.clear();
-        const td::td_api::user *user = account.getUser(userId);
-        if (user)
-            users.push_back(user);
-    } else
-        account.getUsersByDisplayName(username, users);
-}
-
-const td::td_api::user *getUserByPurpleName(const char *buddyName, TdAccountData &account,
-                                            const char *action)
-{
     int32_t userId = stringToUserId(buddyName);
-    if (userId == 0) {
-        purple_debug_warning(config::pluginId, "Cannot %s: '%s' is not a valid user id\n", action, buddyName);
-        return nullptr;
+    if (userId != 0) {
+        const td::td_api::user *tdUser = account.getUser(userId);
+        if (tdUser != nullptr)
+            result.push_back(tdUser);
+        else if (action)
+            purple_debug_warning(config::pluginId, "Cannot %s: no user with id %s\n", action, buddyName);
+    } else {
+        account.getUsersByDisplayName(buddyName, result);
+        if (action) {
+            if (result.empty())
+                purple_debug_warning(config::pluginId, "Cannot %s: no user with display name '%s'\n",
+                                    action, buddyName);
+            else if (result.size() != 1)
+                purple_debug_warning(config::pluginId, "Cannot %s: more than one user with display name '%s'\n",
+                                    action, buddyName);
+        }
     }
-    const td::td_api::user *tdUser = account.getUser(userId);
-    if (tdUser == nullptr)
-        purple_debug_warning(config::pluginId, "Cannot %s: no user with id %s\n", action, buddyName);
-    return tdUser;
+
+    return result;
 }
 
 PurpleConversation *getImConversation(PurpleAccount *account, const char *username)
@@ -368,8 +367,8 @@ void removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat)
         purple_blist_remove_chat(purpleChat);
 }
 
-static void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const char *text,
-                              const char *notification, time_t timestamp, PurpleMessageFlags flags)
+void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const char *text,
+                       const char *notification, time_t timestamp, PurpleMessageFlags flags)
 {
     PurpleConversation *conv = NULL;
 
@@ -391,7 +390,8 @@ static void showMessageTextIm(TdAccountData &account, const char *purpleUserName
         if (conv == NULL)
             conv = getImConversation(account.purpleAccount, purpleUserName);
         purple_conv_im_write(purple_conversation_get_im_data(conv), nullptr, notification,
-                             PURPLE_MESSAGE_SYSTEM, timestamp);
+                             (flags & PURPLE_MESSAGE_ERROR) ? PURPLE_MESSAGE_ERROR : PURPLE_MESSAGE_SYSTEM,
+                             timestamp);
     }
 }
 
@@ -521,7 +521,11 @@ void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const
 
     const td::td_api::user *privateUser = account.getUserByPrivateChat(chat);
     if (privateUser) {
-        std::string userName = getPurpleBuddyName(*privateUser);
+        std::string userName;
+        if (isChatInContactList(chat, privateUser))
+            userName = getPurpleBuddyName(*privateUser);
+        else
+            userName = account.getDisplayName(*privateUser);
         showMessageTextIm(account, userName.c_str(), text, notification, message.timestamp, flags);
     }
 

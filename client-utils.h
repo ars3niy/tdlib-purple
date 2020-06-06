@@ -12,10 +12,8 @@ std::string         proxyTypeToString(PurpleProxyType proxyType);
 
 const char *        getPurpleStatusId(const td::td_api::UserStatus &tdStatus);
 std::string         getPurpleBuddyName(const td::td_api::user &user);
-void                getUsersByPurpleName(const char *username, std::vector<const td::td_api::user*> &users,
-                                         TdAccountData &account);
-const td::td_api::user *getUserByPurpleName(const char *buddyName, TdAccountData &account,
-                                            const char *action);
+std::vector<const td::td_api::user *> getUsersByPurpleName(const char *buddyName, TdAccountData &account,
+                                                           const char *action);
 PurpleConversation *getImConversation(PurpleAccount *account, const char *username);
 PurpleConvChat *    getChatConversation(TdAccountData &account, const td::td_api::chat &chat,
                                         int chatPurpleId);
@@ -39,6 +37,8 @@ std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageIn
 std::string getMessageText(const td::td_api::formattedText &text);
 void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const TgMessageInfo &message,
                      const char *text, const char *notification, uint32_t extraFlags = 0);
+void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const char *text,
+                       const char *notification, time_t timestamp, PurpleMessageFlags flags);
 void showGenericFile(const td::td_api::chat &chat, const TgMessageInfo &message,
                      const std::string &filePath, const std::string &fileDescription,
                      TdAccountData &account);

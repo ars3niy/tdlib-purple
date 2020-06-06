@@ -140,6 +140,20 @@ public:
     : PendingRequest(requestId), userId(0), chatId(chat->id_) {}
 };
 
+class NewPrivateChatForMessage: public PendingRequest {
+public:
+    std::string  username;
+    std::string  message;
+    PurpleXfer  *fileUpload;
+
+    NewPrivateChatForMessage(uint64_t requestId, const char *username, const char *message)
+    : PendingRequest(requestId), username(username), message(message ? message : nullptr),
+      fileUpload(nullptr) {}
+
+    NewPrivateChatForMessage(uint64_t requestId, const char *username, PurpleXfer *upload)
+    : PendingRequest(requestId), username(username), fileUpload(upload) {}
+};
+
 class TdAccountData {
 public:
     using TdUserPtr           = td::td_api::object_ptr<td::td_api::user>;
