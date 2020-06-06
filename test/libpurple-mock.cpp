@@ -1076,6 +1076,22 @@ size_t purple_imgstore_get_size(PurpleStoredImage *img)
 gchar *purple_markup_escape_text(const gchar *text, gssize length)
 {
     std::string s(text, length);
+    size_t pos;
+    while ((pos = s.find('<')) != std::string::npos)
+        s.replace(pos, 1, "&lt;");
+    while ((pos = s.find('>')) != std::string::npos)
+        s.replace(pos, 1, "&gt;");
+    return g_strdup(s.c_str());
+}
+
+char *purple_unescape_html(const char *html)
+{
+    std::string s(html);
+    size_t pos;
+    while ((pos = s.find("&lt;")) != std::string::npos)
+        s.replace(pos, 4, "<");
+    while ((pos = s.find("&gt;")) != std::string::npos)
+        s.replace(pos, 4, ">");
     return g_strdup(s.c_str());
 }
 

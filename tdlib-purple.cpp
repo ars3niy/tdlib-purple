@@ -210,7 +210,8 @@ static void tgprpl_login (PurpleAccount *acct)
     PurpleTdClient   *tdClient = new PurpleTdClient(acct, g_testBackend);
 
     purple_connection_set_protocol_data (gc, tdClient);
-    getAutoDownloadLimitKb(acct);
+    // this would enable formatting buttons in pidgin
+    // gc->flags = static_cast<PurpleConnectionFlags>(gc->flags | PURPLE_CONNECTION_HTML);
 }
 
 static void tgprpl_close (PurpleConnection *gc)

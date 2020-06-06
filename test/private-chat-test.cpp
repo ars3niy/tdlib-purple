@@ -816,13 +816,13 @@ TEST_F(PrivateChatTest, ReplyToOldMessage)
         chatIds[0],
         false,
         srcDate,
-        makeTextMessage("message")
+        makeTextMessage("1<2")
     ));
     prpl.verifyEvents(
         ServGotImEvent(
             connection,
             purpleUserName(0),
-            fmt::format(replyPattern, userFirstNames[0] + " " + userLastNames[0], "message", "reply"),
+            fmt::format(replyPattern, userFirstNames[0] + " " + userLastNames[0], "1&lt;2", "reply"),
             PURPLE_MESSAGE_RECV,
             date
         )
@@ -942,4 +942,51 @@ TEST_F(PrivateChatTest, MessageSendResponseError)
             PURPLE_MESSAGE_SYSTEM, 0
         )
     );
+}
+
+TEST_F(PrivateChatTest, SendMessage_SpecialCharacters)
+{
+    loginWithOneContact();
+
+    ASSERT_EQ(0, pluginInfo().send_im(
+        connection,
+        purpleUserName(0).c_str(),
+        "1&lt;2 3&gt;2",
+        PURPLE_MESSAGE_SEND
+    ));
+    tgl.verifyRequest(sendMessage(
+        chatIds[0],
+        0,
+        nullptr,
+        nullptr,
+        make_object<inputMessageText>(
+            // Our mock purple_unescape_html handles these two characters
+            make_object<formattedText>("1<2 3>2", std::vector<object_ptr<textEntity>>()),
+            false, false
+        )
+    ));
+}
+
+TEST_F(PrivateChatTest, ReceiveMessage_SpecialCharacters)
+{
+    constexpr int64_t messageId = 10000;
+    constexpr int32_t date      = 123456;
+
+    loginWithOneContact();
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        makeTextMessage("1<2 3>2")
+    )));
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        purpleUserName(0),
+        "1&lt;2 3&gt;2", // mock purple_markup_escape_text handles these two
+        PURPLE_MESSAGE_RECV,
+        date
+    ));
+    tgl.verifyRequest(viewMessages(chatIds[0], {messageId}, true));
 }

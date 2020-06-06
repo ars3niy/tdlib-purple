@@ -36,6 +36,7 @@ std::string getSenderDisplayName(const td::td_api::chat &chat, const TgMessageIn
                                  PurpleAccount *account);
 std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,
                                  const char *noticeText, PurpleAccount *account);
+std::string getMessageText(const td::td_api::formattedText &text);
 void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const TgMessageInfo &message,
                      const char *text, const char *notification, uint32_t extraFlags = 0);
 void showGenericFile(const td::td_api::chat &chat, const TgMessageInfo &message,

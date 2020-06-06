@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include <algorithm>
 
 #include "buildopt.h"
 #ifndef NoWebp
@@ -428,6 +429,14 @@ static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &
     }
 }
 
+std::string getMessageText(const td::td_api::formattedText &text)
+{
+    char *newText = purple_markup_escape_text(text.text_.c_str(), text.text_.size());
+    std::string result(newText);
+    g_free(newText);
+    return result;
+}
+
 static std::string quoteMessage(const td::td_api::message *message, TdAccountData &account)
 {
     const td::td_api::user *originalAuthor = nullptr;
@@ -447,7 +456,7 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
         case td::td_api::messageText::ID: {
             const td::td_api::messageText &messageText = static_cast<const td::td_api::messageText &>(*message->content_);
             if (messageText.text_)
-                text = messageText.text_->text_;
+                text = getMessageText(*messageText.text_);
             else
                 text = "";
             break;
@@ -486,10 +495,6 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
         default:
             text = formatMessage(_("[message type {}]"), messageTypeToString(*message->content_));
     }
-
-    char *newText = purple_markup_escape_text(text.c_str(), text.size());
-    text = newText;
-    g_free(newText);
 
     for (unsigned i = 0; i < text.size(); i++)
         if (text[i] == '\n') text[i] = ' ';
@@ -720,9 +725,14 @@ struct MessagePart {
 
 static void appendText(std::vector<MessagePart> &parts, const char *s, size_t len)
 {
-    if (parts.empty())
-        parts.emplace_back();
-    parts.back().text = std::string(s, len);
+    if (len != 0) {
+        if (parts.empty())
+            parts.emplace_back();
+        std::string sourceText(s, len);
+        char *newText = purple_unescape_html(sourceText.c_str());
+        parts.back().text = newText;
+        g_free(newText);
+    }
 }
 
 static void parseMessage(const char *message, std::vector<MessagePart> &parts)
@@ -752,8 +762,7 @@ static void parseMessage(const char *message, std::vector<MessagePart> &parts)
         }
 
         if (isImage) {
-            if (s != textStart)
-                appendText(parts, textStart, s-textStart);
+            appendText(parts, textStart, s-textStart);
             parts.emplace_back();
             parts.back().isImage = true;
             parts.back().imageId = imageId;
@@ -763,8 +772,7 @@ static void parseMessage(const char *message, std::vector<MessagePart> &parts)
             s++;
     }
 
-    if (s != textStart)
-        appendText(parts, textStart, s-textStart);
+    appendText(parts, textStart, s-textStart);
 }
 
 static bool saveImage(int id, char **fileName)

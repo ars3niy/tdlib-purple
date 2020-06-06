@@ -779,8 +779,10 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
 void PurpleTdClient::showTextMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
                                      const td::td_api::messageText &text)
 {
-    if (text.text_)
-        showMessageText(m_data, chat, message, text.text_->text_.c_str(), NULL);
+    if (text.text_) {
+        std::string displayText = getMessageText(*text.text_);
+        showMessageText(m_data, chat, message, displayText.c_str(), NULL);
+    }
 }
 
 static const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td::td_api::messagePhoto &photo)
