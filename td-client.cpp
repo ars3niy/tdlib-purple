@@ -352,8 +352,8 @@ void PurpleTdClient::sendTdlibParameters()
                       username, parameters->database_directory_.c_str());
     parameters->use_message_database_ = true;
     parameters->use_secret_chats_ = true;
-    parameters->api_id_ = 94575;
-    parameters->api_hash_ = "a3406de8d171bb422bb6ddf3bbd800e2";
+    parameters->api_id_ = config::api_id;
+    parameters->api_hash_ = config::api_hash;
     parameters->system_language_code_ = "en";
     parameters->device_model_ = "Desktop";
     parameters->system_version_ = "Unknown";
