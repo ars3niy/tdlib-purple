@@ -248,6 +248,9 @@ public:
 
     void                       addSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat);
     bool                       getSecretChat(int32_t id);
+
+    auto                       getBasicGroupsWithMember(int32_t userId) ->
+                               std::vector<std::pair<int32_t, const td::td_api::basicGroupFullInfo *>>;
 private:
     TdAccountData(const TdAccountData &other) = delete;
     TdAccountData &operator=(const TdAccountData &other) = delete;

@@ -177,7 +177,7 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
     ));
 }
 
-TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
+TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList_RemoveGroupMemberFromBuddies)
 {
     constexpr int64_t messageId    = 10001;
     constexpr int32_t date         = 12345;
@@ -197,7 +197,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
         {
             // Private chat with the contact
             standardUpdateUser(0),
-            standardPrivateChat(0),
+            standardPrivateChat(0, make_object<chatListMain>()),
 
             make_object<updateBasicGroup>(make_object<basicGroup>(
                 groupId, 2, make_object<chatMemberStatusMember>(), true, 0
@@ -223,7 +223,13 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
             std::make_unique<ServGotChatEvent>(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0],
                                                "Hello", PURPLE_MESSAGE_RECV, date)
         },
-        {make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true)}
+        {make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true)},
+        {
+            std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
+            std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_OFFLINE),
+            std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
+            std::make_unique<ShowAccountEvent>(account)
+        }
     );
 
     tgl.verifyRequest(getBasicGroupFullInfo(groupId));
@@ -277,6 +283,36 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList)
         ChatAddUserEvent(
             groupChatPurpleName,
             // This is us (with + to match account name)
+            "+" + selfPhoneNumber,
+            "", PURPLE_CBFLAGS_NONE, false
+        )
+    );
+
+    // Now remove the group member that is in buddy list from the buddy list
+    PurpleBuddy *buddy = purple_find_buddy(account, purpleUserName(0).c_str());
+    ASSERT_NE(nullptr, buddy);
+    purple_blist_remove_buddy(buddy);
+    prpl.discardEvents();
+    // Normally there should be pluginInfo().remove_buddy to simulate user removing the buddy by hand.
+    // But skip it and just say chat is magically removed from chatListMain
+    tgl.update(make_object<updateChatChatList>(chatIds[0], nullptr));
+
+    prpl.verifyEvents(
+        ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
+        ChatClearUsersEvent(groupChatPurpleName),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            // This user is no longer in our contact list so first/last name is used
+            userFirstNames[0] + " " + userLastNames[0],
+            "", PURPLE_CBFLAGS_NONE, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            userFirstNames[1] + " " + userLastNames[1],
+            "", PURPLE_CBFLAGS_FOUNDER, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
             "+" + selfPhoneNumber,
             "", PURPLE_CBFLAGS_NONE, false
         )
@@ -872,6 +908,24 @@ TEST_F(GroupChatTest, WriteToNonContact)
     tgl.verifyRequest(createPrivateChat(userIds[0], false));
 
     tgl.update(standardPrivateChat(0));
+    // Group chat conversation is open, and private chat for one of the members is updated,
+    // so member list is updated just in case
+    prpl.verifyEvents(
+        ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
+        ChatClearUsersEvent(groupChatPurpleName),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            userFirstNames[0] + " " + userLastNames[0],
+            "", PURPLE_CBFLAGS_FOUNDER, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            // This is us (with + to match account name)
+            "+" + selfPhoneNumber,
+            "", PURPLE_CBFLAGS_NONE, false
+        )
+    );
+
     tgl.reply(makeChat(
         chatIds[0],
         make_object<chatTypePrivate>(userIds[0]),
@@ -921,6 +975,21 @@ TEST_F(GroupChatTest, WriteToNonContact)
             purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0],
             account, NULL, NULL, NULL
+        ),
+        ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
+        ChatClearUsersEvent(groupChatPurpleName),
+        // This group member has become a libpurple buddy, so member username will now be changed
+        // from display name to buddy username
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            purpleUserName(0),
+            "", PURPLE_CBFLAGS_FOUNDER, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            // This is us (with + to match account name)
+            "+" + selfPhoneNumber,
+            "", PURPLE_CBFLAGS_NONE, false
         )
     );
 

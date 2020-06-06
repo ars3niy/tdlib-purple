@@ -173,7 +173,6 @@ void TdAccountData::updateUser(TdUserPtr userPtr)
                 }
             }
         }
-        // TODO rename non-buddy group chat member, if one corresponds to this user
     }
 }
 
@@ -695,4 +694,24 @@ void TdAccountData::addSecretChat(td::td_api::object_ptr<td::td_api::secretChat>
 bool TdAccountData::getSecretChat(int32_t id)
 {
     return (m_secretChats.find(id) != m_secretChats.end());
+}
+
+std::vector<std::pair<int32_t, const td::td_api::basicGroupFullInfo *>>
+TdAccountData::getBasicGroupsWithMember(int32_t userId)
+{
+    std::vector<std::pair<int32_t, const td::td_api::basicGroupFullInfo *>> result;
+
+    for (const auto &item: m_groups)
+        if (item.second.fullInfo) {
+            auto &members = item.second.fullInfo->members_;
+            if (std::any_of(members.begin(), members.end(),
+                            [userId](const td::td_api::object_ptr<td::td_api::chatMember> &member) {
+                                return (member && (member->user_id_ == userId));
+                            }))
+            {
+                result.push_back(std::make_pair(item.second.group->id_, item.second.fullInfo.get()));
+            }
+        }
+
+    return result;
 }

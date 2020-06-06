@@ -622,7 +622,6 @@ void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr
             int64_t chatId;
             int64_t chatOrder;
             m_data.getSmallestOrderChat(*getChatsRequest->chat_list_, chatId, chatOrder);
-            fprintf(stderr, "%ld vs %ld\n", chatOrder, m_lastChatOrderOffset);
             if (chatOrder < m_lastChatOrderOffset) {
                 getChatsRequest->offset_order_ = chatOrder;
                 getChatsRequest->offset_chat_id_ = chatId;
@@ -1457,6 +1456,17 @@ void PurpleTdClient::updateUserInfo(const td::td_api::user &user, const td::td_a
     if (privateChat && isChatInContactList(*privateChat, &user)) {
         downloadProfilePhoto(user);
         updatePrivateChat(m_data, *privateChat, user);
+    }
+
+    // User could have renamed, or they may have become, or ceased being, libpurple buddy.
+    // Update member list in all chat conversation where this user is a member.
+    std::vector<std::pair<int32_t, const td::td_api::basicGroupFullInfo *>> groups;
+    groups = m_data.getBasicGroupsWithMember(user.id_);
+    for (const auto &groupInfo: groups) {
+        const td::td_api::chat *groupChat = m_data.getBasicGroupChatByGroup(groupInfo.first);
+        PurpleConvChat *purpleChat = groupChat ? findChatConversation(m_account, *groupChat) : nullptr;
+        if (purpleChat)
+            updateChatConversation(purpleChat, *groupInfo.second, m_data);
     }
 }
 
