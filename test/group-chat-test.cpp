@@ -16,7 +16,6 @@ void GroupChatTest::loginWithBasicGroup()
 {
     login(
         {
-            standardUpdateUserNoPhone(0),
             make_object<updateBasicGroup>(make_object<basicGroup>(
                 groupId, 2, make_object<chatMemberStatusMember>(), true, 0
             )),
@@ -99,6 +98,7 @@ TEST_F(GroupChatTest, BasicGroupReceiveTextAndReply)
     constexpr int     purpleChatId = 1;
     loginWithBasicGroup();
 
+    tgl.update(standardUpdateUserNoPhone(0));
     tgl.update(make_object<updateNewMessage>(
         makeMessage(messageId[0], userIds[0], groupChatId, false, date[0], makeTextMessage("Hello"))
     ));
@@ -144,6 +144,7 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
     constexpr int purpleChatId = 1;
     loginWithBasicGroup();
 
+    tgl.update(standardUpdateUserNoPhone(0));
     tgl.update(make_object<updateNewMessage>(makeMessage(
         messageId, userIds[0], groupChatId, false, date,
         make_object<messagePhoto>(
@@ -548,6 +549,7 @@ TEST_F(GroupChatTest, GroupRenamed)
     tgl.update(make_object<updateChatTitle>(groupChatId, "New Title"));
     prpl.verifyEvents(AliasChatEvent(groupChatPurpleName, "New Title"));
 
+    tgl.update(standardUpdateUserNoPhone(0));
     tgl.update(make_object<updateNewMessage>(
         makeMessage(
             messageId, userIds[0], groupChatId, false, date,
@@ -762,6 +764,7 @@ TEST_F(GroupChatTest, UsersWithSameName)
 
     loginWithBasicGroup();
 
+    tgl.update(standardUpdateUserNoPhone(0));
     // Second group chat member - same name as the first one
     tgl.update(make_object<updateUser>(makeUser(
         userIds[1],
@@ -1039,4 +1042,56 @@ TEST_F(GroupChatTest, WriteToNonContact)
             PURPLE_MESSAGE_SEND, echoDate[1]
         )
     );
+}
+
+TEST_F(GroupChatTest, Kick)
+{
+    constexpr int     purpleChatId = 1;
+    loginWithBasicGroup();
+    tgl.update(standardUpdateUserNoPhone(0));
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        PresentConversationEvent(groupChatPurpleName)
+    );
+
+    PurpleConversation *conv = purple_find_chat(connection, purpleChatId);
+    ASSERT_NE(nullptr, conv);
+    prpl.runCommand("kick", conv, {purpleUserName(1)});
+    prpl.verifyEvents(ConversationWriteEvent(
+        groupChatPurpleName, "",
+        "User not found",
+        PURPLE_MESSAGE_NO_LOG, 0
+    ));
+
+    prpl.runCommand("kick", conv, {userFirstNames[1] + " " + userLastNames[1]});
+    prpl.verifyEvents(ConversationWriteEvent(
+        groupChatPurpleName, "",
+        "User not found",
+        PURPLE_MESSAGE_NO_LOG, 0
+    ));
+
+    prpl.runCommand("kick", conv, {purpleUserName(0)});
+    tgl.verifyRequest(setChatMemberStatus(
+        groupChatId, userIds[0],
+        make_object<chatMemberStatusLeft>()
+    ));
+    tgl.reply(make_object<error>(100, "error"));
+    prpl.verifyEvents(ConversationWriteEvent(
+        groupChatPurpleName, "",
+        "Failed to kick user: code 100 (error)",
+        PURPLE_MESSAGE_SYSTEM, 0
+    ));
+
+    prpl.runCommand("kick", conv, {userFirstNames[0] + " " + userLastNames[0]});
+    tgl.verifyRequest(setChatMemberStatus(
+        groupChatId, userIds[0],
+        make_object<chatMemberStatusLeft>()
+    ));
+    tgl.reply(make_object<ok>());
 }

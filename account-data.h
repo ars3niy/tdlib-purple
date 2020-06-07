@@ -154,6 +154,13 @@ public:
     : PendingRequest(requestId), username(username), fileUpload(upload) {}
 };
 
+class KickRequest: public PendingRequest {
+public:
+    int64_t chatId;
+    KickRequest(uint64_t requestId, int64_t chatId)
+    : PendingRequest(requestId), chatId(chatId) {}
+};
+
 class TdAccountData {
 public:
     using TdUserPtr           = td::td_api::object_ptr<td::td_api::user>;

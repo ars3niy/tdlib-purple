@@ -1909,6 +1909,51 @@ void PurpleTdClient::setGroupDescriptionResponse(uint64_t requestId, td::td_api:
     }
 }
 
+void PurpleTdClient::kickUserFromChat(PurpleConversation *conv, const char *name)
+{
+    int purpleChatId = purple_conv_chat_get_id(PURPLE_CONV_CHAT(conv));
+    const td::td_api::chat *chat = m_data.getChatByPurpleId(purpleChatId);
+
+    if (!chat) {
+        // Unlikely error message not worth translating
+        purple_conversation_write(conv, NULL, "Chat not found", PURPLE_MESSAGE_NO_LOG, time(NULL));
+        return;
+    }
+
+    std::vector<const td::td_api::user *> users = getUsersByPurpleName(name, m_data, "kick user");
+    if (users.size() != 1) {
+        const char *message = users.empty() ? _("User not found") :
+                                              // Unlikely error message not worth translating
+                                              "More than one user found with this name";
+        purple_conversation_write(conv, NULL, message, PURPLE_MESSAGE_NO_LOG, 0);
+        return;
+    }
+
+    auto setStatusRequest = td::td_api::make_object<td::td_api::setChatMemberStatus>();
+    setStatusRequest->chat_id_ = chat->id_;
+    setStatusRequest->user_id_ = users[0]->id_;
+    setStatusRequest->status_ = td::td_api::make_object<td::td_api::chatMemberStatusLeft>();
+
+    uint64_t requestId = m_transceiver.sendQuery(std::move(setStatusRequest), &PurpleTdClient::kickUserResponse);
+    m_data.addPendingRequest<KickRequest>(requestId, chat->id_);
+}
+
+void PurpleTdClient::kickUserResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    if (!object || (object->get_id() != td::td_api::ok::ID)) {
+        std::unique_ptr<KickRequest>  request = m_data.getPendingRequest<KickRequest>(requestId);
+        const td::td_api::chat       *chat    = request ? m_data.getChat(request->chatId) : nullptr;
+        if (chat) {
+            TgMessageInfo messageInfo;
+            messageInfo.type = TgMessageInfo::Type::Other;
+            messageInfo.timestamp = time(NULL);
+            messageInfo.outgoing = true;
+            std::string message = formatMessage(_("Failed to kick user: {}"), getDisplayedError(object));
+            showMessageText(m_data, *chat, messageInfo, NULL, message.c_str(), PURPLE_MESSAGE_SYSTEM);
+        }
+    }
+}
+
 void PurpleTdClient::removeTempFile(int64_t messageId)
 {
     std::string path = m_data.extractTempFileUpload(messageId);

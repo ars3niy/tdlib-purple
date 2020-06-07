@@ -398,6 +398,24 @@ void PurpleEventReceiver::requestedAction(const char *button)
     actionUserData = NULL;
 }
 
+void PurpleEventReceiver::addCommand(const char* command, PurpleCmdFunc handler, void* data)
+{
+    commands[command] = std::make_pair(handler, data);
+}
+
+void PurpleEventReceiver::runCommand(const char* command, PurpleConversation *conv,
+                                     std::vector<std::string> arguments)
+{
+    std::vector<char *>purpleArgs;
+    for (const std::string &arg: arguments)
+        purpleArgs.push_back(const_cast<char *>(arg.c_str()));
+    purpleArgs.push_back(NULL);
+
+    std::pair<PurpleCmdFunc, void *> cmdData = commands.at(command);
+    cmdData.first(conv, command, purpleArgs.data(), NULL, cmdData.second);
+}
+
+
 std::string PurpleEvent::toString() const
 {
 #define C(type) case PurpleEventType::type: return #type;

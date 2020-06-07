@@ -259,6 +259,8 @@ static void tgprpl_info_show (PurpleConnection *gc, const char *who)
             if (lastOnline && *lastOnline)
                 purple_notify_user_info_add_pair(info, _("Last online"), lastOnline);
         }
+        std::string username = getPurpleBuddyName(*user);
+        purple_notify_user_info_add_pair(info, _("Internal id"), username.c_str());
     }
 
     purple_notify_userinfo(gc, who, info, NULL, NULL);
@@ -507,6 +509,17 @@ static void tgprpl_set_chat_topic(PurpleConnection *gc, int id, const char *topi
     tdClient->setGroupDescription(id, topic);
 }
 
+static PurpleCmdRet tgprpl_cmd_kick(PurpleConversation *conv, const gchar *cmd, gchar **args, gchar **error, void *data)
+{
+    PurpleTdClient *tdClient = getTdClient(purple_conversation_get_account(conv));
+
+    if (!*args || !tdClient)
+        return PURPLE_CMD_RET_FAILED;
+
+    tdClient->kickUserFromChat(conv, *args);
+    return PURPLE_CMD_RET_OK;
+}
+
 static char png[] = "png";
 
 static PurplePluginProtocolInfo prpl_info = {
@@ -598,10 +611,10 @@ static PurplePluginProtocolInfo prpl_info = {
 
 static gboolean tgprpl_load (PurplePlugin *plugin)
 {
-    //purple_cmd_register("kick", "s", PURPLE_CMD_P_PLUGIN, PURPLE_CMD_FLAG_CHAT |
-    //                    PURPLE_CMD_FLAG_PRPL_ONLY | PURPLE_CMD_FLAG_ALLOW_WRONG_ARGS,
-    //                    PLUGIN_ID, tgprpl_cmd_kick,
-    //                    _("kick <user>:  Kick a user from the room."), NULL);
+    purple_cmd_register("kick", "s", PURPLE_CMD_P_PLUGIN,
+                        (PurpleCmdFlag)(PURPLE_CMD_FLAG_CHAT | PURPLE_CMD_FLAG_PRPL_ONLY),
+                        config::pluginId, tgprpl_cmd_kick,
+                        _("kick <user>:  Kick a user from the room using name or internal id"), NULL);
 
     return TRUE;
 }

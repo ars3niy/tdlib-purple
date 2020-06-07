@@ -5,6 +5,7 @@ CommTest::CommTest()
 {
     tgprpl_set_test_backend(&tgl);
     purple_init_plugin(&purplePlugin);
+    purplePlugin.info->load(&purplePlugin);
 }
 
 void CommTest::SetUp()

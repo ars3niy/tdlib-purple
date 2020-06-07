@@ -526,6 +526,11 @@ PurpleConversation *purple_conv_chat_get_conversation(const PurpleConvChat *chat
     return chat->conv;
 }
 
+int purple_conv_chat_get_id(const PurpleConvChat *chat)
+{
+    return chat->id;
+}
+
 void purple_conv_im_write(PurpleConvIm *im, const char *who,
 						const char *message, PurpleMessageFlags flags,
 						time_t mtime)
@@ -1252,6 +1257,13 @@ void purple_account_set_string(PurpleAccount *account, const char *name,
 char *purple_str_size_to_units(size_t size)
 {
     return g_strdup("purple_str_size_to_units");
+}
+
+PurpleCmdId purple_cmd_register(const gchar *cmd, const gchar *args, PurpleCmdPriority p, PurpleCmdFlag f,
+                             const gchar *prpl_id, PurpleCmdFunc func, const gchar *helpstr, void *data)
+{
+    g_purpleEvents.addCommand(cmd, func, data);
+    return 0;
 }
 
 };

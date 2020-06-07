@@ -379,6 +379,16 @@ static void compare(const cancelDownloadFile &actual, const cancelDownloadFile &
     COMPARE(only_if_pending_);
 }
 
+static void compare(const setChatMemberStatus &actual, const setChatMemberStatus &expected)
+{
+    COMPARE(chat_id_);
+    COMPARE(user_id_);
+    COMPARE(status_ != nullptr);
+    if (actual.status_) {
+        COMPARE(status_->get_id());
+    }
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -423,6 +433,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(closeSecretChat)
         C(getSupergroupFullInfo)
         C(cancelDownloadFile)
+        C(setChatMemberStatus)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

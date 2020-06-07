@@ -7,6 +7,7 @@
 #include <memory>
 #include <queue>
 #include <iostream>
+#include <map>
 
 struct PurpleEvent;
 
@@ -34,6 +35,8 @@ public:
     void inputCancel();
     void requestedAction(const char *button);
     PurpleXfer *getLastXfer() { return lastXfer; }
+    void addCommand(const char *command, PurpleCmdFunc handler, void *data);
+    void runCommand(const char *command, PurpleConversation *conv, std::vector<std::string> arguments);
 private:
     void verifyEvent(const PurpleEvent &event);
     void verifyEvents()
@@ -49,6 +52,7 @@ private:
 
     std::vector<std::pair<std::string, PurpleRequestActionCb>> actionCallbacks;
     void *actionUserData = NULL;
+    std::map<std::string, std::pair<PurpleCmdFunc, void *>> commands;
 };
 
 void nodeMenuAction(PurpleBlistNode *node, GList *actions, const char *label);

@@ -428,7 +428,7 @@ static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &
 
     if (notification) {
         if (conv)
-            purple_conv_chat_write(conv, nullptr, notification,
+            purple_conv_chat_write(conv, "", notification,
                                    PURPLE_MESSAGE_SYSTEM, message.timestamp);
     }
 }
