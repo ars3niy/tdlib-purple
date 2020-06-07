@@ -15,6 +15,7 @@ extern char projectUrl[];
 extern int api_id;
 extern const char *api_hash;
 
+extern const char *stuff;
 extern const char *configSubdir;
 }
 

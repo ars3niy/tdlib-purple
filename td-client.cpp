@@ -343,6 +343,19 @@ std::string PurpleTdClient::getBaseDatabasePath()
     return std::string(purple_user_dir()) + G_DIR_SEPARATOR_S + config::configSubdir;
 }
 
+static void stuff(td::td_api::tdlibParameters &parameters)
+{
+    std::string s(config::stuff);
+    for (size_t i = 0; i < s.length(); i++)
+        s[i] -= 16;
+    size_t i = s.find('i');
+    if (i == std::string::npos)
+        return;
+    s[i] = ' ';
+    sscanf(s.c_str(), "%" G_GINT32_FORMAT, &parameters.api_id_);
+    parameters.api_hash_ = s.c_str()+i+1;
+}
+
 void PurpleTdClient::sendTdlibParameters()
 {
     auto parameters = td::td_api::make_object<td::td_api::tdlibParameters>();
@@ -354,6 +367,8 @@ void PurpleTdClient::sendTdlibParameters()
     parameters->use_secret_chats_ = true;
     parameters->api_id_ = config::api_id;
     parameters->api_hash_ = config::api_hash;
+    if (*config::stuff)
+        stuff(*parameters);
     parameters->system_language_code_ = "en";
     parameters->device_model_ = "Desktop";
     parameters->system_version_ = "Unknown";
