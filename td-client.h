@@ -38,6 +38,7 @@ public:
     void setGroupDescription(int purpleChatId, const char *description);
     void kickUserFromChat(PurpleConversation *conv, const char *name);
     void addUserToChat(int purpleChatId, const char *name);
+    void showInviteLink(const std::string &purpleChatName);
 
     void setTwoFactorAuth(const char *oldPassword, const char *newPassword, const char *hint,
                         const char *email);

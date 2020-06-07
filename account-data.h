@@ -158,7 +158,8 @@ class ChatActionRequest: public PendingRequest {
 public:
     enum class Type: uint8_t {
         Kick,
-        Invite
+        Invite,
+        GenerateInviteLink
     };
     Type    type;
     int64_t chatId;

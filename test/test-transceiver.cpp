@@ -396,6 +396,11 @@ static void compare(const addChatMember &actual, const addChatMember &expected)
     COMPARE(forward_limit_);
 }
 
+static void compare(const generateChatInviteLink &actual, const generateChatInviteLink &expected)
+{
+    COMPARE(chat_id_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -442,6 +447,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(cancelDownloadFile)
         C(setChatMemberStatus)
         C(addChatMember)
+        C(generateChatInviteLink)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

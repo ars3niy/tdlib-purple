@@ -1152,3 +1152,59 @@ TEST_F(GroupChatTest, Invite)
     tgl.verifyRequest(addChatMember(groupChatId, userIds[0], 0));
     tgl.reply(make_object<ok>());
 }
+
+TEST_F(GroupChatTest, GetInviteLink)
+{
+    constexpr int     purpleChatId = 1;
+    loginWithBasicGroup();
+
+    tgl.reply(make_object<basicGroupFullInfo>(
+        "basic group",
+        userIds[1],
+        std::vector<object_ptr<chatMember>>(),
+        ""
+    ));
+
+    PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    ASSERT_NE(nullptr, chat);
+    GList *actions = pluginInfo().blist_node_menu(&chat->node);
+
+    nodeMenuAction(&chat->node, actions, "Show invite link");
+    tgl.verifyRequest(generateChatInviteLink(groupChatId));
+
+    tgl.reply(make_object<error>(100, "error"));
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
+        ChatClearUsersEvent(groupChatPurpleName),
+        ConversationWriteEvent(
+            groupChatPurpleName, "",
+            "Cannot generate invite link: code 100 (error)",
+            PURPLE_MESSAGE_SYSTEM, 0
+        )
+    );
+
+    nodeMenuAction(&chat->node, actions, "Show invite link");
+    tgl.verifyRequest(generateChatInviteLink(groupChatId));
+    tgl.update(make_object<updateBasicGroupFullInfo>(
+        groupChatId,
+        make_object<basicGroupFullInfo>(
+            "basic group",
+            userIds[1],
+            std::vector<object_ptr<chatMember>>(),
+            "http://invite"
+        )
+    ));
+    prpl.verifyNoEvents();
+
+    tgl.reply(make_object<chatInviteLink>("http://invite"));
+    prpl.verifyEvents(
+        ConversationWriteEvent(
+            groupChatPurpleName, "",
+            "http://invite",
+            PURPLE_MESSAGE_SYSTEM, 0
+        )
+    );
+
+    g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);
+}

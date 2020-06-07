@@ -164,6 +164,18 @@ static void deleteGroup(PurpleBlistNode *node, gpointer data)
     }
 }
 
+static void showInviteLink(PurpleBlistNode *node, gpointer data)
+{
+    if (! PURPLE_BLIST_NODE_IS_CHAT(node))
+        return;
+
+    PurpleChat     *chat     = PURPLE_CHAT(node);
+    PurpleAccount  *account  = purple_chat_get_account(chat);
+    PurpleTdClient *tdClient = getTdClient(account);
+    if (tdClient)
+        tdClient->showInviteLink(getChatName(purple_chat_get_components(chat)));
+}
+
 static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
 {
     GList *menu = NULL;
@@ -178,8 +190,14 @@ static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
                                         PURPLE_CALLBACK(leaveGroup),
                                         NULL, NULL);
         menu = g_list_append(menu, action);
+
         action = purple_menu_action_new(_("Delete group"),
                                         PURPLE_CALLBACK(deleteGroup),
+                                        NULL, NULL);
+        menu = g_list_append(menu, action);
+
+        action = purple_menu_action_new(_("Show invite link"),
+                                        PURPLE_CALLBACK(showInviteLink),
                                         NULL, NULL);
         menu = g_list_append(menu, action);
     }

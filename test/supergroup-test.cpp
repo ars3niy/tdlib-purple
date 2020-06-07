@@ -231,3 +231,50 @@ TEST_F(SupergroupTest, LeaveSupergroup)
 
     g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);
 }
+
+TEST_F(SupergroupTest, GetInviteLink)
+{
+    constexpr int     purpleChatId = 1;
+    loginWithSupergroup();
+
+    tgl.reply(make_object<supergroupFullInfo>());
+
+    PurpleChat *chat = purple_blist_find_chat(account, groupChatPurpleName.c_str());
+    ASSERT_NE(nullptr, chat);
+    GList *actions = pluginInfo().blist_node_menu(&chat->node);
+
+    nodeMenuAction(&chat->node, actions, "Show invite link");
+    tgl.verifyRequest(generateChatInviteLink(groupChatId));
+
+    tgl.reply(make_object<error>(100, "error"));
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        ChatSetTopicEvent(groupChatPurpleName, "", ""),
+        ConversationWriteEvent(
+            groupChatPurpleName, "",
+            "Cannot generate invite link: code 100 (error)",
+            PURPLE_MESSAGE_SYSTEM, 0
+        )
+    );
+
+    nodeMenuAction(&chat->node, actions, "Show invite link");
+    tgl.verifyRequest(generateChatInviteLink(groupChatId));
+    auto fullInfo = make_object<supergroupFullInfo>();
+    fullInfo->invite_link_ = "http://invite";
+    tgl.update(make_object<updateSupergroupFullInfo>(
+        groupChatId,
+        std::move(fullInfo)
+    ));
+    prpl.verifyNoEvents();
+
+    tgl.reply(make_object<chatInviteLink>("http://invite"));
+    prpl.verifyEvents(
+        ConversationWriteEvent(
+            groupChatPurpleName, "",
+            "http://invite",
+            PURPLE_MESSAGE_SYSTEM, 0
+        )
+    );
+
+    g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);
+}

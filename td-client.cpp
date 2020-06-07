@@ -1936,8 +1936,21 @@ void PurpleTdClient::kickUserFromChat(PurpleConversation *conv, const char *name
 
 void PurpleTdClient::chatActionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
-    if (!object || (object->get_id() != td::td_api::ok::ID)) {
-        std::unique_ptr<ChatActionRequest> request = m_data.getPendingRequest<ChatActionRequest>(requestId);
+    std::unique_ptr<ChatActionRequest> request = m_data.getPendingRequest<ChatActionRequest>(requestId);
+    if (!request) return;
+
+    int32_t expectedId = 0;
+    switch (request->type) {
+        case ChatActionRequest::Type::Kick:
+        case ChatActionRequest::Type::Invite:
+            expectedId = td::td_api::ok::ID;
+            break;
+        case ChatActionRequest::Type::GenerateInviteLink:
+            expectedId = td::td_api::chatInviteLink::ID;
+            break;
+    }
+
+    if (!object || (object->get_id() != expectedId)) {
         const td::td_api::chat *chat = request ? m_data.getChat(request->chatId) : nullptr;
         if (chat) {
             std::string message = getDisplayedError(object);
@@ -1948,8 +1961,18 @@ void PurpleTdClient::chatActionResponse(uint64_t requestId, td::td_api::object_p
                 case ChatActionRequest::Type::Invite:
                     message = formatMessage(_("Cannot add user to group: {}"), message);
                     break;
+                case ChatActionRequest::Type::GenerateInviteLink:
+                    message = formatMessage(_("Cannot generate invite link: {}"), message);
+                    break;
             }
             showChatNotification(m_data, *chat, message.c_str());
+        }
+    } else {
+        if (request->type == ChatActionRequest::Type::GenerateInviteLink) {
+            const td::td_api::chatInviteLink &inviteLink = static_cast<const td::td_api::chatInviteLink &>(*object);
+            const td::td_api::chat *chat = request ? m_data.getChat(request->chatId) : nullptr;
+            if (chat)
+                showChatNotification(m_data, *chat, inviteLink.invite_link_.c_str());
         }
     }
 }
@@ -1979,6 +2002,41 @@ void PurpleTdClient::addUserToChat(int purpleChatId, const char *name)
         uint64_t requestId = m_transceiver.sendQuery(std::move(request), &PurpleTdClient::chatActionResponse);
         m_data.addPendingRequest<ChatActionRequest>(requestId, ChatActionRequest::Type::Invite, chat->id_);
     }
+}
+
+void PurpleTdClient::showInviteLink(const std::string& purpleChatName)
+{
+    int64_t                 chatId = getTdlibChatId(purpleChatName.c_str());
+    const td::td_api::chat *chat   = chatId ? m_data.getChat(chatId) : nullptr;
+    if (!chat) {
+        purple_debug_warning(config::pluginId, "chat %s not found\n", purpleChatName.c_str());
+        return;
+    }
+    int32_t basicGroupId = getBasicGroupId(*chat);
+    int32_t supergroupId = getSupergroupId(*chat);
+    const td::td_api::basicGroupFullInfo *basicGroupInfo = basicGroupId ? m_data.getBasicGroupInfo(basicGroupId) : nullptr;
+    const td::td_api::supergroupFullInfo *supergroupInfo = supergroupId ? m_data.getSupergroupInfo(supergroupId) : nullptr;
+    bool fullInfoKnown = false;
+    std::string inviteLink;
+
+    if (basicGroupId) {
+        fullInfoKnown = (basicGroupInfo != nullptr);
+        if (basicGroupInfo) inviteLink = basicGroupInfo->invite_link_;
+    }
+    if (supergroupId) {
+        fullInfoKnown = (supergroupInfo != nullptr);
+        if (supergroupInfo) inviteLink = supergroupInfo->invite_link_;
+    }
+
+    if (!inviteLink.empty())
+        showChatNotification(m_data, *chat, inviteLink.c_str());
+    else if (fullInfoKnown) {
+        auto linkRequest = td::td_api::make_object<td::td_api::generateChatInviteLink>(chat->id_);
+        uint64_t requestId = m_transceiver.sendQuery(std::move(linkRequest), &PurpleTdClient::chatActionResponse);
+        m_data.addPendingRequest<ChatActionRequest>(requestId, ChatActionRequest::Type::GenerateInviteLink, chat->id_);
+    } else
+        // Unlikely error message not worth translating
+        showChatNotification(m_data, *chat, "Failed to get invite link, full info not known");
 }
 
 void PurpleTdClient::removeTempFile(int64_t messageId)
