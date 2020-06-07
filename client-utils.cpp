@@ -377,6 +377,15 @@ void removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat)
         purple_blist_remove_chat(purpleChat);
 }
 
+static PurpleMessageFlags getNotificationFlags(PurpleMessageFlags extraFlags)
+{
+    unsigned flags = (extraFlags & PURPLE_MESSAGE_ERROR) | (extraFlags & PURPLE_MESSAGE_NO_LOG);
+    if (flags == 0)
+        flags = PURPLE_MESSAGE_SYSTEM;
+
+    return (PurpleMessageFlags)flags;
+}
+
 void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const char *text,
                        const char *notification, time_t timestamp, PurpleMessageFlags flags)
 {
@@ -400,8 +409,7 @@ void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const
         if (conv == NULL)
             conv = getImConversation(account.purpleAccount, purpleUserName);
         purple_conv_im_write(purple_conversation_get_im_data(conv), nullptr, notification,
-                             (flags & PURPLE_MESSAGE_ERROR) ? PURPLE_MESSAGE_ERROR : PURPLE_MESSAGE_SYSTEM,
-                             timestamp);
+                             getNotificationFlags(flags), timestamp);
     }
 }
 
@@ -428,8 +436,7 @@ static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &
 
     if (notification) {
         if (conv)
-            purple_conv_chat_write(conv, "", notification,
-                                   PURPLE_MESSAGE_SYSTEM, message.timestamp);
+            purple_conv_chat_write(conv, "", notification, getNotificationFlags(flags), message.timestamp);
     }
 }
 
@@ -541,6 +548,16 @@ void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const
 
     if (getBasicGroupId(chat) || getSupergroupId(chat))
         showMessageTextChat(account, chat, message, text, notification, flags);
+}
+
+void showChatNotification(TdAccountData &account, const td::td_api::chat &chat,
+                          const char *notification, PurpleMessageFlags flags)
+{
+    TgMessageInfo messageInfo;
+    messageInfo.type = TgMessageInfo::Type::Other;
+    messageInfo.timestamp = (flags == PURPLE_MESSAGE_NO_LOG) ? 0 : time(NULL);
+    messageInfo.outgoing = true;
+    showMessageText(account, chat, messageInfo, NULL, notification, flags);
 }
 
 std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,

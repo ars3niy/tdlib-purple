@@ -154,11 +154,16 @@ public:
     : PendingRequest(requestId), username(username), fileUpload(upload) {}
 };
 
-class KickRequest: public PendingRequest {
+class ChatActionRequest: public PendingRequest {
 public:
+    enum class Type: uint8_t {
+        Kick,
+        Invite
+    };
+    Type    type;
     int64_t chatId;
-    KickRequest(uint64_t requestId, int64_t chatId)
-    : PendingRequest(requestId), chatId(chatId) {}
+    ChatActionRequest(uint64_t requestId, Type type, int64_t chatId)
+    : PendingRequest(requestId), type(type), chatId(chatId) {}
 };
 
 class TdAccountData {

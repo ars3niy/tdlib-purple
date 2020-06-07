@@ -412,6 +412,9 @@ static char *tgprpl_get_chat_name (GHashTable * data)
 
 static void tgprpl_chat_invite (PurpleConnection *gc, int id, const char *message, const char *who)
 {
+    PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    if (tdClient)
+        tdClient->addUserToChat(id, who);
 }
 
 static int tgprpl_send_chat (PurpleConnection *gc, int id, const char *message, PurpleMessageFlags flags)

@@ -1065,14 +1065,14 @@ TEST_F(GroupChatTest, Kick)
     prpl.runCommand("kick", conv, {purpleUserName(1)});
     prpl.verifyEvents(ConversationWriteEvent(
         groupChatPurpleName, "",
-        "User not found",
+        "Cannot kick user: User not found",
         PURPLE_MESSAGE_NO_LOG, 0
     ));
 
     prpl.runCommand("kick", conv, {userFirstNames[1] + " " + userLastNames[1]});
     prpl.verifyEvents(ConversationWriteEvent(
         groupChatPurpleName, "",
-        "User not found",
+        "Cannot kick user: User not found",
         PURPLE_MESSAGE_NO_LOG, 0
     ));
 
@@ -1084,7 +1084,7 @@ TEST_F(GroupChatTest, Kick)
     tgl.reply(make_object<error>(100, "error"));
     prpl.verifyEvents(ConversationWriteEvent(
         groupChatPurpleName, "",
-        "Failed to kick user: code 100 (error)",
+        "Cannot kick user: code 100 (error)",
         PURPLE_MESSAGE_SYSTEM, 0
     ));
 
@@ -1093,5 +1093,62 @@ TEST_F(GroupChatTest, Kick)
         groupChatId, userIds[0],
         make_object<chatMemberStatusLeft>()
     ));
+    tgl.reply(make_object<ok>());
+}
+
+TEST_F(GroupChatTest, Invite)
+{
+    constexpr int     purpleChatId = 1;
+    loginWithBasicGroup();
+    tgl.update(standardUpdateUserNoPhone(0));
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        PresentConversationEvent(groupChatPurpleName)
+    );
+
+    pluginInfo().chat_invite(
+        connection, purpleChatId, NULL,
+        purpleUserName(1).c_str()
+    );
+    prpl.verifyEvents(ConversationWriteEvent(
+        groupChatPurpleName, "",
+        "Cannot add user to group: User not found",
+        PURPLE_MESSAGE_NO_LOG, 0
+    ));
+
+    pluginInfo().chat_invite(
+        connection, purpleChatId, NULL,
+        (userFirstNames[1] + " " + userLastNames[1]).c_str()
+    );
+    prpl.verifyEvents(ConversationWriteEvent(
+        groupChatPurpleName, "",
+        "Cannot add user to group: User not found",
+        PURPLE_MESSAGE_NO_LOG, 0
+    ));
+
+    pluginInfo().chat_invite(
+        connection, purpleChatId, NULL,
+        purpleUserName(0).c_str()
+    );
+    tgl.verifyRequest(addChatMember(groupChatId, userIds[0], 0));
+
+    tgl.reply(make_object<error>(100, "error"));
+    prpl.verifyEvents(ConversationWriteEvent(
+        groupChatPurpleName, "",
+        "Cannot add user to group: code 100 (error)",
+        PURPLE_MESSAGE_SYSTEM, 0
+    ));
+
+    pluginInfo().chat_invite(
+        connection, purpleChatId, NULL,
+        (userFirstNames[0] + " " + userLastNames[0]).c_str()
+    );
+    tgl.verifyRequest(addChatMember(groupChatId, userIds[0], 0));
     tgl.reply(make_object<ok>());
 }

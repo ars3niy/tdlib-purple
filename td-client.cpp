@@ -1274,13 +1274,8 @@ void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_
     } else {
         std::string errorMessage = formatMessage(_("Failed to send message: {}"), getDisplayedError(object));
         const td::td_api::chat *chat = m_data.getChat(request->chatId);
-        if (chat) {
-            TgMessageInfo messageInfo;
-            messageInfo.type = TgMessageInfo::Type::Other;
-            messageInfo.outgoing = true;
-            messageInfo.timestamp = time(NULL);
-            showMessageText(m_data, *chat, messageInfo, NULL, errorMessage.c_str());
-        }
+        if (chat)
+            showChatNotification(m_data, *chat, errorMessage.c_str());
     }
 }
 
@@ -1922,10 +1917,11 @@ void PurpleTdClient::kickUserFromChat(PurpleConversation *conv, const char *name
 
     std::vector<const td::td_api::user *> users = getUsersByPurpleName(name, m_data, "kick user");
     if (users.size() != 1) {
-        const char *message = users.empty() ? _("User not found") :
-                                              // Unlikely error message not worth translating
-                                              "More than one user found with this name";
-        purple_conversation_write(conv, NULL, message, PURPLE_MESSAGE_NO_LOG, 0);
+        const char *reason = users.empty() ? _("User not found") :
+                                             // Unlikely error message not worth translating
+                                             "More than one user found with this name";
+        std::string message = formatMessage(_("Cannot kick user: {}"), std::string(reason));
+        purple_conversation_write(conv, NULL, message.c_str(), PURPLE_MESSAGE_NO_LOG, 0);
         return;
     }
 
@@ -1934,23 +1930,54 @@ void PurpleTdClient::kickUserFromChat(PurpleConversation *conv, const char *name
     setStatusRequest->user_id_ = users[0]->id_;
     setStatusRequest->status_ = td::td_api::make_object<td::td_api::chatMemberStatusLeft>();
 
-    uint64_t requestId = m_transceiver.sendQuery(std::move(setStatusRequest), &PurpleTdClient::kickUserResponse);
-    m_data.addPendingRequest<KickRequest>(requestId, chat->id_);
+    uint64_t requestId = m_transceiver.sendQuery(std::move(setStatusRequest), &PurpleTdClient::chatActionResponse);
+    m_data.addPendingRequest<ChatActionRequest>(requestId, ChatActionRequest::Type::Kick, chat->id_);
 }
 
-void PurpleTdClient::kickUserResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+void PurpleTdClient::chatActionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     if (!object || (object->get_id() != td::td_api::ok::ID)) {
-        std::unique_ptr<KickRequest>  request = m_data.getPendingRequest<KickRequest>(requestId);
-        const td::td_api::chat       *chat    = request ? m_data.getChat(request->chatId) : nullptr;
+        std::unique_ptr<ChatActionRequest> request = m_data.getPendingRequest<ChatActionRequest>(requestId);
+        const td::td_api::chat *chat = request ? m_data.getChat(request->chatId) : nullptr;
         if (chat) {
-            TgMessageInfo messageInfo;
-            messageInfo.type = TgMessageInfo::Type::Other;
-            messageInfo.timestamp = time(NULL);
-            messageInfo.outgoing = true;
-            std::string message = formatMessage(_("Failed to kick user: {}"), getDisplayedError(object));
-            showMessageText(m_data, *chat, messageInfo, NULL, message.c_str(), PURPLE_MESSAGE_SYSTEM);
+            std::string message = getDisplayedError(object);
+            switch (request->type) {
+                case ChatActionRequest::Type::Kick:
+                    message = formatMessage(_("Cannot kick user: {}"), message);
+                    break;
+                case ChatActionRequest::Type::Invite:
+                    message = formatMessage(_("Cannot add user to group: {}"), message);
+                    break;
+            }
+            showChatNotification(m_data, *chat, message.c_str());
         }
+    }
+}
+
+void PurpleTdClient::addUserToChat(int purpleChatId, const char *name)
+{
+    const td::td_api::chat *chat = m_data.getChatByPurpleId(purpleChatId);
+    if (!chat) {
+        purple_debug_warning(config::pluginId, "Unknown libpurple chat id %d\n", purpleChatId);
+        return;
+    }
+
+    std::vector<const td::td_api::user *> users = getUsersByPurpleName(name, m_data, "kick user");
+    if (users.size() != 1) {
+        const char *reason = users.empty() ? _("User not found") :
+                                             // Unlikely error message not worth translating
+                                             "More than one user found with this name";
+        std::string message = formatMessage(_("Cannot add user to group: {}"), std::string(reason));
+        showChatNotification(m_data, *chat, message.c_str(), PURPLE_MESSAGE_NO_LOG);
+        return;
+    }
+
+    if (getBasicGroupId(*chat) || getSupergroupId(*chat)) {
+        auto request = td::td_api::make_object<td::td_api::addChatMember>();
+        request->chat_id_ = chat->id_;
+        request->user_id_ = users[0]->id_;
+        uint64_t requestId = m_transceiver.sendQuery(std::move(request), &PurpleTdClient::chatActionResponse);
+        m_data.addPendingRequest<ChatActionRequest>(requestId, ChatActionRequest::Type::Invite, chat->id_);
     }
 }
 

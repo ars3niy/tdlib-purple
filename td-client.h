@@ -37,6 +37,7 @@ public:
     int  sendGroupMessage(int purpleChatId, const char *message);
     void setGroupDescription(int purpleChatId, const char *description);
     void kickUserFromChat(PurpleConversation *conv, const char *name);
+    void addUserToChat(int purpleChatId, const char *name);
 
     void setTwoFactorAuth(const char *oldPassword, const char *newPassword, const char *hint,
                         const char *email);
@@ -121,7 +122,7 @@ private:
     void       joinChatByLinkResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       deleteSupergroupResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       setGroupDescriptionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    void       kickUserResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       chatActionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
     void       showFile(const td::td_api::chat &chat, TgMessageInfo &message,
                         const td::td_api::file &file, const char *caption, const std::string &fileDesc,
@@ -151,9 +152,7 @@ private:
                                      td::td_api::object_ptr<td::td_api::file> thumbnail);
     void       sendMessageCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       uploadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    void       updateFile(const td::td_api::file &file);
 
-    bool       sendMessage(int64_t chatId, const char *message);
     void       sendMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       removeTempFile(int64_t messageId);
 
