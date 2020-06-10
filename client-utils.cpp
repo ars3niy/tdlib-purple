@@ -1183,7 +1183,7 @@ std::string getSenderDisplayName(const td::td_api::chat &chat, const TgMessageIn
                                  PurpleAccount *account)
 {
     if (message.outgoing)
-        return purple_account_get_alias(account);
+        return purple_account_get_name_for_display(account);
     else if (isPrivateChat(chat))
         return chat.title_;
     else
