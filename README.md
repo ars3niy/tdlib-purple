@@ -59,6 +59,13 @@ to use another API id.
 
 To install, copy the .so to libpurple plugins directory, or run `make install`.
 
+## Proper user names in bitlbee
+
+```
+account telegram-tdlib set nick_format %full_name
+```
+
+
 ## Regression test
 
 Build google test library and `make install` it somewhere
