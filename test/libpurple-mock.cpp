@@ -56,6 +56,11 @@ const char *purple_account_get_alias(const PurpleAccount *account)
     return account->alias;
 }
 
+const gchar *purple_account_get_name_for_display(const PurpleAccount *account)
+{
+    return purple_account_get_alias(account) ? : purple_account_get_username(account);
+}
+
 PurpleConnection *purple_account_get_connection(const PurpleAccount *account)
 {
     return account->gc;

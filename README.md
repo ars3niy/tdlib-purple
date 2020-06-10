@@ -65,7 +65,6 @@ To install, copy the .so to libpurple plugins directory, or run `make install`.
 account telegram-tdlib set nick_format %full_name
 ```
 
-
 ## Regression test
 
 Build google test library and `make install` it somewhere

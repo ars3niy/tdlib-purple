@@ -256,7 +256,7 @@ TEST_F(PrivateChatTest, Document)
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "document", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Downloading doc.file.name [mime/type]",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -314,7 +314,7 @@ TEST_F(PrivateChatTest, Video)
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "video", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Downloading video.avi [video/whatever]",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -372,7 +372,7 @@ TEST_F(PrivateChatTest, Audio)
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "audio", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Downloading symphony.ogg [audio/whatever]",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -499,7 +499,7 @@ TEST_F(PrivateChatTest, OtherMessage)
     prpl.verifyEvents(
         NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Received unsupported message type messageGame",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -542,7 +542,7 @@ TEST_F(PrivateChatTest, Photo)
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -773,7 +773,8 @@ TEST_F(PrivateChatTest, SendImage)
 
     prpl.verifyEvents(
         NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
-        ConversationWriteEvent(purpleUserName(0), "", "Failed to send message: code 100 (whatever error)",
+        ConversationWriteEvent(purpleUserName(0), purpleUserName(0),
+                               "Failed to send message: code 100 (whatever error)",
                                PURPLE_MESSAGE_SYSTEM, messageFailureDate)
     );
 }
@@ -937,7 +938,7 @@ TEST_F(PrivateChatTest, MessageSendResponseError)
     prpl.verifyEvents(
         NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             "Failed to send message: code 100 (error)",
             PURPLE_MESSAGE_SYSTEM, 0
         )
@@ -1012,7 +1013,8 @@ TEST_F(PrivateChatTest, WriteToNonContact_CreatePrivateChatFail)
             userFirstNames[1] + " " + userLastNames[1]
         ),
         ConversationWriteEvent(
-            userFirstNames[1] + " " + userLastNames[1], "",
+            userFirstNames[1] + " " + userLastNames[1],
+            userFirstNames[1] + " " + userLastNames[1],
             "Failed to open chat: code 100 (error)",
             PURPLE_MESSAGE_ERROR, 0
         )
@@ -1035,7 +1037,7 @@ TEST_F(PrivateChatTest, WriteToUnknownUser)
             "Antonie van Leeuwenhoek"
         ),
         ConversationWriteEvent(
-            "Antonie van Leeuwenhoek", "",
+            "Antonie van Leeuwenhoek", "Antonie van Leeuwenhoek",
             "User not found",
             PURPLE_MESSAGE_ERROR, 0
         )

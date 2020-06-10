@@ -28,9 +28,6 @@ add_executable(tests EXCLUDE_FROM_ALL
     ../format.cpp
 )
 
-target_compile_definitions(tests PRIVATE
-    "TD_VERSION=\"${Td_VERSION}\""
-)
 set_property(TARGET tests PROPERTY CXX_STANDARD 14)
 target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(tests PRIVATE gtest fmt::fmt Td::TdStatic glib-2.0)

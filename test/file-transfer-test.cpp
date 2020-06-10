@@ -40,7 +40,7 @@ TEST_F(FileTransferTest, BigPhoto_RequestDownload)
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "caption", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Requesting photo download",
             PURPLE_MESSAGE_SYSTEM, date
         ),
@@ -101,7 +101,7 @@ TEST_F(FileTransferTest, BigPhoto_Ignore)
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "caption", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Ignoring photo download (purple_str_size_to_units)",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -144,7 +144,7 @@ TEST_F(FileTransferTest, SecretPhoto_AlreadyDownloaded)
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "caption", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Ignoring secret photo",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -187,7 +187,7 @@ TEST_F(FileTransferTest, PhotoWithoutCaption)
     prpl.verifyEvents(
         NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -297,7 +297,7 @@ TEST_F(FileTransferTest, SendFile_SendMessageResponseError)
     prpl.verifyEvents(
         NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             "Failed to send message: code 100 (error)",
             PURPLE_MESSAGE_SYSTEM, 0
         )
@@ -388,7 +388,7 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_StuckAtStart)
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -480,7 +480,7 @@ TEST_F(FileTransferTest, Photo_DownloadProgress)
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -571,7 +571,7 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_StuckAtStart_Cancel)
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -632,7 +632,7 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_Cancel)
     prpl.verifyEvents(
         ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
-            purpleUserName(0), "",
+            purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
             PURPLE_MESSAGE_SYSTEM, date
         )
