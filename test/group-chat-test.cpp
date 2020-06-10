@@ -1208,3 +1208,103 @@ TEST_F(GroupChatTest, GetInviteLink)
 
     g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);
 }
+
+TEST_F(GroupChatTest, Roomlist)
+{
+    pluginInfo().login(account);
+    PurpleRoomlist *superEarlyRoomlist = pluginInfo().roomlist_get_list(connection);
+    prpl.verifyEvents(RoomlistInProgressEvent(superEarlyRoomlist, TRUE));
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
+    tgl.verifyRequests({
+        make_object<disableProxy>(),
+        make_object<getProxies>(),
+        make_object<setTdlibParameters>(make_object<tdlibParameters>(
+            false,
+            std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+            "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
+            "",
+            false,
+            false,
+            false,
+            false,
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            false,
+            false
+        ))
+    });
+    tgl.reply(make_object<ok>());
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitEncryptionKey>(true)));
+    tgl.verifyRequest(checkDatabaseEncryptionKey(""));
+    tgl.reply(make_object<ok>());
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
+    tgl.verifyNoRequests();
+
+    tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
+    tgl.verifyNoRequests();
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 3)
+    );
+
+    tgl.update(make_object<updateConnectionState>(make_object<connectionStateUpdating>()));
+    tgl.verifyNoRequests();
+    prpl.verifyEvents(ConnectionUpdateProgressEvent(connection, 2, 3));
+
+    tgl.update(make_object<updateUser>(makeUser(
+        selfId,
+        selfFirstName,
+        selfLastName,
+        selfPhoneNumber, // Phone number here without + to make it more interesting
+        make_object<userStatusOffline>()
+    )));
+    tgl.update(make_object<updateBasicGroup>(make_object<basicGroup>(
+        groupId, 2, make_object<chatMemberStatusMember>(), true, 0
+    )));
+    tgl.update(make_object<updateNewChat>(makeChat(
+        groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
+    )));
+    tgl.update(makeUpdateChatListMain(groupChatId));
+
+    tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
+    tgl.verifyRequest(getContacts());
+    tgl.reply(make_object<users>());
+
+    PurpleRoomlist *earlyRoomlist = pluginInfo().roomlist_get_list(connection);
+    prpl.verifyEvents(RoomlistInProgressEvent(earlyRoomlist, TRUE));
+
+    tgl.verifyRequest(getChats());
+    tgl.reply(make_object<chats>(std::vector<int64_t>(1, groupChatId)));
+    tgl.verifyRequest(getChats());
+    tgl.reply(make_object<chats>());
+
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTED),
+        AddChatEvent(groupChatPurpleName, groupChatTitle, account, nullptr, nullptr),
+        RoomlistAddRoomEvent(superEarlyRoomlist, "id", groupChatPurpleName.c_str()),
+        RoomlistInProgressEvent(superEarlyRoomlist, FALSE),
+        RoomlistAddRoomEvent(earlyRoomlist, "id", groupChatPurpleName.c_str()),
+        RoomlistInProgressEvent(earlyRoomlist, FALSE),
+        AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
+        ShowAccountEvent(account)
+    );
+    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
+
+    purple_roomlist_unref(superEarlyRoomlist);
+    purple_roomlist_unref(earlyRoomlist);
+
+    PurpleRoomlist *onlineRoomlist = pluginInfo().roomlist_get_list(connection);
+    prpl.verifyEvents(
+        RoomlistInProgressEvent(onlineRoomlist, TRUE),
+        RoomlistAddRoomEvent(onlineRoomlist, "id", groupChatPurpleName.c_str()),
+        RoomlistInProgressEvent(onlineRoomlist, FALSE)
+    );
+    purple_roomlist_unref(onlineRoomlist);
+}

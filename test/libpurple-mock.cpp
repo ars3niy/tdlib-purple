@@ -1,3 +1,4 @@
+#include "libpurple-mock.h"
 #include "purple-events.h"
 #include <purple.h>
 #include <stdarg.h>
@@ -716,15 +717,97 @@ void *purple_request_input(void *handle, const char *title, const char *primary,
 
 PurpleRoomlist *purple_roomlist_new(PurpleAccount *account)
 {
-    return NULL;
+    PurpleRoomlist *roomlist = new PurpleRoomlist;
+    roomlist->ref = 1;
+    roomlist->ui_data = new RoomlistData;
+    return roomlist;
 }
 
 void purple_roomlist_set_in_progress(PurpleRoomlist *list, gboolean in_progress)
 {
+    EVENT(RoomlistInProgressEvent, list, in_progress);
+}
+
+void purple_roomlist_ref(PurpleRoomlist *list)
+{
+    list->ref++;
 }
 
 void purple_roomlist_unref(PurpleRoomlist *list)
 {
+    ASSERT_NE(0u, list->ref);
+    list->ref--;
+    if (list->ref == 0) {
+        delete static_cast<RoomlistData *>(list->ui_data);
+        delete list;
+    }
+}
+
+PurpleRoomlistField *purple_roomlist_field_new(PurpleRoomlistFieldType type,
+                                           const gchar *label, const gchar *name,
+                                           gboolean hidden)
+{
+    PurpleRoomlistField *field = new PurpleRoomlistField;
+    field->type = type;
+    field->name = strdup(name);
+    return field;
+}
+
+void purple_roomlist_set_fields(PurpleRoomlist *list, GList *fields)
+{
+    RoomlistData *fieldStore = static_cast<RoomlistData *>(list->ui_data);
+    for (GList *field = fields; field; field = g_list_next(field)) {
+        PurpleRoomlistField *f = static_cast<PurpleRoomlistField *>(field->data);
+        fieldStore->emplace_back(f->type, f->name);
+        free(f->name);
+        delete f;
+    }
+    g_list_free(fields);
+}
+
+struct RealRoom {
+    std::vector<std::string> fieldValues;
+    GList firstField = {NULL, NULL, NULL};
+};
+
+PurpleRoomlistRoom *purple_roomlist_room_new(PurpleRoomlistRoomType type, const gchar *name,
+                                         PurpleRoomlistRoom *parent)
+{
+    PurpleRoomlistRoom *room = reinterpret_cast<PurpleRoomlistRoom *>(new RealRoom);
+    return room;
+}
+
+void purple_roomlist_room_add_field(PurpleRoomlist *list, PurpleRoomlistRoom *notRoom, gconstpointer field)
+{
+    RoomlistData *fieldList = static_cast<RoomlistData *>(list->ui_data);
+    RealRoom *room = reinterpret_cast<RealRoom *>(notRoom);
+    size_t index = room->fieldValues.size();
+    switch (fieldList->at(index).first) {
+        case PURPLE_ROOMLIST_FIELD_BOOL:
+            room->fieldValues.push_back(field ? "true" : "false");
+            break;
+        case PURPLE_ROOMLIST_FIELD_INT:
+            room->fieldValues.push_back(std::to_string(GPOINTER_TO_INT(field)));
+            break;
+        case PURPLE_ROOMLIST_FIELD_STRING:
+            room->fieldValues.push_back(static_cast<const char *>(field));
+            break;
+    }
+}
+
+GList * purple_roomlist_room_get_fields(PurpleRoomlistRoom *notRoom)
+{
+    RealRoom *room = reinterpret_cast<RealRoom *>(notRoom);
+    if (!room->fieldValues.empty())
+        room->firstField.data = const_cast<char *>(room->fieldValues[0].c_str());
+    return &room->firstField;
+}
+
+void purple_roomlist_room_add(PurpleRoomlist *list, PurpleRoomlistRoom *notRoom)
+{
+    RealRoom *room = reinterpret_cast<RealRoom *>(notRoom);
+    EVENT(RoomlistAddRoomEvent, list, room->fieldValues);
+    delete room;
 }
 
 void purple_serv_got_join_chat_failed(PurpleConnection *gc, GHashTable *data)

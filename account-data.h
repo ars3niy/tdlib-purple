@@ -218,13 +218,14 @@ public:
     std::string                   getDisplayName(int32_t userId) const;
     void                          getUsersByDisplayName(const char *displayName,
                                                         std::vector<const td::td_api::user*> &users);
+
     const td::td_api::basicGroup *getBasicGroup(int32_t groupId) const;
     const td::td_api::basicGroupFullInfo *getBasicGroupInfo(int32_t groupId) const;
     const td::td_api::supergroup *getSupergroup(int32_t groupId) const;
     const td::td_api::supergroupFullInfo *getSupergroupInfo(int32_t groupId) const;
     const td::td_api::chat       *getBasicGroupChatByGroup(int32_t groupId) const;
     const td::td_api::chat       *getSupergroupChatByGroup(int32_t groupId) const;
-    bool                          isGroupChatWithMembership(const td::td_api::chat &chat);
+    bool                          isGroupChatWithMembership(const td::td_api::chat &chat) const;
 
     template<typename ReqType, typename... ArgsType>
     void addPendingRequest(ArgsType... args)

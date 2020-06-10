@@ -39,6 +39,7 @@ public:
     void kickUserFromChat(PurpleConversation *conv, const char *name);
     void addUserToChat(int purpleChatId, const char *name);
     void showInviteLink(const std::string &purpleChatName);
+    void getGroupChatList(PurpleRoomlist *roomlist);
 
     void setTwoFactorAuth(const char *oldPassword, const char *newPassword, const char *hint,
                         const char *email);
@@ -170,6 +171,7 @@ private:
     std::vector<int32_t>  m_usersForNewPrivateChats;
     bool                  m_isProxyAdded = false;
     int64_t               m_lastChatOrderOffset = 0;
+    std::vector<PurpleRoomlist *>               m_pendingRoomLists;
     td::td_api::object_ptr<td::td_api::proxy>   m_addedProxy;
     td::td_api::object_ptr<td::td_api::proxies> m_proxies;
 };

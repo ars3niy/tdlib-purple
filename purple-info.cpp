@@ -6,10 +6,15 @@
 
 static const char *_(const char *s) { return s; }
 
-static char idKey[]     = "id";
-static char inviteKey[] = "link";
-static char nameKey[]   = "name";
-static char typeKey[]   = "type";
+static char chatNameComponent[] = "id";
+static char inviteKey[]         = "link";
+static char nameKey[]           = "name";
+static char typeKey[]           = "type";
+
+const char *getChatNameComponent()
+{
+    return chatNameComponent;
+}
 
 GList *getChatJoinInfo()
 {
@@ -17,7 +22,7 @@ GList *getChatJoinInfo()
     struct proto_chat_entry *pce;
     pce = g_new0 (struct proto_chat_entry, 1);
     pce->label = _("Chat ID (don't change):");
-    pce->identifier = idKey;
+    pce->identifier = chatNameComponent;
     pce->required = FALSE;
     GList *info = g_list_append (NULL, pce);
 
@@ -46,7 +51,7 @@ GList *getChatJoinInfo()
     return info;
 }
 
-std::string getChatName(const td::td_api::chat &chat)
+std::string getPurpleChatName(const td::td_api::chat &chat)
 {
     return "chat" + std::to_string(chat.id_);
 }
@@ -58,13 +63,13 @@ GHashTable *getChatComponents(const td::td_api::chat &chat)
     name[sizeof(name)-1] = '\0';
 
     GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
-    g_hash_table_insert(table, idKey, g_strdup(name));
+    g_hash_table_insert(table, chatNameComponent, g_strdup(name));
     return table;
 }
 
 const char *getChatName(GHashTable *components)
 {
-    return (const char *)g_hash_table_lookup(components, idKey);
+    return (const char *)g_hash_table_lookup(components, chatNameComponent);
 }
 
 const char *getChatInviteLink(GHashTable *components)

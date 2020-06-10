@@ -96,7 +96,9 @@ enum class PurpleEventType: uint8_t {
     XferEnd,
     XferLocalCancel,
     XferRemoteCancel,
-    SetUserPhoto
+    SetUserPhoto,
+    RoomlistInProgress,
+    RoomlistAddRoom
 };
 
 struct PurpleEvent {
@@ -501,6 +503,29 @@ struct SetUserPhotoEvent: PurpleEvent {
         this->data.resize(datalen);
         memmove(this->data.data(), data, datalen);
     }
+};
+
+struct RoomlistInProgressEvent: PurpleEvent {
+    PurpleRoomlist *list;
+    bool inprogress;
+
+    RoomlistInProgressEvent(PurpleRoomlist *list, bool inprogress)
+    : PurpleEvent(PurpleEventType::RoomlistInProgress), list(list), inprogress(inprogress) {}
+};
+
+struct RoomlistAddRoomEvent: PurpleEvent {
+    PurpleRoomlist *roomlist;
+    std::vector<std::string> fieldValues;
+    const char *fieldToCheck = NULL;
+    const char *valueToCheck = NULL;
+
+    RoomlistAddRoomEvent(PurpleRoomlist *roomlist, const std::vector<std::string> &values)
+    : PurpleEvent(PurpleEventType::RoomlistAddRoom), roomlist(roomlist), fieldValues(values) {}
+
+    RoomlistAddRoomEvent(PurpleRoomlist *roomlist, const char *fieldToCheck,
+                         const char *valueToCheck)
+    : PurpleEvent(PurpleEventType::RoomlistAddRoom), roomlist(roomlist), fieldToCheck(fieldToCheck),
+      valueToCheck(valueToCheck) {}
 };
 
 #endif

@@ -87,5 +87,7 @@ std::string makeDocumentDescription(const td::td_api::videoNote *document);
 void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
                       TdTransceiver &transceiver, TdAccountData &account);
 void updateOption(const td::td_api::updateOption &option, TdAccountData &account);
+void populateGroupChatList(PurpleRoomlist *roomlist, const std::vector<const td::td_api::chat *> &chats,
+                           const TdAccountData &account);
 
 #endif

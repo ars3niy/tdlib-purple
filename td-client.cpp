@@ -769,6 +769,12 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
         }
     }
 
+    for (PurpleRoomlist *roomlist: m_pendingRoomLists) {
+        populateGroupChatList(roomlist, chats, m_data);
+        purple_roomlist_unref(roomlist);
+    }
+    m_pendingRoomLists.clear();
+
     // Here we could remove buddies for which no private chat exists, meaning they have been remove
     // from the contact list perhaps in another client
 
@@ -2052,6 +2058,29 @@ void PurpleTdClient::showInviteLink(const std::string& purpleChatName)
     } else
         // Unlikely error message not worth translating
         showChatNotification(m_data, *chat, "Failed to get invite link, full info not known");
+}
+
+void PurpleTdClient::getGroupChatList(PurpleRoomlist *roomlist)
+{
+
+    GList *fields = NULL;
+    PurpleRoomlistField *f = purple_roomlist_field_new(PURPLE_ROOMLIST_FIELD_STRING, "",
+                                                       getChatNameComponent(), TRUE);
+    fields = g_list_append (fields, f);
+    // "description" is hard-coded in bitlbee as possible field for chat topic
+    f = purple_roomlist_field_new(PURPLE_ROOMLIST_FIELD_STRING, _("Description"), "description", FALSE);
+    fields = g_list_append (fields, f);
+    purple_roomlist_set_fields (roomlist, fields);
+
+    purple_roomlist_set_in_progress(roomlist, TRUE);
+    if (purple_account_is_connected(m_account)) {
+        std::vector<const td::td_api::chat *> chats;
+        m_data.getChats(chats);
+        populateGroupChatList(roomlist, chats, m_data);
+    } else {
+        purple_roomlist_ref(roomlist);
+        m_pendingRoomLists.push_back(roomlist);
+    }
 }
 
 void PurpleTdClient::removeTempFile(int64_t messageId)

@@ -147,7 +147,7 @@ PurpleConversation *getImConversation(PurpleAccount *account, const char *userna
 PurpleConvChat *getChatConversation(TdAccountData &account, const td::td_api::chat &chat,
                                     int chatPurpleId)
 {
-    std::string chatName       = getChatName(chat);
+    std::string chatName       = getPurpleChatName(chat);
     bool        newChatCreated = false;
     PurpleConversation *conv = purple_find_chat(purple_account_get_connection(account.purpleAccount), chatPurpleId);
     if (conv == NULL) {
@@ -199,7 +199,7 @@ PurpleConvChat *getChatConversation(TdAccountData &account, const td::td_api::ch
 
 PurpleConvChat *findChatConversation(PurpleAccount *account, const td::td_api::chat &chat)
 {
-    std::string         name = getChatName(chat);
+    std::string         name = getPurpleChatName(chat);
     PurpleConversation *conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_CHAT,
                                                                      name.c_str(), account);
     if (conv)
@@ -296,7 +296,7 @@ static void updateGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat
         return;
     }
 
-    std::string  chatName   = getChatName(chat);
+    std::string  chatName   = getPurpleChatName(chat);
     PurpleChat  *purpleChat = purple_blist_find_chat(purpleAccount, chatName.c_str());
     if (!purpleChat) {
         purple_debug_misc(config::pluginId, "Adding new chat for %s %d (%s)\n",
@@ -370,7 +370,7 @@ void updateSupergroupChat(TdAccountData &account, int32_t groupId)
 
 void removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat)
 {
-    std::string  chatName   = getChatName(chat);
+    std::string  chatName   = getPurpleChatName(chat);
     PurpleChat  *purpleChat = purple_blist_find_chat(purpleAccount, chatName.c_str());
 
     if (purpleChat)
@@ -1472,4 +1472,29 @@ void updateOption(const td::td_api::updateOption &option, TdAccountData &account
         account.options.maxMessageLength = std::max(0, static_cast<const td::td_api::optionValueInteger &>(*option.value_).value_);
     } else
         purple_debug_misc(config::pluginId, "Option update %s\n", option.name_.c_str());
+}
+
+void populateGroupChatList(PurpleRoomlist *roomlist, const std::vector<const td::td_api::chat *> &chats,
+                           const TdAccountData &account)
+{
+    for (const td::td_api::chat *chat: chats)
+        if (account.isGroupChatWithMembership(*chat)) {
+            PurpleRoomlistRoom *room = purple_roomlist_room_new(PURPLE_ROOMLIST_ROOMTYPE_ROOM,
+                                                                chat->title_.c_str(), NULL);
+            purple_roomlist_room_add_field (roomlist, room, getPurpleChatName(*chat).c_str());
+            int32_t groupId = getBasicGroupId(*chat);
+            if (groupId) {
+                const td::td_api::basicGroupFullInfo *fullInfo = account.getBasicGroupInfo(groupId);
+                if (fullInfo && !fullInfo->description_.empty())
+                    purple_roomlist_room_add_field(roomlist, room, fullInfo->description_.c_str());
+            }
+            groupId = getSupergroupId(*chat);
+            if (groupId) {
+                const td::td_api::supergroupFullInfo *fullInfo = account.getSupergroupInfo(groupId);
+                if (fullInfo && !fullInfo->description_.empty())
+                    purple_roomlist_room_add_field(roomlist, room, fullInfo->description_.c_str());
+            }
+            purple_roomlist_room_add(roomlist, room);
+        }
+    purple_roomlist_set_in_progress(roomlist, FALSE);
 }

@@ -1,4 +1,5 @@
 #include "purple-events.h"
+#include "libpurple-mock.h"
 #include <gtest/gtest.h>
 
 PurpleEventReceiver g_purpleEvents;
@@ -269,6 +270,27 @@ static void compare(const XferRemoteCancelEvent &actual, const XferRemoteCancelE
     COMPARE(filename);
 }
 
+static void compare(const RoomlistInProgressEvent &actual, const RoomlistInProgressEvent &expected)
+{
+    COMPARE(list);
+    COMPARE(inprogress);
+}
+
+static void compare(const RoomlistAddRoomEvent &actual, const RoomlistAddRoomEvent &expected)
+{
+    COMPARE(roomlist);
+    ASSERT_EQ(nullptr, actual.fieldToCheck);
+    ASSERT_EQ(nullptr, actual.valueToCheck);
+    ASSERT_NE(nullptr, expected.fieldToCheck);
+    ASSERT_NE(nullptr, expected.valueToCheck);
+
+    RoomlistData *fieldList = static_cast<RoomlistData *>(actual.roomlist->ui_data);
+    for (unsigned i = 0; i < fieldList->size(); i++)
+        if (fieldList->at(i).second == expected.fieldToCheck) {
+            ASSERT_EQ(std::string(expected.valueToCheck), actual.fieldValues.at(i));
+        }
+}
+
 static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected)
 {
     ASSERT_EQ(expected.type, actual.type) << "Unexpected libpurple event " << actual.toString() <<
@@ -316,6 +338,8 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(XferEnd)
         C(XferLocalCancel)
         C(XferRemoteCancel)
+        C(RoomlistInProgress)
+        C(RoomlistAddRoom)
         default:
             ASSERT_TRUE(false) << "Unsupported libpurple event " << actual.toString();
     };
@@ -457,6 +481,8 @@ std::string PurpleEvent::toString() const
     C(XferLocalCancel)
     C(XferRemoteCancel)
     C(SetUserPhoto)
+    C(RoomlistInProgress)
+    C(RoomlistAddRoom)
     }
     return std::to_string((unsigned)type);
 #undef C

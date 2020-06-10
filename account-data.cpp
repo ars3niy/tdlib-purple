@@ -481,7 +481,7 @@ const td::td_api::chat *TdAccountData::getSupergroupChatByGroup(int32_t groupId)
         return nullptr;
 }
 
-bool TdAccountData::isGroupChatWithMembership(const td::td_api::chat &chat)
+bool TdAccountData::isGroupChatWithMembership(const td::td_api::chat &chat) const
 {
     int groupId = getBasicGroupId(chat);
     if (groupId) {

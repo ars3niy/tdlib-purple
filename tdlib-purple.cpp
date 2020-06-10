@@ -212,7 +212,9 @@ static GList *tgprpl_chat_join_info (PurpleConnection *gc)
 
 static GHashTable *tgprpl_chat_info_defaults (PurpleConnection *gc, const char *chat_name)
 {
-    return g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (gpointer)getChatNameComponent(), g_strdup(chat_name));
+    return components;
 }
 
 static ITransceiverBackend *g_testBackend = nullptr;
@@ -451,21 +453,22 @@ static void tgprpl_rename_buddy(PurpleConnection *gc, const char *who, const cha
 
 static PurpleRoomlist *tgprpl_roomlist_get_list (PurpleConnection *gc)
 {
-    static PurpleRoomlist *roomlist = NULL; // put it on like protocol_data
+    PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
+    PurpleRoomlist *roomlist = purple_roomlist_new(purple_connection_get_account(gc));
 
-    if (roomlist)
-        purple_roomlist_unref (roomlist);
-    roomlist = purple_roomlist_new (purple_connection_get_account (gc));
-
-    purple_roomlist_set_in_progress (roomlist, TRUE);
-    // blah blah blah
-    purple_roomlist_set_in_progress (roomlist, FALSE);
+    if (tdClient)
+        tdClient->getGroupChatList(roomlist);
 
     return roomlist;
 }
 
 static void tgprpl_roomlist_cancel (PurpleRoomlist *list)
 {
+}
+
+static char *getRoomlistChatName(PurpleRoomlistRoom *room)
+{
+    return g_strdup((char *)purple_roomlist_room_get_fields(room)->data);
 }
 
 static gboolean tgprpl_can_receive_file (PurpleConnection *gc, const char *who)
@@ -615,7 +618,7 @@ static PurplePluginProtocolInfo prpl_info = {
     .offline_message          = NULL,
     .whiteboard_prpl_ops      = NULL,
     .send_raw                 = NULL,
-    .roomlist_room_serialize  = NULL,
+    .roomlist_room_serialize  = getRoomlistChatName,
     .unregister_user          = NULL,
     .send_attention           = NULL,
     .get_attention_types      = NULL,

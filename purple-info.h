@@ -9,8 +9,9 @@ static constexpr int
     GROUP_TYPE_SUPER   = 2,
     GROUP_TYPE_CHANNEL = 3;
 
+const char  *getChatNameComponent();
 GList       *getChatJoinInfo();
-std::string  getChatName(const td::td_api::chat &chat);
+std::string  getPurpleChatName(const td::td_api::chat &chat);
 GHashTable  *getChatComponents(const td::td_api::chat &chat);
 
 const char  *getChatName(GHashTable *components);
