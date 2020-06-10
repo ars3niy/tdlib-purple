@@ -408,7 +408,7 @@ void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const
     if (notification) {
         if (conv == NULL)
             conv = getImConversation(account.purpleAccount, purpleUserName);
-        purple_conv_im_write(purple_conversation_get_im_data(conv), nullptr, notification,
+        purple_conv_im_write(purple_conversation_get_im_data(conv), purpleUserName, notification,
                              getNotificationFlags(flags), timestamp);
     }
 }
