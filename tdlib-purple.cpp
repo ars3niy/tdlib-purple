@@ -631,6 +631,11 @@ static PurplePluginProtocolInfo prpl_info = {
     .get_public_alias         = NULL,
     .add_buddy_with_invite    = NULL,
     .add_buddies_with_invite  = NULL,
+#if PURPLE_VERSION_CHECK(2,14,0)
+    .get_cb_alias             = NULL,
+    .chat_can_receive_file    = NULL,
+    .chat_send_file           = NULL,
+#endif
 };
 
 static gboolean tgprpl_load (PurplePlugin *plugin)
