@@ -397,7 +397,7 @@ void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const
             // echoed messages from this client. Therefore, this (code snippet from facebook plugin).
             conv = getImConversation(account.purpleAccount, purpleUserName);
             purple_conv_im_write(purple_conversation_get_im_data(conv),
-                                 purple_account_get_alias(account.purpleAccount),
+                                 purple_account_get_name_for_display(account.purpleAccount),
                                  text, flags, timestamp);
         } else {
             serv_got_im(purple_account_get_connection(account.purpleAccount), purpleUserName, text,
@@ -424,8 +424,8 @@ static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &
     if (text) {
         if (flags & PURPLE_MESSAGE_SEND) {
             if (conv)
-                purple_conv_chat_write(conv, purple_account_get_alias(account.purpleAccount), text,
-                                       flags, message.timestamp);
+                purple_conv_chat_write(conv, purple_account_get_name_for_display(account.purpleAccount),
+                                       text, flags, message.timestamp);
         } else {
             if (purpleId != 0)
                 serv_got_chat_in(purple_account_get_connection(account.purpleAccount), purpleId,
