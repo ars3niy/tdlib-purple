@@ -1,0 +1,1968 @@
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/configure.ac pidgin-2.14.0/configure.ac
+--- /w/tmp/pidgin-2.14.0/configure.ac	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/configure.ac	2020-06-12 21:58:16.904839915 +0200
+@@ -77,10 +77,44 @@ AC_FUNC_ALLOCA
+ dnl Check for Sun compiler
+ AC_CHECK_DECL([__SUNPRO_C], [SUNCC="yes"], [SUNCC="no"])
+ 
++dnl ******************************
++dnl Win32
++dnl ******************************
++AC_MSG_CHECKING([for Win32])
++case "$host" in
++*-mingw*)
++	os_win32=yes
++	not_os_win32=no
++	NO_UNDEFINED='-no-undefined'
++	AVOID_VERSION='-avoid-version'
++	AC_CHECK_TOOL(WINDRES, windres)
++	PURPLE_LIBS='$(top_builddir)/libpurple/libpurple.la'
++	PIDGIN_LIBS='$(top_builddir)/pidgin/libpidgin.la'
++	;;
++*)
++	os_win32=no
++	not_os_win32=yes
++	NO_UNDEFINED=
++	AVOID_VERSION=
++	PURPLE_LIBS=
++	PIDGIN_LIBS=
++	;;
++esac
++AC_MSG_RESULT([$os_win32])
++AM_CONDITIONAL(OS_WIN32, [test $os_win32 = yes])
++AC_SUBST(NO_UNDEFINED)
++AC_SUBST(AVOID_VERSION)
++AC_SUBST(PURPLE_LIBS)
++AC_SUBST(PIDGIN_LIBS)
++
+ dnl Checks for header files.
+ AC_HEADER_STDC
+ AC_HEADER_SYS_WAIT
+-AC_CHECK_HEADERS(arpa/nameser_compat.h fcntl.h sys/time.h unistd.h locale.h signal.h stdint.h regex.h)
++AC_CHECK_HEADERS(arpa/nameser_compat.h fcntl.h sys/time.h unistd.h locale.h stdint.h)
++dnl signal.h is not good in mingw
++if test "$os_win32" != yes; then
++	AC_CHECK_HEADERS(signal.h regex.h)
++fi
+ 
+ dnl Checks for typedefs, structures, and compiler characteristics.
+ AC_C_CONST
+@@ -102,6 +136,7 @@ AC_CHECK_FUNCS(getopt_long,,
+ 	AC_LIBOBJ(getopt1)
+ ])
+ 
++if test "$os_win32" != yes; then
+ dnl Check for inet_aton
+ AC_CHECK_FUNC(inet_aton, , [AC_CHECK_LIB(resolv, inet_aton, ,
+ 				         [AC_MSG_ERROR([inet_aton not found])])])
+@@ -109,6 +144,8 @@ AC_CHECK_LIB(resolv, __res_query)
+ AC_CHECK_LIB(nsl, gethostent)
+ AC_CHECK_FUNC(socket, ,
+ 	[AC_CHECK_LIB(socket, socket, , [AC_MSG_ERROR([socket not found])])])
++fi
++
+ dnl If all goes well, by this point the previous two checks will have
+ dnl pulled in -lsocket and -lnsl if we need them.
+ AC_CHECK_FUNC(getaddrinfo,
+@@ -118,6 +155,8 @@ AC_CHECK_FUNC(getaddrinfo,
+ 		[AC_DEFINE([HAVE_GETADDRINFO]) LIBS="-lsocket -lsnl $LIBS"], , , -lnsl)])
+ AC_CHECK_FUNCS(inet_ntop)
+ AC_CHECK_FUNCS(getifaddrs)
++
++if test "$os_win32" != yes; then
+ dnl Check for socklen_t (in Unix98)
+ AC_MSG_CHECKING(for socklen_t)
+ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+@@ -139,6 +178,7 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+ 		AC_DEFINE(socklen_t, int, [socklen_t size])
+ 	])
+ ])
++fi
+ 
+ dnl Some systems do not have sa_len field for struct sockaddr.
+ AC_CHECK_MEMBER([struct sockaddr.sa_len],
+@@ -289,6 +329,18 @@ fi #enable_i18n
+ AM_CONDITIONAL(INSTALL_I18N, test "x$enable_i18n" = "xyes")
+ 
+ dnl #######################################################################
++dnl # Check for Zlib
++dnl #######################################################################
++PKG_CHECK_MODULES([ZLIB],[zlib],[],[
++	AC_CHECK_HEADER(zlib.h, [ZLIB_CFLAGS=],
++		[AC_MSG_ERROR(zlib.h not found. install zlib)], [])
++	AC_CHECK_LIB(z, inflate, [ ZLIB_LIBS=-lz ],
++		[AC_MSG_ERROR(zlib not found or functional)], [])
++])
++AC_SUBST(ZLIB_CFLAGS)
++AC_SUBST(ZLIB_LIBS)
++
++dnl #######################################################################
+ dnl # Check for GLib 2.16 (required)
+ dnl #######################################################################
+ PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.16.0 gobject-2.0 gmodule-2.0 gthread-2.0], , [
+@@ -303,9 +355,6 @@ I can find them.
+ AC_SUBST(GLIB_CFLAGS)
+ AC_SUBST(GLIB_LIBS)
+ 
+-PKG_CHECK_MODULES(GIO_UNIX, [gio-unix-2.0 >= 2.26],
+-			    AC_DEFINE(HAVE_GIOUNIX, 1, [Have gio-unix]), [])
+-
+ GLIB_GENMARSHAL=`pkg-config --variable=glib_genmarshal glib-2.0`
+ AC_SUBST(GLIB_GENMARSHAL)
+ 
+@@ -1224,7 +1273,7 @@ AM_CONDITIONAL(STATIC_OSCAR, test "x$sta
+ AM_CONDITIONAL(STATIC_SAMETIME, test "x$static_sametime" = "xyes" -a "x$have_meanwhile" = "xyes")
+ AM_CONDITIONAL(STATIC_SILC, test "x$static_silc" = "xyes" -a "x$have_silc" = "xyes")
+ AM_CONDITIONAL(STATIC_SIMPLE, test "x$static_simple" = "xyes")
+-AM_CONDITIONAL(STATIC_ZEPHYR, test "x$static_zephyr" = "xyes")
++AM_CONDITIONAL(STATIC_ZEPHYR, test "x$static_zephyr" = "xyes" -a "x$enable_zephyr" = "xyes")
+ AC_SUBST(STATIC_LINK_LIBS)
+ AC_DEFINE_UNQUOTED(STATIC_PROTO_INIT, $extern_init static void static_proto_init(void) { $load_proto },
+ 	[Loads static protocol plugin module initialization functions.])
+@@ -1245,6 +1294,10 @@ fi
+ if test "x$silc10includes" != "xyes" -o "x$silc10client" != "xyes"; then
+ 	DYNAMIC_PRPLS=`echo $DYNAMIC_PRPLS | $sedpath 's/silc10//'`
+ fi
++if test "x$enable_zephyr" != "xyes"; then
++	DYNAMIC_PRPLS=`echo $DYNAMIC_PRPLS | $sedpath 's/zephyr//'`
++fi
++
+ AC_SUBST(DYNAMIC_PRPLS)
+ for i in $DYNAMIC_PRPLS ; do
+ 	case $i in
+@@ -2586,6 +2639,11 @@ AC_CONFIG_FILES([Makefile
+ 		   pidgin/plugins/perl/Makefile
+ 		   pidgin/plugins/perl/common/Makefile.PL
+ 		   pidgin/plugins/ticker/Makefile
++		   pidgin/plugins/win32/Makefile
++		   pidgin/plugins/win32/transparency/Makefile
++		   pidgin/plugins/win32/winprefs/Makefile
++		   pidgin/win32/pidgin_dll_rc.rc
++		   pidgin/win32/pidgin_exe_rc.rc
+ 		   libpurple/data/gconf/Makefile
+ 		   libpurple/data/purple.pc
+ 		   libpurple/data/purple-uninstalled.pc
+@@ -2618,6 +2676,7 @@ AC_CONFIG_FILES([Makefile
+ 		   libpurple/tests/Makefile
+ 		   libpurple/purple.h
+ 		   libpurple/version.h
++		   libpurple/win32/libpurplerc.rc
+ 		   share/sounds/Makefile
+ 		   share/ca-certs/Makefile
+ 		   finch/finch.pc
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/finch/finch.c pidgin-2.14.0/finch/finch.c
+--- /w/tmp/pidgin-2.14.0/finch/finch.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/finch/finch.c	2020-06-12 21:46:52.249353245 +0200
+@@ -378,7 +378,7 @@ init_libpurple(int argc, char **argv)
+ 	purple_plugins_add_search_path(path);
+ 	g_free(path);
+ 
+-	purple_plugins_add_search_path(LIBDIR);
++	purple_plugins_add_search_path(FINCH_LIBDIR);
+ 
+ 	if (!purple_core_init(FINCH_UI))
+ 	{
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/finch/gntsound.c pidgin-2.14.0/finch/gntsound.c
+--- /w/tmp/pidgin-2.14.0/finch/gntsound.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/finch/gntsound.c	2020-06-12 21:46:52.249353245 +0200
+@@ -616,7 +616,7 @@ finch_sound_play_event(PurpleSoundEventI
+ 		if (!filename || !strlen(filename)) {
+ 			g_free(filename);
+ 			/* XXX Consider creating a constant for "sounds/purple" to be shared with Pidgin */
+-			filename = g_build_filename(DATADIR, "sounds", "purple", sounds[event].def, NULL);
++			filename = g_build_filename(PURPLE_DATADIR, "sounds", "purple", sounds[event].def, NULL);
+ 		}
+ 
+ 		purple_sound_play_file(filename, NULL);
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/finch/Makefile.am pidgin-2.14.0/finch/Makefile.am
+--- /w/tmp/pidgin-2.14.0/finch/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/finch/Makefile.am	2020-06-12 21:55:29.972073970 +0200
+@@ -80,10 +80,11 @@ finch_LDADD = \
+ AM_CPPFLAGS = \
+ 	-DSTANDALONE \
+ 	-DGNTSEAL_ENABLE \
+-	-DDATADIR=\"$(datadir)\" \
+-	-DLIBDIR=\"$(libdir)/finch/\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
++	-DFINCH_LIBDIR=\"$(libdir)/finch/\" \
+ 	-DLOCALEDIR=\"$(datadir)/locale\" \
+ 	-DSYSCONFDIR=\"$(sysconfdir)\" \
++	-DSTANDALONE \
+ 	-I$(top_srcdir)/libpurple/ \
+ 	-I$(top_srcdir) \
+ 	$(LIBGNT_CFLAGS) \
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/finch/plugins/Makefile.am pidgin-2.14.0/finch/plugins/Makefile.am
+--- /w/tmp/pidgin-2.14.0/finch/plugins/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/finch/plugins/Makefile.am	2020-06-12 21:46:58.841353212 +0200
+@@ -39,7 +39,7 @@ endif # PLUGINS
+ EXTRA_DIST = pietray.py
+ 
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
+ 	-I$(top_builddir)/libpurple \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_srcdir) \
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/certificate.c pidgin-2.14.0/libpurple/certificate.c
+--- /w/tmp/pidgin-2.14.0/libpurple/certificate.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/certificate.c	2020-06-12 21:46:58.853353212 +0200
+@@ -920,15 +920,15 @@ x509_ca_init(void)
+ {
+ 	/* Attempt to point at the appropriate system path */
+ 	if (NULL == x509_ca_paths) {
+-#ifdef _WIN32
+-		x509_ca_paths = g_list_append(NULL, g_build_filename(DATADIR,
++#if defined(_WIN32) && !defined(USE_FHS)
++		x509_ca_paths = g_list_append(NULL, g_build_filename(PURPLE_DATADIR,
+ 						   "ca-certs", NULL));
+ #else
+ # ifdef SSL_CERTIFICATES_DIR
+ 		x509_ca_paths = g_list_append(NULL, g_strdup(SSL_CERTIFICATES_DIR));
+ # endif
+ 		x509_ca_paths = g_list_append(x509_ca_paths,
+-			g_build_filename(DATADIR, "purple", "ca-certs", NULL));
++			g_build_filename(PURPLE_DATADIR, "purple", "ca-certs", NULL));
+ #endif
+ 	}
+ 
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/data/purple.pc.in pidgin-2.14.0/libpurple/data/purple.pc.in
+--- /w/tmp/pidgin-2.14.0/libpurple/data/purple.pc.in	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/data/purple.pc.in	2020-06-12 21:46:58.877353212 +0200
+@@ -13,5 +13,5 @@ Name: libpurple
+ Description: libpurple is a GLib-based instant messenger library.
+ Version: @VERSION@
+ Requires: glib-2.0
+-Cflags: -I${includedir}/libpurple
++Cflags: -I${includedir}/libpurple -I${includedir}/libpurple/win32
+ Libs: -L${libdir} -lpurple
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/dnsquery.c pidgin-2.14.0/libpurple/dnsquery.c
+--- /w/tmp/pidgin-2.14.0/libpurple/dnsquery.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/dnsquery.c	2020-06-12 21:46:58.877353212 +0200
+@@ -744,7 +744,8 @@ dns_thread(gpointer data)
+ 
+ 	query_data = data;
+ 
+-#ifdef USE_IDN
++	
++#if defined(USE_IDN) && defined(HAVE_GETADDRINFO)
+ 	if (!dns_str_is_ascii(query_data->hostname)) {
+ 		rc = purple_network_convert_idn_to_ascii(query_data->hostname, &hostname);
+ 		if (rc != 0) {
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/example/Makefile.am pidgin-2.14.0/libpurple/example/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/example/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/example/Makefile.am	2020-06-12 21:46:58.889353212 +0200
+@@ -12,11 +12,9 @@ nullclient_LDADD = \
+ 	$(top_builddir)/libpurple/libpurple.la
+ 
+ AM_CPPFLAGS = \
+-	-DSTANDALONE \
+-	-DDATADIR=\"$(datadir)\" \
+-	-DLIBDIR=\"$(libdir)/purple-$(PURPLE_MAJOR_VERSION)/\" \
+ 	-DLOCALEDIR=\"$(datadir)/locale\" \
+ 	-DSYSCONFDIR=\"$(sysconfdir)\" \
++	-DSTANDALONE \
+ 	-I$(top_builddir)/libpurple \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_srcdir) \
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/example/nullclient.c pidgin-2.14.0/libpurple/example/nullclient.c
+--- /w/tmp/pidgin-2.14.0/libpurple/example/nullclient.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/example/nullclient.c	2020-06-12 21:46:58.893353212 +0200
+@@ -308,7 +308,11 @@ int main(int argc, char *argv[])
+ 	account = purple_account_new(name, prpl);
+ 
+ 	/* Get the password for the account */
++#ifndef _WIN32
+ 	password = getpass("Password: ");
++#else
++	password = "password";
++#endif
+ 	purple_account_set_password(account, password);
+ 
+ 	/* It's necessary to enable the account first. */
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/Makefile.am pidgin-2.14.0/libpurple/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/Makefile.am	2020-06-12 21:46:58.905353212 +0200
+@@ -15,21 +15,25 @@ EXTRA_DIST = \
+ 		data/purple-uninstalled.pc.in \
+ 		win32/global.mak \
+ 		win32/libc_interface.c \
+-		win32/libc_interface.h \
+-		win32/libc_internal.h \
+ 		win32/libpurplerc.rc.in \
+ 		win32/rules.mak \
+ 		win32/targets.mak \
+-		win32/wpurpleerror.h \
+ 		win32/win32dep.c \
+-		win32/giowin32.c \
++		win32/giowin32.c
++		
++if !OS_WIN32
++EXTRA_DIST += \
++		win32/libc_interface.h \
++		win32/libc_internal.h \
++		win32/wpurpleerror.h \
+ 		win32/win32dep.h
++endif
+ 
+ if USE_GCONFTOOL
+ GCONF_DIR=data/gconf
+ endif
+ 
+-SUBDIRS = $(GCONF_DIR) plugins protocols ciphers . tests example
++SUBDIRS = $(GCONF_DIR) ciphers . plugins protocols tests example
+ 
+ purple_coresources = \
+ 	account.c \
+@@ -95,6 +99,20 @@ purple_coresources = \
+ 	xmlnode.c \
+ 	whiteboard.c
+ 
++if OS_WIN32
++purple_coresources += \
++	win32/giowin32.c \
++	win32/libc_interface.c \
++	win32/win32dep.c
++
++libpurple_win32_res = libpurple-win32-res.o
++libpurple_win32_res_ldflag = -Wl,$(libpurple_win32_res)
++
++libpurple-win32-res.o: win32/libpurplerc.rc
++	$(WINDRES) -I$(top_srcdir)/libpurple -i $< -o $@
++
++endif
++
+ purple_builtsources = \
+ 	marshallers.c
+ 
+@@ -165,6 +183,14 @@ purple_mediaheaders = \
+ 	codec.h \
+ 	enum-types.h
+ 
++if OS_WIN32
++purple_win32headers = \
++	libc_interface.h \
++	libc_internal.h \
++	wpurpleerror.h \
++	win32dep.h
++endif
++
+ purple_builtheaders = purple.h version.h marshallers.h
+ 
+ marshallers.h: marshallers.list
+@@ -299,8 +325,15 @@ mediainclude_HEADERS = \
+ pkgconfigdir = $(libdir)/pkgconfig
+ pkgconfig_DATA = data/purple.pc
+ 
+-libpurple_la_DEPENDENCIES = $(STATIC_LINK_LIBS)
+-libpurple_la_LDFLAGS = -export-dynamic -version-info $(PURPLE_LT_VERSION_INFO) -no-undefined
++if OS_WIN32
++win32includedir=$(includedir)/libpurple/win32
++win32include_HEADERS = \
++	$(addprefix $(srcdir)/win32/, $(purple_win32headers))
++endif
++
++libpurple_la_DEPENDENCIES = $(STATIC_LINK_LIBS) $(libpurple_win32_res)
++libpurple_la_LDFLAGS = -export-dynamic -version-info $(PURPLE_LT_VERSION_INFO) $(AVOID_VERSION) \
++	$(NO_UNDEFINED) $(libpurple_win32_res_ldflag)
+ libpurple_la_LIBADD = \
+ 	$(STATIC_LINK_LIBS) \
+ 	$(DBUS_LIBS) \
+@@ -317,9 +350,14 @@ libpurple_la_LIBADD = \
+ 	ciphers/libpurple-ciphers.la \
+ 	-lm
+ 
++if OS_WIN32
++libpurple_la_LIBADD += \
++	-lws2_32 -ldnsapi
++endif
++
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
+-	-DLIBDIR=\"$(libdir)/purple-$(PURPLE_MAJOR_VERSION)/\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
++	-DPURPLE_LIBDIR=\"$(libdir)/purple-$(PURPLE_MAJOR_VERSION)/\" \
+ 	-DLOCALEDIR=\"$(datadir)/locale\" \
+ 	-DSYSCONFDIR=\"$(sysconfdir)\" \
+ 	$(GLIB_CFLAGS) \
+@@ -334,6 +372,12 @@ AM_CPPFLAGS = \
+ 	$(IDN_CFLAGS) \
+ 	$(NETWORKMANAGER_CFLAGS)
+ 
++if OS_WIN32
++AM_CPPFLAGS += \
++	-DUSE_FHS \
++	-I$(top_srcdir)/libpurple/win32
++endif
++
+ # INSTALL_SSL_CERTIFICATES is true when SSL_CERTIFICATES_DIR is empty.
+ # We want to use SSL_CERTIFICATES_DIR when it's not empty.
+ if ! INSTALL_SSL_CERTIFICATES
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/plugin.c pidgin-2.14.0/libpurple/plugin.c
+--- /w/tmp/pidgin-2.14.0/libpurple/plugin.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/plugin.c	2020-06-12 21:46:58.917353212 +0200
+@@ -1179,7 +1179,7 @@ void
+ purple_plugins_init(void) {
+ 	void *handle = purple_plugins_get_handle();
+ 
+-	purple_plugins_add_search_path(LIBDIR);
++	purple_plugins_add_search_path(PURPLE_LIBDIR);
+ 
+ 	purple_signal_register(handle, "plugin-load",
+ 						 purple_marshal_VOID__POINTER,
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/plugins/Makefile.am pidgin-2.14.0/libpurple/plugins/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/plugins/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/plugins/Makefile.am	2020-06-12 21:46:58.921353212 +0200
+@@ -24,27 +24,27 @@ SUBDIRS = \
+ 
+ plugindir = $(libdir)/purple-$(PURPLE_MAJOR_VERSION)
+ 
+-autoaccept_la_LDFLAGS       = -module -avoid-version
+-buddynote_la_LDFLAGS        = -module -avoid-version
+-ciphertest_la_LDFLAGS		= -module -avoid-version
+-codeinline_la_LDFLAGS		= -module -avoid-version
+-debug_example_la_LDFLAGS    = -module -avoid-version
+-helloworld_la_LDFLAGS       = -module -avoid-version
+-idle_la_LDFLAGS             = -module -avoid-version
+-joinpart_la_LDFLAGS         = -module -avoid-version
+-log_reader_la_LDFLAGS       = -module -avoid-version
+-newline_la_LDFLAGS          = -module -avoid-version
+-notify_example_la_LDFLAGS   = -module -avoid-version
+-offlinemsg_la_LDFLAGS       = -module -avoid-version
+-one_time_password_la_LDFLAGS	= -module -avoid-version
+-pluginpref_example_la_LDFLAGS = -module -avoid-version
+-psychic_la_LDFLAGS          = -module -avoid-version
+-signals_test_la_LDFLAGS		= -module -avoid-version
+-simple_la_LDFLAGS			= -module -avoid-version
+-statenotify_la_LDFLAGS      = -module -avoid-version
++autoaccept_la_LDFLAGS       = -module -avoid-version $(NO_UNDEFINED)
++buddynote_la_LDFLAGS        = -module -avoid-version $(NO_UNDEFINED)
++ciphertest_la_LDFLAGS		= -module -avoid-version $(NO_UNDEFINED)
++codeinline_la_LDFLAGS		= -module -avoid-version $(NO_UNDEFINED)
++debug_example_la_LDFLAGS    = -module -avoid-version $(NO_UNDEFINED)
++helloworld_la_LDFLAGS       = -module -avoid-version $(NO_UNDEFINED)
++idle_la_LDFLAGS             = -module -avoid-version $(NO_UNDEFINED)
++joinpart_la_LDFLAGS         = -module -avoid-version $(NO_UNDEFINED)
++log_reader_la_LDFLAGS       = -module -avoid-version $(NO_UNDEFINED)
++newline_la_LDFLAGS          = -module -avoid-version $(NO_UNDEFINED)
++notify_example_la_LDFLAGS   = -module -avoid-version $(NO_UNDEFINED)
++offlinemsg_la_LDFLAGS       = -module -avoid-version $(NO_UNDEFINED)
++one_time_password_la_LDFLAGS	= -module -avoid-version $(NO_UNDEFINED)
++pluginpref_example_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
++psychic_la_LDFLAGS          = -module -avoid-version $(NO_UNDEFINED)
++signals_test_la_LDFLAGS		= -module -avoid-version $(NO_UNDEFINED)
++simple_la_LDFLAGS			= -module -avoid-version $(NO_UNDEFINED)
++statenotify_la_LDFLAGS      = -module -avoid-version $(NO_UNDEFINED)
+ 
+ # this can't be in a conditional otherwise automake 1.4 yells
+-dbus_example_la_LDFLAGS     = -module -avoid-version
++dbus_example_la_LDFLAGS     = -module -avoid-version $(NO_UNDEFINED)
+ 
+ if PLUGINS
+ 
+@@ -90,29 +90,30 @@ signals_test_la_SOURCES		= signals-test.
+ simple_la_SOURCES			= simple.c
+ statenotify_la_SOURCES      = statenotify.c
+ 
+-autoaccept_la_LIBADD        = $(GLIB_LIBS)
+-buddynote_la_LIBADD         = $(GLIB_LIBS)
+-ciphertest_la_LIBADD		= $(GLIB_LIBS)
+-codeinline_la_LIBADD		= $(GLIB_LIBS)
+-idle_la_LIBADD              = $(GLIB_LIBS)
+-joinpart_la_LIBADD          = $(GLIB_LIBS)
+-log_reader_la_LIBADD        = $(GLIB_LIBS)
+-newline_la_LIBADD           = $(GLIB_LIBS)
+-notify_example_la_LIBADD    = $(GLIB_LIBS)
+-offlinemsg_la_LIBADD        = $(GLIB_LIBS)
+-one_time_password_la_LIBADD = $(GLIB_LIBS)
+-pluginpref_example_la_LIBADD = $(GLIB_LIBS)
+-psychic_la_LIBADD           = $(GLIB_LIBS)
+-signals_test_la_LIBADD		= $(GLIB_LIBS)
+-simple_la_LIBADD			= $(GLIB_LIBS)
+-statenotify_la_LIBADD       = $(GLIB_LIBS)
++
++autoaccept_la_LIBADD        = $(GLIB_LIBS) $(PURPLE_LIBS)
++buddynote_la_LIBADD         = $(GLIB_LIBS) $(PURPLE_LIBS)
++ciphertest_la_LIBADD		= $(GLIB_LIBS) $(PURPLE_LIBS)
++codeinline_la_LIBADD		= $(GLIB_LIBS) $(PURPLE_LIBS)
++idle_la_LIBADD              = $(GLIB_LIBS) $(PURPLE_LIBS)
++joinpart_la_LIBADD          = $(GLIB_LIBS) $(PURPLE_LIBS)
++log_reader_la_LIBADD        = $(GLIB_LIBS) $(PURPLE_LIBS)
++newline_la_LIBADD           = $(GLIB_LIBS) $(PURPLE_LIBS)
++notify_example_la_LIBADD    = $(GLIB_LIBS) $(PURPLE_LIBS)
++offlinemsg_la_LIBADD        = $(GLIB_LIBS) $(PURPLE_LIBS)
++one_time_password_la_LIBADD = $(GLIB_LIBS) $(PURPLE_LIBS)
++pluginpref_example_la_LIBADD = $(GLIB_LIBS) $(PURPLE_LIBS)
++psychic_la_LIBADD           = $(GLIB_LIBS) $(PURPLE_LIBS)
++signals_test_la_LIBADD		= $(GLIB_LIBS) $(PURPLE_LIBS)
++simple_la_LIBADD			= $(GLIB_LIBS) $(PURPLE_LIBS)
++statenotify_la_LIBADD       = $(GLIB_LIBS) $(PURPLE_LIBS)
+ 
+ if ENABLE_DBUS
+ 
+ CLEANFILES              = dbus-example-bindings.c
+ dbus_example_la_SOURCES = dbus-example.c
+ 
+-dbus_example_la_LIBADD      = $(GLIB_LIBS) $(DBUS_LIBS)
++dbus_example_la_LIBADD      = $(GLIB_LIBS) $(DBUS_LIBS) $(PURPLE_LIBS)
+ 
+ .PHONY: always
+ 
+@@ -140,7 +141,7 @@ EXTRA_DIST = \
+ 	startup.py
+ 
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_builddir)/libpurple \
+ 	$(DEBUG_CFLAGS) \
+@@ -148,6 +149,11 @@ AM_CPPFLAGS = \
+ 	$(PLUGIN_CFLAGS) \
+ 	$(DBUS_CFLAGS)
+ 
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32
++endif
++
+ #
+ # This part allows people to build their own plugins in here.
+ # Yes, it's a mess.
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/plugins/perl/Makefile.am pidgin-2.14.0/libpurple/plugins/perl/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/plugins/perl/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/plugins/perl/Makefile.am	2020-06-12 21:46:58.933353212 +0200
+@@ -165,7 +165,6 @@ AM_CPPFLAGS = \
+ 	-I$(top_srcdir) \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_builddir)/libpurple \
+-	-DLIBDIR=\"$(libdir)/purple-$(PURPLE_MAJOR_VERSION)\" \
+ 	$(DEBUG_CFLAGS) \
+ 	$(GLIB_CFLAGS) \
+ 	$(PLUGIN_CFLAGS) \
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/plugins/ssl/Makefile.am pidgin-2.14.0/libpurple/plugins/ssl/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/plugins/ssl/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/plugins/ssl/Makefile.am	2020-06-12 21:46:58.933353212 +0200
+@@ -3,10 +3,10 @@ EXTRA_DIST = \
+ 
+ plugindir = $(libdir)/purple-$(PURPLE_MAJOR_VERSION)
+ 
+-ssl_la_LDFLAGS        = -module -avoid-version
+-ssl_gnutls_la_LDFLAGS = -module -avoid-version
+-ssl_nss_la_LDFLAGS    = -module -avoid-version
+-nss_prefs_la_LDFLAGS  = -module -avoid-version
++ssl_la_LDFLAGS        = -module -avoid-version $(NO_UNDEFINED)
++ssl_gnutls_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
++ssl_nss_la_LDFLAGS    = -module -avoid-version $(NO_UNDEFINED)
++nss_prefs_la_LDFLAGS  = -module -avoid-version $(NO_UNDEFINED)
+ 
+ if PLUGINS
+ 
+@@ -43,15 +43,15 @@ ssl_gnutls_la_SOURCES = ssl-gnutls.c
+ ssl_nss_la_SOURCES    = ssl-nss.c
+ nss_prefs_la_SOURCES  = nss-prefs.c
+ 
+-ssl_la_LIBADD        = $(GLIB_LIBS)
+-ssl_gnutls_la_LIBADD = $(GLIB_LIBS) $(GNUTLS_LIBS)
+-ssl_nss_la_LIBADD    = $(GLIB_LIBS) $(NSS_LIBS)
+-nss_prefs_la_LIBADD  = $(GLIB_LIBS) $(NSS_LIBS)
++ssl_la_LIBADD        = $(GLIB_LIBS) $(PURPLE_LIBS)
++ssl_gnutls_la_LIBADD = $(GLIB_LIBS) $(GNUTLS_LIBS) $(PURPLE_LIBS)
++ssl_nss_la_LIBADD    = $(GLIB_LIBS) $(NSS_LIBS) $(PURPLE_LIBS)
++nss_prefs_la_LIBADD  = $(GLIB_LIBS) $(NSS_LIBS) $(PURPLE_LIBS)
+ 
+ endif # PLUGINS
+ 
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
+ 	-DLIBDIR=\"$(libdir)/libpurple\" \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_builddir)/libpurple \
+@@ -59,6 +59,12 @@ AM_CPPFLAGS = \
+ 	$(GLIB_CFLAGS) \
+ 	$(PLUGIN_CFLAGS)
+ 
++if OS_WIN32
++AM_CPPFLAGS += \
++	-DWIN32_LEAN_AND_MEAN \
++	-I$(top_srcdir)/libpurple/win32
++endif
++
+ ssl_gnutls_la_CFLAGS = $(AM_CPPFLAGS) $(GNUTLS_CFLAGS)
+ ssl_nss_la_CFLAGS = $(AM_CPPFLAGS) $(NSS_CFLAGS)
+ nss_prefs_la_CFLAGS = $(AM_CPPFLAGS) $(NSS_CFLAGS)
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/plugins/tcl/Makefile.am pidgin-2.14.0/libpurple/plugins/tcl/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/plugins/tcl/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/plugins/tcl/Makefile.am	2020-06-12 21:46:58.937353212 +0200
+@@ -1,13 +1,13 @@
+ plugindir = $(libdir)/purple-$(PURPLE_MAJOR_VERSION)
+ 
+-tcl_la_LDFLAGS = -module -avoid-version
++tcl_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
+ 
+ plugin_LTLIBRARIES = tcl.la
+ 
+ tcl_la_SOURCES = tcl.c tcl_glib.c tcl_glib.h tcl_cmds.c tcl_signals.c tcl_purple.h \
+                  tcl_ref.c tcl_cmd.c
+ 
+-tcl_la_LIBADD = $(GLIB_LIBS) $(TCL_LIBS) $(TK_LIBS)
++tcl_la_LIBADD = $(GLIB_LIBS) $(TCL_LIBS) $(TK_LIBS) $(PURPLE_LIBS)
+ 
+ EXTRA_DIST = signal-test.tcl Makefile.mingw
+ 
+@@ -20,3 +20,8 @@ AM_CPPFLAGS = \
+ 	$(PLUGIN_CFLAGS) \
+ 	$(TK_CFLAGS) \
+ 	$(TCL_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32
++endif
+\ No newline at end of file
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/protocols/bonjour/Makefile.am pidgin-2.14.0/libpurple/protocols/bonjour/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/protocols/bonjour/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/protocols/bonjour/Makefile.am	2020-06-12 21:46:58.957353212 +0200
+@@ -40,7 +40,7 @@ else
+ st =
+ pkg_LTLIBRARIES       = libbonjour.la
+ libbonjour_la_SOURCES = $(BONJOURSOURCES)
+-libbonjour_la_LIBADD  = $(GLIB_LIBS) $(LIBXML_LIBS) $(AVAHI_LIBS)
++libbonjour_la_LIBADD  = $(GLIB_LIBS) $(LIBXML_LIBS) $(AVAHI_LIBS) $(PURPLE_LIBS)
+ 
+ endif
+ 
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/protocols/gg/Makefile.am pidgin-2.14.0/libpurple/protocols/gg/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/protocols/gg/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/protocols/gg/Makefile.am	2020-06-12 21:46:58.965353212 +0200
+@@ -96,6 +96,10 @@ INTGG_CFLAGS = \
+ 	$(GNUTLS_CFLAGS) \
+ 	-DGG_IGNORE_DEPRECATED
+ 
++if OS_WIN32
++INTGG_CFLAGS += -include win32dep.h
++endif
++
+ endif
+ 
+ GGSOURCES = \
+@@ -113,7 +117,7 @@ GGSOURCES = \
+ 
+ AM_CFLAGS = $(st)
+ 
+-libgg_la_LDFLAGS = -module -avoid-version
++libgg_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
+ 
+ if STATIC_GG
+ 
+@@ -121,14 +125,14 @@ st = -DPURPLE_STATIC_PRPL
+ noinst_LTLIBRARIES = libgg.la
+ libgg_la_SOURCES = $(GGSOURCES)
+ libgg_la_CFLAGS  = $(AM_CFLAGS)
+-libgg_la_LIBADD  = $(LIBGADU_LIBS) $(INTGG_LIBS)
++libgg_la_LIBADD  = $(LIBGADU_LIBS) $(INTGG_LIBS) $(PURPLE_LIBS)
+ 
+ else
+ 
+ st =
+ pkg_LTLIBRARIES = libgg.la
+ libgg_la_SOURCES = $(GGSOURCES)
+-libgg_la_LIBADD  = $(GLIB_LIBS) $(LIBGADU_LIBS) $(INTGG_LIBS)
++libgg_la_LIBADD  = $(GLIB_LIBS) $(LIBGADU_LIBS) $(INTGG_LIBS) $(PURPLE_LIBS)
+ 
+ endif
+ 
+@@ -139,3 +143,7 @@ AM_CPPFLAGS = \
+ 	$(INTGG_CFLAGS) \
+ 	$(GLIB_CFLAGS) \
+ 	$(DEBUG_CFLAGS)
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32
++endif
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/protocols/irc/Makefile.am pidgin-2.14.0/libpurple/protocols/irc/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/protocols/irc/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/protocols/irc/Makefile.am	2020-06-12 21:46:58.973353211 +0200
+@@ -13,7 +13,7 @@ IRCSOURCES = \
+ 
+ AM_CFLAGS = $(st)
+ 
+-libirc_la_LDFLAGS = -module -avoid-version
++libirc_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
+ 
+ if STATIC_IRC
+ 
+@@ -27,7 +27,7 @@ else
+ st =
+ pkg_LTLIBRARIES   = libirc.la
+ libirc_la_SOURCES = $(IRCSOURCES)
+-libirc_la_LIBADD  = $(GLIB_LIBS) $(SASL_LIBS)
++libirc_la_LIBADD  = $(GLIB_LIBS) $(SASL_LIBS) $(PURPLE_LIBS)
+ 
+ endif
+ 
+@@ -36,3 +36,8 @@ AM_CPPFLAGS = \
+ 	-I$(top_builddir)/libpurple \
+ 	$(GLIB_CFLAGS) \
+ 	$(DEBUG_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32
++endif
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/protocols/jabber/Makefile.am pidgin-2.14.0/libpurple/protocols/jabber/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/protocols/jabber/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/protocols/jabber/Makefile.am	2020-06-12 21:46:58.985353211 +0200
+@@ -95,7 +95,8 @@ JABBERSOURCES = \
+ 
+ AM_CFLAGS = $(st)
+ 
+-libxmpp_la_LDFLAGS = -module -avoid-version
++libxmpp_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
++libjabber_la_LDFLAGS = $(AVOID_VERSION) $(NO_UNDEFINED)
+ 
+ if USE_CYRUS_SASL
+ JABBERSOURCES += auth_cyrus.c
+@@ -111,12 +112,20 @@ libjabber_la_CFLAGS  = $(AM_CFLAGS)
+ else
+ 
+ st =
+-pkg_LTLIBRARIES      = libjabber.la libxmpp.la
++pkg_LTLIBRARIES      = libxmpp.la
++
++if OS_WIN32
++lib_LTLIBRARIES     = libjabber.la
++else
++pkg_LTLIBRARIES    += libjabber.la
++endif
++
+ libjabber_la_SOURCES = $(JABBERSOURCES)
+ libjabber_la_LIBADD  = $(GLIB_LIBS) $(SASL_LIBS) $(LIBXML_LIBS) $(IDN_LIBS)\
+ 	$(FARSIGHT_LIBS) \
+ 	$(GSTREAMER_LIBS) \
+-	$(GSTINTERFACES_LIBS)
++	$(GSTINTERFACES_LIBS) \
++	$(PURPLE_LIBS)
+ 
+ libxmpp_la_SOURCES = libxmpp.c
+ libxmpp_la_LIBADD = libjabber.la
+@@ -133,3 +142,10 @@ AM_CPPFLAGS = \
+ 	$(FARSIGHT_CFLAGS) \
+ 	$(GSTREAMER_CFLAGS) \
+ 	$(GSTINTERFACES_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32 \
++	-I$(top_srcdir)/libpurple/protocols/jabber/win32
++endif
++
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/protocols/novell/Makefile.am pidgin-2.14.0/libpurple/protocols/novell/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/protocols/novell/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/protocols/novell/Makefile.am	2020-06-12 21:47:07.049353172 +0200
+@@ -28,7 +28,7 @@ NOVELLSOURCES = \
+ 
+ AM_CFLAGS = $(st)
+ 
+-libnovell_la_LDFLAGS = -module -avoid-version
++libnovell_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
+ 
+ if STATIC_NOVELL
+ 
+@@ -42,7 +42,7 @@ else
+ st =
+ pkg_LTLIBRARIES      = libnovell.la
+ libnovell_la_SOURCES = $(NOVELLSOURCES)
+-libnovell_la_LIBADD  = $(GLIB_LIBS)
++libnovell_la_LIBADD  = $(GLIB_LIBS) $(PURPLE_LIBS)
+ 
+ endif
+ 
+@@ -51,3 +51,8 @@ AM_CPPFLAGS = \
+ 	-I$(top_builddir)/libpurple \
+ 	$(DEBUG_CFLAGS) \
+ 	$(GLIB_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32
++endif
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/protocols/null/Makefile.am pidgin-2.14.0/libpurple/protocols/null/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/protocols/null/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/protocols/null/Makefile.am	2020-06-12 21:47:07.061353172 +0200
+@@ -14,10 +14,15 @@ libnull_la_LDFLAGS = -module -avoid-vers
+ st =
+ pkg_LTLIBRARIES    = libnull.la
+ libnull_la_SOURCES = $(NULLSOURCES)
+-libnull_la_LIBADD  = $(GLIB_LIBS)
++libnull_la_LIBADD  = $(GLIB_LIBS) $(PURPLE_LIBS)
+ 
+ AM_CPPFLAGS = \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_builddir)/libpurple \
+ 	$(GLIB_CFLAGS) \
+ 	$(DEBUG_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32
++endif
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/protocols/oscar/Makefile.am pidgin-2.14.0/libpurple/protocols/oscar/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/protocols/oscar/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/protocols/oscar/Makefile.am	2020-06-12 21:47:07.069353172 +0200
+@@ -51,8 +51,9 @@ OSCARSOURCES = \
+ 
+ AM_CFLAGS = $(st)
+ 
+-libaim_la_LDFLAGS = -module -avoid-version
+-libicq_la_LDFLAGS = -module -avoid-version
++libaim_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
++libicq_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
++liboscar_la_LDFLAGS = $(AVOID_VERSION) $(NO_UNDEFINED)
+ if STATIC_OSCAR
+ 
+ st = -DPURPLE_STATIC_PRPL
+@@ -63,9 +64,16 @@ liboscar_la_CFLAGS  = $(AM_CFLAGS)
+ else
+ 
+ st =
+-pkg_LTLIBRARIES     = liboscar.la libaim.la libicq.la
++pkg_LTLIBRARIES     = libaim.la libicq.la
++
++if OS_WIN32
++lib_LTLIBRARIES     = liboscar.la
++else
++pkg_LTLIBRARIES    += liboscar.la
++endif
++
+ liboscar_la_SOURCES = $(OSCARSOURCES)
+-liboscar_la_LIBADD  = $(GLIB_LIBS)
++liboscar_la_LIBADD  = $(GLIB_LIBS) $(PURPLE_LIBS)
+ 
+ libaim_la_SOURCES   = libaim.c
+ libaim_la_LIBADD    = liboscar.la
+@@ -80,3 +88,8 @@ AM_CPPFLAGS = \
+ 	-I$(top_builddir)/libpurple \
+ 	$(GLIB_CFLAGS) \
+ 	$(DEBUG_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32
++endif
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/protocols/sametime/Makefile.am pidgin-2.14.0/libpurple/protocols/sametime/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/protocols/sametime/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/protocols/sametime/Makefile.am	2020-06-12 21:47:07.085353172 +0200
+@@ -24,8 +24,8 @@ pkg_LTLIBRARIES     = libsametime.la
+ endif
+ 
+ libsametime_la_SOURCES = $(SAMETIMESOURCES)
+-libsametime_la_LDFLAGS = -module -avoid-version
+-libsametime_la_LIBADD = $(GLIB_LIBS) $(MEANWHILE_LIBS)
++libsametime_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
++libsametime_la_LIBADD = $(GLIB_LIBS) $(MEANWHILE_LIBS) $(PURPLE_LIBS)
+ 
+ AM_CPPFLAGS = \
+ 	-I$(top_srcdir)/libpurple \
+@@ -35,3 +35,7 @@ AM_CPPFLAGS = \
+ 	$(MEANWHILE_CFLAGS) \
+ 	-DG_LOG_DOMAIN=\"sametime\"
+ 
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32
++endif
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/protocols/silc/Makefile.am pidgin-2.14.0/libpurple/protocols/silc/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/protocols/silc/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/protocols/silc/Makefile.am	2020-06-12 21:47:07.097353171 +0200
+@@ -19,7 +19,7 @@ SILCSOURCES = \
+ 
+ AM_CFLAGS = $(st)
+ 
+-libsilcpurple_la_LDFLAGS = -module -avoid-version
++libsilcpurple_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
+ 
+ if STATIC_SILC
+ 
+@@ -34,7 +34,7 @@ else
+ st = $(SILC_CFLAGS)
+ pkg_LTLIBRARIES          = libsilcpurple.la
+ libsilcpurple_la_SOURCES = $(SILCSOURCES)
+-libsilcpurple_la_LIBADD  = $(GLIB_LIBS) $(SILC_LIBS)
++libsilcpurple_la_LIBADD  = $(GLIB_LIBS) $(SILC_LIBS) $(PURPLE_LIBS)
+ 
+ endif
+ 
+@@ -44,3 +44,8 @@ AM_CPPFLAGS = \
+ 	$(DEBUG_CFLAGS) \
+ 	$(GLIB_CFLAGS) \
+ 	$(SILC_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32
++endif
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/protocols/simple/Makefile.am pidgin-2.14.0/libpurple/protocols/simple/Makefile.am
+--- /w/tmp/pidgin-2.14.0/libpurple/protocols/simple/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/protocols/simple/Makefile.am	2020-06-12 21:47:07.101353171 +0200
+@@ -11,7 +11,7 @@ SIMPLESOURCES = \
+ 
+ AM_CFLAGS = $(st)
+ 
+-libsimple_la_LDFLAGS = -module -avoid-version
++libsimple_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
+ 
+ if STATIC_SIMPLE
+ 
+@@ -25,7 +25,7 @@ else
+ st =
+ pkg_LTLIBRARIES      = libsimple.la
+ libsimple_la_SOURCES = $(SIMPLESOURCES)
+-libsimple_la_LIBADD  = $(GLIB_LIBS)
++libsimple_la_LIBADD  = $(GLIB_LIBS) $(PURPLE_LIBS)
+ 
+ endif
+ 
+@@ -34,3 +34,8 @@ AM_CPPFLAGS = \
+ 	-I$(top_builddir)/libpurple \
+ 	$(GLIB_CFLAGS) \
+ 	$(DEBUG_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32
++endif
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/win32/libc_interface.h pidgin-2.14.0/libpurple/win32/libc_interface.h
+--- /w/tmp/pidgin-2.14.0/libpurple/win32/libc_interface.h	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/win32/libc_interface.h	2020-06-12 21:47:07.885353168 +0200
+@@ -23,6 +23,7 @@
+ #ifndef _LIBC_INTERFACE_H_
+ #define _LIBC_INTERFACE_H_
+ #include <winsock2.h>
++#undef socklen_t
+ #include <ws2tcpip.h>
+ #include <io.h>
+ #include <errno.h>
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/win32/libpurplerc.rc.in pidgin-2.14.0/libpurple/win32/libpurplerc.rc.in
+--- /w/tmp/pidgin-2.14.0/libpurple/win32/libpurplerc.rc.in	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/win32/libpurplerc.rc.in	2020-06-12 21:47:07.889353168 +0200
+@@ -2,8 +2,8 @@
+ #include "version.h"
+ 
+ VS_VERSION_INFO VERSIONINFO
+-  FILEVERSION PURPLE_MAJOR_VERSION,PURPLE_MINOR_VERSION,PURPLE_MICRO_VERSION,0
+-  PRODUCTVERSION PURPLE_MAJOR_VERSION,PURPLE_MINOR_VERSION,PURPLE_MICRO_VERSION,0
++  FILEVERSION @PURPLE_MAJOR_VERSION@,@PURPLE_MINOR_VERSION@,@PURPLE_MICRO_VERSION@,0
++  PRODUCTVERSION @PURPLE_MAJOR_VERSION@,@PURPLE_MINOR_VERSION@,@PURPLE_MICRO_VERSION@,0
+   FILEFLAGSMASK 0
+   FILEFLAGS 0
+   FILEOS VOS__WINDOWS32
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/win32/win32dep.c pidgin-2.14.0/libpurple/win32/win32dep.c
+--- /w/tmp/pidgin-2.14.0/libpurple/win32/win32dep.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/win32/win32dep.c	2020-06-12 21:47:07.889353168 +0200
+@@ -28,12 +28,18 @@
+ 
+ #include "debug.h"
+ #include "notify.h"
++#ifdef USE_FHS
++#include "version.h"
++#endif
+ 
+ /*
+  * LOCALS
+  */
+ static char *app_data_dir = NULL, *install_dir = NULL,
+ 	*lib_dir = NULL, *locale_dir = NULL;
++#ifdef USE_FHS
++static char *share_dir = NULL;
++#endif
+ 
+ static HINSTANCE libpurpledll_hInstance = NULL;
+ 
+@@ -153,13 +159,39 @@ const char *wpurple_install_dir(void) {
+ 	return install_dir;
+ }
+ 
++#ifdef USE_FHS
++const char *wpurple_share_dir(void) {
++	static gboolean initialized = FALSE;
++
++	if (!initialized) {
++		const char *inst_dir = wpurple_install_dir();
++		if (inst_dir != NULL) {
++			share_dir = g_strdup_printf("%s" G_DIR_SEPARATOR_S ".." G_DIR_SEPARATOR_S "share", inst_dir);
++			initialized = TRUE;
++		} else {
++			return NULL;
++		}
++	}
++
++	return share_dir;
++}
++#else
++const char *wpurple_share_dir(void) {
++	return wpurple_install_dir();
++}
++#endif
++
+ const char *wpurple_lib_dir(void) {
+ 	static gboolean initialized = FALSE;
+ 
+ 	if (!initialized) {
+ 		const char *inst_dir = wpurple_install_dir();
+ 		if (inst_dir != NULL) {
++#ifdef USE_FHS
++			lib_dir = g_strdup_printf("%s" G_DIR_SEPARATOR_S ".." G_DIR_SEPARATOR_S "lib" G_DIR_SEPARATOR_S "purple-%i" , inst_dir, PURPLE_MAJOR_VERSION);
++#else
+ 			lib_dir = g_strdup_printf("%s" G_DIR_SEPARATOR_S "plugins", inst_dir);
++#endif
+ 			initialized = TRUE;
+ 		} else {
+ 			return NULL;
+@@ -175,7 +207,11 @@ const char *wpurple_locale_dir(void) {
+ 	if (!initialized) {
+ 		const char *inst_dir = wpurple_install_dir();
+ 		if (inst_dir != NULL) {
++#ifdef USE_FHS
++			locale_dir = g_strdup_printf("%s" G_DIR_SEPARATOR_S ".." G_DIR_SEPARATOR_S "share" G_DIR_SEPARATOR_S "locale", inst_dir);
++#else
+ 			locale_dir = g_strdup_printf("%s" G_DIR_SEPARATOR_S "locale", inst_dir);
++#endif
+ 			initialized = TRUE;
+ 		} else {
+ 			return NULL;
+@@ -375,6 +411,11 @@ void wpurple_cleanup(void) {
+ 	lib_dir = NULL;
+ 	locale_dir = NULL;
+ 
++#ifdef USE_FHS
++	g_free(share_dir);
++	share_dir = NULL;	
++#endif
++
+ 	libpurpledll_hInstance = NULL;
+ }
+ 
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/libpurple/win32/win32dep.h pidgin-2.14.0/libpurple/win32/win32dep.h
+--- /w/tmp/pidgin-2.14.0/libpurple/win32/win32dep.h	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/libpurple/win32/win32dep.h	2020-06-12 21:47:07.889353168 +0200
+@@ -65,6 +65,7 @@ gchar *wpurple_get_special_folder(int fo
+ const char *wpurple_install_dir(void);
+ const char *wpurple_lib_dir(void);
+ const char *wpurple_locale_dir(void);
++const char *wpurple_share_dir(void);
+ const char *wpurple_data_dir(void);
+ 
+ /* init / cleanup */
+@@ -80,9 +81,14 @@ long wpurple_get_tz_offset(void);
+ /*
+  *  Purple specific
+  */
+-#define DATADIR wpurple_install_dir()
+-#define LIBDIR wpurple_lib_dir()
++#undef PURPLE_DATADIR
++#define PURPLE_DATADIR wpurple_share_dir()
++#undef PURPLE_LIBDIR
++#define PURPLE_LIBDIR wpurple_lib_dir()
++#undef LOCALEDIR
+ #define LOCALEDIR wpurple_locale_dir()
++/* TODO: SYSCONFDIR should be the allusers AppData? */
++#undef SYSCONFDIR
+ 
+ #ifdef __cplusplus
+ }
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/data/pidgin-2.pc.in pidgin-2.14.0/pidgin/data/pidgin-2.pc.in
+--- /w/tmp/pidgin-2.14.0/pidgin/data/pidgin-2.pc.in	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/data/pidgin-2.pc.in	2020-06-12 21:47:07.901353168 +0200
+@@ -13,3 +13,4 @@ Description: Pidgin is a GTK2-based inst
+ Version: @VERSION@
+ Requires: gtk+-2.0 purple
+ Cflags: -I${includedir}
++Libs: -L${libdir} -lpidgin
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/data/pidgin.pc.in pidgin-2.14.0/pidgin/data/pidgin.pc.in
+--- /w/tmp/pidgin-2.14.0/pidgin/data/pidgin.pc.in	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/data/pidgin.pc.in	2020-06-12 21:47:07.901353168 +0200
+@@ -12,5 +12,6 @@ Name: Pidgin
+ Description: Pidgin is a GTK2-based instant messenger application.
+ Version: @VERSION@
+ Requires: gtk+-2.0 purple
+-Cflags: -I${includedir}/pidgin
++Cflags: -I${includedir}/pidgin -I${includedir}/pidgin/win32
++Libs: -L${libdir} -lpidgin
+ 
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/gtkblist.c pidgin-2.14.0/pidgin/gtkblist.c
+--- /w/tmp/pidgin-2.14.0/pidgin/gtkblist.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/gtkblist.c	2020-06-12 21:53:31.562915600 +0200
+@@ -3336,14 +3336,14 @@ static char *get_mood_icon_path(const ch
+ 	char *path;
+ 
+ 	if (purple_strequal(mood, "busy")) {
+-		path = g_build_filename(DATADIR, "pixmaps", "pidgin",
++		path = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin",
+ 		                        "status", "16", "busy.png", NULL);
+ 	} else if (purple_strequal(mood, "hiptop")) {
+-		path = g_build_filename(DATADIR, "pixmaps", "pidgin",
++		path = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin",
+ 		                        "emblems", "16", "hiptop.png", NULL);
+ 	} else {
+ 		char *filename = g_strdup_printf("%s.png", mood);
+-		path = g_build_filename(DATADIR, "pixmaps", "pidgin",
++		path = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin",
+ 		                        "emotes", "small", filename, NULL);
+ 		g_free(filename);
+ 	}
+@@ -3990,7 +3990,7 @@ pidgin_blist_get_emblem(PurpleBlistNode
+ 		if (purple_presence_is_status_primitive_active(p, PURPLE_STATUS_MOBILE)) {
+ 			/* This emblem comes from the small emoticon set now,
+ 			 * to reduce duplication. */
+-			path = g_build_filename(DATADIR, "pixmaps", "pidgin", "emotes",
++			path = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "emotes",
+ 						"small", "mobile.png", NULL);
+ 			return _pidgin_blist_get_cached_emblem(path);
+ 		}
+@@ -4007,7 +4007,7 @@ pidgin_blist_get_emblem(PurpleBlistNode
+ 	g_return_val_if_fail(buddy != NULL, NULL);
+ 
+ 	if (!purple_privacy_check(buddy->account, purple_buddy_get_name(buddy))) {
+-		path = g_build_filename(DATADIR, "pixmaps", "pidgin", "emblems", "16", "blocked.png", NULL);
++		path = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "emblems", "16", "blocked.png", NULL);
+ 		return _pidgin_blist_get_cached_emblem(path);
+ 	}
+ 
+@@ -4018,7 +4018,7 @@ pidgin_blist_get_emblem(PurpleBlistNode
+ 
+ 	if (purple_presence_is_status_primitive_active(p, PURPLE_STATUS_MOBILE)) {
+ 		/* This emblem comes from the small emoticon set now, to reduce duplication. */
+-		path = g_build_filename(DATADIR, "pixmaps", "pidgin", "emotes", "small", "mobile.png", NULL);
++		path = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "emotes", "small", "mobile.png", NULL);
+ 		return _pidgin_blist_get_cached_emblem(path);
+ 	}
+ 
+@@ -4026,17 +4026,17 @@ pidgin_blist_get_emblem(PurpleBlistNode
+ 	if (tune && purple_status_is_active(tune)) {
+ 		/* TODO: Replace "Tune" with generalized "Media" in 3.0. */
+ 		if (purple_status_get_attr_string(tune, "game") != NULL) {
+-			path = g_build_filename(DATADIR, "pixmaps", "pidgin", "emblems", "16", "game.png", NULL);
++			path = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "emblems", "16", "game.png", NULL);
+ 			return _pidgin_blist_get_cached_emblem(path);
+ 		}
+ 		/* TODO: Replace "Tune" with generalized "Media" in 3.0. */
+ 		if (purple_status_get_attr_string(tune, "office") != NULL) {
+-			path = g_build_filename(DATADIR, "pixmaps", "pidgin", "emblems", "16", "office.png", NULL);
++			path = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "emblems", "16", "office.png", NULL);
+ 			return _pidgin_blist_get_cached_emblem(path);
+ 		}
+ 		/* Regular old "tune" is the only one in all protocols. */
+ 		/* This emblem comes from the small emoticon set now, to reduce duplication. */
+-		path = g_build_filename(DATADIR, "pixmaps", "pidgin", "emotes", "small", "music.png", NULL);
++		path = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "emotes", "small", "music.png", NULL);
+ 		return _pidgin_blist_get_cached_emblem(path);
+ 	}
+ 
+@@ -4063,7 +4063,7 @@ pidgin_blist_get_emblem(PurpleBlistNode
+ 		path = get_mood_icon_path(name);
+ 	} else {
+ 		filename = g_strdup_printf("%s.png", name);
+-		path = g_build_filename(DATADIR, "pixmaps", "pidgin", "emblems", "16", filename, NULL);
++		path = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "emblems", "16", filename, NULL);
+ 		g_free(filename);
+ 	}
+ 
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/gtkdialogs.c pidgin-2.14.0/pidgin/gtkdialogs.c
+--- /w/tmp/pidgin-2.14.0/pidgin/gtkdialogs.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/gtkdialogs.c	2020-06-12 21:47:07.929353167 +0200
+@@ -467,7 +467,7 @@ pidgin_build_help_dialog(const char *tit
+ 	gtk_window_set_default_size(GTK_WINDOW(win), 450, 450);
+ 
+ 	/* Generate a logo with a version number */
+-	filename = g_build_filename(DATADIR, "pixmaps", "pidgin", "logo.png", NULL);
++	filename = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "logo.png", NULL);
+ 	pixbuf = pidgin_pixbuf_new_from_file(filename);
+ 	g_free(filename);
+ 
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/gtkdnd-hints.c pidgin-2.14.0/pidgin/gtkdnd-hints.c
+--- /w/tmp/pidgin-2.14.0/pidgin/gtkdnd-hints.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/gtkdnd-hints.c	2020-06-12 21:47:07.937353167 +0200
+@@ -121,7 +121,7 @@ dnd_hints_init(void)
+ 	for (i = 0; hint_windows[i].filename != NULL; i++) {
+ 		gchar *fname;
+ 
+-		fname = g_build_filename(DATADIR, "pixmaps", "pidgin",
++		fname = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin",
+ 								 hint_windows[i].filename, NULL);
+ 
+ 		hint_windows[i].widget = dnd_hints_init_window(fname);
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/gtkdocklet-gtk.c pidgin-2.14.0/pidgin/gtkdocklet-gtk.c
+--- /w/tmp/pidgin-2.14.0/pidgin/gtkdocklet-gtk.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/gtkdocklet-gtk.c	2020-06-12 21:47:07.949353167 +0200
+@@ -289,6 +289,6 @@ docklet_ui_init(void)
+ 	}
+ 
+ 	gtk_icon_theme_append_search_path(gtk_icon_theme_get_default(),
+-		DATADIR G_DIR_SEPARATOR_S "pixmaps" G_DIR_SEPARATOR_S "pidgin" G_DIR_SEPARATOR_S "tray");
++		PURPLE_DATADIR G_DIR_SEPARATOR_S "pixmaps" G_DIR_SEPARATOR_S "pidgin" G_DIR_SEPARATOR_S "tray");
+ }
+ 
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/gtkmain.c pidgin-2.14.0/pidgin/gtkmain.c
+--- /w/tmp/pidgin-2.14.0/pidgin/gtkmain.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/gtkmain.c	2020-06-12 21:47:07.957353167 +0200
+@@ -272,7 +272,7 @@ ui_main(void)
+ #ifndef _WIN32
+ 	/* use the nice PNG icon for all the windows */
+ 	for(i=0; i<G_N_ELEMENTS(icon_sizes); i++) {
+-		icon_path = g_build_filename(DATADIR, "icons", "hicolor", icon_sizes[i].dir, "apps", icon_sizes[i].filename, NULL);
++		icon_path = g_build_filename(PURPLE_DATADIR, "icons", "hicolor", icon_sizes[i].dir, "apps", icon_sizes[i].filename, NULL);
+ 		icon = pidgin_pixbuf_new_from_file(icon_path);
+ 		g_free(icon_path);
+ 		if (icon) {
+@@ -821,7 +821,7 @@ int main(int argc, char *argv[])
+ 		fprintf(stderr, "Couldn't create plugins dir\n");
+ 	purple_plugins_add_search_path(search_path);
+ 	g_free(search_path);
+-	purple_plugins_add_search_path(LIBDIR);
++	purple_plugins_add_search_path(PIDGIN_LIBDIR);
+ 
+ 	if (!purple_core_init(PIDGIN_UI)) {
+ 		fprintf(stderr,
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/gtkprefs.c pidgin-2.14.0/pidgin/gtkprefs.c
+--- /w/tmp/pidgin-2.14.0/pidgin/gtkprefs.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/gtkprefs.c	2020-06-12 21:47:07.965353167 +0200
+@@ -555,7 +555,7 @@ prefs_themes_refresh(void)
+ 	/* refresh the list of themes in the manager */
+ 	purple_theme_manager_refresh();
+ 
+-	tmp = g_build_filename(DATADIR, "icons", "hicolor", "32x32", "apps", "pidgin.png", NULL);
++	tmp = g_build_filename(PURPLE_DATADIR, "icons", "hicolor", "32x32", "apps", "pidgin.png", NULL);
+ 	pixbuf = pidgin_pixbuf_new_from_file_at_scale(tmp, PREFS_OPTIMAL_ICON_SIZE, PREFS_OPTIMAL_ICON_SIZE, TRUE);
+ 	g_free(tmp);
+ 
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/gtksound.c pidgin-2.14.0/pidgin/gtksound.c
+--- /w/tmp/pidgin-2.14.0/pidgin/gtksound.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/gtksound.c	2020-06-12 21:47:07.977353167 +0200
+@@ -614,7 +614,7 @@ pidgin_sound_play_event(PurpleSoundEvent
+ 			g_free(filename);
+ 
+ 			/* XXX Consider creating a constant for "sounds/purple" to be shared with Finch */
+-			filename = g_build_filename(DATADIR, "sounds", "purple", sounds[event].def, NULL);
++			filename = g_build_filename(PURPLE_DATADIR, "sounds", "purple", sounds[event].def, NULL);
+ 		}
+ 
+ 		purple_sound_play_file(filename, NULL);
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/gtkthemes.c pidgin-2.14.0/pidgin/gtkthemes.c
+--- /w/tmp/pidgin-2.14.0/pidgin/gtkthemes.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/gtkthemes.c	2020-06-12 21:47:07.977353167 +0200
+@@ -389,7 +389,7 @@ void pidgin_themes_smiley_theme_probe()
+ 
+ 	pidgin_smiley_themes_remove_non_existing();
+ 
+-	probedirs[0] = g_build_filename(DATADIR, "pixmaps", "pidgin", "emotes", NULL);
++	probedirs[0] = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "emotes", NULL);
+ 	probedirs[1] = g_build_filename(purple_user_dir(), "smileys", NULL);
+ 	probedirs[2] = 0;
+ 	for (l=0; probedirs[l]; l++) {
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/gtkutils.c pidgin-2.14.0/pidgin/gtkutils.c
+--- /w/tmp/pidgin-2.14.0/pidgin/gtkutils.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/gtkutils.c	2020-06-12 21:52:25.582915925 +0200
+@@ -607,7 +607,7 @@ pidgin_create_prpl_icon_from_prpl(Purple
+ 	 */
+ 	tmp = g_strconcat(protoname, ".png", NULL);
+ 
+-	filename = g_build_filename(DATADIR, "pixmaps", "pidgin", "protocols",
++	filename = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "protocols",
+ 				    size == PIDGIN_PRPL_ICON_SMALL ? "16" :
+ 				    size == PIDGIN_PRPL_ICON_MEDIUM ? "22" : "48",
+ 				    tmp, NULL);
+@@ -697,7 +697,7 @@ create_protocols_menu(const char *defaul
+ 		plugin = (PurplePlugin *)p->data;
+ 
+ 		if (gtalk_name && strcmp(gtalk_name, plugin->info->name) < 0) {
+-			char *filename = g_build_filename(DATADIR, "pixmaps", "pidgin", "protocols",
++			char *filename = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "protocols",
+ 			                                  "16", "google-talk.png", NULL);
+ 			GtkWidget *item;
+ 
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/Makefile.am pidgin-2.14.0/pidgin/Makefile.am
+--- /w/tmp/pidgin-2.14.0/pidgin/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/Makefile.am	2020-06-12 21:47:07.985353167 +0200
+@@ -7,19 +7,8 @@ EXTRA_DIST = \
+ 		data/pidgin.desktop.in \
+ 		data/pidgin.pc.in \
+ 		data/pidgin-uninstalled.pc.in \
+-		win32/MinimizeToTray.h \
+-		win32/MinimizeToTray.c \
+ 		win32/pidgin_dll_rc.rc.in \
+ 		win32/pidgin_exe_rc.rc.in \
+-		win32/gtkdocklet-win32.c \
+-		win32/gtkwin32dep.c \
+-		win32/gtkwin32dep.h \
+-		win32/resource.h \
+-		win32/untar.c \
+-		win32/untar.h \
+-		win32/winpidgin.c \
+-		win32/wspell.c \
+-		win32/wspell.h \
+ 		win32/nsis/generate_gtk_zip.sh \
+ 		win32/nsis/rpm2zip.sh \
+ 		win32/nsis/pixmaps/pidgin-header.bmp \
+@@ -31,13 +20,28 @@ EXTRA_DIST = \
+ 		win32/nsis/create_nsis_translations.pl \
+ 		win32/nsis/nsis_translations.desktop.in
+ 
++if !OS_WIN32
++EXTRA_DIST += \
++		win32/MinimizeToTray.c \
++		win32/MinimizeToTray.h \
++		win32/gtkdocklet-win32.c \
++		win32/gtkwin32dep.c \
++		win32/gtkwin32dep.h \
++		win32/resource.h \
++		win32/untar.c \
++		win32/untar.h \
++		win32/winpidgin.c \
++		win32/wspell.c \
++		win32/wspell.h
++endif
++
+ if ENABLE_GTK
+ 
+-SUBDIRS = pixmaps plugins
++SUBDIRS = . pixmaps plugins
+ 
+ bin_PROGRAMS = pidgin
+ 
+-pidgin_SOURCES = \
++common_SOURCES = \
+ 	pidginstock.c \
+ 	gtkaccount.c \
+ 	gtkblist.c \
+@@ -51,7 +55,6 @@ pidgin_SOURCES = \
+ 	gtkdialogs.c \
+ 	gtkdnd-hints.c \
+ 	gtkdocklet.c \
+-	gtkdocklet-gtk.c \
+ 	gtkeventloop.c \
+ 	gtkft.c \
+ 	gtkicon-theme.c \
+@@ -141,14 +144,30 @@ pidgin_headers = \
+ 	pidgintooltip.h \
+ 	pidgin.h
+ 
++if OS_WIN32
++pidgin_win32headers = \
++	gtkwin32dep.h
++pidgin_win32noinstheaders = \
++	MinimizeToTray.h \
++	resource.h \
++	untar.h \
++	wspell.h
++endif
++
+ pidginincludedir=$(includedir)/pidgin
+ pidgininclude_HEADERS = \
+ 	$(pidgin_headers)
+ 
++if OS_WIN32
++win32includedir=$(includedir)/pidgin/win32
++win32include_HEADERS = \
++	$(addprefix $(srcdir)/win32/, $(pidgin_win32headers))
++noinst_HEADERS = \
++	$(addprefix $(srcdir)/win32/, $(pidgin_win32noinstheaders))
++endif
+ 
+ pidgin_DEPENDENCIES = @LIBOBJS@
+-pidgin_LDFLAGS = -export-dynamic
+-pidgin_LDADD = \
++common_LDADD = \
+ 	@LIBOBJS@ \
+ 	$(GLIB_LIBS) \
+ 	$(DBUS_LIBS) \
+@@ -164,9 +183,47 @@ pidgin_LDADD = \
+ 	$(GIO_UNIX_LIBS) \
+ 	$(top_builddir)/libpurple/libpurple.la
+ 
++if OS_WIN32
++lib_LTLIBRARIES = libpidgin.la
++
++pidgin_SOURCES = \
++	win32/pidgin_exe_rc.rc \
++	win32/winpidgin.c
++
++libpidgin_la_SOURCES = \
++	$(common_SOURCES) \
++	win32/MinimizeToTray.c \
++	win32/gtkdocklet-win32.c \
++	win32/gtkwin32dep.c \
++	win32/untar.c \
++	win32/wspell.c \
++	win32/pidgin_dll_rc.rc
++
++libpidgin_la_LDFLAGS = $(AVOID_VERSION) $(NO_UNDEFINED)
++libpidgin_la_LIBADD = $(common_LDADD) -lz -lwinmm -lgdi32
++
++pidgin_LDFLAGS = -mwindows
++pidgin_LDADD =
++	
++.rc.o:
++	$(WINDRES) $^ -o $@
++%.o : %.rc
++	$(WINDRES) -I$(top_srcdir)/pidgin -I$(top_srcdir)/pidgin/win32 -I$(top_srcdir)/libpurple -i $< -o $@
++
++else
++pidgin_SOURCES = \
++	$(common_SOURCES) \
++	gtkdocklet-gtk.c
++
++pidgin_CFLAGS = $(AM_CFLAGS)
++pidgin_LDFLAGS = -export-dynamic
++
++pidgin_LDADD = $(common_LDADD)
++endif
++
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
+-	-DLIBDIR=\"$(libdir)/pidgin/\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
++	-DPIDGIN_LIBDIR=\"$(libdir)/pidgin/\" \
+ 	-DLOCALEDIR=\"$(datadir)/locale\" \
+ 	-DSYSCONFDIR=\"$(sysconfdir)\" \
+ 	-I$(top_builddir)/libpurple \
+@@ -183,6 +240,14 @@ AM_CPPFLAGS = \
+ 	$(LIBXML_CFLAGS) \
+ 	$(INTGG_CFLAGS)
+ 
++	
++if OS_WIN32
++AM_CPPFLAGS += \
++	-DUSE_FHS \
++	-I$(top_srcdir)/libpurple/win32 \
++	-I$(top_srcdir)/pidgin/win32
++endif
++	
+ pkgconfigdir = $(libdir)/pkgconfig
+ pkgconfig_DATA = data/pidgin.pc
+ 
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/pidginstock.c pidgin-2.14.0/pidgin/pidginstock.c
+--- /w/tmp/pidgin-2.14.0/pidgin/pidginstock.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/pidginstock.c	2020-06-12 21:47:07.993353167 +0200
+@@ -241,7 +241,7 @@ find_file_common(const char *name)
+ 			return filename;
+ 		g_free(filename);
+ 	}
+-	filename = g_build_filename(DATADIR, name, NULL);
++	filename = g_build_filename(PURPLE_DATADIR, name, NULL);
+ 	if (g_file_test(filename, G_FILE_TEST_EXISTS))
+ 		return filename;
+ 	g_free(filename);
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/plugins/cap/Makefile.am pidgin-2.14.0/pidgin/plugins/cap/Makefile.am
+--- /w/tmp/pidgin-2.14.0/pidgin/plugins/cap/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/plugins/cap/Makefile.am	2020-06-12 21:47:07.997353167 +0200
+@@ -18,7 +18,7 @@ endif
+ cap_la_LIBADD = $(GTK_LIBS) $(SQLITE3_LIBS)
+ 
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_builddir)/libpurple \
+ 	-I$(top_srcdir)/pidgin \
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/plugins/disco/gtkdisco.c pidgin-2.14.0/pidgin/plugins/disco/gtkdisco.c
+--- /w/tmp/pidgin-2.14.0/pidgin/plugins/disco/gtkdisco.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/plugins/disco/gtkdisco.c	2020-06-12 21:47:08.009353167 +0200
+@@ -119,14 +119,14 @@ pidgin_disco_load_icon(XmppDiscoService
+ 
+ 	if (service->type == XMPP_DISCO_SERVICE_TYPE_GATEWAY && service->gateway_type) {
+ 		char *tmp = g_strconcat(service->gateway_type, ".png", NULL);
+-		filename = g_build_filename(DATADIR, "pixmaps", "pidgin", "protocols", size, tmp, NULL);
++		filename = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "protocols", size, tmp, NULL);
+ 		g_free(tmp);
+ #if 0
+ 	} else if (service->type == XMPP_DISCO_SERVICE_TYPE_USER) {
+-		filename = g_build_filename(DATADIR, "pixmaps", "pidgin", "status", size, "person.png", NULL);
++		filename = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "status", size, "person.png", NULL);
+ #endif
+ 	} else if (service->type == XMPP_DISCO_SERVICE_TYPE_CHAT)
+-		filename = g_build_filename(DATADIR, "pixmaps", "pidgin", "status", size, "chat.png", NULL);
++		filename = g_build_filename(PURPLE_DATADIR, "pixmaps", "pidgin", "status", size, "chat.png", NULL);
+ 
+ 	if (filename) {
+ 		pixbuf = gdk_pixbuf_new_from_file(filename, NULL);
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/plugins/disco/Makefile.am pidgin-2.14.0/pidgin/plugins/disco/Makefile.am
+--- /w/tmp/pidgin-2.14.0/pidgin/plugins/disco/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/plugins/disco/Makefile.am	2020-06-12 21:47:08.017353167 +0200
+@@ -1,6 +1,10 @@
++if OS_WIN32
++plugindir = $(libdir)/purple-$(PURPLE_MAJOR_VERSION)
++else
+ plugindir = $(libdir)/pidgin
++endif
+ 
+-xmppdisco_la_LDFLAGS = -module -avoid-version
++xmppdisco_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
+ 
+ EXTRA_DIST = \
+         Makefile.mingw
+@@ -15,14 +19,21 @@ xmppdisco_la_SOURCES = \
+ 	xmppdisco.c \
+ 	xmppdisco.h
+ 
+-xmppdisco_la_LIBADD = $(GTK_LIBS)
++xmppdisco_la_LIBADD = $(GTK_LIBS) $(PURPLE_LIBS) $(PIDGIN_LIBS)
+ 
+ endif
+ 
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_builddir)/libpurple \
+ 	-I$(top_srcdir)/pidgin \
+ 	$(DEBUG_CFLAGS) \
+ 	$(GTK_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32 \
++	-I$(top_srcdir)/pidgin/win32
++endif
++
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/plugins/gestures/Makefile.am pidgin-2.14.0/pidgin/plugins/gestures/Makefile.am
+--- /w/tmp/pidgin-2.14.0/pidgin/plugins/gestures/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/plugins/gestures/Makefile.am	2020-06-12 21:47:08.021353167 +0200
+@@ -1,6 +1,10 @@
++if OS_WIN32
++plugindir = $(libdir)/purple-$(PURPLE_MAJOR_VERSION)
++else
+ plugindir = $(libdir)/pidgin
++endif
+ 
+-gestures_la_LDFLAGS = -module -avoid-version
++gestures_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
+ 
+ if PLUGINS
+ 
+@@ -13,14 +17,20 @@ gestures_la_SOURCES = \
+ 	stroke.c \
+ 	stroke-draw.c
+ 
+-gestures_la_LIBADD = $(GTK_LIBS)
++gestures_la_LIBADD = $(GTK_LIBS) $(PURPLE_LIBS) $(PIDGIN_LIBS) $(GLIB_LIBS)
+ 
+ endif
+ 
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_builddir)/libpurple \
+ 	-I$(top_srcdir)/pidgin \
+ 	$(DEBUG_CFLAGS) \
+ 	$(GTK_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32 \
++	-I$(top_srcdir)/pidgin/win32
++endif
+\ No newline at end of file
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/plugins/gevolution/Makefile.am pidgin-2.14.0/pidgin/plugins/gevolution/Makefile.am
+--- /w/tmp/pidgin-2.14.0/pidgin/plugins/gevolution/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/plugins/gevolution/Makefile.am	2020-06-12 21:47:08.021353167 +0200
+@@ -1,6 +1,10 @@
++if OS_WIN32
++plugindir = $(libdir)/purple-$(PURPLE_MAJOR_VERSION)
++else
+ plugindir = $(libdir)/pidgin
++endif
+ 
+-gevolution_la_LDFLAGS = -module -avoid-version
++gevolution_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
+ 
+ if PLUGINS
+ 
+@@ -15,15 +19,22 @@ gevolution_la_SOURCES = \
+ 	new_person_dialog.c \
+ 	eds-utils.c
+ 
+-gevolution_la_LIBADD = $(EVOLUTION_ADDRESSBOOK_LIBS) $(GTK_LIBS)
++gevolution_la_LIBADD = $(EVOLUTION_ADDRESSBOOK_LIBS) $(GTK_LIBS) $(PURPLE_LIBS) $(PIDGIN_LIBS) $(GLIB_LIBS)
+ 
+ endif
+ 
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_builddir)/libpurple \
+ 	-I$(top_srcdir)/pidgin \
+ 	$(EVOLUTION_ADDRESSBOOK_CFLAGS) \
++	$(GLIB_CFLAGS) \
+ 	$(DEBUG_CFLAGS) \
+ 	$(GTK_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32 \
++	-I$(top_srcdir)/pidgin/win32
++endif
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/plugins/Makefile.am pidgin-2.14.0/pidgin/plugins/Makefile.am
+--- /w/tmp/pidgin-2.14.0/pidgin/plugins/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/plugins/Makefile.am	2020-06-12 21:50:54.875770367 +0200
+@@ -1,4 +1,4 @@
+-DIST_SUBDIRS = cap disco gestures gevolution musicmessaging perl ticker
++DIST_SUBDIRS = cap disco gestures gevolution musicmessaging perl ticker win32
+ 
+ if BUILD_GEVOLUTION
+ GEVOLUTION_DIR = gevolution
+@@ -27,30 +27,35 @@ SUBDIRS = \
+ 	$(MUSICMESSAGING_DIR) \
+ 	$(PERL_DIR) \
+ 	disco \
+-	ticker
++	ticker \
++	win32
+ 
++if OS_WIN32
++plugindir = $(libdir)/purple-$(PURPLE_MAJOR_VERSION)
++else
+ plugindir = $(libdir)/pidgin
++endif
+ 
+-convcolors_la_LDFLAGS       = -module -avoid-version
+-contact_priority_la_LDFLAGS = -module -avoid-version
+-extplacement_la_LDFLAGS     = -module -avoid-version
+-gtk_signals_test_la_LDFLAGS = -module -avoid-version
+-gtkbuddynote_la_LDFLAGS     = -module -avoid-version
+-history_la_LDFLAGS          = -module -avoid-version
+-iconaway_la_LDFLAGS         = -module -avoid-version
+-markerline_la_LDFLAGS       = -module -avoid-version
+-notify_la_LDFLAGS           = -module -avoid-version
+-pidginrc_la_LDFLAGS         = -module -avoid-version
+-relnot_la_LDFLAGS           = -module -avoid-version
+-sendbutton_la_LDFLAGS       = -module -avoid-version
+-spellchk_la_LDFLAGS         = -module -avoid-version
+-themeedit_la_LDFLAGS        = -module -avoid-version
+-timestamp_la_LDFLAGS        = -module -avoid-version
+-timestamp_format_la_LDFLAGS = -module -avoid-version
+-transparency_la_LDFLAGS     = -module -avoid-version
+-unity_la_LDFLAGS            = -module -avoid-version
+-vvconfig_la_LDFLAGS         = -module -avoid-version
+-xmppconsole_la_LDFLAGS      = -module -avoid-version
++convcolors_la_LDFLAGS       = -module -avoid-version $(NO_UNDEFINED)
++contact_priority_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
++extplacement_la_LDFLAGS     = -module -avoid-version $(NO_UNDEFINED)
++gtk_signals_test_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
++gtkbuddynote_la_LDFLAGS     = -module -avoid-version $(NO_UNDEFINED)
++history_la_LDFLAGS          = -module -avoid-version $(NO_UNDEFINED)
++iconaway_la_LDFLAGS         = -module -avoid-version $(NO_UNDEFINED)
++markerline_la_LDFLAGS       = -module -avoid-version $(NO_UNDEFINED)
++notify_la_LDFLAGS           = -module -avoid-version $(NO_UNDEFINED)
++pidginrc_la_LDFLAGS         = -module -avoid-version $(NO_UNDEFINED)
++relnot_la_LDFLAGS           = -module -avoid-version $(NO_UNDEFINED)
++sendbutton_la_LDFLAGS       = -module -avoid-version $(NO_UNDEFINED)
++spellchk_la_LDFLAGS         = -module -avoid-version $(NO_UNDEFINED)
++themeedit_la_LDFLAGS        = -module -avoid-version $(NO_UNDEFINED)
++timestamp_la_LDFLAGS        = -module -avoid-version $(NO_UNDEFINED)
++timestamp_format_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
++transparency_la_LDFLAGS     = -module -avoid-version $(NO_UNDEFINED)
++unity_la_LDFLAGS            = -module -avoid-version $(NO_UNDEFINED)
++vvconfig_la_LDFLAGS         = -module -avoid-version $(NO_UNDEFINED)
++xmppconsole_la_LDFLAGS      = -module -avoid-version $(NO_UNDEFINED)
+ 
+ if PLUGINS
+ 
+@@ -105,41 +110,36 @@ unity_la_SOURCES            = unity.c
+ vvconfig_la_SOURCES         = vvconfig.c
+ xmppconsole_la_SOURCES      = xmppconsole.c
+ 
+-convcolors_la_LIBADD        = $(GTK_LIBS)
+-contact_priority_la_LIBADD  = $(GTK_LIBS)
+-extplacement_la_LIBADD      = $(GTK_LIBS)
+-gtk_signals_test_la_LIBADD  = $(GTK_LIBS)
+-gtkbuddynote_la_LIBADD      = $(GTK_LIBS)
+-history_la_LIBADD           = $(GTK_LIBS)
+-iconaway_la_LIBADD          = $(GTK_LIBS)
+-markerline_la_LIBADD        = $(GTK_LIBS)
+-notify_la_LIBADD            = $(GTK_LIBS)
+-pidginrc_la_LIBADD          = $(GTK_LIBS)
+-relnot_la_LIBADD            = $(GLIB_LIBS)
+-sendbutton_la_LIBADD        = $(GTK_LIBS)
+-spellchk_la_LIBADD          = $(GTK_LIBS)
+-themeedit_la_LIBADD         = $(GTK_LIBS)
+-timestamp_la_LIBADD         = $(GTK_LIBS)
+-timestamp_format_la_LIBADD  = $(GTK_LIBS)
+-transparency_la_LIBADD      = $(GTK_LIBS)
+-unity_la_LIBADD             = $(GTK_LIBS) $(UNITY_LIBS)
+-vvconfig_la_LIBADD          = $(GTK_LIBS) $(GSTREAMER_LIBS)
+-xmppconsole_la_LIBADD       = $(GTK_LIBS)
++convcolors_la_LIBADD        = $(GTK_LIBS) $(PIDGIN_LIBS)
++contact_priority_la_LIBADD  = $(GTK_LIBS) $(PIDGIN_LIBS)
++extplacement_la_LIBADD      = $(GTK_LIBS) $(PIDGIN_LIBS)
++gtk_signals_test_la_LIBADD  = $(GTK_LIBS) $(PIDGIN_LIBS)
++gtkbuddynote_la_LIBADD      = $(GTK_LIBS) $(PIDGIN_LIBS)
++history_la_LIBADD           = $(GTK_LIBS) $(PIDGIN_LIBS)
++iconaway_la_LIBADD          = $(GTK_LIBS) $(PIDGIN_LIBS)
++markerline_la_LIBADD        = $(GTK_LIBS) $(PIDGIN_LIBS)
++notify_la_LIBADD            = $(GTK_LIBS) $(PIDGIN_LIBS)
++pidginrc_la_LIBADD          = $(GTK_LIBS) $(PIDGIN_LIBS)
++relnot_la_LIBADD            = $(GLIB_LIBS) $(PIDGIN_LIBS)
++sendbutton_la_LIBADD        = $(GTK_LIBS) $(PIDGIN_LIBS)
++spellchk_la_LIBADD          = $(GTK_LIBS) $(PIDGIN_LIBS)
++themeedit_la_LIBADD         = $(GTK_LIBS) $(PIDGIN_LIBS)
++timestamp_la_LIBADD         = $(GTK_LIBS) $(PIDGIN_LIBS)
++timestamp_format_la_LIBADD  = $(GTK_LIBS) $(PIDGIN_LIBS)
++transparency_la_LIBADD      = $(GTK_LIBS) $(PIDGIN_LIBS)
++unity_la_LIBADD             = $(GTK_LIBS) $(PIDGIN_LIBS) $(UNITY_LIBS)
++vvconfig_la_LIBADD          = $(GTK_LIBS) $(PIDGIN_LIBS) $(GSTREAMER_LIBS)
++xmppconsole_la_LIBADD       = $(GTK_LIBS) $(PIDGIN_LIBS)
+ 
+ endif # PLUGINS
+ 
+ EXTRA_DIST = \
+-	Makefile.mingw \
+ 	mailchk.c \
+ 	pidgininc.c \
+-	raw.c \
+-	win32/winprefs/gtkappbar.c \
+-	win32/winprefs/gtkappbar.h \
+-	win32/winprefs/Makefile.mingw \
+-	win32/winprefs/winprefs.c
++	raw.c
+ 
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
+ 	-I$(top_builddir)/libpurple \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_srcdir)/pidgin \
+@@ -149,6 +149,12 @@ AM_CPPFLAGS = \
+ 	$(GSTREAMER_CFLAGS) \
+ 	$(PLUGIN_CFLAGS)
+ 
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32 \
++	-I$(top_srcdir)/pidgin/win32
++endif
++
+ #
+ # This part allows people to build their own plugins in here.
+ # Yes, it's a mess.
+@@ -156,7 +162,7 @@ AM_CPPFLAGS = \
+ SUFFIXES = .c .so
+ .c.so:
+ 	$(LIBTOOL) --mode=compile $(CC) -DHAVE_CONFIG_H -I$(top_builddir) $(AM_CPPFLAGS) $(CFLAGS) -c $< -o tmp$@.lo $(PLUGIN_CFLAGS)
+-	$(LIBTOOL) --mode=link    $(CC) $(CFLAGS) -o libtmp$@.la -rpath $(plugindir) tmp$@.lo $(LIBS) $(LDFLAGS) -module -avoid-version $(PLUGIN_LIBS)
++	$(LIBTOOL) --mode=link    $(CC) $(CFLAGS) -o libtmp$@.la -rpath $(plugindir) tmp$@.lo $(LIBS) $(LDFLAGS) -module -avoid-version $(NO_UNDEFINED) $(PLUGIN_LIBS)
+ 	@rm -f tmp$@.lo tmp$@.o libtmp$@.la
+ 	@cp .libs/libtmp$@*.so $@
+ 	@rm -rf .libs/libtmp$@.*
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/plugins/musicmessaging/Makefile.am pidgin-2.14.0/pidgin/plugins/musicmessaging/Makefile.am
+--- /w/tmp/pidgin-2.14.0/pidgin/plugins/musicmessaging/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/plugins/musicmessaging/Makefile.am	2020-06-12 21:47:08.037353167 +0200
+@@ -1,7 +1,11 @@
+ EXTRA_DIST = \
+ 	music.png
+ 
++if OS_WIN32
++musicmessagingdir = $(libdir)/purple-$(PURPLE_MAJOR_VERSION)
++else
+ musicmessagingdir = $(libdir)/pidgin
++endif
+ 
+ musicmessaging_la_LDFLAGS = -module -avoid-version
+ 
+@@ -16,7 +20,7 @@ musicmessaging_LTLIBRARIES = musicmessag
+ musicmessaging_la_SOURCES = \
+ 	musicmessaging.c
+ 
+-musicmessaging_la_LIBADD = $(GTK_LIBS) $(DBUS_LIBS)
++musicmessaging_la_LIBADD = $(GTK_LIBS) $(DBUS_LIBS) $(PURPLE_LIBS) $(PIDGIN_LIBS)
+ 
+ CLEANFILES              = music-messaging-bindings.c
+ 
+@@ -35,10 +39,16 @@ endif
+ endif
+ 
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
+ 	-I$(top_builddir)/libpurple \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_srcdir)/pidgin \
+ 	$(DEBUG_CFLAGS) \
+ 	$(GTK_CFLAGS) \
+ 	$(DBUS_CFLAGS)
++	
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32 \
++	-I$(top_srcdir)/pidgin/win32
++endif
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/plugins/musicmessaging/musicmessaging.c pidgin-2.14.0/pidgin/plugins/musicmessaging/musicmessaging.c
+--- /w/tmp/pidgin-2.14.0/pidgin/plugins/musicmessaging/musicmessaging.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/plugins/musicmessaging/musicmessaging.c	2020-06-12 21:47:08.037353167 +0200
+@@ -548,11 +548,13 @@ static void run_editor (MMConversation *
+ 
+ static void kill_editor (MMConversation *mmconv)
+ {
++#ifndef _WIN32
+ 	if (mmconv->pid)
+ 	{
+ 		kill(mmconv->pid, SIGINT);
+ 		mmconv->pid = 0;
+ 	}
++#endif
+ }
+ 
+ static void init_conversation (PurpleConversation *conv)
+@@ -595,7 +597,7 @@ static void add_button (MMConversation *
+ 
+ 	g_signal_connect(G_OBJECT(button), "toggled", G_CALLBACK(music_button_toggled), mmconv);
+ 
+-	file_path = g_build_filename(DATADIR, "pixmaps", "purple", "buttons",
++	file_path = g_build_filename(PURPLE_DATADIR, "pixmaps", "purple", "buttons",
+ 										"music.png", NULL);
+ 	image = gtk_image_new_from_file(file_path);
+ 	g_free(file_path);
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/plugins/ticker/Makefile.am pidgin-2.14.0/pidgin/plugins/ticker/Makefile.am
+--- /w/tmp/pidgin-2.14.0/pidgin/plugins/ticker/Makefile.am	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/plugins/ticker/Makefile.am	2020-06-12 21:47:08.037353167 +0200
+@@ -1,9 +1,13 @@
+ EXTRA_DIST = \
+ 		Makefile.mingw
+ 
++if OS_WIN32
++plugindir = $(libdir)/purple-$(PURPLE_MAJOR_VERSION)
++else
+ plugindir = $(libdir)/pidgin
++endif
+ 
+-ticker_la_LDFLAGS = -module -avoid-version
++ticker_la_LDFLAGS = -module -avoid-version $(NO_UNDEFINED)
+ 
+ if PLUGINS
+ 
+@@ -14,14 +18,20 @@ ticker_la_SOURCES = \
+ 	gtkticker.h \
+ 	ticker.c
+ 
+-ticker_la_LIBADD = $(GTK_LIBS)
++ticker_la_LIBADD = $(GTK_LIBS) $(PURPLE_LIBS) $(PIDGIN_LIBS)
+ 
+ endif
+ 
+ AM_CPPFLAGS = \
+-	-DDATADIR=\"$(datadir)\" \
++	-DPURPLE_DATADIR=\"$(datadir)\" \
+ 	-I$(top_srcdir)/libpurple \
+ 	-I$(top_builddir)/libpurple \
+ 	-I$(top_srcdir)/pidgin \
+ 	$(DEBUG_CFLAGS) \
+ 	$(GTK_CFLAGS)
++
++if OS_WIN32
++AM_CPPFLAGS += \
++	-I$(top_srcdir)/libpurple/win32 \
++	-I$(top_srcdir)/pidgin/win32
++endif
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/plugins/win32/winprefs/gtkappbar.c pidgin-2.14.0/pidgin/plugins/win32/winprefs/gtkappbar.c
+--- /w/tmp/pidgin-2.14.0/pidgin/plugins/win32/winprefs/gtkappbar.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/plugins/win32/winprefs/gtkappbar.c	2020-06-12 21:47:08.049353167 +0200
+@@ -27,6 +27,7 @@
+  *  - Move 'App on top' feature from Trans plugin to here
+  *  - Bug: Multiple Show/Hide Desktop calls causes client area to disappear
+  */
++#define WINVER 0x500
+ #include <windows.h>
+ #include <winver.h>
+ #include <stdio.h>
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/win32/gtkdocklet-win32.c pidgin-2.14.0/pidgin/win32/gtkdocklet-win32.c
+--- /w/tmp/pidgin-2.14.0/pidgin/win32/gtkdocklet-win32.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/win32/gtkdocklet-win32.c	2020-06-12 21:47:08.053353167 +0200
+@@ -21,7 +21,7 @@
+  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
+  * 02111-1301, USA.
+  */
+-#define _WIN32_IE 0x0500
++#define _WIN32_IE 0x0501
+ #include <windows.h>
+ #include <gdk/gdkwin32.h>
+ #include <gdk/gdk.h>
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/win32/gtkwin32dep.h pidgin-2.14.0/pidgin/win32/gtkwin32dep.h
+--- /w/tmp/pidgin-2.14.0/pidgin/win32/gtkwin32dep.h	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/win32/gtkwin32dep.h	2020-06-12 21:47:08.053353167 +0200
+@@ -25,6 +25,10 @@
+ #include <windows.h>
+ #include <gtk/gtk.h>
+ #include "conversation.h"
++#include "win32dep.h"
++
++#undef PIDGIN_LIBDIR
++#define PIDGIN_LIBDIR PURPLE_LIBDIR
+ 
+ HINSTANCE winpidgin_dll_hinstance(void);
+ HINSTANCE winpidgin_exe_hinstance(void);
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/win32/pidgin_exe_rc.rc.in pidgin-2.14.0/pidgin/win32/pidgin_exe_rc.rc.in
+--- /w/tmp/pidgin-2.14.0/pidgin/win32/pidgin_exe_rc.rc.in	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/win32/pidgin_exe_rc.rc.in	2020-06-12 21:47:08.061353167 +0200
+@@ -3,8 +3,8 @@
+ #include "version.h"
+ 
+ VS_VERSION_INFO VERSIONINFO
+-  FILEVERSION PURPLE_MAJOR_VERSION,PURPLE_MINOR_VERSION,PURPLE_MICRO_VERSION,0
+-  PRODUCTVERSION PURPLE_MAJOR_VERSION,PURPLE_MINOR_VERSION,PURPLE_MICRO_VERSION,0
++  FILEVERSION @PURPLE_MAJOR_VERSION@,@PURPLE_MINOR_VERSION@,@PURPLE_MICRO_VERSION@,0
++  PRODUCTVERSION @PURPLE_MAJOR_VERSION@,@PURPLE_MINOR_VERSION@,@PURPLE_MICRO_VERSION@,0
+   FILEFLAGSMASK 0
+   FILEFLAGS 0
+   FILEOS VOS__WINDOWS32
+@@ -20,7 +20,7 @@ VS_VERSION_INFO VERSIONINFO
+         VALUE "FileVersion", "@PIDGIN_VERSION@"
+         VALUE "InternalName", "pidgin"
+         VALUE "LegalCopyright", "Copyright (C) 1998-2010 The Pidgin developer community (See the COPYRIGHT file in the source distribution)."
+-        VALUE "OriginalFilename", "@ORIGINAL_FILENAME@"
++        VALUE "OriginalFilename", "pidgin.exe"
+         VALUE "ProductName", "Pidgin"
+         VALUE "ProductVersion", "@PIDGIN_VERSION@"
+       END
+diff -rup -x Makefile.in -x ltmain.sh -x missing -x install-sh -x INSTALL -x depcomp -x configure -x config.sub -x config.h.in -x config.guess -x compile -x aclocal.m4 -x test-driver /w/tmp/pidgin-2.14.0/pidgin/win32/winpidgin.c pidgin-2.14.0/pidgin/win32/winpidgin.c
+--- /w/tmp/pidgin-2.14.0/pidgin/win32/winpidgin.c	2020-06-10 05:43:15.000000000 +0200
++++ pidgin-2.14.0/pidgin/win32/winpidgin.c	2020-06-12 21:47:08.061353167 +0200
+@@ -316,11 +316,19 @@ static wchar_t* winpidgin_lcid_to_posix(
+ 					posix = L"sr@Latn"; break;
+ 				case SUBLANG_SERBIAN_CYRILLIC:
+ 					posix = L"sr"; break;
++/* for some reason mingw-w64 doesn't have these definitions yet */
++#ifdef SUBLANG_BOSNIAN_BOSNIA_HERZEGOVINA_CYRILLIC
+ 				case SUBLANG_BOSNIAN_BOSNIA_HERZEGOVINA_CYRILLIC:
++					posix = L"bs"; break;
++#endif
++#ifdef SUBLANG_BOSNIAN_BOSNIA_HERZEGOVINA_LATIN
+ 				case SUBLANG_BOSNIAN_BOSNIA_HERZEGOVINA_LATIN:
+ 					posix = L"bs"; break;
++#endif
++#ifdef SUBLANG_CROATIAN_BOSNIA_HERZEGOVINA_LATIN
+ 				case SUBLANG_CROATIAN_BOSNIA_HERZEGOVINA_LATIN:
+ 					posix = L"hr"; break;
++#endif
+ 			}
+ 			break;
+ 		case LANG_SWEDISH: posix = L"sv"; break;
+@@ -699,7 +707,7 @@ WinMain (struct HINSTANCE__ *hInstance,
+ 			return 0;
+ 
+ 	/* Now we are ready for Pidgin .. */
+-	wcscat(pidgin_dir, L"\\pidgin.dll");
++	wcscat(pidgin_dir, L"\\libpidgin.dll");
+ 	if ((hmod = LoadLibraryW(pidgin_dir)))
+ 		pidgin_main = (LPFNPIDGINMAIN) GetProcAddress(hmod, "pidgin_main");
+ 
+@@ -712,7 +720,7 @@ WinMain (struct HINSTANCE__ *hInstance,
+ 		BOOL mod_not_found = (dw == ERROR_MOD_NOT_FOUND || dw == ERROR_DLL_NOT_FOUND);
+ 		const wchar_t *err_msg = get_win32_error_message(dw);
+ 
+-		_snwprintf(errbuf, 512, L"Error loading pidgin.dll.\nError: (%u) %s%s%s",
++		_snwprintf(errbuf, 512, L"Error loading libpidgin.dll.\nError: (%u) %s%s%s",
+ 			(UINT) dw, err_msg,
+ 			mod_not_found ? L"\n" : L"",
+ 			mod_not_found ? L"This probably means that GTK+ can't be found." : L"");
