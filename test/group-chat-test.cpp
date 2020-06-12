@@ -1,4 +1,5 @@
 #include "fixture.h"
+#include "libpurple-mock.h"
 #include <glib/gstrfuncs.h>
 #include <fmt/format.h>
 
@@ -1308,3 +1309,63 @@ TEST_F(GroupChatTest, Roomlist)
     );
     purple_roomlist_unref(onlineRoomlist);
 }
+
+#if PURPLE_VERSION_CHECK(2,14,0)
+TEST_F(GroupChatTest, SendFile)
+{
+    const char *const PATH   = "/path";
+    const int32_t     fileId = 1234;
+    constexpr int     purpleChatId = 1;
+    loginWithBasicGroup();
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        PresentConversationEvent(groupChatPurpleName)
+    );
+
+    setFakeFileSize(PATH, 10000);
+    pluginInfo().chat_send_file(connection, purpleChatId, PATH);
+    prpl.verifyEvents(XferAcceptedEvent(PATH));
+    tgl.verifyRequest(uploadFile(
+        make_object<inputFileLocal>(PATH),
+        make_object<fileTypeDocument>(),
+        1
+    ));
+
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(PATH, false, false, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("", "", true, false, 0)
+    ));
+    prpl.verifyEvents(
+        XferStartEvent(PATH),
+        XferProgressEvent(PATH, 0)
+    );
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(PATH, false, false, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("", "", false, false, 10000)
+    )));
+    prpl.verifyEvents(
+        XferCompletedEvent(PATH, TRUE, 10000),
+        XferEndEvent(PATH)
+    );
+    tgl.verifyRequest(sendMessage(
+        groupChatId,
+        0,
+        nullptr,
+        nullptr,
+        make_object<inputMessageDocument>(
+            make_object<inputFileId>(fileId),
+            nullptr,
+            make_object<formattedText>()
+        )
+    ));
+}
+#endif

@@ -509,6 +509,11 @@ PurpleAccount *purple_conversation_get_account(const PurpleConversation *conv)
     return conv->account;
 }
 
+const char *purple_conversation_get_title(const PurpleConversation *conv)
+{
+    return conv->title;
+}
+
 void purple_conversation_set_title(PurpleConversation *conv, const char *title)
 {
     conv->title = strdup(title);
@@ -840,7 +845,7 @@ PurpleXfer *purple_xfer_new(PurpleAccount *account,
     xfer->local_filename = NULL;
     xfer->status = PURPLE_XFER_STATUS_UNKNOWN;
     xfer->size = 0;
-    memset(&xfer->ops.init, 0, sizeof(xfer->ops.init));
+    memset(&xfer->ops, 0, sizeof(xfer->ops));
     return xfer;
 }
 
@@ -869,6 +874,11 @@ void setFakeFileSize(const char *path, size_t size)
     fakeFiles[path] = size;
 }
 
+void clearFakeFiles()
+{
+    fakeFiles.clear();
+}
+
 void purple_xfer_request_accepted(PurpleXfer *xfer, const char *filename)
 {
     EVENT(XferAcceptedEvent, xfer, filename);
@@ -893,6 +903,11 @@ void purple_xfer_set_cancel_send_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *)
 void purple_xfer_set_cancel_recv_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *))
 {
     xfer->ops.cancel_recv = fnc;
+}
+
+void purple_xfer_set_end_fnc(PurpleXfer *xfer, void (*fnc)(PurpleXfer *))
+{
+    xfer->ops.end = fnc;
 }
 
 const char *purple_xfer_get_remote_user(const PurpleXfer *xfer)
@@ -978,6 +993,8 @@ void purple_xfer_update_progress(PurpleXfer *xfer)
 void purple_xfer_end(PurpleXfer *xfer)
 {
     EVENT(XferEndEvent, xfer->local_filename);
+    if (xfer->ops.end)
+        xfer->ops.end(xfer);
     purple_xfer_unref(xfer);
 }
 

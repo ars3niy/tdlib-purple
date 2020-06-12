@@ -476,23 +476,49 @@ static gboolean tgprpl_can_receive_file (PurpleConnection *gc, const char *who)
     return TRUE;
 }
 
+struct UploadData {
+    enum class Type {
+        User,
+        Chat
+    };
+    PurpleAccount *account;
+    Type           type;
+    int            chatId;
+};
+
 static void startUpload(PurpleXfer *xfer)
 {
-    PurpleAccount  *account  = static_cast<PurpleAccount *>(xfer->data);
-    PurpleTdClient *tdClient = getTdClient(account);
-    const char     *username = purple_xfer_get_remote_user(xfer);
+    const UploadData *data     = static_cast<UploadData *>(xfer->data);
+    PurpleTdClient   *tdClient = getTdClient(data->account);
+    if (!tdClient)
+        return;
 
-    if (tdClient && username)
-        tdClient->sendFileToChat(xfer, username, PURPLE_CONV_TYPE_IM);
+    switch (data->type) {
+        case UploadData::Type::User: {
+            const char *username = purple_xfer_get_remote_user(xfer);
+            if (username)
+                tdClient->sendFileToChat(xfer, username, PURPLE_CONV_TYPE_IM, 0);
+            break;
+        }
+        case UploadData::Type::Chat: {
+            tdClient->sendFileToChat(xfer, NULL, PURPLE_CONV_TYPE_CHAT, data->chatId);
+            break;
+        }
+    }
 }
 
 static void cancelUpload(PurpleXfer *xfer)
 {
-    PurpleAccount  *account  = static_cast<PurpleAccount *>(xfer->data);
-    PurpleTdClient *tdClient = getTdClient(account);
+    std::unique_ptr<UploadData> data(static_cast<UploadData *>(xfer->data));
+    PurpleTdClient *tdClient = getTdClient(data->account);
 
     if (tdClient)
         tdClient->cancelUpload(xfer);
+}
+
+static void endUpload(PurpleXfer *xfer)
+{
+    delete static_cast<UploadData *>(xfer->data);
 }
 
 static PurpleXfer *newUploadTransfer(PurpleConnection *gc, const char *who)
@@ -502,7 +528,7 @@ static PurpleXfer *newUploadTransfer(PurpleConnection *gc, const char *who)
     if (xfer) {
         purple_xfer_set_init_fnc(xfer, startUpload);
         purple_xfer_set_cancel_send_fnc(xfer, cancelUpload);
-        xfer->data = account;
+        purple_xfer_set_end_fnc(xfer, endUpload);
     }
 
     return xfer;
@@ -511,8 +537,27 @@ static PurpleXfer *newUploadTransfer(PurpleConnection *gc, const char *who)
 static void tgprpl_send_file (PurpleConnection * gc, const char *who, const char *file)
 {
     PurpleXfer *X = newUploadTransfer (gc, who);
+    X->data = new UploadData{purple_connection_get_account(gc), UploadData::Type::User, 0};
     if (file) {
         purple_xfer_request_accepted (X, file);
+    } else {
+        purple_xfer_request (X);
+    }
+}
+
+static void sendFileToChat(PurpleConnection *gc, int id, const char *filename)
+{
+    PurpleConversation *conv = purple_find_chat(gc, id);
+    if (!conv) {
+        purple_debug_warning(config::pluginId, "No chat conversation with id %d\n", id);
+        return;
+    }
+
+    PurpleXfer *X = newUploadTransfer(gc, purple_conversation_get_title(conv));
+    X->data = new UploadData{purple_connection_get_account(gc), UploadData::Type::Chat, id};
+
+    if (filename) {
+        purple_xfer_request_accepted (X, filename);
     } else {
         purple_xfer_request (X);
     }
@@ -634,7 +679,7 @@ static PurplePluginProtocolInfo prpl_info = {
 #if PURPLE_VERSION_CHECK(2,14,0)
     .get_cb_alias             = NULL,
     .chat_can_receive_file    = NULL,
-    .chat_send_file           = NULL,
+    .chat_send_file           = sendFileToChat,
 #endif
 };
 
@@ -688,6 +733,9 @@ static void tdlibFatalErrorCallback(const char *message)
 
 static void tgprpl_init (PurplePlugin *plugin)
 {
+#if !PURPLE_VERSION_CHECK(2,14,0)
+    (void)sendFileToChat;
+#endif
     if (purple_debug_is_verbose())
         // Log everything
         PurpleTdClient::setLogLevel(1024);

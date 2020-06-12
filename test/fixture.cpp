@@ -1,5 +1,6 @@
 #include "fixture.h"
 #include "tdlib-purple.h"
+#include "libpurple-mock.h"
 
 CommTest::CommTest()
 {
@@ -29,6 +30,7 @@ void CommTest::TearDown()
     tgl.runTimeouts();
     purple_account_destroy(account);
     account = NULL;
+    clearFakeFiles();
 }
 
 void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, object_ptr<users> getContactsReply,

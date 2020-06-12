@@ -2184,7 +2184,8 @@ void PurpleTdClient::verifyRecoveryEmailResponse(uint64_t requestId, td::td_api:
     }
 }
 
-void PurpleTdClient::sendFileToChat(PurpleXfer *xfer, const char *purpleName, PurpleConversationType type)
+void PurpleTdClient::sendFileToChat(PurpleXfer *xfer, const char *purpleName,
+                                    PurpleConversationType type, int purpleChatId)
 {
     const char *filename = purple_xfer_get_local_filename(xfer);
     const td::td_api::user *privateUser = nullptr;
@@ -2196,7 +2197,8 @@ void PurpleTdClient::sendFileToChat(PurpleXfer *xfer, const char *purpleName, Pu
             privateUser = users[0];
             chat = m_data.getPrivateChatByUserId(privateUser->id_);
         }
-    }
+    } else if (type == PURPLE_CONV_TYPE_CHAT)
+        chat = m_data.getChatByPurpleId(purpleChatId);
 
     if (filename && chat)
         startDocumentUpload(chat->id_, filename, xfer, m_transceiver, m_data, &PurpleTdClient::uploadResponse);

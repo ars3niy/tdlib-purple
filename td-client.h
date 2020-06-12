@@ -44,7 +44,8 @@ public:
     void setTwoFactorAuth(const char *oldPassword, const char *newPassword, const char *hint,
                         const char *email);
 
-    void sendFileToChat(PurpleXfer *xfer, const char *purpleName, PurpleConversationType type);
+    void sendFileToChat(PurpleXfer *xfer, const char *purpleName, PurpleConversationType type,
+                        int purpleChatId);
     void cancelUpload(PurpleXfer *xfer);
 private:
     using TdObjectPtr   = td::td_api::object_ptr<td::td_api::Object>;
