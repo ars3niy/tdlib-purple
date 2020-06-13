@@ -29,7 +29,7 @@ set_target_properties(rlottie PROPERTIES
 #declare alias so that library can be used inside the build tree, e.g. when testing
 add_library(rlottie::rlottie ALIAS rlottie)
 
-option(LOTTIE_MODULE "Enable LOTTIE MODULE SUPPORT" ON)
+option(LOTTIE_MODULE "Enable LOTTIE MODULE SUPPORT" OFF)
 option(LOTTIE_THREAD "Enable LOTTIE THREAD SUPPORT" ON)
 option(LOTTIE_CACHE "Enable LOTTIE CACHE SUPPORT" ON)
 option(LOTTIE_TEST "Build LOTTIE AUTOTESTS" OFF)

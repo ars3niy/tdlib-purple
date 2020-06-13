@@ -64,7 +64,6 @@ target_link_libraries(telegram-tdlib PRIVATE fmt::fmt)
 
 if (NOT NoLottie)
     if (NOT NoBundledLottie)
-        set(LOTTIE_MODULE OFF)
         add_subdirectory(rlottie)
         target_compile_options(rlottie PRIVATE -fPIC)
         target_include_directories(telegram-tdlib PRIVATE rlottie/inc)
