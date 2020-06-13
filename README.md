@@ -59,6 +59,8 @@ to use another API id.
 
 To install, copy the .so to libpurple plugins directory, or run `make install`.
 
+Building using existing librlottie: `-DNoBundledLottie`
+
 ## Proper user names in bitlbee
 
 ```
