@@ -386,14 +386,22 @@ TEST_F(FileTransferTest, DISABLED_AnimatedStickerDecode)
 
     tgl.reply(make_object<ok>()); // reply to viewMessages
 
-    prpl.verifyEvents(ServGotImEvent(
-        connection,
-        purpleUserName(0),
-        // Sticker was converted to gif
-        "\n<img id=\"" + std::to_string(getLastImgstoreId()) + "\">",
-        PURPLE_MESSAGE_RECV,
-        date
-    ));
+    prpl.verifyEvents(
+        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
+        ConversationWriteEvent(
+            purpleUserName(0), purpleUserName(0),
+            userFirstNames[0] + " " + userLastNames[0] + ": Converting sticker",
+            PURPLE_MESSAGE_SYSTEM, date
+        ),
+        ServGotImEvent(
+            connection,
+            purpleUserName(0),
+            // Sticker was converted to gif
+            "\n<img id=\"" + std::to_string(getLastImgstoreId()) + "\">",
+            PURPLE_MESSAGE_RECV,
+            date
+        )
+    );
 }
 
 TEST_F(FileTransferTest, Photo_DownloadProgress_StuckAtStart)

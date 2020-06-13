@@ -1094,6 +1094,11 @@ void PurpleTdClient::showDownloadedSticker(int64_t chatId, TgMessageInfo &messag
 #endif
     if (isTgs(filePath)) {
         if (convertAnimated) {
+            const td::td_api::chat *chat = m_data.getChat(chatId);
+            if (chat) {
+                std::string notice = makeNoticeWithSender(*chat, message, _("Converting sticker"), m_account);
+                showMessageText(m_data, *chat, message, NULL, notice.c_str());
+            }
             StickerConversionThread *thread;
             thread = new StickerConversionThread(m_account, &PurpleTdClient::showConvertedAnimation,
                                                  filePath, chatId, std::move(message));
@@ -1152,6 +1157,7 @@ void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
     } else {
         errorMessage = formatMessage(_("Could not read sticker file {}: {}"),
                                         {thread->inputFileName, errorMessage});
+        errorMessage = makeNoticeWithSender(*chat, thread->message, errorMessage.c_str(), m_account);
         showMessageText(m_data, *chat, thread->message, NULL, errorMessage.c_str());
     }
 }
