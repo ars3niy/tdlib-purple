@@ -2,6 +2,7 @@
 #include "td-client.h"
 #include "purple-info.h"
 #include "format.h"
+#include "buildopt.h"
 #include <purple.h>
 
 #include <cstdint>
