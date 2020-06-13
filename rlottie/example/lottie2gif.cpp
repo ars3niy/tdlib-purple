@@ -46,22 +46,9 @@ public:
            // compute only if alpha is non zero
            if (a) {
                unsigned char r = buffer[i+2];
-               unsigned char g = buffer[i+1];
                unsigned char b = buffer[i];
-
-               if (a != 255) { //un premultiply
-                   unsigned char r2 = (unsigned char) ((float) bgColorR * ((float) (255 - a) / 255));
-                   unsigned char g2 = (unsigned char) ((float) bgColorG * ((float) (255 - a) / 255));
-                   unsigned char b2 = (unsigned char) ((float) bgColorB * ((float) (255 - a) / 255));
-                   buffer[i] = r + r2;
-                   buffer[i+1] = g + g2;
-                   buffer[i+2] = b + b2;
-
-               } else {
-                 // only swizzle r and b
-                 buffer[i] = r;
-                 buffer[i+2] = b;
-               }
+               buffer[i] = r;
+               buffer[i+2] = b;
            } else {
                buffer[i+2] = bgColorB;
                buffer[i+1] = bgColorG;

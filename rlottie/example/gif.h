@@ -360,8 +360,6 @@ void GifMakePalette( const uint8_t* lastFrame, const uint8_t* nextFrame, uint32_
     memcpy(destroyableImage, nextFrame, imageSize);
 
     int numPixels = (int)(width * height);
-    if(lastFrame)
-        numPixels = GifPickChangedPixels(lastFrame, destroyableImage, numPixels);
 
     const int lastElt = 1 << bitDepth;
     const int splitElt = lastElt/2;
@@ -493,16 +491,11 @@ void GifThresholdImage( const uint8_t* lastFrame, const uint8_t* nextFrame, uint
     uint32_t numPixels = width*height;
     for( uint32_t ii=0; ii<numPixels; ++ii )
     {
-        // if a previous color is available, and it matches the current color,
-        // set the pixel to transparent
-        if(lastFrame &&
-           lastFrame[0] == nextFrame[0] &&
-           lastFrame[1] == nextFrame[1] &&
-           lastFrame[2] == nextFrame[2])
+        if (nextFrame[3] == 0)
         {
-            outFrame[0] = lastFrame[0];
-            outFrame[1] = lastFrame[1];
-            outFrame[2] = lastFrame[2];
+            outFrame[0] = nextFrame[0];
+            outFrame[1] = nextFrame[1];
+            outFrame[2] = nextFrame[2];
             outFrame[3] = kGifTransIndex;
         }
         else
@@ -612,7 +605,7 @@ void GifWriteLzwImage(FILE* f, uint8_t* image, uint32_t left, uint32_t top,  uin
     fputc(0x21, f);
     fputc(0xf9, f);
     fputc(0x04, f);
-    fputc(0x05, f); // leave prev frame in place, this frame has transparency
+    fputc((2 << 2) + 1, f); // restore to background colour, this frame has transparency
     fputc(delay & 0xff, f);
     fputc((delay >> 8) & 0xff, f);
     fputc(kGifTransIndex, f); // transparent color index
