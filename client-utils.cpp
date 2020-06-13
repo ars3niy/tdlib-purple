@@ -6,12 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <algorithm>
-
-#include "buildopt.h"
-#ifndef NoWebp
-#include <png.h>
-#include <webp/decode.h>
-#endif
+#include <functional>
 
 enum {
     FILE_UPLOAD_PRIORITY = 1,
@@ -1213,158 +1208,6 @@ void showGenericFile(const td::td_api::chat &chat, const TgMessageInfo &message,
     }
 }
 
-#ifndef NoWebp
-
-static void p2tgl_png_mem_write (png_structp png_ptr, png_bytep data, png_size_t length)
-{
-    GByteArray *png_mem = (GByteArray *) png_get_io_ptr(png_ptr);
-    g_byte_array_append (png_mem, data, length);
-}
-
-int p2tgl_imgstore_add_with_id_png (const unsigned char *raw_bitmap, unsigned width, unsigned height)
-{
-    GByteArray *png_mem = NULL;
-    png_structp png_ptr = NULL;
-    png_infop info_ptr = NULL;
-    png_bytepp rows = NULL;
-
-    // init png write struct
-    png_ptr = png_create_write_struct (PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-    if (png_ptr == NULL) {
-        purple_debug_misc(config::pluginId, "error encoding png (create_write_struct failed)\n");
-        return 0;
-    }
-
-    // init png info struct
-    info_ptr = png_create_info_struct (png_ptr);
-    if (info_ptr == NULL) {
-        png_destroy_write_struct(&png_ptr, NULL);
-        purple_debug_misc(config::pluginId, "error encoding png (create_info_struct failed)\n");
-        return 0;
-    }
-
-    // Set up error handling.
-    if (setjmp(png_jmpbuf(png_ptr))) {
-        png_destroy_write_struct(&png_ptr, &info_ptr);
-        purple_debug_misc(config::pluginId, "error while writing png\n");
-        return 0;
-    }
-
-    // set img attributes
-    png_set_IHDR (png_ptr, info_ptr, width, height,
-                    8, PNG_COLOR_TYPE_RGBA, PNG_INTERLACE_NONE,
-                    PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
-
-    // alloc row pointers
-    rows = g_new0 (png_bytep, height);
-    if (rows == NULL) {
-        png_destroy_write_struct(&png_ptr, &info_ptr);
-        purple_debug_misc(config::pluginId, "error converting to png: malloc failed\n");
-        return 0;
-    }
-
-    unsigned i;
-    for (i = 0; i < height; i++)
-        rows[i] = (png_bytep)(raw_bitmap + i * width * 4);
-
-    // create array and set own png write function
-    png_mem = g_byte_array_new();
-    png_set_write_fn (png_ptr, png_mem, p2tgl_png_mem_write, NULL);
-
-    // write png
-    png_set_rows (png_ptr, info_ptr, rows);
-    png_write_png (png_ptr, info_ptr, PNG_TRANSFORM_IDENTITY, NULL);
-
-    // cleanup
-    g_free(rows);
-    png_destroy_write_struct (&png_ptr, &info_ptr);
-    unsigned png_size = png_mem->len;
-    gpointer png_data = g_byte_array_free (png_mem, FALSE);
-
-    return purple_imgstore_add_with_id (png_data, png_size, NULL);
-}
-
-int p2tgl_imgstore_add_with_id_webp (const char *filename)
-{
-    constexpr int MAX_W = 256;
-    constexpr int MAX_H = 256;
-
-    const uint8_t *data = NULL;
-    size_t len;
-    GError *err = NULL;
-    g_file_get_contents (filename, (gchar **) &data, &len, &err);
-    if (err) {
-        purple_debug_misc(config::pluginId, "cannot open file %s: %s\n", filename, err->message);
-        g_error_free(err);
-        return 0;
-    }
-
-    // downscale oversized sticker images displayed in chat, otherwise it would harm readabillity
-    WebPDecoderConfig config;
-    WebPInitDecoderConfig (&config);
-    if (WebPGetFeatures(data, len, &config.input) != VP8_STATUS_OK) {
-        purple_debug_misc(config::pluginId, "error reading webp bitstream: %s\n", filename);
-        g_free ((gchar *)data);
-        return 0;
-    }
-
-    config.options.use_scaling = 0;
-    config.options.scaled_width = config.input.width;
-    config.options.scaled_height = config.input.height;
-    if (config.options.scaled_width > MAX_W || config.options.scaled_height > MAX_H) {
-        const float max_scale_width = MAX_W * 1.0f / config.options.scaled_width;
-        const float max_scale_height = MAX_H * 1.0f / config.options.scaled_height;
-        if (max_scale_width < max_scale_height) {
-        // => the width is most limiting
-        config.options.scaled_width = MAX_W;
-        // Can't use ' *= ', because we need to do the multiplication in float
-        // (or double), and only THEN cast back to int.
-        config.options.scaled_height = (int) (config.options.scaled_height * max_scale_width);
-        } else {
-        // => the height is most limiting
-        config.options.scaled_height = MAX_H;
-        // Can't use ' *= ', because we need to do the multiplication in float
-        // (or double), and only THEN cast back to int.
-        config.options.scaled_width = (int) (config.options.scaled_width * max_scale_height);
-        }
-        config.options.use_scaling = 1;
-    }
-    config.output.colorspace = MODE_RGBA;
-    if (WebPDecode(data, len, &config) != VP8_STATUS_OK) {
-        purple_debug_misc(config::pluginId, "error decoding webp: %s\n", filename);
-        g_free ((gchar *)data);
-        return 0;
-    }
-    g_free ((gchar *)data);
-    const uint8_t *decoded = config.output.u.RGBA.rgba;
-
-    // convert and add
-    int imgStoreId = p2tgl_imgstore_add_with_id_png(decoded, config.options.scaled_width, config.options.scaled_height);
-    WebPFreeDecBuffer (&config.output);
-    return imgStoreId;
-}
-
-#else
-
-int p2tgl_imgstore_add_with_id_webp (const char *filename)
-{
-    return 0;
-}
-
-#endif
-
-void showWebpSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
-                     const std::string &filePath, const std::string &fileDescription,
-                     TdAccountData &account)
-{
-    int id = p2tgl_imgstore_add_with_id_webp(filePath.c_str());
-    if (id != 0) {
-        std::string text = "\n<img id=\"" + std::to_string(id) + "\">";
-        showMessageText(account, chat, message, text.c_str(), NULL);
-    } else
-        showGenericFile(chat, message, filePath, fileDescription, account);
-}
-
 void notifySendFailed(const td::td_api::updateMessageSendFailed &sendFailed, TdAccountData &account)
 {
     if (sendFailed.message_) {
@@ -1497,4 +1340,50 @@ void populateGroupChatList(PurpleRoomlist *roomlist, const std::vector<const td:
             purple_roomlist_room_add(roomlist, room);
         }
     purple_roomlist_set_in_progress(roomlist, FALSE);
+}
+
+AccountThread::AccountThread(PurpleAccount* purpleAccount, AccountThread::Callback callback)
+{
+    m_accountUserName   = purple_account_get_username(purpleAccount);
+    m_accountProtocolId = purple_account_get_protocol_id(purpleAccount);
+    m_callback          = callback;
+}
+
+void AccountThread::threadFunc()
+{
+    run();
+    g_idle_add(&AccountThread::mainThreadCallback, this);
+}
+
+static bool g_singleThread = false;
+
+void AccountThread::setSingleThread()
+{
+    g_singleThread = true;
+}
+
+void AccountThread::startThread()
+{
+    if (!g_singleThread) {
+        if (!m_thread.joinable())
+            m_thread = std::thread(std::bind(&AccountThread::threadFunc, this));
+    } else {
+        run();
+        mainThreadCallback(this);
+    }
+}
+
+gboolean AccountThread::mainThreadCallback(gpointer data)
+{
+    AccountThread  *self     = static_cast<AccountThread *>(data);
+    PurpleAccount  *account  = purple_accounts_find(self->m_accountUserName.c_str(),
+                                                    self->m_accountProtocolId.c_str());
+    PurpleTdClient *tdClient = account ? getTdClient(account) : nullptr;
+    if (self->m_thread.joinable())
+        self->m_thread.join();
+
+    if (tdClient)
+        (tdClient->*(self->m_callback))(self);
+
+    return FALSE; // this idle callback will not be called again
 }

@@ -8,5 +8,6 @@ extern "C" {
     gboolean purple_init_plugin(PurplePlugin *plugin);
 };
 void tgprpl_set_test_backend(ITransceiverBackend *backend);
+void tgprpl_set_single_thread();
 
 #endif

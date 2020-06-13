@@ -353,6 +353,49 @@ TEST_F(FileTransferTest, DISABLED_WebpStickerDecode)
     ));
 }
 
+#ifndef NoLottie
+TEST_F(FileTransferTest, AnimatedStickerDecode)
+#else
+TEST_F(FileTransferTest, DISABLED_AnimatedStickerDecode)
+#endif
+{
+    const int32_t date    = 10001;
+    const int32_t fileId  = 1234;
+    loginWithOneContact();
+
+    // No thumbnail, only .tgs
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messageSticker>(make_object<sticker>(
+            0, 320, 200, "", true, false, nullptr,
+            nullptr,
+            make_object<file>(
+                fileId, 10000, 10000,
+                make_object<localFile>(TEST_SOURCE_DIR "/test.tgs", true, true, false, true, 0, 10000, 10000),
+                make_object<remoteFile>("beh", "bleh", false, true, 10000)
+            )
+        ))
+    )));
+    tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
+    });
+
+    tgl.reply(make_object<ok>()); // reply to viewMessages
+
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        purpleUserName(0),
+        // Sticker was converted to gif
+        "\n<img id=\"" + std::to_string(getLastImgstoreId()) + "\">",
+        PURPLE_MESSAGE_RECV,
+        date
+    ));
+}
+
 TEST_F(FileTransferTest, Photo_DownloadProgress_StuckAtStart)
 {
     const int32_t date   = 10001;

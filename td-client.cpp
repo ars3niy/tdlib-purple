@@ -2,6 +2,7 @@
 #include "purple-info.h"
 #include "config.h"
 #include "format.h"
+#include "sticker.h"
 #include <unistd.h>
 #include <stdlib.h>
 
@@ -1008,6 +1009,11 @@ void PurpleTdClient::downloadResponse(uint64_t requestId, td::td_api::object_ptr
     }
 }
 
+static std::string makeInlineImageText(int imgstoreId)
+{
+    return "\n<img id=\"" + std::to_string(imgstoreId) + "\">";
+}
+
 void PurpleTdClient::showDownloadedImage(int64_t chatId, TgMessageInfo &message,
                                          const std::string &filePath, const char *caption,
                                          const std::string &fileDesc,
@@ -1022,7 +1028,7 @@ void PurpleTdClient::showDownloadedImage(int64_t chatId, TgMessageInfo &message,
 
         if (g_file_get_contents (filePath.c_str(), &data, &len, NULL)) {
             int id = purple_imgstore_add_with_id (data, len, NULL);
-            text = "\n<img id=\"" + std::to_string(id) + "\">";
+            text = makeInlineImageText(id);
         } else if (filePath.find('"') == std::string::npos)
             text = "<img src=\"file://" + filePath + "\">";
         else
@@ -1071,28 +1077,41 @@ void PurpleTdClient::showStickerMessage(const td::td_api::chat &chat, TgMessageI
 
 static bool isTgs(const std::string &path)
 {
-    size_t dot = path.rfind('.');
-    if (dot != std::string::npos)
-        return !strcmp(path.c_str() + dot + 1, "tgs");
-
-    return false;
+    return (path.size() >= 4) && !strcmp(path.c_str() + path.size() - 4, ".tgs");
 }
-
 
 void PurpleTdClient::showDownloadedSticker(int64_t chatId, TgMessageInfo &message,
                                            const std::string &filePath, const char *caption,
                                            const std::string &fileDescription,
                                            td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
-    if (isTgs(filePath) && thumbnail) {
-        // Avoid message like "Downloading sticker thumbnail...
-        // Also ignore size limits, but only determined testers and crazy people would notice.
-        if (thumbnail->local_ && thumbnail->local_->is_downloading_completed_)
-            showDownloadedSticker(chatId, message, thumbnail->local_->path_, caption,
-                                     fileDescription, nullptr);
-        else
-            downloadFile(thumbnail->id_, chatId, message, fileDescription, nullptr,
-                         &PurpleTdClient::showDownloadedSticker);
+#ifndef NoLottie
+    bool convertAnimated = !message.outgoing &&
+                           purple_account_get_bool(m_account, AccountOptions::AnimatedStickers,
+                                                   AccountOptions::AnimatedStickersDefault);
+#else
+    bool convertAnimated = false;
+#endif
+    if (isTgs(filePath)) {
+        if (convertAnimated) {
+            StickerConversionThread *thread;
+            thread = new StickerConversionThread(m_account, &PurpleTdClient::showConvertedAnimation,
+                                                 filePath, chatId, std::move(message));
+            thread->startThread();
+        } else if (thumbnail) {
+            // Avoid message like "Downloading sticker thumbnail...
+            // Also ignore size limits, but only determined testers and crazy people would notice.
+            if (thumbnail->local_ && thumbnail->local_->is_downloading_completed_)
+                showDownloadedSticker(chatId, message, thumbnail->local_->path_, caption,
+                                        fileDescription, nullptr);
+            else
+                downloadFile(thumbnail->id_, chatId, message, fileDescription, nullptr,
+                            &PurpleTdClient::showDownloadedSticker);
+        } else {
+            const td::td_api::chat *chat = m_data.getChat(chatId);
+            if (chat)
+                showGenericFile(*chat, message, filePath, fileDescription, m_data);
+        }
     } else {
         const td::td_api::chat *chat = m_data.getChat(chatId);
         if (chat)
@@ -1100,6 +1119,42 @@ void PurpleTdClient::showDownloadedSticker(int64_t chatId, TgMessageInfo &messag
     }
 }
 
+void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
+{
+    std::unique_ptr<AccountThread> baseThread(arg);
+    StickerConversionThread *thread = dynamic_cast<StickerConversionThread *>(arg);
+    const td::td_api::chat  *chat   = thread ? m_data.getChat(thread->chatId) : nullptr;
+    if (!chat || !thread)
+        return;
+
+    std::string  errorMessage = thread->getErrorMessage();
+    gchar       *imageData    =  NULL;
+    gsize        imageSize    = 0;
+    bool         success      = false;
+    if (errorMessage.empty()) {
+        GError *error = NULL;
+
+        g_file_get_contents(thread->getOutputFileName().c_str(), &imageData, &imageSize, &error);
+        if (error) {
+            // unlikely error message not worth translating
+            errorMessage = formatMessage("Could not read converted file {}: {}", {
+                                            thread->getOutputFileName(), error->message});
+            g_error_free(error);
+        } else
+            success = true;
+        remove(thread->getOutputFileName().c_str());
+    }
+
+    if (success) {
+        int id = purple_imgstore_add_with_id (imageData, imageSize, NULL);
+        std::string text = makeInlineImageText(id);
+        showMessageText(m_data, *chat, thread->message, text.c_str(), NULL);
+    } else {
+        errorMessage = formatMessage(_("Could not read sticker file {}: {}"),
+                                        {thread->inputFileName, errorMessage});
+        showMessageText(m_data, *chat, thread->message, NULL, errorMessage.c_str());
+    }
+}
 
 void PurpleTdClient::showDownloadedFile(int64_t chatId, TgMessageInfo &message,
                                         const std::string &filePath, const char *caption,

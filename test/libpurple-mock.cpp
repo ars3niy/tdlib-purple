@@ -1317,6 +1317,12 @@ PurpleAccountOption *purple_account_option_string_new(const char *text,
     return NULL;
 }
 
+PurpleAccountOption *purple_account_option_bool_new(const char *text,
+	const char *pref_name, gboolean default_value)
+{
+    return NULL;
+}
+
 PurpleAccountOption *purple_account_option_list_new(const char *text,
 	const char *pref_name, GList *list)
 {
@@ -1357,6 +1363,18 @@ void purple_account_set_string(PurpleAccount *account, const char *name,
     if (it != g_accounts.end()) {
         it->stringsOptions[name] = value;
     }
+}
+
+gboolean purple_account_get_bool(const PurpleAccount *account, const char *name,
+							   gboolean default_value)
+{
+    return *purple_account_get_string(account, name, default_value ? "true" : "");
+}
+
+void purple_account_set_bool(PurpleAccount *account, const char *name,
+						   gboolean value)
+{
+    purple_account_set_string(account, name, value ? "true" : "");
 }
 
 char *purple_str_size_to_units(size_t size)

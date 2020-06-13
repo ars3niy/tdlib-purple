@@ -16,6 +16,10 @@
 #include <ctype.h>
 #include <unistd.h>
 
+#ifndef NoLottie
+#include <rlottie.h>
+#endif
+
 static char *_(const char *s) { return const_cast<char *>(s); }
 
 static const char *tgprpl_list_icon (PurpleAccount *acct, PurpleBuddy *buddy)
@@ -42,15 +46,6 @@ static const char *getLastOnline(const td::td_api::UserStatus &status)
     }
 
     return "";
-}
-
-static PurpleTdClient *getTdClient(PurpleAccount *account)
-{
-    PurpleConnection *connection = purple_account_get_connection(account);
-    if (connection)
-        return static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(connection));
-    else
-        return NULL;
 }
 
 static void tgprpl_tooltip_text (PurpleBuddy *buddy, PurpleNotifyUserInfo *info, gboolean full)
@@ -222,6 +217,11 @@ static ITransceiverBackend *g_testBackend = nullptr;
 void tgprpl_set_test_backend(ITransceiverBackend *backend)
 {
     g_testBackend = backend;
+}
+
+void tgprpl_set_single_thread()
+{
+    AccountThread::setSingleThread();
 }
 
 static void tgprpl_login (PurpleAccount *acct)
@@ -747,6 +747,10 @@ static void tgprpl_init (PurplePlugin *plugin)
         PurpleTdClient::setLogLevel(1);
     PurpleTdClient::setTdlibFatalErrorCallback(tdlibFatalErrorCallback);
 
+#ifndef NoLottie
+    rlottie::configureModelCacheSize(0);
+#endif
+
     static_assert(AccountOptions::BigDownloadHandlingDefault == AccountOptions::BigDownloadHandlingAsk,
                   "default choice must be first");
     GList *choices = NULL;
@@ -770,6 +774,12 @@ static void tgprpl_init (PurplePlugin *plugin)
 
     opt = purple_account_option_list_new (_("Accept secret chats"), AccountOptions::AcceptSecretChats, choices);
     prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
+
+#ifndef NoLottie
+    opt = purple_account_option_bool_new(_("Show animated stickers"), AccountOptions::AnimatedStickers,
+                                         AccountOptions::AnimatedStickersDefault);
+    prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
+#endif
 }
 
 static void setTwoFactorAuth(RequestData *data, PurpleRequestFields* fields);

@@ -7,6 +7,7 @@ find_package(Td REQUIRED)
 set(NoPkgConfig FALSE CACHE BOOL "Do not use pkg-config")
 set(NoWebp FALSE CACHE BOOL "Do not decode webp stickers")
 set(NoBundledLottie FALSE CACHE BOOL "Do not use bundled rlottie library")
+set(NoLottie FALSE CACHE BOOL "Disable animated sticker conversion")
 set(API_ID 94575 CACHE STRING "API id")
 set(API_HASH a3406de8d171bb422bb6ddf3bbd800e2 CACHE STRING "API hash")
 set(STUFF "" CACHE STRING "")
@@ -43,6 +44,7 @@ add_library(telegram-tdlib SHARED
     ${CMAKE_BINARY_DIR}/config.cpp
     client-utils.cpp
     format.cpp
+    sticker.cpp
 )
 
 include_directories(${Purple_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
@@ -60,11 +62,15 @@ add_subdirectory(fmt)
 target_compile_options(fmt PRIVATE -fPIC)
 target_link_libraries(telegram-tdlib PRIVATE fmt::fmt)
 
-if (NOT NoBundledLottie)
-    set(LOTTIE_MODULE OFF)
-    add_subdirectory(rlottie)
-endif (NOT NoBundledLottie)
-target_link_libraries(telegram-tdlib PRIVATE rlottie)
+if (NOT NoLottie)
+    if (NOT NoBundledLottie)
+        set(LOTTIE_MODULE OFF)
+        add_subdirectory(rlottie)
+        target_compile_options(rlottie PRIVATE -fPIC)
+        target_include_directories(telegram-tdlib PRIVATE rlottie/inc)
+    endif (NOT NoBundledLottie)
+    target_link_libraries(telegram-tdlib PRIVATE rlottie)
+endif (NOT NoLottie)
 
 if (NOT DEFINED SHARE_INSTALL_PREFIX)
     set(SHARE_INSTALL_PREFIX "share")

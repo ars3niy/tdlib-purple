@@ -26,6 +26,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     ${CMAKE_BINARY_DIR}/config.cpp
     ../client-utils.cpp
     ../format.cpp
+    ../sticker.cpp
 )
 
 set_property(TARGET tests PROPERTY CXX_STANDARD 14)
@@ -40,5 +41,12 @@ endif (DEFINED GTEST_PATH)
 if (NOT NoWebp)
     target_link_libraries(tests PRIVATE ${libwebp_LIBRARIES} ${libpng_LIBRARIES})
 endif (NOT NoWebp)
+
+if (NOT NoLottie)
+    if (NOT NoBundledLottie)
+        target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/rlottie/inc)
+    endif (NOT NoBundledLottie)
+    target_link_libraries(tests PRIVATE rlottie)
+endif (NOT NoLottie)
 
 add_custom_target(run-tests ${CMAKE_CURRENT_BINARY_DIR}/tests DEPENDS tests)

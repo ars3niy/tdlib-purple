@@ -9,6 +9,8 @@ static constexpr int
     GROUP_TYPE_SUPER   = 2,
     GROUP_TYPE_CHANNEL = 3;
 
+class PurpleTdClient;
+
 const char  *getChatNameComponent();
 GList       *getChatJoinInfo();
 std::string  getPurpleChatName(const td::td_api::chat &chat);
@@ -33,6 +35,8 @@ namespace AccountOptions {
     constexpr const char *AcceptSecretChatsAlways    = "always";
     constexpr const char *AcceptSecretChatsNever     = "never";
     constexpr const char *AcceptSecretChatsDefault   = AcceptSecretChatsAsk;
+    constexpr const char *AnimatedStickers           = "animated-stickers";
+    constexpr gboolean    AnimatedStickersDefault    = TRUE;
 };
 
 namespace BuddyOptions {
@@ -42,5 +46,6 @@ namespace BuddyOptions {
 unsigned getAutoDownloadLimitKb(PurpleAccount *account);
 bool     isSizeWithinLimit(unsigned size, unsigned limit);
 bool     ignoreBigDownloads(PurpleAccount *account);
+PurpleTdClient *getTdClient(PurpleAccount *account);
 
 #endif

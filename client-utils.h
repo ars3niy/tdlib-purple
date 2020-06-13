@@ -4,6 +4,7 @@
 #include "account-data.h"
 #include "transceiver.h"
 #include <purple.h>
+#include <thread>
 
 const char *errorCodeMessage();
 
@@ -42,9 +43,6 @@ void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const
 void showChatNotification(TdAccountData &account, const td::td_api::chat &chat,
                           const char *notification, PurpleMessageFlags extraFlags = (PurpleMessageFlags)0);
 void showGenericFile(const td::td_api::chat &chat, const TgMessageInfo &message,
-                     const std::string &filePath, const std::string &fileDescription,
-                     TdAccountData &account);
-void showWebpSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
                      const std::string &filePath, const std::string &fileDescription,
                      TdAccountData &account);
 void notifySendFailed(const td::td_api::updateMessageSendFailed &sendFailed, TdAccountData &account);
@@ -89,5 +87,25 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
 void updateOption(const td::td_api::updateOption &option, TdAccountData &account);
 void populateGroupChatList(PurpleRoomlist *roomlist, const std::vector<const td::td_api::chat *> &chats,
                            const TdAccountData &account);
+
+class AccountThread {
+public:
+    using Callback = void (PurpleTdClient::*)(AccountThread *thread);
+    static void setSingleThread();
+
+    AccountThread(PurpleAccount *purpleAccount, Callback callback);
+    virtual ~AccountThread() {}
+    void startThread();
+private:
+    std::thread m_thread;
+    std::string m_accountUserName;
+    std::string m_accountProtocolId;
+    Callback    m_callback;
+
+    void            threadFunc();
+    static gboolean mainThreadCallback(gpointer data);
+protected:
+    virtual void run() = 0;
+};
 
 #endif

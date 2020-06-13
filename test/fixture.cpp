@@ -5,6 +5,7 @@
 CommTest::CommTest()
 {
     tgprpl_set_test_backend(&tgl);
+    tgprpl_set_single_thread();
     purple_init_plugin(&purplePlugin);
     purplePlugin.info->load(&purplePlugin);
 }

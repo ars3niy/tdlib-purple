@@ -14,6 +14,11 @@ Missing features:
 * Renaming groups/channels
 * Secret chats
 
+### Animated stickers
+
+Converting animated stickers to GIFs is CPU-intensive. If this is a problem,
+the conversion can be disabled in account settings, or even at compile time (see below).
+
 ## Installation
 
 RPM packages for Fedora and openSUSE, Debian and Ubuntu are available at https://download.opensuse.org/repositories/home:/ars3n1y/ .
@@ -60,6 +65,8 @@ to use another API id.
 To install, copy the .so to libpurple plugins directory, or run `make install`.
 
 Building using existing librlottie: `-DNoBundledLottie`
+
+Building without animated sticker decoding: `-DNoLottie`
 
 ## Proper user names in bitlbee
 

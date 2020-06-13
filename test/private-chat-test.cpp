@@ -393,11 +393,12 @@ TEST_F(PrivateChatTest, Audio)
     ));
 }
 
-TEST_F(PrivateChatTest, Sticker)
+TEST_F(PrivateChatTest, Sticker_AnimatedDisabled)
 {
     const int32_t date      = 10001;
     const int32_t fileId[2] = {1234, 1235};
     const int32_t thumbId   = 1236;
+    purple_account_set_bool(account, "animated-stickers", FALSE);
     loginWithOneContact();
 
     tgl.update(make_object<updateNewMessage>(makeMessage(

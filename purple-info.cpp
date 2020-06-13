@@ -134,3 +134,12 @@ bool ignoreBigDownloads(PurpleAccount *account)
                                              AccountOptions::BigDownloadHandlingDefault),
                    AccountOptions::BigDownloadHandlingDiscard);
 }
+
+PurpleTdClient *getTdClient(PurpleAccount *account)
+{
+    PurpleConnection *connection = purple_account_get_connection(account);
+    if (connection)
+        return static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(connection));
+    else
+        return NULL;
+}

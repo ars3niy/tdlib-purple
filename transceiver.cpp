@@ -1,5 +1,6 @@
 #include "transceiver.h"
 #include "config.h"
+#include "purple-info.h"
 
 struct TimerCallbackData {
     std::string accountUserName;
@@ -17,12 +18,10 @@ static gboolean timerCallback(gpointer userdata)
 
     PurpleAccount    *account      = purple_accounts_find(data->accountUserName.c_str(),
                                                           data->accountProtocolId.c_str());
-    PurpleConnection *connection   = account ? purple_account_get_connection(account) : NULL;
-    void             *protocolData = connection ? purple_connection_get_protocol_data(connection) : NULL;
+    PurpleTdClient   *tdClient     = account ? getTdClient(account) : nullptr;
 
-    if (protocolData) {
+    if (tdClient) {
         // If this is somehow not our PurpleTdClient then user really has themselves to blame
-        PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(protocolData);
         (tdClient->*(data->callback))(data->requestId, nullptr);
     }
 

@@ -115,7 +115,6 @@ endif (NOT LIB_INSTALL_DIR)
 #declare source and include files
 add_subdirectory(inc)
 add_subdirectory(src)
-add_subdirectory(example)
 
 if (LOTTIE_TEST)
     enable_testing()
