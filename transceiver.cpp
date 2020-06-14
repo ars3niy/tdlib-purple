@@ -119,12 +119,18 @@ void *TdTransceiver::queueResponse(td::Client::Response &&response)
 
 void TdTransceiver::pollThreadLoop()
 {
-    // TODO: what happens if some other update is received at the same time as the destructor is
-    // called? Is there something important that could get missed?
-    while (!m_stopThread) {
+    while (1) {
         td::Client::Response response = m_impl->m_client->receive(1);
 
         if (response.object) {
+            if (response.object->get_id() == td::td_api::updateAuthorizationState::ID) {
+                auto &authState = static_cast<const td::td_api::updateAuthorizationState &>(*response.object);
+                if (authState.authorization_state_ && (authState.authorization_state_->get_id() ==
+                    td::td_api::authorizationStateClosed::ID))
+                {
+                    break;
+                }
+            }
             // Passing shared pointer through glib event queue using pointer to pointer seems funky,
             // but it works
             void *implRef;
