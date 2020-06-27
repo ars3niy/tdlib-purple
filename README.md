@@ -21,7 +21,9 @@ the conversion can be disabled in account settings, or even at compile time (see
 
 ## Installation
 
-RPM packages for Fedora and openSUSE, Debian and Ubuntu are available at https://download.opensuse.org/repositories/home:/ars3n1y/ .
+Binary packages for Debian, Fedora, openSUSE and Ubuntu are available at https://download.opensuse.org/repositories/home:/ars3n1y/ .
+
+AUR package for Arch: https://aur.archlinux.org/packages/telegram-tdlib-purple-git/
 
 Windows build is available from https://eion.robbmob.com/tdlib/ (copy libtelegram-tdlib.dll to libpurple plugins directory).
 
