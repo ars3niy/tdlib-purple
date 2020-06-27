@@ -452,6 +452,15 @@ static void tgprpl_rename_buddy(PurpleConnection *gc, const char *who, const cha
     tdClient->renameContact(who, alias);
 }
 
+static void renameGroup(PurpleConnection *, const char *old_name,
+						PurpleGroup *group, GList *moved_buddies)
+{
+    // If PRPL does not have this function, libpurple will mass-remove all buddies that were in the
+    // group (really remove, using remove_buddy) and then mass-create them again with add_buddy.
+    // With some effort, it might even work, but it's completely unnecessary, so avoid it by
+    // implementing a rename_group that does nothing.
+}
+
 static PurpleRoomlist *tgprpl_roomlist_get_list (PurpleConnection *gc)
 {
     PurpleTdClient *tdClient = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
@@ -646,7 +655,7 @@ static PurplePluginProtocolInfo prpl_info = {
     .get_cb_away              = NULL,
     .alias_buddy              = tgprpl_rename_buddy,
     .group_buddy              = NULL,
-    .rename_group             = NULL,
+    .rename_group             = renameGroup,
     .buddy_free               = NULL,
     .convo_closed             = NULL,
     .normalize                = NULL,
