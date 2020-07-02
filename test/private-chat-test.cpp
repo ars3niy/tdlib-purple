@@ -1044,3 +1044,24 @@ TEST_F(PrivateChatTest, WriteToUnknownUser)
         )
     );
 }
+
+TEST_F(PrivateChatTest, BuddyWithNullAlias)
+{
+    PurpleBuddy *buddy = purple_buddy_new(account, purpleUserName(0).c_str(), NULL);
+    purple_blist_add_buddy(buddy, NULL, &standardPurpleGroup, NULL);
+    prpl.discardEvents();
+
+    login(
+        {standardUpdateUser(0), standardPrivateChat(0), makeUpdateChatListMain(chatIds[0])},
+        make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
+        make_object<chats>(std::vector<int64_t>(1, chatIds[0])),
+        {}, {},
+        {
+            std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
+            std::make_unique<AliasBuddyEvent>(purpleUserName(0), userFirstNames[0] + " " + userLastNames[0]),
+            std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_OFFLINE),
+            std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
+            std::make_unique<ShowAccountEvent>(account)
+        }
+    );
+}

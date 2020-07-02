@@ -132,10 +132,14 @@ struct AddBuddyEvent: PurpleEvent {
     PurpleGroup     *group;
     PurpleBlistNode *node;
 
+    AddBuddyEvent(const std::string &username, const char *alias, PurpleAccount *account,
+                  PurpleContact *contact, PurpleGroup *group, PurpleBlistNode *node)
+    : PurpleEvent(PurpleEventType::AddBuddy), username(username), alias(alias ? alias : ""),
+      account(account), contact(contact), group(group), node(node) {}
+
     AddBuddyEvent(const std::string &username, const std::string &alias, PurpleAccount *account,
                   PurpleContact *contact, PurpleGroup *group, PurpleBlistNode *node)
-    : PurpleEvent(PurpleEventType::AddBuddy), username(username), alias(alias), account(account),
-      contact(contact), group(group), node(node) {}
+    : AddBuddyEvent(username, alias.c_str(), account, contact, group, node) {}
 };
 
 struct AddChatEvent: PurpleEvent {

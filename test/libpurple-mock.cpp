@@ -208,12 +208,23 @@ void purple_blist_remove_buddy(PurpleBuddy *buddy)
     purple_buddy_destroy(buddy);
 }
 
+static gboolean
+purple_strings_are_different(const char *one, const char *two)
+{
+        return !((one && two && g_utf8_collate(one, two) == 0) ||
+                        ((one == NULL || *one == '\0') && (two == NULL || *two == '\0')));
+}
+
 void purple_blist_alias_buddy(PurpleBuddy *buddy, const char *alias)
 {
     ASSERT_NE(nullptr, buddy);
-    free(buddy->alias);
-    buddy->alias = strdup(alias);
-    EVENT(AliasBuddyEvent, buddy->name, alias);
+
+    // Similar to real libpurple
+    if (purple_strings_are_different(buddy->alias, alias)) {
+        free(buddy->alias);
+        buddy->alias = strdup(alias);
+        EVENT(AliasBuddyEvent, buddy->name, alias);
+    }
 }
 
 static char *getChatName(const PurpleChat *chat)
@@ -288,7 +299,7 @@ PurpleBuddy *purple_buddy_new(PurpleAccount *account, const char *name, const ch
 
     buddy->account = account;
     buddy->name = strdup(name);
-    buddy->alias = strdup(alias);
+    buddy->alias = alias ? strdup(alias) : NULL;
     buddy->node.parent = NULL;
     newNode(buddy->node, PURPLE_BLIST_BUDDY_NODE);
 

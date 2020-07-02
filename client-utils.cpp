@@ -234,16 +234,7 @@ void updatePrivateChat(TdAccountData &account, const td::td_api::chat &chat, con
                                  PURPLE_MESSAGE_SYSTEM, time(NULL));
         }
     } else {
-        const char *oldName = purple_buddy_get_alias_only(buddy);
-        if (chat.title_ != oldName) {
-            purple_debug_misc(config::pluginId, "Renaming buddy %s '%s' to '%s'\n",
-                                purpleUserName.c_str(), oldName, chat.title_.c_str());
-            /*PurpleGroup *group = purple_buddy_get_group(buddy);
-            purple_blist_remove_buddy(buddy);
-            buddy = purple_buddy_new(m_account, purpleUserName.c_str(), chat.title_.c_str());
-            purple_blist_add_buddy(buddy, NULL, group, NULL);*/
-            purple_blist_alias_buddy(buddy, chat.title_.c_str());
-        }
+        purple_blist_alias_buddy(buddy, chat.title_.c_str());
 
         const char *oldPhotoIdStr = purple_blist_node_get_string(PURPLE_BLIST_NODE(buddy), BuddyOptions::ProfilePhotoId);
         int64_t     oldPhotoId    = 0;

@@ -374,6 +374,7 @@ TEST_F(LoginTest, BuddyRenamedByServer)
 
     tgl.update(make_object<updateChatTitle>(chatIds[0], "New Name"));
     prpl.verifyEvents(AliasBuddyEvent(purpleUserName(0), "New Name"));
+
     object_ptr<updateUser> updateUser = standardUpdateUser(0);
     updateUser->user_->first_name_ = "New";
     updateUser->user_->last_name_ = "Name";
