@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 
-project(TdExample VERSION 1.0 LANGUAGES CXX)
+project(tdlib-purple VERSION 1.0 LANGUAGES CXX)
 
 find_package(Td REQUIRED)
+math(EXPR TDLIB_VERSION_NUMBER "10000*${Td_VERSION_MAJOR} + 100*${Td_VERSION_MINOR} + ${Td_VERSION_PATCH}")
+if (${TDLIB_VERSION_NUMBER} GREATER 10605)
+    message(FATAL_ERROR "tdlib version 1.6.5 or older is required")
+endif (${TDLIB_VERSION_NUMBER} GREATER 10605)
 
 set(NoPkgConfig FALSE CACHE BOOL "Do not use pkg-config")
 set(NoWebp FALSE CACHE BOOL "Do not decode webp stickers")
