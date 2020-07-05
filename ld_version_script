@@ -1,0 +1,4 @@
+V {
+    global: purple_init_plugin;
+    local: *;
+};
