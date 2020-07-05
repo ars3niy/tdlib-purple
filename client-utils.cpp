@@ -180,10 +180,15 @@ PurpleConvChat *getChatConversation(TdAccountData &account, const td::td_api::ch
             if (groupInfo)
                 updateChatConversation(purpleChat, *groupInfo, account);
 
-            int32_t                               supergroupId   = getSupergroupId(chat);
-            const td::td_api::supergroupFullInfo *supergroupInfo = supergroupId ? account.getSupergroupInfo(supergroupId) : nullptr;
-            if (supergroupInfo)
-                updateChatConversation(purpleChat, *supergroupInfo, account);
+            int32_t supergroupId = getSupergroupId(chat);
+            if (supergroupId) {
+                const td::td_api::supergroupFullInfo *supergroupInfo = account.getSupergroupInfo(supergroupId);
+                const td::td_api::chatMembers        *members        = account.getSupergroupMembers(supergroupId);
+                if (supergroupInfo)
+                    updateChatConversation(purpleChat, *supergroupInfo, account);
+                if (members)
+                    updateSupergroupChatMembers(purpleChat, *members, account);
+            }
         }
 
         return purpleChat;
@@ -666,13 +671,14 @@ std::vector<PurpleChat *> findChatsByNewGroup(const char *name, int type)
     return result;
 }
 
-static void setChatMembers(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
+static void setChatMembers(PurpleConvChat *purpleChat,
+                           const std::vector<td::td_api::object_ptr<td::td_api::chatMember>> &members,
                            const TdAccountData &account)
 {
     GList *flags = NULL;
     std::vector<std::string> nameData;
 
-    for (const auto &member: groupInfo.members_) {
+    for (const auto &member: members) {
         if (!member || !isGroupMember(member->status_))
             continue;
 
@@ -718,7 +724,7 @@ void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::basicG
                     const TdAccountData &account)
 {
     purple_conv_chat_set_topic(purpleChat, NULL, groupInfo.description_.c_str());
-    setChatMembers(purpleChat, groupInfo, account);
+    setChatMembers(purpleChat, groupInfo.members_, account);
 }
 
 void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::supergroupFullInfo &groupInfo,
@@ -727,6 +733,11 @@ void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::superg
     purple_conv_chat_set_topic(purpleChat, NULL, groupInfo.description_.c_str());
 }
 
+void updateSupergroupChatMembers(PurpleConvChat* purpleChat, const td::td_api::chatMembers& members,
+                                 const TdAccountData& account)
+{
+    setChatMembers(purpleChat, members.members_, account);
+}
 
 struct MessagePart {
     bool        isImage = false;

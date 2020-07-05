@@ -50,6 +50,8 @@ void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::basicG
                     const TdAccountData &account);
 void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::supergroupFullInfo &groupInfo,
                     const TdAccountData &account);
+void updateSupergroupChatMembers(PurpleConvChat *purpleChat, const td::td_api::chatMembers &members,
+                                 const TdAccountData &account);
 
 int  transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
                      TdAccountData &account, TdTransceiver::ResponseCb response);

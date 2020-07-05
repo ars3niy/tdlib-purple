@@ -235,6 +235,12 @@ void TdAccountData::updateSupergroupInfo(int32_t groupId, TdSupergroupInfoPtr gr
         m_supergroups[groupId].fullInfo = std::move(groupInfo);
 }
 
+void TdAccountData::updateSupergroupMembers(int32_t groupId, TdChatMembersPtr members)
+{
+    if (members)
+        m_supergroups[groupId].members = std::move(members);
+}
+
 void TdAccountData::addChat(TdChatPtr chat)
 {
     if (!chat)
@@ -445,6 +451,15 @@ const td::td_api::supergroupFullInfo *TdAccountData::getSupergroupInfo(int32_t g
     auto it = m_supergroups.find(groupId);
     if (it != m_supergroups.end())
         return it->second.fullInfo.get();
+    else
+        return nullptr;
+}
+
+const td::td_api::chatMembers *TdAccountData::getSupergroupMembers(int32_t groupId) const
+{
+    auto it = m_supergroups.find(groupId);
+    if (it != m_supergroups.end())
+        return it->second.members.get();
     else
         return nullptr;
 }

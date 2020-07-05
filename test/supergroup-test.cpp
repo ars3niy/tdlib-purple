@@ -23,6 +23,14 @@ void SupergroupTest::loginWithSupergroup()
                 "",
                 make_object<userStatusOffline>()
             )),
+            make_object<updateUser>(makeUser(
+                // Chat member
+                userIds[1],
+                userFirstNames[1],
+                userLastNames[1],
+                "",
+                make_object<userStatusOffline>()
+            )),
             make_object<updateSupergroup>(make_object<supergroup>(
                 groupId, "", 0, make_object<chatMemberStatusMember>(), 2,
                 false, false, false, false, false, false, "", false
@@ -46,7 +54,15 @@ void SupergroupTest::loginWithSupergroup()
         }
     );
 
-    tgl.verifyRequest(getSupergroupFullInfo(groupId));
+    tgl.verifyRequests({
+        make_object<getSupergroupFullInfo>(groupId),
+        make_object<getSupergroupMembers>(
+            groupId,
+            make_object<supergroupMembersFilterRecent>(),
+            0,
+            200
+        ),
+    });
 }
 
 TEST_F(SupergroupTest, AddSupergroupChatAtLogin)
@@ -54,7 +70,7 @@ TEST_F(SupergroupTest, AddSupergroupChatAtLogin)
     loginWithSupergroup();
 }
 
-TEST_F(SupergroupTest, AddSupergroupChatAtLogin_OpenChatAfterFullInfo)
+TEST_F(SupergroupTest, AddSupergroupChatAtLogin_WithMemberList_OpenChatAfterFullInfo)
 {
     constexpr int     purpleChatId = 1;
 
@@ -62,6 +78,47 @@ TEST_F(SupergroupTest, AddSupergroupChatAtLogin_OpenChatAfterFullInfo)
     auto fullInfo = make_object<supergroupFullInfo>();
     fullInfo->description_ = "Description";
     tgl.reply(std::move(fullInfo));
+
+    auto members = make_object<chatMembers>();
+    members->members_.push_back(make_object<chatMember>(
+        userIds[1],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusCreator>("", true),
+        nullptr
+    ));
+    members->members_.push_back(make_object<chatMember>(
+        selfId,
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    members->members_.push_back(nullptr);
+    tgl.reply(std::move(members));
+    tgl.verifyRequest(getSupergroupMembers(
+        groupId,
+        make_object<supergroupMembersFilterAdministrators>(),
+        0, 200
+    ));
+
+    members = make_object<chatMembers>();
+    members->members_.push_back(make_object<chatMember>(
+        userIds[0],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusAdministrator>(),
+        nullptr
+    ));
+    members->members_.push_back(make_object<chatMember>(
+        userIds[1],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusCreator>("", true),
+        nullptr
+    ));
+    members->members_.push_back(nullptr);
+    tgl.reply(std::move(members));
 
     GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
     g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
@@ -71,6 +128,25 @@ TEST_F(SupergroupTest, AddSupergroupChatAtLogin_OpenChatAfterFullInfo)
     prpl.verifyEvents(
         ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
         ChatSetTopicEvent(groupChatPurpleName, "Description", ""),
+        ChatClearUsersEvent(groupChatPurpleName),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            // This user is not in our contact list so first/last name is used
+            userFirstNames[1] + " " + userLastNames[1],
+            "", PURPLE_CBFLAGS_FOUNDER, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            // This is us (with + to match account name)
+            "+" + selfPhoneNumber,
+            "", PURPLE_CBFLAGS_NONE, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            // This user is not in our contact list so first/last name is used
+            userFirstNames[0] + " " + userLastNames[0],
+            "", PURPLE_CBFLAGS_OP, false
+        ),
         PresentConversationEvent(groupChatPurpleName)
     );
     tgl.verifyNoRequests();
@@ -99,10 +175,18 @@ TEST_F(SupergroupTest, ExistingSupergroupChatAtLogin)
         make_object<chats>(std::vector<int64_t>(1, groupChatId))
     );
 
-    tgl.verifyRequest(getSupergroupFullInfo(groupId));
+    tgl.verifyRequests({
+        make_object<getSupergroupFullInfo>(groupId),
+        make_object<getSupergroupMembers>(
+            groupId,
+            make_object<supergroupMembersFilterRecent>(),
+            0,
+            200
+        ),
+    });
 }
 
-TEST_F(SupergroupTest, ExistingSupergroupReceiveMessageAtLogin_OpenChatBeforeFullInfo)
+TEST_F(SupergroupTest, ExistingSupergroupReceiveMessageAtLogin_WithMemberList_OpenChatBeforeFullInfo)
 {
     constexpr int64_t messageId    = 10001;
     constexpr int32_t date         = 12345;
@@ -125,6 +209,7 @@ TEST_F(SupergroupTest, ExistingSupergroupReceiveMessageAtLogin_OpenChatBeforeFul
             )),
             makeUpdateChatListMain(groupChatId),
             standardUpdateUser(0), // Incoming message will be from this guy
+            standardUpdateUser(1), // Another group member
             make_object<updateNewMessage>(
                 makeMessage(messageId, userIds[0], groupChatId, false, date, makeTextMessage("Hello"))
             )
@@ -145,12 +230,83 @@ TEST_F(SupergroupTest, ExistingSupergroupReceiveMessageAtLogin_OpenChatBeforeFul
         {make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true)}
     );
 
-    tgl.verifyRequest(getSupergroupFullInfo(groupId));
+    tgl.verifyRequests({
+        make_object<getSupergroupFullInfo>(groupId),
+        make_object<getSupergroupMembers>(
+            groupId,
+            make_object<supergroupMembersFilterRecent>(),
+            0,
+            200
+        ),
+    });
+
     auto fullInfo = make_object<supergroupFullInfo>();
     fullInfo->description_ = "Description";
     tgl.reply(std::move(fullInfo));
-
     prpl.verifyEvents(ChatSetTopicEvent(groupChatPurpleName, "Description", ""));
+
+    auto members = make_object<chatMembers>();
+    members->members_.push_back(make_object<chatMember>(
+        userIds[1],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusCreator>("", true),
+        nullptr
+    ));
+    members->members_.push_back(make_object<chatMember>(
+        selfId,
+        userIds[1],
+        0,
+        make_object<chatMemberStatusMember>(),
+        nullptr
+    ));
+    members->members_.push_back(nullptr);
+    tgl.reply(std::move(members));
+    tgl.verifyRequest(getSupergroupMembers(
+        groupId,
+        make_object<supergroupMembersFilterAdministrators>(),
+        0, 200
+    ));
+    prpl.verifyNoEvents();
+
+    members = make_object<chatMembers>();
+    members->members_.push_back(make_object<chatMember>(
+        userIds[0],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusAdministrator>(),
+        nullptr
+    ));
+    members->members_.push_back(make_object<chatMember>(
+        userIds[1],
+        userIds[1],
+        0,
+        make_object<chatMemberStatusCreator>("", true),
+        nullptr
+    ));
+    members->members_.push_back(nullptr);
+    tgl.reply(std::move(members));
+    prpl.verifyEvents(
+        ChatClearUsersEvent(groupChatPurpleName),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            // This user is not in our contact list so first/last name is used
+            userFirstNames[1] + " " + userLastNames[1],
+            "", PURPLE_CBFLAGS_FOUNDER, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            // This is us (with + to match account name)
+            "+" + selfPhoneNumber,
+            "", PURPLE_CBFLAGS_NONE, false
+        ),
+        ChatAddUserEvent(
+            groupChatPurpleName,
+            // This user is not in our contact list so first/last name is used
+            userFirstNames[0] + " " + userLastNames[0],
+            "", PURPLE_CBFLAGS_OP, false
+        )
+    );
 }
 
 TEST_F(SupergroupTest, DeleteSupergroup_Fail)

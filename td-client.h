@@ -110,6 +110,8 @@ private:
     void       requestSupergroupFullInfo(int32_t groupId);
     void       groupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       supergroupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       supergroupMembersResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       supergroupAdministratorsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       updateGroupFull(int32_t groupId, td::td_api::object_ptr<td::td_api::basicGroupFullInfo> groupInfo);
     void       updateSupergroupFull(int32_t groupId, td::td_api::object_ptr<td::td_api::supergroupFullInfo> groupInfo);
 

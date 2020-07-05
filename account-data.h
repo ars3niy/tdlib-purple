@@ -38,6 +38,15 @@ public:
     : PendingRequest(requestId), groupId(groupId) {}
 };
 
+class GroupMembersRequestCont: public PendingRequest {
+public:
+    int32_t groupId;
+    td::td_api::object_ptr<td::td_api::chatMembers> members;
+
+    GroupMembersRequestCont(uint64_t requestId, int32_t groupId, td::td_api::chatMembers *members)
+    : PendingRequest(requestId), groupId(groupId), members(std::move(members)) {}
+};
+
 class ContactRequest: public PendingRequest {
 public:
     std::string phoneNumber;
@@ -175,6 +184,7 @@ public:
     using TdGroupInfoPtr      = td::td_api::object_ptr<td::td_api::basicGroupFullInfo>;
     using TdSupergroupPtr     = td::td_api::object_ptr<td::td_api::supergroup>;
     using TdSupergroupInfoPtr = td::td_api::object_ptr<td::td_api::supergroupFullInfo>;
+    using TdChatMembersPtr    = td::td_api::object_ptr<td::td_api::chatMembers>;
 
     struct {
         unsigned maxCaptionLength = 0;
@@ -195,6 +205,7 @@ public:
     void setSupergroupInfoRequested(int32_t groupId);
     bool isSupergroupInfoRequested(int32_t groupId);
     void updateSupergroupInfo(int32_t groupId, TdSupergroupInfoPtr groupInfo);
+    void updateSupergroupMembers(int32_t groupId, TdChatMembersPtr members);
 
     void addChat(TdChatPtr chat); // Updates existing chat if any
     void updateChatChatList(int64_t chatId, td::td_api::object_ptr<td::td_api::ChatList> list);
@@ -223,6 +234,7 @@ public:
     const td::td_api::basicGroupFullInfo *getBasicGroupInfo(int32_t groupId) const;
     const td::td_api::supergroup *getSupergroup(int32_t groupId) const;
     const td::td_api::supergroupFullInfo *getSupergroupInfo(int32_t groupId) const;
+    const td::td_api::chatMembers*getSupergroupMembers(int32_t groupId) const;
     const td::td_api::chat       *getBasicGroupChatByGroup(int32_t groupId) const;
     const td::td_api::chat       *getSupergroupChatByGroup(int32_t groupId) const;
     bool                          isGroupChatWithMembership(const td::td_api::chat &chat) const;
@@ -290,6 +302,7 @@ private:
     struct SupergroupInfo {
         TdSupergroupPtr     group;
         TdSupergroupInfoPtr fullInfo;
+        TdChatMembersPtr    members;
         bool                fullInfoRequested = false;
     };
 

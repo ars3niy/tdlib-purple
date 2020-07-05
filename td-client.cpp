@@ -5,6 +5,7 @@
 #include "sticker.h"
 #include <unistd.h>
 #include <stdlib.h>
+#include <algorithm>
 
 static char *_(const char *s) { return const_cast<char *>(s); }
 
@@ -12,6 +13,7 @@ enum {
     // Typing notifications seems to be resent every 5-6 seconds, so 10s timeout hould be appropriate
     REMOTE_TYPING_NOTICE_TIMEOUT = 10,
     FILE_DOWNLOAD_PRIORITY       = 1,
+    SUPERGROUP_MEMBER_LIMIT      = 200,
 };
 
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)
@@ -699,6 +701,13 @@ void PurpleTdClient::requestSupergroupFullInfo(int32_t groupId)
         uint64_t requestId = m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getSupergroupFullInfo>(groupId),
                                                      &PurpleTdClient::supergroupInfoResponse);
         m_data.addPendingRequest<GroupInfoRequest>(requestId, groupId);
+
+        auto getMembersReq = td::td_api::make_object<td::td_api::getSupergroupMembers>();
+        getMembersReq->supergroup_id_ = groupId;
+        getMembersReq->filter_ = td::td_api::make_object<td::td_api::supergroupMembersFilterRecent>();
+        getMembersReq->limit_ = SUPERGROUP_MEMBER_LIMIT;
+        requestId = m_transceiver.sendQuery(std::move(getMembersReq), &PurpleTdClient::supergroupMembersResponse);
+        m_data.addPendingRequest<GroupInfoRequest>(requestId, groupId);
     }
 }
 
@@ -723,6 +732,56 @@ void PurpleTdClient::supergroupInfoResponse(uint64_t requestId, td::td_api::obje
         td::td_api::object_ptr<td::td_api::supergroupFullInfo> groupInfo =
             td::move_tl_object_as<td::td_api::supergroupFullInfo>(object);
         updateSupergroupFull(request->groupId, std::move(groupInfo));
+    }
+}
+
+void PurpleTdClient::supergroupMembersResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<GroupInfoRequest> request = m_data.getPendingRequest<GroupInfoRequest>(requestId);
+
+    if (request && object && (object->get_id() == td::td_api::chatMembers::ID)) {
+        td::td_api::object_ptr<td::td_api::chatMembers> members =
+            td::move_tl_object_as<td::td_api::chatMembers>(object);
+
+        auto getMembersReq = td::td_api::make_object<td::td_api::getSupergroupMembers>();
+        getMembersReq->supergroup_id_ = request->groupId;
+        getMembersReq->filter_ = td::td_api::make_object<td::td_api::supergroupMembersFilterAdministrators>();
+        getMembersReq->limit_ = SUPERGROUP_MEMBER_LIMIT;
+        uint64_t newRequestId = m_transceiver.sendQuery(std::move(getMembersReq), &PurpleTdClient::supergroupAdministratorsResponse);
+        m_data.addPendingRequest<GroupMembersRequestCont>(newRequestId, request->groupId, members.release());
+    }
+}
+
+void PurpleTdClient::supergroupAdministratorsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<GroupMembersRequestCont> request = m_data.getPendingRequest<GroupMembersRequestCont>(requestId);
+    if (request) {
+        auto members = std::move(request->members);
+
+        if (object && (object->get_id() == td::td_api::chatMembers::ID)) {
+            td::td_api::object_ptr<td::td_api::chatMembers> newMembers =
+                td::move_tl_object_as<td::td_api::chatMembers>(object);
+            for (auto &pMember: newMembers->members_) {
+                if (! pMember) continue;
+                uint32_t userId = pMember->user_id_;
+                if (std::find_if(members->members_.begin(), members->members_.end(),
+                              [userId](const td::td_api::object_ptr<td::td_api::chatMember> &pMember) {
+                                  return (pMember && (pMember->user_id_ == userId));
+                              }) == members->members_.end())
+                {
+                    members->members_.push_back(std::move(pMember));
+                }
+            }
+        }
+
+        const td::td_api::chat *chat = m_data.getSupergroupChatByGroup(request->groupId);
+        if (chat) {
+            PurpleConvChat *purpleChat = findChatConversation(m_account, *chat);
+            if (purpleChat)
+                updateSupergroupChatMembers(purpleChat, *members, m_data);
+        }
+
+        m_data.updateSupergroupMembers(request->groupId, std::move(members));
     }
 }
 
