@@ -122,7 +122,7 @@ static void leaveGroup(PurpleBlistNode *node, gpointer data)
         if (tdClient->getBasicGroupMembership(chatName) == BasicGroupMembership::Creator)
             purple_request_action(purple_account_get_connection(account), _("Leaving group"),
                                   _("Confirm deleting group"),
-                                  _("Leaving basic group you created will delete the group. Cotinue?"),
+                                  _("Leaving basic group you created will delete the group. Continue?"),
                                   0, account, NULL, NULL, request, 2,
                                   _("_Yes"), leaveGroupConfirm, _("_No"), cancelRequest);
         else
