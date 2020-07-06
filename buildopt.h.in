@@ -7,4 +7,6 @@
 
 #cmakedefine NoLottie
 
+#cmakedefine NoTranslations
+
 #endif

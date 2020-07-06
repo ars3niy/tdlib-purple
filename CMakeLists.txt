@@ -12,6 +12,7 @@ set(NoPkgConfig FALSE CACHE BOOL "Do not use pkg-config")
 set(NoWebp FALSE CACHE BOOL "Do not decode webp stickers")
 set(NoBundledLottie FALSE CACHE BOOL "Do not use bundled rlottie library")
 set(NoLottie FALSE CACHE BOOL "Disable animated sticker conversion")
+set(NoTranslations FALSE CACHE BOOL "Disable translation support")
 set(API_ID 94575 CACHE STRING "API id")
 set(API_HASH a3406de8d171bb422bb6ddf3bbd800e2 CACHE STRING "API hash")
 set(STUFF "" CACHE STRING "")
@@ -87,6 +88,22 @@ endif (NOT NoLottie)
 if (NOT DEFINED SHARE_INSTALL_PREFIX)
     set(SHARE_INSTALL_PREFIX "share")
 endif (NOT DEFINED SHARE_INSTALL_PREFIX)
+
+if (NOT NoTranslations)
+    find_package(Gettext REQUIRED)
+    file(STRINGS po/LINGUAS _linguas)
+    foreach(_lang ${_linguas})
+        GETTEXT_PROCESS_PO_FILES(
+            ${_lang} ALL
+            INSTALL_DESTINATION "${SHARE_INSTALL_PREFIX}/locale"
+            PO_FILES "${CMAKE_SOURCE_DIR}/po/${_lang}.po"
+        )
+    endforeach()
+
+    find_package(Intl REQUIRED)
+    target_include_directories(telegram-tdlib PRIVATE ${Intl_INCLUDE_DIRS})
+    target_link_libraries(telegram-tdlib PRIVATE ${Intl_LIBRARIES})
+endif (NOT NoTranslations)
 
 install(TARGETS telegram-tdlib DESTINATION "${PURPLE_PLUGIN_DIR}")
 install(FILES data/telegram16.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/16" RENAME telegram.png)
