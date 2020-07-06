@@ -122,16 +122,14 @@ static void leaveGroup(PurpleBlistNode *node, gpointer data)
         request->stringData = chatName ? chatName : "";
 
         if (tdClient->getBasicGroupMembership(chatName) == BasicGroupMembership::Creator)
-            purple_request_action(purple_account_get_connection(account), _("Leaving group"),
+            purple_request_yes_no(purple_account_get_connection(account), _("Leaving group"),
                                   _("Confirm deleting group"),
                                   _("Leaving basic group you created will delete the group. Cotinue?"),
-                                  0, account, NULL, NULL, request, 2,
-                                  _("_Yes"), leaveGroupConfirm, _("_No"), cancelRequest);
+                                  0, account, NULL, NULL, request, leaveGroupConfirm, cancelRequest);
         else
-            purple_request_action(purple_account_get_connection(account), _("Leaving group"),
+            purple_request_yes_no(purple_account_get_connection(account), _("Leaving group"),
                                   _("Leave the group?"), NULL,
-                                  0, account, NULL, NULL, request, 2,
-                                  _("_Yes"), leaveGroupConfirm, _("_No"), cancelRequest);
+                                  0, account, NULL, NULL, request, leaveGroupConfirm, cancelRequest);
     }
 }
 
@@ -152,10 +150,9 @@ static void deleteGroup(PurpleBlistNode *node, gpointer data)
         else {
             RequestData *request = new RequestData(account);
             request->stringData = chatName ? chatName : "";
-            purple_request_action(purple_account_get_connection(account), _("Deleting group"),
+            purple_request_yes_no(purple_account_get_connection(account), _("Deleting group"),
                                   _("Delete the group?"), NULL,
-                                  0, account, NULL, NULL, request, 2,
-                                  _("_Yes"), deleteGroupConfirm, _("_No"), cancelRequest);
+                                  0, account, NULL, NULL, request, deleteGroupConfirm, cancelRequest);
         }
     }
 }
