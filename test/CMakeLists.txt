@@ -33,6 +33,10 @@ add_executable(tests EXCLUDE_FROM_ALL
     ../call.cpp
 )
 
+# libpurple uses the deprecated glib-type `GParameter` and the deprecated glib-macro `G_CONST_RETURN`, which
+# spams the console with useless warnings that we can do nothing about.
+target_compile_definitions(tests PRIVATE GLIB_DISABLE_DEPRECATION_WARNINGS)
+
 set_property(TARGET tests PROPERTY CXX_STANDARD 14)
 target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(tests PRIVATE gtest fmt::fmt Td::TdStatic ${GLIB_LIBRARIES})
