@@ -1,2 +1,3 @@
 build/
+.travis_cache/
 *.kdev4
