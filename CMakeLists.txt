@@ -12,6 +12,7 @@ set(NoPkgConfig FALSE CACHE BOOL "Do not use pkg-config")
 set(NoWebp FALSE CACHE BOOL "Do not decode webp stickers")
 set(NoBundledLottie FALSE CACHE BOOL "Do not use bundled rlottie library")
 set(NoLottie FALSE CACHE BOOL "Disable animated sticker conversion")
+set(NoTranslations FALSE CACHE BOOL "Disable translation support")
 set(API_ID 94575 CACHE STRING "API id")
 set(API_HASH a3406de8d171bb422bb6ddf3bbd800e2 CACHE STRING "API hash")
 set(STUFF "" CACHE STRING "")
@@ -83,6 +84,35 @@ if (NOT NoLottie)
     endif (NOT NoBundledLottie)
     target_link_libraries(telegram-tdlib PRIVATE rlottie)
 endif (NOT NoLottie)
+
+if (NOT NoTranslations)
+    find_package(Gettext REQUIRED)
+    # Can't use GETTEXT_CREATE_TRANSLATIONS: Overwrites pofiles.
+    # Don't want to use GETTEXT_PROCESS_POT_FILE: Expects pofiles in bindir.
+    # Can't use GETTEXT_PROCESS_PO_FILES: Would require separate calls.
+    # So we have to roll our own.
+    file(STRINGS po/LINGUAS _linguas)
+    set(_moFiles)
+    foreach(_lang ${_linguas})
+        # Heavily inspired by GETTEXT_PROCESS_POT_FILE
+        set(_poFile "${CMAKE_SOURCE_DIR}/po/${_lang}.po")
+        set(_moFile "${CMAKE_CURRENT_BINARY_DIR}/${_lang}.mo")
+
+        add_custom_command(
+            OUTPUT "${_moFile}"
+            COMMAND ${GETTEXT_MSGFMT_EXECUTABLE} -o ${_moFile} ${_poFile}
+            DEPENDS ${_poFile}
+        )
+
+        install(FILES ${_moFile} DESTINATION share/locale/${_lang}/LC_MESSAGES RENAME tdlib-purple.mo)
+        list(APPEND _moFiles ${_moFile})
+    endforeach()
+    add_custom_target(tdlib-translation ALL DEPENDS ${_moFiles})
+
+    find_package(Intl REQUIRED)
+    target_include_directories(telegram-tdlib PRIVATE ${Intl_INCLUDE_DIRS})
+    target_link_libraries(telegram-tdlib PRIVATE ${Intl_LIBRARIES})
+endif (NOT NoTranslations)
 
 if (NOT DEFINED SHARE_INSTALL_PREFIX)
     set(SHARE_INSTALL_PREFIX "share")
