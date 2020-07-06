@@ -761,7 +761,7 @@ void PurpleTdClient::supergroupAdministratorsResponse(uint64_t requestId, td::td
                 td::move_tl_object_as<td::td_api::chatMembers>(object);
             for (auto &pMember: newMembers->members_) {
                 if (! pMember) continue;
-                uint32_t userId = pMember->user_id_;
+                int32_t userId = pMember->user_id_;
                 if (std::find_if(members->members_.begin(), members->members_.end(),
                               [userId](const td::td_api::object_ptr<td::td_api::chatMember> &pMember) {
                                   return (pMember && (pMember->user_id_ == userId));
