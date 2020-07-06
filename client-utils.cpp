@@ -1288,12 +1288,12 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
         else {
             std::string message = formatMessage(_("Accept secret chat with {} on this device?"), userDescription);
             SecretChatInfo *data = new SecretChatInfo{secretChatId, userDescription, &transceiver, account.purpleAccount};
-            purple_request_accept_cancel(purple_account_get_connection(account.purpleAccount),
+            purple_request_action(purple_account_get_connection(account.purpleAccount),
                 _("Secret chat"), message.c_str(), _("Secret chats can only have one "
                 "end point. If you accept a secret chat on this device, its messages will not be available anywhere "
                 "else. If you decline, you can still accept the chat on other devices."),
-                0, account.purpleAccount, NULL, NULL, data,
-                G_CALLBACK(acceptSecretChatCb), G_CALLBACK(discardSecretChatCb));
+                0, account.purpleAccount, NULL, NULL, data, 2,
+                _("_Accept"), acceptSecretChatCb, _("_Cancel"), discardSecretChatCb);
         }
     }
 }

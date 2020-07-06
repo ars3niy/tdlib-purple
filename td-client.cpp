@@ -1022,9 +1022,9 @@ void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file 
     info->tdClient = this;
     info->callback = callback;
 
-    purple_request_yes_no(purple_account_get_connection(m_account), _("Download"), question.c_str(),
+    purple_request_action(purple_account_get_connection(m_account), _("Download"), question.c_str(),
                           fileInfo.c_str(), 0, m_account, NULL, NULL,
-                          info, G_CALLBACK(startDownload), G_CALLBACK(ignoreDownload));
+                          info, 2, _("_Yes"), startDownload, _("_No"), ignoreDownload);
 }
 
 void PurpleTdClient::startDownloadProgress(uint64_t requestId)
