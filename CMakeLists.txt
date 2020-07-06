@@ -95,8 +95,12 @@ if (NOT NoTranslations)
     foreach(_lang ${_linguas})
         GETTEXT_PROCESS_PO_FILES(
             ${_lang} ALL
-            INSTALL_DESTINATION "${SHARE_INSTALL_PREFIX}/locale"
             PO_FILES "${CMAKE_SOURCE_DIR}/po/${_lang}.po"
+        )
+        install(
+            FILES ${CMAKE_CURRENT_BINARY_DIR}/${_lang}.gmo
+            DESTINATION "${SHARE_INSTALL_PREFIX}/locale/${_lang}/LC_MESSAGES"
+            RENAME tdlib-purple.mo
         )
     endforeach()
 
