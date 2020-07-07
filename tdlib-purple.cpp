@@ -1,3 +1,4 @@
+#include "tdlib-purple.h"
 #include "config.h"
 #include "td-client.h"
 #include "purple-info.h"

@@ -55,6 +55,7 @@ add_library(telegram-tdlib SHARED
 # libpurple uses the deprecated glib-type `GParameter` and the deprecated glib-macro `G_CONST_RETURN`, which
 # spams the console with useless warnings that we can do nothing about.
 target_compile_definitions(telegram-tdlib PRIVATE GLIB_DISABLE_DEPRECATION_WARNINGS)
+#target_compile_options(telegram-tdlib PRIVATE -Wmissing-declarations)
 
 include_directories(${Purple_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 target_link_libraries(telegram-tdlib PRIVATE Td::TdStatic ${Purple_LIBRARIES})

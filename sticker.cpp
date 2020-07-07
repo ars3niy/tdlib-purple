@@ -27,7 +27,7 @@ static void p2tgl_png_mem_write (png_structp png_ptr, png_bytep data, png_size_t
     g_byte_array_append (png_mem, data, length);
 }
 
-int p2tgl_imgstore_add_with_id_png (const unsigned char *raw_bitmap, unsigned width, unsigned height)
+static int p2tgl_imgstore_add_with_id_png (const unsigned char *raw_bitmap, unsigned width, unsigned height)
 {
     GByteArray *png_mem = NULL;
     png_structp png_ptr = NULL;
@@ -90,7 +90,7 @@ int p2tgl_imgstore_add_with_id_png (const unsigned char *raw_bitmap, unsigned wi
     return purple_imgstore_add_with_id (png_data, png_size, NULL);
 }
 
-int p2tgl_imgstore_add_with_id_webp (const char *filename)
+static int p2tgl_imgstore_add_with_id_webp (const char *filename)
 {
     const uint8_t *data = NULL;
     size_t len;
