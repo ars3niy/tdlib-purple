@@ -417,7 +417,7 @@ void PurpleTdClient::requestAuthCode(const td::td_api::authenticationCodeInfo *c
             message += formatMessage(_("Next code will be: {}"), getAuthCodeDesc(*codeInfo->next_type_)) + "\n";
     }
 
-    if (!purple_request_input (purple_account_get_connection(m_account),
+    purple_request_input (purple_account_get_connection(m_account),
                                _("Login code"),
                                message.c_str(),
                                NULL, // secondary message
@@ -430,11 +430,7 @@ void PurpleTdClient::requestAuthCode(const td::td_api::authenticationCodeInfo *c
                                m_account,
                                NULL, // buddy
                                NULL, // conversation
-                               this))
-    {
-        purple_connection_error(purple_account_get_connection(m_account),
-            "Authentication code is required but this libpurple doesn't support input requests");
-    }
+                               this);
 }
 
 void PurpleTdClient::requestCodeEntered(PurpleTdClient *self, const gchar *code)
