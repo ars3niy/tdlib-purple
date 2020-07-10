@@ -296,7 +296,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList_Rem
     purple_blist_remove_buddy(buddy);
     prpl.discardEvents();
     // Normally there should be pluginInfo().remove_buddy to simulate user removing the buddy by hand.
-    // But skip it and just say chat is magically removed from chatListMain
+    // But skip it and just say buddy's private chat is magically removed from chatListMain
     tgl.update(make_object<updateChatChatList>(chatIds[0], nullptr));
 
     prpl.verifyEvents(
@@ -1369,3 +1369,77 @@ TEST_F(GroupChatTest, SendFile)
     ));
 }
 #endif
+
+TEST_F(GroupChatTest, OpenLeftGroupChat_ReceiveMessageAtLogin)
+{
+    constexpr int64_t messageId[2] = {10001, 10002};
+    constexpr int32_t date         = 12345;
+    constexpr int     purpleChatId = 2;
+
+    GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(table, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), table), NULL, NULL);
+
+    // The existing conversations are left-overs from previous connection, so libpurple ids doesn't
+    // have to match what they are going to be in this connection
+    // This one is with "correct" libpurple chat id but it's the wrong chat
+    serv_got_joined_chat(connection, purpleChatId, "random name");
+    purple_conv_chat_left(purple_conversation_get_chat_data(purple_find_chat(connection, purpleChatId)));
+    // And this is the conversation for this group, but currently with wrong libpurple id
+    serv_got_joined_chat(connection, purpleChatId+1, groupChatPurpleName.c_str());
+    purple_conv_chat_left(purple_conversation_get_chat_data(purple_find_chat(connection, purpleChatId+1)));
+
+    // Pre-add one of two group members as a contact
+    purple_blist_add_buddy(purple_buddy_new(account, purpleUserName(0).c_str(),
+                                            (userFirstNames[0] + " " + userLastNames[0]).c_str()),
+                           NULL, NULL, NULL);
+    prpl.discardEvents();
+
+    login(
+        {
+            // Private chat with the contact
+            standardUpdateUser(0),
+            standardPrivateChat(0, make_object<chatListMain>()),
+
+            make_object<updateBasicGroup>(make_object<basicGroup>(
+                groupId, 2, make_object<chatMemberStatusMember>(), true, 0
+            )),
+            make_object<updateNewChat>(makeChat(
+                groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
+            )),
+            makeUpdateChatListMain(groupChatId),
+            make_object<updateNewMessage>(
+                makeMessage(messageId[0], userIds[0], groupChatId, false, date, makeTextMessage("Hello"))
+            ),
+            make_object<updateNewMessage>(
+                makeMessage(messageId[1], userIds[0], groupChatId, false, date, makeTextMessage("Hello2"))
+            )
+        },
+        make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
+        make_object<chats>(std::vector<int64_t>(1, groupChatId)),
+        {
+            // chat title is wrong at this point because libpurple doesn't find the chat in contact
+            // list while the contact is not online, and thus has no way of knowing the chat alias.
+            // Real libpurple works like that and our mock version mirrors the behaviour.
+            std::make_unique<ServGotJoinedChatEvent>(connection, purpleChatId, groupChatPurpleName,
+                                                     groupChatPurpleName),
+            // Now chat title is corrected
+            std::make_unique<ConvSetTitleEvent>(groupChatPurpleName, groupChatTitle),
+            std::make_unique<ServGotChatEvent>(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0],
+                                               "Hello", PURPLE_MESSAGE_RECV, date),
+            std::make_unique<ServGotChatEvent>(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0],
+                                               "Hello2", PURPLE_MESSAGE_RECV, date)
+        },
+        {
+            make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId[0]), true),
+            make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId[1]), true)
+        },
+        {
+            std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
+            std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_OFFLINE),
+            std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
+            std::make_unique<ShowAccountEvent>(account)
+        }
+    );
+    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
+}

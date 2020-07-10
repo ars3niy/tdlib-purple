@@ -142,8 +142,19 @@ PurpleConvChat *getChatConversation(TdAccountData &account, const td::td_api::ch
 {
     std::string chatName       = getPurpleChatName(chat);
     bool        newChatCreated = false;
-    PurpleConversation *conv = purple_find_chat(purple_account_get_connection(account.purpleAccount), chatPurpleId);
-    if (conv == NULL) {
+
+    // If account logged off with chats open, these chats will be purple_conv_chat_left()'d but not
+    // purple_conversation_destroy()'d by purple_connection_destroy. So when logging back in,
+    // conversation will exist but not necessarily with correct libpurple id. Therefore, lookup by
+    // libpurple id using purple_find_chat cannot be used.
+    PurpleConversation *conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_CHAT, chatName.c_str(),
+                                                                     account.purpleAccount);
+
+    // Such pre-open chats will (unless some other logic intervenes) be inactive (as in,
+    // purple_conv_chat_has_left returns true) and if that's the case, serv_got_joined_chat must
+    // still be called to make them active and thus able to send or receive messages, because that's
+    // the kind of thing we were called for here.
+    if ((conv == NULL) || purple_conv_chat_has_left(purple_conversation_get_chat_data(conv))) {
         if (chatPurpleId != 0) {
             purple_debug_misc(config::pluginId, "Creating conversation for chat %s (purple id %d)\n",
                               chat.title_.c_str(), chatPurpleId);
@@ -152,7 +163,8 @@ PurpleConvChat *getChatConversation(TdAccountData &account, const td::td_api::ch
             // doesn't work when account is not connected. Therefore, it won't know chat title and
             // would show chatXXXXXXXXXXX name in the conversation window instead.
             serv_got_joined_chat(purple_account_get_connection(account.purpleAccount), chatPurpleId, chatName.c_str());
-            conv = purple_find_chat(purple_account_get_connection(account.purpleAccount), chatPurpleId);
+            conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_CHAT, chatName.c_str(),
+                                                         account.purpleAccount);
             if (conv == NULL)
                 purple_debug_warning(config::pluginId, "Did not create conversation for chat %s\n", chat.title_.c_str());
             else {

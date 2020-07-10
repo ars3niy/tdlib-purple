@@ -445,6 +445,22 @@ static PurpleConversation *purple_conversation_new_impl(PurpleConversationType t
 										PurpleAccount *account,
 										const char *name)
 {
+    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
+                                 [account](const AccountInfo &info) { return (info.account == account); });
+    EXPECT_FALSE(pAccount == g_accounts.end()) << "Adding conversation with unknown account";
+
+    if (pAccount != g_accounts.end()) {
+        PurpleConversation *conv = purple_find_conversation_with_account(type, name, account);
+        if (conv) {
+            if ((type == PURPLE_CONV_TYPE_CHAT) && purple_conv_chat_has_left(purple_conversation_get_chat_data(conv))) {
+                // Rejoin, like real libpurple does
+                purple_conversation_get_chat_data(conv)->left = FALSE;
+                return conv;
+            }
+            EXPECT_TRUE(false) << "Conversation with this name already exists to this account";
+        }
+    }
+
     PurpleConversation *conv = new PurpleConversation;
     conv->type = type;
     conv->account = account;
@@ -457,17 +473,12 @@ static PurpleConversation *purple_conversation_new_impl(PurpleConversationType t
     if (conv->type == PURPLE_CONV_TYPE_CHAT) {
         conv->u.chat = new PurpleConvChat;
         conv->u.chat->conv = conv;
+        conv->u.chat->left = FALSE;
+        conv->u.chat->id = 0;
     }
 
-    auto pAccount = std::find_if(g_accounts.begin(), g_accounts.end(),
-                                 [account](const AccountInfo &info) { return (info.account == account); });
-    EXPECT_FALSE(pAccount == g_accounts.end()) << "Adding conversation with unknown account";
-
-    if (pAccount != g_accounts.end()) {
-        EXPECT_TRUE(purple_find_conversation_with_account(type, name, account) == NULL)
-            << "Conversation with this name already exists to this account";
+    if (pAccount != g_accounts.end())
         pAccount->conversations.push_back(conv);
-    }
 
     return conv;
 }
@@ -551,6 +562,16 @@ PurpleConversation *purple_conv_chat_get_conversation(const PurpleConvChat *chat
 int purple_conv_chat_get_id(const PurpleConvChat *chat)
 {
     return chat->id;
+}
+
+gboolean purple_conv_chat_has_left(PurpleConvChat *chat)
+{
+    return chat->left;
+}
+
+void purple_conv_chat_left(PurpleConvChat *chat)
+{
+    chat->left = TRUE;
 }
 
 void purple_conv_im_write(PurpleConvIm *im, const char *who,
