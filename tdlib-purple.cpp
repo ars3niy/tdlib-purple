@@ -226,6 +226,7 @@ void tgprpl_set_single_thread()
 
 static void tgprpl_login (PurpleAccount *acct)
 {
+    purple_debug_misc(config::pluginId, "version %s\n", config::versionString);
     PurpleConnection *gc       = purple_account_get_connection (acct);
     PurpleTdClient   *tdClient = new PurpleTdClient(acct, g_testBackend);
 
