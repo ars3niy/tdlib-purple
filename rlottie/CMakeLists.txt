@@ -14,7 +14,7 @@ endif()
 
 #declare target
 add_library( rlottie )
-set_target_properties( rlottie PROPERTIES DEFINE_SYMBOL LOT_BUILD )
+target_compile_definitions( rlottie PRIVATE LOT_BUILD )
 
 #declare version of the target
 set(player_version_major 0)

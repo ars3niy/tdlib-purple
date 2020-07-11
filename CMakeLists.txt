@@ -84,6 +84,7 @@ if (NOT NoLottie)
         target_include_directories(telegram-tdlib PRIVATE rlottie/inc)
     endif (NOT NoBundledLottie)
     target_link_libraries(telegram-tdlib PRIVATE rlottie)
+	target_compile_definitions(telegram-tdlib PRIVATE LOT_BUILD)
 endif (NOT NoLottie)
 
 if (NOT DEFINED SHARE_INSTALL_PREFIX)
