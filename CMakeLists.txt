@@ -84,7 +84,10 @@ if (NOT NoLottie)
         target_include_directories(telegram-tdlib PRIVATE rlottie/inc)
     endif (NOT NoBundledLottie)
     target_link_libraries(telegram-tdlib PRIVATE rlottie)
-	target_compile_definitions(telegram-tdlib PRIVATE LOT_BUILD)
+    # When building with cygwin, lack of LOT_BUILD would add dllimport attribute to function
+    # prototypes from rlottie, causing them to have different name mangling from what they had when
+    # building rlottie.
+    target_compile_definitions(telegram-tdlib PRIVATE LOT_BUILD)
 endif (NOT NoLottie)
 
 if (NOT DEFINED SHARE_INSTALL_PREFIX)
