@@ -7,9 +7,6 @@ There is a [telegram group](https://t.me/joinchat/BuRiSBO0mMw7Lxy0ufVO5g) (what 
 ## Functionality
 
 Missing features:
-* Sending files other than inline images to group chats
-* Communicating with group chat members who are not in contact list
-* Adding users to group chats and creating invite links
 * Joining public groups/channels
 * Renaming groups/channels
 * Secret chats
@@ -66,9 +63,11 @@ to use another API id.
 
 To install, copy the .so to libpurple plugins directory, or run `make install`.
 
-Building using existing librlottie: `-DNoBundledLottie`
+Building using existing librlottie: `-DNoBundledLottie=True`
 
-Building without animated sticker decoding: `-DNoLottie`
+Building without animated sticker decoding: `-DNoLottie=True`
+
+Building without localization: `-DNoTranslations=True`
 
 ## Proper user names in bitlbee
 
