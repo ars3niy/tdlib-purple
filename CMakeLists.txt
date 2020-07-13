@@ -114,6 +114,10 @@ if (NOT NoTranslations)
     target_link_libraries(telegram-tdlib PRIVATE ${Intl_LIBRARIES})
 endif (NOT NoTranslations)
 
+if (DEFINED STANDARD_LIBRARIES_EXTRA)
+    set (CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} ${STANDARD_LIBRARIES_EXTRA}")
+endif (DEFINED STANDARD_LIBRARIES_EXTRA)
+
 install(TARGETS telegram-tdlib DESTINATION "${PURPLE_PLUGIN_DIR}")
 install(FILES data/telegram16.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/16" RENAME telegram.png)
 install(FILES data/telegram22.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin/protocols/22" RENAME telegram.png)

@@ -84,9 +84,9 @@ cmake -DCMAKE_SYSTEM_NAME=Windows \
     -DIntl_INCLUDE_DIR=$PWD/../deps/win32-dev/gtk_2_0-2.14/include \
     -DIntl_LIBRARY=$PWD/../deps/win32-dev/gtk_2_0-2.14/lib/libintl.dll.a \
     -DGLIB_LIBRARIES="$PWD/../deps/win32-dev/gtk_2_0-2.14/lib/libglib-2.0.dll.a;$PWD/../deps/win32-dev/gtk_2_0-2.14/lib/libgthread-2.0.dll.a" \
+    -DSTANDARD_LIBRARIES_EXTRA="-Wl,-Bstatic -lpthread -Wl,-Bdynamic" \
     -DCMAKE_BUILD_TYPE=Release ..
 
-echo ' -Wl,-Bstatic -lpthread -Wl,-Bdynamic' >>CMakeFiles/telegram-tdlib.dir/linklibs.rsp
 make
 i686-w64-mingw32-strip libtelegram-tdlib.dll
 ```
@@ -119,7 +119,5 @@ WS2_32.dll
 ## Regression test
 
 ```
-WINEPATH="$PWD/../deps/win32-dev/gtk_2_0-2.14/bin;/usr/i686-w64-mingw32/sys-root/mingw/bin" wine test/tests
+WINEPATH=$PWD/../deps/win32-dev/gtk_2_0-2.14/bin wine test/tests
 ```
-
-That second part of WINEPATH is for libwinpthread-1.dll, would not be needed otherwise
