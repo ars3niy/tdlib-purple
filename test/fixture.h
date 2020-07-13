@@ -3,6 +3,7 @@
 
 #include "test-transceiver.h"
 #include "purple-events.h"
+#include "libpurple-mock.h"
 #include <gtest/gtest.h>
 
 using namespace td::td_api;
