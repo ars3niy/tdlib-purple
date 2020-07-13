@@ -2,6 +2,8 @@ if (DEFINED GTEST_PATH)
     link_directories(${GTEST_PATH}/lib)
 endif (DEFINED GTEST_PATH)
 
+set(GLIB_LIBRARIES "glib-2.0" CACHE STRING "GLib libraries")
+
 # Compiling plugin sources again is not optimal but it's the easy way
 add_executable(tests EXCLUDE_FROM_ALL
     test-main.cpp
@@ -31,7 +33,7 @@ add_executable(tests EXCLUDE_FROM_ALL
 
 set_property(TARGET tests PROPERTY CXX_STANDARD 14)
 target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR})
-target_link_libraries(tests PRIVATE gtest fmt::fmt Td::TdStatic glib-2.0)
+target_link_libraries(tests PRIVATE gtest fmt::fmt Td::TdStatic ${GLIB_LIBRARIES})
 
 if (DEFINED GTEST_PATH)
     target_include_directories(tests PRIVATE ${GTEST_PATH}/include)
@@ -47,6 +49,12 @@ if (NOT NoLottie)
         target_include_directories(tests PRIVATE ${CMAKE_SOURCE_DIR}/rlottie/inc)
     endif (NOT NoBundledLottie)
     target_link_libraries(tests PRIVATE rlottie)
+    target_compile_definitions(tests PRIVATE LOT_BUILD)
 endif (NOT NoLottie)
+
+if (NOT NoTranslations)
+    target_include_directories(tests PRIVATE ${Intl_INCLUDE_DIRS})
+    target_link_libraries(tests PRIVATE ${Intl_LIBRARIES})
+endif (NOT NoTranslations)
 
 add_custom_target(run-tests ${CMAKE_CURRENT_BINARY_DIR}/tests DEPENDS tests)
