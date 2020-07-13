@@ -1,6 +1,7 @@
 #include "test-transceiver.h"
 #include "printout.h"
 #include <gtest/gtest.h>
+#include "buildopt.h"
 
 using namespace td::td_api;
 
@@ -536,9 +537,14 @@ object_ptr<chat> makeChat(std::int64_t id_,
         make_object<chatPermissions>(true, true, true, true, true, false, false, false),
         std::move(last_message_),
         0,
+#if TDLIB_VERSION_NUMBER >= 10604
+        nullptr, // source
+#endif
         false,
         unread_count_ > 0,
-        false,
+#if TDLIB_VERSION_NUMBER < 10604
+        false,  // sponsored
+#endif
         false,
         true,
         true,

@@ -1,6 +1,8 @@
 #ifndef _BUILDOPT_H
 #define _BUILDOPT_H
 
+#define TDLIB_VERSION_NUMBER ${TDLIB_VERSION_NUMBER}
+
 #cmakedefine NoWebp
 
 #define TEST_SOURCE_DIR "${CMAKE_SOURCE_DIR}/test"
