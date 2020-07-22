@@ -6,10 +6,9 @@ There is a [telegram group](https://t.me/joinchat/BuRiSBO0mMw7Lxy0ufVO5g) (what 
 
 ## Functionality
 
-Missing features:
-* Joining public groups/channels
-* Renaming groups/channels
-* Secret chats
+For missing features that someone cared about, see the list of issues:
+* https://github.com/ars3niy/tdlib-purple/issues?q=is%3Aissue+is%3Aopen+label%3A%22missing+feature%22
+* https://github.com/ars3niy/tdlib-purple/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement
 
 ### Animated stickers
 
