@@ -561,6 +561,16 @@ void showChatNotification(TdAccountData &account, const td::td_api::chat &chat,
     showMessageText(account, chat, messageInfo, NULL, notification, flags);
 }
 
+std::string makeBasicDisplayName(const td::td_api::user &user)
+{
+    std::string result = user.first_name_;
+    if (!result.empty() && !user.last_name_.empty())
+        result += ' ';
+    result += user.last_name_;
+
+    return result;
+}
+
 std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
                                 TdAccountData &account)
 {

@@ -1,4 +1,5 @@
 #include "account-data.h"
+#include "client-utils.h"
 #include "config.h"
 #include <purple.h>
 #include <algorithm>
@@ -114,10 +115,7 @@ bool isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &s
 
 static std::string makeDisplayName(const td::td_api::user &user)
 {
-    std::string result = user.first_name_;
-    if (!result.empty() && !user.last_name_.empty())
-        result += ' ';
-    result += user.last_name_;
+    std::string result = makeBasicDisplayName(user);
 
     // If some sneaky user sets their name equal to someone else's libpurple username, or to our
     // phone number which is libpurple account name, make sure display name is different, because

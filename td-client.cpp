@@ -834,7 +834,7 @@ void PurpleTdClient::updatePurpleChatListAndReportConnected()
 
     const td::td_api::user *selfInfo = m_data.getUserByPhone(purple_account_get_username(m_account));
     if (selfInfo != nullptr) {
-        std::string alias = selfInfo->first_name_ + " " + selfInfo->last_name_;
+        std::string alias = makeBasicDisplayName(*selfInfo);
         purple_debug_misc(config::pluginId, "Setting own alias to '%s'\n", alias.c_str());
         purple_account_set_alias(m_account, alias.c_str());
     } else
