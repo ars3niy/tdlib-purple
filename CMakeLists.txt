@@ -59,11 +59,9 @@ target_compile_definitions(telegram-tdlib PRIVATE GLIB_DISABLE_DEPRECATION_WARNI
 
 include_directories(${Purple_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 target_link_libraries(telegram-tdlib PRIVATE Td::TdStatic ${Purple_LIBRARIES})
-if (NOT WIN32)
     set_target_properties(telegram-tdlib PROPERTIES
         LINK_FLAGS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/ld_version_script"
     )
-endif (NOT WIN32)
 
 if (NOT NoWebp)
     include_directories(${libwebp_INCLUDE_DIRS} ${libpng_INCLUDE_DIRS})
