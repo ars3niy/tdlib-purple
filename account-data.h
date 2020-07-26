@@ -73,8 +73,8 @@ public:
     int64_t     chatId;
     std::string tempFile;
 
-    SendMessageRequest(uint64_t requestId, int64_t chatId, const std::string &tempFile = "")
-    : PendingRequest(requestId), chatId(chatId), tempFile(tempFile) {}
+    SendMessageRequest(uint64_t requestId, int64_t chatId, const char *tempFile)
+    : PendingRequest(requestId), chatId(chatId), tempFile(tempFile ? tempFile : "") {}
 };
 
 class PendingMessage: public PendingRequest {

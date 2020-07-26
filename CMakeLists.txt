@@ -50,6 +50,7 @@ add_library(telegram-tdlib SHARED
     client-utils.cpp
     format.cpp
     sticker.cpp
+    file-transfer.cpp
 )
 
 # libpurple uses the deprecated glib-type `GParameter` and the deprecated glib-macro `G_CONST_RETURN`, which

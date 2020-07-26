@@ -56,34 +56,8 @@ void updateSupergroupChatMembers(PurpleConvChat *purpleChat, const td::td_api::c
 
 int  transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
                      TdAccountData &account, TdTransceiver::ResponseCb response);
-void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer *xfer,
-                         TdTransceiver &transceiver, TdAccountData &account,
-                         TdTransceiver::ResponseCb response);
-void uploadResponseError(PurpleXfer *xfer, const std::string &message, TdAccountData &account);
-void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_api::file &file,
-                                 TdTransceiver &transceiver, TdAccountData &account,
-                                 TdTransceiver::ResponseCb sendMessageResponse);
-void startDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver, TdAccountData &account);
-void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &transceiver,
-                                TdAccountData &account, TdTransceiver::ResponseCb sendMessageResponse);
-void finishDownloadProgress(DownloadRequest &downloadReq, TdAccountData &account);
 
 void requestRecoveryEmailConfirmation(PurpleConnection *gc, const char *emailInfo);
-
-unsigned getFileSize(const td::td_api::file &file);
-unsigned getFileSizeKb(const td::td_api::file &file);
-
-template<typename DocumentType>
-std::string makeDocumentDescription(const DocumentType *document)
-{
-    if (!document)
-        // Unlikely error message not worth translating
-        return "(faulty file)";
-    return document->file_name_ + " [" + document->mime_type_ + "]";
-}
-
-std::string makeDocumentDescription(const td::td_api::voiceNote *document);
-std::string makeDocumentDescription(const td::td_api::videoNote *document);
 
 void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
                       TdTransceiver &transceiver, TdAccountData &account);

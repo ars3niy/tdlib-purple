@@ -3,6 +3,7 @@
 #include "config.h"
 #include "format.h"
 #include "sticker.h"
+#include "file-transfer.h"
 #include <unistd.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -10,8 +11,8 @@
 enum {
     // Typing notifications seems to be resent every 5-6 seconds, so 10s timeout hould be appropriate
     REMOTE_TYPING_NOTICE_TIMEOUT = 10,
-    FILE_DOWNLOAD_PRIORITY       = 1,
     SUPERGROUP_MEMBER_LIMIT      = 200,
+    FILE_DOWNLOAD_PRIORITY       = 1,
 };
 
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)

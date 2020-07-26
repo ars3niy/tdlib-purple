@@ -29,6 +29,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     ../client-utils.cpp
     ../format.cpp
     ../sticker.cpp
+    ../file-transfer.cpp
 )
 
 set_property(TARGET tests PROPERTY CXX_STANDARD 14)
