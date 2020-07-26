@@ -835,6 +835,7 @@ TEST_F(PrivateChatTest, ReplyToOldMessage_FetchFailed)
 {
     const int32_t date     = 10002;
     const int64_t msgId    = 2;
+    const int32_t srcDate  = 10001;
     const int64_t srcMsgId = 1;
     loginWithOneContact();
 
@@ -871,6 +872,16 @@ TEST_F(PrivateChatTest, ReplyToOldMessage_FetchFailed)
             date
         )
     );
+
+    tgl.reply(makeMessage(
+        srcMsgId,
+        userIds[0],
+        chatIds[0],
+        false,
+        srcDate,
+        makeTextMessage("1<2")
+    ));
+    prpl.verifyNoEvents();
 }
 
 TEST_F(PrivateChatTest, TypingNotification)

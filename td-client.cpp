@@ -994,7 +994,7 @@ void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, TgMessageInfo 
                                                message, fileId, 0, fileDescription, thumbnail.release(),
                                                callback);
     m_data.addPendingRequest<DownloadRequest>(requestId, std::move(request));
-    m_transceiver.setQueryTimer(requestId, &PurpleTdClient::startDownloadProgress, 1);
+    m_transceiver.setQueryTimer(requestId, &PurpleTdClient::startDownloadProgress, 1, false);
 }
 
 void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file &file,
@@ -1023,7 +1023,7 @@ void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file 
                           info, 2, _("_Yes"), startDownload, _("_No"), ignoreDownload);
 }
 
-void PurpleTdClient::startDownloadProgress(uint64_t requestId)
+void PurpleTdClient::startDownloadProgress(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object>)
 {
     DownloadRequest *request = m_data.findPendingRequest<DownloadRequest>(requestId);
     if (request)

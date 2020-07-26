@@ -1,33 +1,20 @@
 #include "transceiver.h"
 #include "config.h"
 #include "purple-info.h"
+#include <algorithm>
+#include <assert.h>
 
 struct TimerCallbackData {
-    std::string accountUserName;
-    std::string accountProtocolId;
-    uint64_t    requestId;
-    union {
-        TdTransceiver::ResponseCb callback;
-        TdTransceiver::TimerCb    timerCallback;
-    };
+    TdTransceiver             *m_transceiver;
+    uint64_t                   requestId;
+    TdTransceiver::ResponseCb  callback;
+    bool                       cancelResponse;
 };
 
-static gboolean timerCallback(gpointer userdata)
-{
-    TimerCallbackData *data = static_cast<TimerCallbackData *>(userdata);
-
-    PurpleAccount    *account      = purple_accounts_find(data->accountUserName.c_str(),
-                                                          data->accountProtocolId.c_str());
-    PurpleTdClient   *tdClient     = account ? getTdClient(account) : nullptr;
-
-    if (tdClient) {
-        // If this is somehow not our PurpleTdClient then user really has themselves to blame
-        (tdClient->*(data->callback))(data->requestId, nullptr);
-    }
-
-    delete data;
-    return FALSE; // one-time callback
-}
+struct TimerInfo {
+    guint                              timerId;
+    std::unique_ptr<TimerCallbackData> data;
+};
 
 // This class is used to share ownership of its instances between TdTransceiver and glib idle
 // function queue. This way, those idle functions can be called safely after TdTransceiver is
@@ -37,24 +24,28 @@ public:
     TdTransceiverImpl(PurpleTdClient *owner, TdTransceiver::UpdateCb updateCb, ITransceiverBackend *testBackend);
     ~TdTransceiverImpl();
     static int rxCallback(void *user_data);
+    void       cancelTimer(uint64_t requestId);
 
     PurpleTdClient                     *m_owner;
     std::unique_ptr<td::Client>         m_client;
+    ITransceiverBackend                *m_testBackend;
 
-    // The mutex protects m_rxQueue and reference counters of all shared pointers to this object
+    // The mutex protects m_rxQueue and reference counters of all shared pointers to this object.
+    // All other members are only used from the glib main thread
     std::mutex                          m_rxMutex;
     std::vector<td::Client::Response>   m_rxQueue;
 
     TdTransceiver::UpdateCb             m_updateCb;
-    // Data structures for transmission are not thread-safe for sendQuery is only called from glib main thread
     uint64_t                                           m_lastQueryId;
     std::map<std::uint64_t, TdTransceiver::ResponseCb> m_responseHandlers;
+    std::vector<TimerInfo>                             m_timers;
 };
 
 TdTransceiverImpl::TdTransceiverImpl(PurpleTdClient *owner, TdTransceiver::UpdateCb updateCb,
                                      ITransceiverBackend *testBackend
 )
 :   m_owner(owner),
+    m_testBackend(testBackend),
     m_updateCb(updateCb),
     m_lastQueryId(0)
 {
@@ -65,6 +56,19 @@ TdTransceiverImpl::TdTransceiverImpl(PurpleTdClient *owner, TdTransceiver::Updat
 TdTransceiverImpl::~TdTransceiverImpl()
 {
     purple_debug_misc(config::pluginId, "Destroyed TdTransceiverImpl\n");
+}
+
+void TdTransceiverImpl::cancelTimer(uint64_t requestId)
+{
+    auto pTimer = std::find_if(m_timers.begin(), m_timers.end(),
+                               [requestId](const TimerInfo &timer) { return (timer.data->requestId == requestId); });
+    if (pTimer != m_timers.end()) {
+        if (!m_testBackend)
+            g_source_remove(pTimer->timerId);
+        else
+            m_testBackend->cancelTimer(pTimer->timerId);
+        m_timers.erase(pTimer);
+    }
 }
 
 TdTransceiver::TdTransceiver(PurpleTdClient *owner, PurpleAccount *account, UpdateCb updateCb,
@@ -94,6 +98,14 @@ TdTransceiver::TdTransceiver(PurpleTdClient *owner, PurpleAccount *account, Upda
 
 TdTransceiver::~TdTransceiver()
 {
+    for (const TimerInfo &timer: m_impl->m_timers) {
+        if (!m_testBackend)
+            g_source_remove(timer.timerId);
+        else
+            m_testBackend->cancelTimer(timer.timerId);
+    }
+    m_impl->m_timers.clear();
+
     m_stopThread = true;
     if (!m_testBackend) {
         m_impl->m_client->send({UINT64_MAX, td::td_api::make_object<td::td_api::close>()});
@@ -158,6 +170,9 @@ int TdTransceiverImpl::rxCallback(gpointer user_data)
             response = std::move(self->m_rxQueue.front());
             self->m_rxQueue.erase(self->m_rxQueue.begin());
         }
+
+        self->cancelTimer(response.id);
+
         if (!response.object)
             ; // impossible
         else if (!self->m_owner)
@@ -210,35 +225,45 @@ uint64_t TdTransceiver::sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::
                                              ResponseCb handler, unsigned timeoutSeconds)
 {
     uint64_t queryId = sendQuery(std::move(f), handler);
-
-    TimerCallbackData *data = new TimerCallbackData;
-
-    data->accountUserName   = purple_account_get_username(m_account);
-    data->accountProtocolId = purple_account_get_protocol_id(m_account);
-    data->requestId         = queryId;
-    data->callback          = handler;
-
-    if (!m_testBackend)
-        g_timeout_add_seconds(timeoutSeconds, timerCallback, data);
-    else
-        m_testBackend->addTimeout(timeoutSeconds, timerCallback, data);
-
+    setQueryTimer(queryId, handler, timeoutSeconds, true);
     return queryId;
 }
 
-void TdTransceiver::setQueryTimer(uint64_t queryId, TimerCb handler, unsigned timeoutSeconds)
+void TdTransceiver::setQueryTimer(uint64_t queryId, ResponseCb handler, unsigned timeoutSeconds,
+                                  bool cancelNormalResponse)
 {
-    TimerCallbackData *data = new TimerCallbackData;
+    TimerInfo timer;
+    timer.data = std::make_unique<TimerCallbackData>();
+    TimerCallbackData *data = timer.data.get();
 
-    data->accountUserName   = purple_account_get_username(m_account);
-    data->accountProtocolId = purple_account_get_protocol_id(m_account);
-    data->requestId         = queryId;
-    data->timerCallback     = handler;
+    data->m_transceiver   = this;
+    data->requestId       = queryId;
+    data->callback        = handler;
+    data->cancelResponse  = cancelNormalResponse;
 
+    guint timerId;
     if (!m_testBackend)
-        g_timeout_add_seconds(timeoutSeconds, timerCallback, data);
+        timerId = g_timeout_add_seconds(timeoutSeconds, timerCallback, data);
     else
-        m_testBackend->addTimeout(timeoutSeconds, timerCallback, data);
+        timerId = m_testBackend->addTimeout(timeoutSeconds, timerCallback, data);
+
+    timer.timerId = timerId;
+    m_impl->m_timers.push_back(std::move(timer));
+}
+
+gboolean TdTransceiver::timerCallback(gpointer userdata)
+{
+    TimerCallbackData *data        = static_cast<TimerCallbackData *>(userdata);
+    TdTransceiver     *transceiver = data->m_transceiver;
+    PurpleTdClient    *tdClient    = transceiver->m_impl->m_owner;
+
+    (tdClient->*(data->callback))(data->requestId, nullptr);
+
+    if (data->cancelResponse)
+        transceiver->m_impl->m_responseHandlers.erase(data->requestId);
+    transceiver->m_impl->cancelTimer(data->requestId);
+
+    return FALSE; // one-time callback
 }
 
 void ITransceiverBackend::receive(td::Client::Response response)

@@ -17,10 +17,11 @@ class ITransceiverBackend {
 public:
     virtual ~ITransceiverBackend() {}
 
-    void         setOwner(TdTransceiver *owner) { m_owner = owner; }
-    virtual void send(td::Client::Request &&request) = 0;
-    virtual void addTimeout(guint interval, GSourceFunc function, gpointer data) = 0;
-    void         receive(td::Client::Response response);
+    void          setOwner(TdTransceiver *owner) { m_owner = owner; }
+    virtual void  send(td::Client::Request &&request) = 0;
+    virtual guint addTimeout(guint interval, GSourceFunc function, gpointer data) = 0;
+    virtual void  cancelTimer(guint id) = 0;
+    void          receive(td::Client::Response response);
 private:
     TdTransceiver *m_owner = nullptr;
 };
@@ -34,21 +35,20 @@ private:
 public:
     using ResponseCb = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
     using UpdateCb   = void (PurpleTdClient::*)(td::td_api::Object &object);
-    using TimerCb    = void (PurpleTdClient::*)(uint64_t requestId);
 
     TdTransceiver(PurpleTdClient *owner, PurpleAccount *account, UpdateCb updateCb,
                   ITransceiverBackend *testBackend);
     ~TdTransceiver();
     uint64_t sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler);
 
-    // WARNING: receiving response does not cancel timeout callback, nor does timeout prevent
-    // response callback if response is received later
     uint64_t sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::Function> f,
                                   ResponseCb handler, unsigned timeoutSeconds);
-    void     setQueryTimer(uint64_t queryId, TimerCb handler, unsigned timeoutSeconds);
+    void     setQueryTimer(uint64_t queryId, ResponseCb handler, unsigned timeoutSeconds,
+                           bool cancelNormalResponse);
 private:
     void  pollThreadLoop();
     void *queueResponse(td::Client::Response &&response);
+    static gboolean timerCallback(gpointer userdata);
 
     std::shared_ptr<TdTransceiverImpl>  m_impl;
     PurpleAccount                      *m_account;

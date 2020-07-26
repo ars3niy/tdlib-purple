@@ -1,7 +1,8 @@
 #include "test-transceiver.h"
 #include "printout.h"
-#include <gtest/gtest.h>
 #include "buildopt.h"
+#include <gtest/gtest.h>
+#include <algorithm>
 
 using namespace td::td_api;
 
@@ -38,11 +39,21 @@ void TestTransceiver::verifyRequests(std::initializer_list<td::td_api::object_pt
     verifyNoRequests();
 }
 
-void TestTransceiver::addTimeout(guint interval, GSourceFunc function, gpointer data)
+guint TestTransceiver::addTimeout(guint interval, GSourceFunc function, gpointer data)
 {
     m_timers.emplace_back();
+    m_timers.back().id = m_nextTimerId;
     m_timers.back().function = function;
     m_timers.back().data = data;
+
+    return m_nextTimerId++;
+}
+
+void TestTransceiver::cancelTimer(guint id)
+{
+    m_timers.erase(std::remove_if(m_timers.begin(), m_timers.end(),
+                                 [id](const TimerInfo &timer) { return (timer.id == id); }),
+                   m_timers.end());
 }
 
 void TestTransceiver::runTimeouts()
