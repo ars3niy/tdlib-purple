@@ -26,9 +26,9 @@ Building OpenSSL 3.0:
 
 ## libpurple
 
-Extract pidgin source to `deps/`
+Extract pidgin source to say `../deps/`
 
-Download pidgin dependencies under `deps/win32-dev/` per http://pidgin.im/development/building/2.x.y/windows/#installing
+Download pidgin dependencies under `../deps/win32-dev/` per http://pidgin.im/development/building/2.x.y/windows/#installing
 
 * GTK
 
@@ -45,14 +45,14 @@ Download pidgin dependencies under `deps/win32-dev/` per http://pidgin.im/develo
 * Cyrus SASL
 
 ```
-cd deps/pidgin-2.13.0/libpurple/
+cd ../deps/pidgin-2.13.0/libpurple/
 make -fMakefile.mingw CC=i686-w64-mingw32-gcc WINDRES=i686-w64-mingw32-windres
 make -fMakefile.mingw install
 ```
 
 ## This plugin
 
-Additional dependencies under `deps/win32-dev/`:
+Additional dependencies under `../deps/win32-dev/`:
 
 * libpng
 
@@ -74,16 +74,16 @@ cmake -DCMAKE_SYSTEM_NAME=Windows \
     -DCMAKE_SHARED_LINKER_FLAGS="-static-libgcc -static-libstdc++" \
     -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" \
     -DNoPkgConfig=True \
-    -DPurple_INCLUDE_DIRS="$PWD/../deps/pidgin-2.13.0/libpurple;$PWD/../deps/win32-dev/gtk_2_0-2.14/include/glib-2.0;$PWD/../deps/win32-dev/gtk_2_0-2.14/lib/glib-2.0/include" \
-    -DPurple_LIBRARIES="$PWD/../deps/pidgin-2.13.0/libpurple/libpurple.dll.a;$PWD/../deps/win32-dev/gtk_2_0-2.14/lib/libglib-2.0.dll.a;$PWD/../deps/win32-dev/gtk_2_0-2.14/lib/libgthread-2.0.dll.a" \
-    -Dlibpng_INCLUDE_DIRS=$PWD/../deps/win32-dev/libpng-1.6.37/install/usr/local/include \
-    -Dlibpng_LIBRARIES=$PWD/../deps/win32-dev/libpng-1.6.37/install/usr/local/lib/libpng16.a \
-    -Dlibwebp_INCLUDE_DIRS=$PWD/../deps/win32-dev/libwebp-1.1.0/install/usr/local/include \
-    -Dlibwebp_LIBRARIES=$PWD/../deps/win32-dev/libwebp-1.1.0/install/usr/local/lib/libwebp.a \
+    -DPurple_INCLUDE_DIRS="$PWD/../../deps/pidgin-2.13.0/libpurple;$PWD/../../deps/win32-dev/gtk_2_0-2.14/include/glib-2.0;$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/glib-2.0/include" \
+    -DPurple_LIBRARIES="$PWD/../../deps/pidgin-2.13.0/libpurple/libpurple.dll.a;$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/libglib-2.0.dll.a;$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/libgthread-2.0.dll.a" \
+    -Dlibpng_INCLUDE_DIRS=$PWD/../../deps/win32-dev/libpng-1.6.37/install/usr/local/include \
+    -Dlibpng_LIBRARIES=$PWD/../../deps/win32-dev/libpng-1.6.37/install/usr/local/lib/libpng16.a \
+    -Dlibwebp_INCLUDE_DIRS=$PWD/../../deps/win32-dev/libwebp-1.1.0/install/usr/local/include \
+    -Dlibwebp_LIBRARIES=$PWD/../../deps/win32-dev/libwebp-1.1.0/install/usr/local/lib/libwebp.a \
     -DPURPLE_PLUGIN_DIR=/ \
-    -DIntl_INCLUDE_DIR=$PWD/../deps/win32-dev/gtk_2_0-2.14/include \
-    -DIntl_LIBRARY=$PWD/../deps/win32-dev/gtk_2_0-2.14/lib/libintl.dll.a \
-    -DGLIB_LIBRARIES="$PWD/../deps/win32-dev/gtk_2_0-2.14/lib/libglib-2.0.dll.a;$PWD/../deps/win32-dev/gtk_2_0-2.14/lib/libgthread-2.0.dll.a" \
+    -DIntl_INCLUDE_DIR=$PWD/../../deps/win32-dev/gtk_2_0-2.14/include \
+    -DIntl_LIBRARY=$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/libintl.dll.a \
+    -DGLIB_LIBRARIES="$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/libglib-2.0.dll.a;$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/libgthread-2.0.dll.a" \
     -DSTANDARD_LIBRARIES_EXTRA="-Wl,-Bstatic -lpthread -Wl,-Bdynamic" \
     -DCMAKE_BUILD_TYPE=Release ..
 
