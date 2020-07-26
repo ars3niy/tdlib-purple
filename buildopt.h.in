@@ -11,4 +11,6 @@
 
 #cmakedefine NoTranslations
 
+#cmakedefine NoVoip
+
 #endif

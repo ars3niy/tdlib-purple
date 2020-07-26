@@ -30,6 +30,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     ../format.cpp
     ../sticker.cpp
     ../file-transfer.cpp
+    ../call.cpp
 )
 
 set_property(TARGET tests PROPERTY CXX_STANDARD 14)
@@ -57,5 +58,12 @@ if (NOT NoTranslations)
     target_include_directories(tests PRIVATE ${Intl_INCLUDE_DIRS})
     target_link_libraries(tests PRIVATE ${Intl_LIBRARIES})
 endif (NOT NoTranslations)
+
+if (NOT tgvoip_INCLUDE_DIRS STREQUAL "")
+    target_include_directories(tests SYSTEM PRIVATE ${tgvoip_INCLUDE_DIRS})
+endif (NOT tgvoip_INCLUDE_DIRS STREQUAL "")
+if (NOT NoVoip)
+    target_link_libraries(tests PRIVATE ${tgvoip_LIBRARIES})
+endif (NOT NoVoip)
 
 add_custom_target(run-tests ${CMAKE_CURRENT_BINARY_DIR}/tests DEPENDS tests)

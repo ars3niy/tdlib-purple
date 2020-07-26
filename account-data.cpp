@@ -702,3 +702,24 @@ TdAccountData::getBasicGroupsWithMember(int32_t userId)
 
     return result;
 }
+
+bool TdAccountData::hasActiveCall()
+{
+    return (m_callData != nullptr);
+}
+
+void TdAccountData::setActiveCall()
+{
+    if (!m_callData)
+        m_callData = std::make_unique<tgvoip::VoIPController>();
+}
+
+tgvoip::VoIPController *TdAccountData::getCallData()
+{
+    return m_callData.get();
+}
+
+void TdAccountData::removeActiveCall()
+{
+    m_callData.reset();
+}

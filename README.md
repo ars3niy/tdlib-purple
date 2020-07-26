@@ -47,6 +47,8 @@ make install DESTDIR=/path/to/tdlib
 ```
 Also see [building](https://github.com/tdlib/td#building) for additional details on TDLib building.
 
+libtgvoip is required for voice calls.
+
 Building this plugin:
 ```
 mkdir build
@@ -67,6 +69,13 @@ Building using existing librlottie: `-DNoBundledLottie=True`
 Building without animated sticker decoding: `-DNoLottie=True`
 
 Building without localization: `-DNoTranslations=True`
+
+Building without voice call support: `-DNoVoip=True`
+
+If libtgvoip is not installed in include/library path then build with
+```
+-Dtgvoip_INCLUDE_DIRS=/path/to/tgvoip/include -Dtgvoip_LIBRARIES=/path/to/libtgvoip.a
+```
 
 ## Proper user names in bitlbee
 

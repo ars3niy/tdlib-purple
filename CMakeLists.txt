@@ -13,6 +13,8 @@ set(NoWebp FALSE CACHE BOOL "Do not decode webp stickers")
 set(NoBundledLottie FALSE CACHE BOOL "Do not use bundled rlottie library")
 set(NoLottie FALSE CACHE BOOL "Disable animated sticker conversion")
 set(NoTranslations FALSE CACHE BOOL "Disable translation support")
+set(tgvoip_INCLUDE_DIRS "" CACHE STRING "Path to libtgvoip headers")
+set(tgvoip_LIBRARIES "tgvoip" CACHE STRING "tgvoip library to link against")
 set(API_ID 94575 CACHE STRING "API id")
 set(API_HASH a3406de8d171bb422bb6ddf3bbd800e2 CACHE STRING "API hash")
 set(STUFF "" CACHE STRING "")
@@ -51,6 +53,7 @@ add_library(telegram-tdlib SHARED
     format.cpp
     sticker.cpp
     file-transfer.cpp
+    call.cpp
 )
 
 # libpurple uses the deprecated glib-type `GParameter` and the deprecated glib-macro `G_CONST_RETURN`, which
@@ -112,6 +115,13 @@ if (NOT NoTranslations)
     target_include_directories(telegram-tdlib PRIVATE ${Intl_INCLUDE_DIRS})
     target_link_libraries(telegram-tdlib PRIVATE ${Intl_LIBRARIES})
 endif (NOT NoTranslations)
+
+if (NOT tgvoip_INCLUDE_DIRS STREQUAL "")
+    target_include_directories(telegram-tdlib SYSTEM PRIVATE ${tgvoip_INCLUDE_DIRS})
+endif (NOT tgvoip_INCLUDE_DIRS STREQUAL "")
+if (NOT NoVoip)
+    target_link_libraries(telegram-tdlib PRIVATE ${tgvoip_LIBRARIES})
+endif (NOT NoVoip)
 
 if (DEFINED STANDARD_LIBRARIES_EXTRA)
     set (CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} ${STANDARD_LIBRARIES_EXTRA}")

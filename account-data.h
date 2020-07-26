@@ -2,10 +2,20 @@
 #define _ACCOUNT_DATA_H
 
 #include <td/telegram/td_api.h>
+
 #include <map>
 #include <mutex>
 #include <set>
 #include <purple.h>
+
+#ifndef NoVoip
+#include <tgvoip/VoIPController.h>
+#else
+
+namespace tgvoip {
+    struct VoIPController {};
+}
+#endif
 
 bool        isPhoneNumber(const char *s);
 const char *getCanonicalPhoneNumber(const char *s);
@@ -277,6 +287,11 @@ public:
 
     auto                       getBasicGroupsWithMember(int32_t userId) ->
                                std::vector<std::pair<int32_t, const td::td_api::basicGroupFullInfo *>>;
+
+    bool                       hasActiveCall();
+    void                       setActiveCall();
+    tgvoip::VoIPController    *getCallData();
+    void                       removeActiveCall();
 private:
     TdAccountData(const TdAccountData &other) = delete;
     TdAccountData &operator=(const TdAccountData &other) = delete;
@@ -340,6 +355,9 @@ private:
 
     // Currently active file transfers for which PurpleXfer is used
     std::vector<FileTransferInfo>      m_fileTransfers;
+
+    // Voice call data
+    std::unique_ptr<tgvoip::VoIPController> m_callData;
 
     std::unique_ptr<PendingRequest> getPendingRequestImpl(uint64_t requestId);
     PendingRequest *                findPendingRequestImpl(uint64_t requestId);

@@ -599,6 +599,31 @@ static PurpleCmdRet tgprpl_cmd_kick(PurpleConversation *conv, const gchar *cmd, 
     return PURPLE_CMD_RET_OK;
 }
 
+static PurpleMediaCaps getMediaCaps(PurpleAccount *account, const char *who)
+{
+#ifndef NoVoip
+    return PURPLE_MEDIA_CAPS_AUDIO;
+#else
+    return PURPLE_MEDIA_CAPS_NONE;
+#endif
+}
+
+gboolean initiateMedia(PurpleAccount *account, const char *who, PurpleMediaSessionType type)
+{
+#ifndef NoVoip
+    if (!(type & PURPLE_MEDIA_AUDIO))
+        return FALSE;
+
+    PurpleTdClient *tdClient = getTdClient(account);
+    if (tdClient)
+        return tdClient->startVoiceCall(who) ? TRUE : FALSE;
+    else
+        return FALSE;
+#else
+    return FALSE;
+#endif
+}
+
 static char png[] = "png";
 
 static PurplePluginProtocolInfo prpl_info = {
@@ -679,8 +704,8 @@ static PurplePluginProtocolInfo prpl_info = {
     .get_attention_types      = NULL,
     .struct_size              = sizeof(PurplePluginProtocolInfo),
     .get_account_text_table   = tgprpl_get_account_text_table,
-    .initiate_media           = NULL,
-    .get_media_caps           = NULL,
+    .initiate_media           = initiateMedia,
+    .get_media_caps           = getMediaCaps,
     .get_moods                = NULL,
     .set_public_alias         = NULL,
     .get_public_alias         = NULL,

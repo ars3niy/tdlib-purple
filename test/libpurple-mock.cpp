@@ -1421,4 +1421,14 @@ PurpleCmdId purple_cmd_register(const gchar *cmd, const gchar *args, PurpleCmdPr
     return 0;
 }
 
+PurpleMediaManager *purple_media_manager_get(void)
+{
+    return NULL;
+}
+
+PurpleMediaCaps purple_media_manager_get_ui_caps(PurpleMediaManager *manager)
+{
+    return PURPLE_MEDIA_CAPS_NONE;
+}
+
 };

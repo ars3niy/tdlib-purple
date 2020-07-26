@@ -85,6 +85,7 @@ cmake -DCMAKE_SYSTEM_NAME=Windows \
     -DIntl_LIBRARY=$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/libintl.dll.a \
     -DGLIB_LIBRARIES="$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/libglib-2.0.dll.a;$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/libgthread-2.0.dll.a" \
     -DSTANDARD_LIBRARIES_EXTRA="-Wl,-Bstatic -lpthread -Wl,-Bdynamic" \
+    -DNoVoip=True \
     -DCMAKE_BUILD_TYPE=Release ..
 
 make
@@ -119,5 +120,5 @@ WS2_32.dll
 ## Regression test
 
 ```
-WINEPATH=$PWD/../deps/win32-dev/gtk_2_0-2.14/bin wine test/tests
+WINEPATH=$PWD/../../deps/win32-dev/gtk_2_0-2.14/bin wine test/tests
 ```

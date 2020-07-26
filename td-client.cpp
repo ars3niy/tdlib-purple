@@ -4,6 +4,7 @@
 #include "format.h"
 #include "sticker.h"
 #include "file-transfer.h"
+#include "call.h"
 #include <unistd.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -192,6 +193,18 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         purple_debug_misc(config::pluginId, "Incoming update: secret chat, id %d\n",
                           chatUpdate.secret_chat_ ? chatUpdate.secret_chat_->id_ : 0);
         updateSecretChat(std::move(chatUpdate.secret_chat_), m_transceiver, m_data);
+        break;
+    };
+
+    case td::td_api::updateCall::ID: {
+        auto &callUpdate = static_cast<const td::td_api::updateCall &>(update);
+        if (callUpdate.call_) {
+            purple_debug_misc(config::pluginId, "Call update: id %d, outgoing=%d, user id %d, state %d\n",
+                            callUpdate.call_->id_, callUpdate.call_->user_id_,
+                            (int)callUpdate.call_->is_outgoing_,
+                            callUpdate.call_->state_ ? callUpdate.call_->state_->get_id() : 0);
+            updateCall(*callUpdate.call_, m_data, m_transceiver);
+        }
         break;
     };
 
@@ -2411,4 +2424,21 @@ void PurpleTdClient::cancelUpload(PurpleXfer *xfer)
         // Or it could just be that the upload got cancelled programmatically due to some error,
         // in which case nothing more should be done.
     }
+}
+
+bool PurpleTdClient::startVoiceCall(const char *buddyName)
+{
+    std::vector<const td::td_api::user *> users = getUsersByPurpleName(buddyName, m_data, "start voice call");
+    if (users.size() != 1) {
+        // Unlikely error messages not worth translating
+        std::string errorMessage;
+        if (users.empty())
+            errorMessage = "User not found";
+        else
+            errorMessage = formatMessage("More than one user known with name '{}'", std::string(buddyName));
+        showMessageTextIm(m_data, buddyName, NULL, errorMessage.c_str(), time(NULL), PURPLE_MESSAGE_ERROR);
+        return false;
+    }
+
+    return initiateCall(users.front()->id_, m_data, m_transceiver);
 }

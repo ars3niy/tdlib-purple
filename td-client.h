@@ -47,6 +47,7 @@ public:
     void sendFileToChat(PurpleXfer *xfer, const char *purpleName, PurpleConversationType type,
                         int purpleChatId);
     void cancelUpload(PurpleXfer *xfer);
+    bool startVoiceCall(const char *buddyName);
 private:
     using TdObjectPtr   = td::td_api::object_ptr<td::td_api::Object>;
     using ResponseCb    = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
