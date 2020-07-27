@@ -10,7 +10,7 @@
 #include <purple.h>
 
 #ifndef NoVoip
-#include <tgvoip/VoIPController.h>
+#include <VoIPController.h>
 #else
 
 namespace tgvoip {
@@ -290,7 +290,8 @@ public:
                                std::vector<std::pair<int32_t, const td::td_api::basicGroupFullInfo *>>;
 
     bool                       hasActiveCall();
-    void                       setActiveCall();
+    void                       setActiveCall(int32_t id);
+    int32_t                    getActiveCallId() const { return m_callId; }
     tgvoip::VoIPController    *getCallData();
     void                       removeActiveCall();
 private:
@@ -359,6 +360,7 @@ private:
 
     // Voice call data
     std::unique_ptr<tgvoip::VoIPController> m_callData;
+    int32_t                                 m_callId;
 
     std::unique_ptr<PendingRequest> getPendingRequestImpl(uint64_t requestId);
     PendingRequest *                findPendingRequestImpl(uint64_t requestId);

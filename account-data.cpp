@@ -708,10 +708,12 @@ bool TdAccountData::hasActiveCall()
     return (m_callData != nullptr);
 }
 
-void TdAccountData::setActiveCall()
+void TdAccountData::setActiveCall(int32_t callId)
 {
-    if (!m_callData)
+    if (!m_callData) {
         m_callData = std::make_unique<tgvoip::VoIPController>();
+        m_callId = callId;
+    }
 }
 
 tgvoip::VoIPController *TdAccountData::getCallData()
@@ -722,4 +724,5 @@ tgvoip::VoIPController *TdAccountData::getCallData()
 void TdAccountData::removeActiveCall()
 {
     m_callData.reset();
+    m_callId = 0;
 }
