@@ -1,6 +1,7 @@
 #ifndef _ACCOUNT_DATA_H
 #define _ACCOUNT_DATA_H
 
+#include "buildopt.h"
 #include <td/telegram/td_api.h>
 
 #include <map>

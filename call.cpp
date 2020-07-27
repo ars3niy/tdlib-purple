@@ -2,6 +2,7 @@
 #include "client-utils.h"
 #include "config.h"
 #include "buildopt.h"
+#include "format.h"
 
 static td::td_api::object_ptr<td::td_api::callProtocol> getCallProtocol()
 {
@@ -24,12 +25,38 @@ bool initiateCall(int32_t userId, TdAccountData &account, TdTransceiver &transce
     return false;
 }
 
+static void discardCall(const td::td_api::call &call, TdTransceiver &transceiver)
+{
+    td::td_api::object_ptr<td::td_api::discardCall> discardReq = td::td_api::make_object<td::td_api::discardCall>();
+    discardReq->call_id_ = call.id_;
+    discardReq->is_disconnected_ = true;
+    discardReq->duration_ = 0;
+    discardReq->connection_id_ = 0;
+    transceiver.sendQuery(std::move(discardReq), nullptr);
+}
+
 void updateCall(const td::td_api::call &call, TdAccountData &account, TdTransceiver &transceiver)
 {
+#ifndef NoVoip
     PurpleMediaManager *mediaManager = purple_media_manager_get();
     PurpleMediaCaps capabilities = purple_media_manager_get_ui_caps(mediaManager);
+
     if (!(capabilities & PURPLE_MEDIA_CAPS_AUDIO) && !(capabilities & PURPLE_MEDIA_CAPS_AUDIO_SINGLE_DIRECTION)) {
-        purple_debug_misc(config::pluginId, "Ignoring incoming call: no audio capabilities\n");
+#else
+    if (true) {
+#endif
+        purple_debug_misc(config::pluginId, "Ignoring incoming call: no audio capability\n");
+        if (call.state_ && (call.state_->get_id() == td::td_api::callStatePending::ID)) {
+            const td::td_api::user *user = account.getUser(call.user_id_);
+            if (user) {
+                std::string buddyName = getPurpleBuddyName(*user);
+                showMessageTextIm(account, buddyName.c_str(), NULL,
+                                _("Received incoming call, but calls are not supported"),
+                                time(NULL), PURPLE_MESSAGE_SYSTEM);
+            }
+
+            discardCall(call, transceiver);
+        }
         return;
     }
 
