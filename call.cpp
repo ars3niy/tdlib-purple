@@ -143,14 +143,13 @@ static bool activateCall(const td::td_api::call &call, const std::string &buddyN
     return true;
 }
 
-static void deactivateCall(const td::td_api::call &call, TdAccountData &account)
+static void deactivateCall(TdAccountData &account)
 {
 #ifndef NoVoip
     tgvoip::VoIPController *voip = account.getCallData();
     if (voip)
         voip->Stop();
 #endif
-    account.removeActiveCall();
 }
 
 void updateCall(const td::td_api::call &call, TdAccountData &account, TdTransceiver &transceiver)
@@ -224,6 +223,15 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
                (call.state_->get_id() == td::td_api::callStateDiscarded::ID)) &&
               account.hasActiveCall() && account.getActiveCallId() == call.id_)
     {
-        deactivateCall(call, account);
+        deactivateCall(account);
+        account.removeActiveCall();
+    }
+}
+
+void discardCurrentCall(TdAccountData &account, TdTransceiver &transceiver)
+{
+    if (account.hasActiveCall()) {
+        deactivateCall(account);
+        discardCall(account.getActiveCallId(), transceiver);
     }
 }

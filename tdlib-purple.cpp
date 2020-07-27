@@ -624,6 +624,19 @@ gboolean initiateMedia(PurpleAccount *account, const char *who, PurpleMediaSessi
 #endif
 }
 
+static PurpleCmdRet hangupCommand(PurpleConversation *conv, const gchar *cmd, gchar **args, gchar **error, void *data)
+{
+    PurpleTdClient *tdClient = getTdClient(purple_conversation_get_account(conv));
+
+    if (!tdClient)
+        return PURPLE_CMD_RET_FAILED;
+
+    if (tdClient->terminateCall(conv))
+        return PURPLE_CMD_RET_OK;
+    else
+        return PURPLE_CMD_RET_FAILED;
+}
+
 static char png[] = "png";
 
 static PurplePluginProtocolInfo prpl_info = {
@@ -723,7 +736,12 @@ static gboolean tgprpl_load (PurplePlugin *plugin)
     purple_cmd_register("kick", "s", PURPLE_CMD_P_PLUGIN,
                         (PurpleCmdFlag)(PURPLE_CMD_FLAG_CHAT | PURPLE_CMD_FLAG_PRPL_ONLY),
                         config::pluginId, tgprpl_cmd_kick,
-                        _("kick <user>:  Kick a user from the room using name or internal id"), NULL);
+                        _("kick <user>: Kick a user from the room using name or internal id"), NULL);
+
+    purple_cmd_register("hangup", "", PURPLE_CMD_P_PLUGIN,
+                        (PurpleCmdFlag)(PURPLE_CMD_FLAG_IM | PURPLE_CMD_FLAG_PRPL_ONLY),
+                        config::pluginId, hangupCommand,
+                        _("hangup: Terminate any active call (with any user)"), NULL);
 
     return TRUE;
 }

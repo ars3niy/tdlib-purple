@@ -2442,3 +2442,12 @@ bool PurpleTdClient::startVoiceCall(const char *buddyName)
 
     return initiateCall(users.front()->id_, m_data, m_transceiver);
 }
+
+bool PurpleTdClient::terminateCall(PurpleConversation *conv)
+{
+    if (!m_data.hasActiveCall())
+        return false;
+
+    discardCurrentCall(m_data, m_transceiver);
+    return true;
+}
