@@ -16,6 +16,8 @@ cmake -DCMAKE_SYSTEM_NAME=Windows \
     -DOPENSSL_CRYPTO_LIBRARY="-Wl,-Bstatic -lcrypto -Wl,-Bdynamic -lws2_32" \
     -DZLIB_FOUND=1 -DZLIB_LIBRARIES=/usr/i686-w64-mingw32/sys-root/mingw/lib/libz.a \
     -DCMAKE_BUILD_TYPE=Release ..
+make
+make install DESTDIR=../install
 ```
 
 Building OpenSSL 3.0:
@@ -58,19 +60,86 @@ Additional dependencies under `../deps/win32-dev/`:
 
 * libwebp
 
-Build each using
+* opus
+
+* webrtc-audio-processing
+
+* libtgvoip from https://github.com/ars3niy/libtgvoip
+
+Build first three using
 ```
 ./configure --host i686-w64-mingw32 --target i686-w64-mingw32
 make
 make install DESTDIR=$PWD/install
 ```
 
+For opus:
+```
+CFLAGS=-D_FORTIFY_SOURCE=0 ./configure --host i686-w64-mingw32 --target i686-w64-mingw32
+```
+
+Building webrtc library:
+```
+diff --git a/webrtc/base/platform_thread.cc b/webrtc/base/platform_thread.cc
+index 707ccf8..711c45f 100644
+--- a/webrtc/base/platform_thread.cc
++++ b/webrtc/base/platform_thread.cc
+@@ -63,7 +63,7 @@ bool IsThreadRefEqual(const PlatformThreadRef& a, const PlatformThreadRef& b) {
+ 
+ void SetCurrentThreadName(const char* name) {
+   RTC_DCHECK(strlen(name) < 64);
+-#if defined(WEBRTC_WIN)
++#if defined(_MSC_VER)
+   struct {
+     DWORD dwType;
+     LPCSTR szName;
+diff --git a/webrtc/modules/audio_coding/codecs/isac/main/source/os_specific_inline.h b/webrtc/modules/audio_coding/codecs/isac
+/main/source/os_specific_inline.h
+index 2b446e9..8e64f98 100644
+--- a/webrtc/modules/audio_coding/codecs/isac/main/source/os_specific_inline.h
++++ b/webrtc/modules/audio_coding/codecs/isac/main/source/os_specific_inline.h
+@@ -15,9 +15,9 @@
+ #include <math.h>
+ #include "webrtc/typedefs.h"
+ 
+-#if defined(WEBRTC_POSIX)
++#if (defined(WEBRTC_POSIX) || defined(__GNUC__))
+ #define WebRtcIsac_lrint lrint
+-#elif (defined(WEBRTC_ARCH_X86) && defined(WIN32))
++#elif (defined(WEBRTC_ARCH_X86) && defined(_MSC_VER))
+ static __inline long int WebRtcIsac_lrint(double x_dbl) {
+   long int x_int;
+ 
+```
+
+```
+find . -name \*.h -o -name \*.c\* -exec \
+    sed 's/Windows.h/windows.h/;s/Mmsystem.h/mmsystem.h/' -i {} \;
+env CFLAGS=-D__UCLIBC__ CXXFLAGS=-D__UCLIBC__ meson $PWD $PWD/build \
+    --cross-file /path/to/linux-mingw-w64-32bit.txt --default-library static
+ninja -C build
+DESTDIR=$PWD/install ninja -C build install
+```
+
+Building libtgvoip:
+```
+cmake -DCMAKE_SYSTEM_NAME=Windows \
+    -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++ \
+    -DNoPkgConfig=True -Dopus_INCLUDE_DIRS=$PWD/../../opus-1.3.1/install/usr/local/include/opus \
+    -Dwebrtc_audio_CFLAGS="-DWEBRTC_AUDIO_PROCESSING_ONLY_BUILD;-DWEBRTC_WIN;-I$PWD/../../webrtc-audio-processing/install/usr/local/include/webrtc_audio_processing" \
+    -DCMAKE_C_FLAGS="-D_WIN32_WINNT=0x0600 -DWINVER=0x0600" \
+    -DCMAKE_CXX_FLAGS="-D_WIN32_WINNT=0x0600 -DWINVER=0x0600" ..
+make
+make install DESTDIR=../install
+```
+
+
 Building the plugin:
 
 ```
 cmake -DCMAKE_SYSTEM_NAME=Windows \
     -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++ \
-    -DTd_DIR=/w/bin/td/win32/install/usr/local/lib/cmake/Td \
+    -DTd_DIR=/path/to/tdlib/install/usr/local/lib/cmake/Td \
     -DCMAKE_SHARED_LINKER_FLAGS="-static-libgcc -static-libstdc++" \
     -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" \
     -DNoPkgConfig=True \
@@ -85,7 +154,8 @@ cmake -DCMAKE_SYSTEM_NAME=Windows \
     -DIntl_LIBRARY=$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/libintl.dll.a \
     -DGLIB_LIBRARIES="$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/libglib-2.0.dll.a;$PWD/../../deps/win32-dev/gtk_2_0-2.14/lib/libgthread-2.0.dll.a" \
     -DSTANDARD_LIBRARIES_EXTRA="-Wl,-Bstatic -lpthread -Wl,-Bdynamic" \
-    -DNoVoip=True \
+    -Dtgvoip_INCLUDE_DIRS=$PWD/../../deps/win32-dev/libtgvoip/install/usr/local/include/tgvoip \
+    -Dtgvoip_LIBRARIES="$PWD/../../deps/win32-dev/libtgvoip/install/usr/local/lib/libtgvoip.a;$PWD/../../deps/win32-dev/opus-1.3.1/install/usr/local/lib/libopus.a;$PWD/../../deps/win32-dev/webrtc-audio-processing/install/usr/local/lib/libwebrtc_audio_processing.a;iphlpapi;winmm" \
     -DCMAKE_BUILD_TYPE=Release ..
 
 make
