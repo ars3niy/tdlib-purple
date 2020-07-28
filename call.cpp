@@ -152,6 +152,22 @@ static void deactivateCall(TdAccountData &account)
 #endif
 }
 
+static void notifyCallError(const td::td_api::callStateError &error, const std::string &buddyName,
+                            TdAccountData &account)
+{
+    std::string message;
+    if (error.error_)
+        message = formatMessage(errorCodeMessage(), {std::to_string(error.error_->code_),
+                                error.error_->message_});
+    else
+        // Unlikely message not worth translating
+        message = "unknown error";
+    message = formatMessage(_("Call failed: {}"), message);
+    if (!buddyName.empty())
+        showMessageTextIm(account, buddyName.c_str(), NULL, message.c_str(),
+                          time(NULL), PURPLE_MESSAGE_SYSTEM);
+}
+
 void updateCall(const td::td_api::call &call, TdAccountData &account, TdTransceiver &transceiver)
 {
     std::string buddyName = getPurpleUserName(call.user_id_, account);
@@ -225,9 +241,14 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
         }
     }
     else if ( ((call.state_->get_id() == td::td_api::callStateHangingUp::ID) ||
-               (call.state_->get_id() == td::td_api::callStateDiscarded::ID)) &&
+               (call.state_->get_id() == td::td_api::callStateDiscarded::ID) ||
+               (call.state_->get_id() == td::td_api::callStateError::ID)) &&
               account.hasActiveCall() && account.getActiveCallId() == call.id_)
     {
+        if (call.state_->get_id() == td::td_api::callStateError::ID) {
+            const td::td_api::callStateError &error = static_cast<const td::td_api::callStateError &>(*call.state_);
+            notifyCallError(error, buddyName, account);
+        }
         deactivateCall(account);
         account.removeActiveCall();
     }
