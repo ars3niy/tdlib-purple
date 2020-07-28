@@ -1,3 +1,9 @@
+## OpenSSL 3.0:
+
+```
+./Configure --cross-compile-prefix=i686-w64-mingw32- mingw
+```
+
 ## tdlib
 
 ```
@@ -6,24 +12,23 @@ sed 's/Mswsock/mswsock/;s/Normaliz/normaliz/' -i tdutils/CMakeLists.txt
 sed 's/WinSock2.h/winsock2.h/;s/WS2tcpip.h/ws2tcpip.h/;s/MSWSock.h/mswsock.h/;s/Windows.h/windows.h/' -i tdutils/td/utils/common.h
 ```
 
-replace `if(WIN32)` with `if(CMAKE_HOST_WIN32)` for GIT_COMMIT_CMD command
+Replace `if(WIN32)` with `if(CMAKE_HOST_WIN32)` for GIT_COMMIT_CMD command.
 
 ```
+cd build-linux
+cmake ..
+make tl_generate_common tdmime_auto tl_generate_json
+cd ../build
 cmake -DCMAKE_SYSTEM_NAME=Windows \
     -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++ \
     -DOPENSSL_FOUND=True \
-    -DOPENSSL_SSL_LIBRARY="-Wl,-Bstatic -lssl -Wl,-Bdynamic -lws2_32" \
-    -DOPENSSL_CRYPTO_LIBRARY="-Wl,-Bstatic -lcrypto -Wl,-Bdynamic -lws2_32" \
+    -DOPENSSL_SSL_LIBRARY="$PWD/../../openssl-3.0.0-alpha1/install/usr/local/lib/libssl.a;ws2_32" \
+    -DOPENSSL_CRYPTO_LIBRARY="$PWD/../../openssl-3.0.0-alpha1/install/usr/local/lib/libcrypto.a;ws2_32" \
+    -DOPENSSL_INCLUDE_DIR=$PWD/../../openssl-3.0.0-alpha1/install/usr/local/include \
     -DZLIB_FOUND=1 -DZLIB_LIBRARIES=/usr/i686-w64-mingw32/sys-root/mingw/lib/libz.a \
     -DCMAKE_BUILD_TYPE=Release ..
 make
 make install DESTDIR=../install
-```
-
-Building OpenSSL 3.0:
-
-```
-./Configure --cross-compile-prefix=i686-w64-mingw32- mingw
 ```
 
 ## libpurple
@@ -139,7 +144,7 @@ Building the plugin:
 ```
 cmake -DCMAKE_SYSTEM_NAME=Windows \
     -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++ \
-    -DTd_DIR=/path/to/tdlib/install/usr/local/lib/cmake/Td \
+    -DTd_DIR=$PWD/../../deps/win32-dev/td/install/usr/local/lib/cmake/Td \
     -DCMAKE_SHARED_LINKER_FLAGS="-static-libgcc -static-libstdc++" \
     -DCMAKE_EXE_LINKER_FLAGS="-static-libgcc -static-libstdc++" \
     -DNoPkgConfig=True \
