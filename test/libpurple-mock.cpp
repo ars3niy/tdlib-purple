@@ -1431,4 +1431,16 @@ PurpleMediaCaps purple_media_manager_get_ui_caps(PurpleMediaManager *manager)
     return PURPLE_MEDIA_CAPS_NONE;
 }
 
+GHashTable *purple_core_get_ui_info()
+{
+    static GHashTable *info = NULL;
+    if (!info) {
+        info = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+        static char nameKey[] = "name";
+        static char name[] = "test";
+        g_hash_table_insert(info, nameKey, name);
+    }
+    return info;
+}
+
 };

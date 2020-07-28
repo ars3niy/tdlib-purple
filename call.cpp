@@ -160,7 +160,12 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
     PurpleMediaManager *mediaManager = purple_media_manager_get();
     PurpleMediaCaps capabilities = purple_media_manager_get_ui_caps(mediaManager);
 
-    if (!(capabilities & PURPLE_MEDIA_CAPS_AUDIO) && !(capabilities & PURPLE_MEDIA_CAPS_AUDIO_SINGLE_DIRECTION)) {
+    GHashTable *ui_info = purple_core_get_ui_info();
+    const char *name = static_cast<char *>(g_hash_table_lookup(ui_info, "name"));
+    bool isPidgin = name && !strcmp(name, "Pidgin");
+
+    if (!(capabilities & PURPLE_MEDIA_CAPS_AUDIO) && !(capabilities & PURPLE_MEDIA_CAPS_AUDIO_SINGLE_DIRECTION) &&
+        !isPidgin) {
 #else
     if (true) {
 #endif
