@@ -1076,3 +1076,33 @@ TEST_F(PrivateChatTest, BuddyWithNullAlias)
         }
     );
 }
+
+TEST_F(PrivateChatTest, CallEnded)
+{
+    constexpr int64_t messageId = 10000;
+    constexpr int32_t date      = 123456;
+    loginWithOneContact();
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messageCall>(nullptr, 137)
+    )));
+
+    tgl.verifyRequest(viewMessages(
+        chatIds[0],
+        {messageId},
+        true
+    ));
+    prpl.verifyEvents(
+        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
+        ConversationWriteEvent(
+            purpleUserName(0), purpleUserName(0),
+            "Call ended (137 seconds): reason unknown",
+            PURPLE_MESSAGE_SYSTEM, 0
+        )
+    );
+}

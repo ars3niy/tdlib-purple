@@ -261,3 +261,29 @@ void discardCurrentCall(TdAccountData &account, TdTransceiver &transceiver)
         discardCall(account.getActiveCallId(), transceiver);
     }
 }
+
+void showCallMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
+                     const td::td_api::messageCall &callEnded, TdAccountData &account)
+{
+    std::string notification;
+    if (callEnded.discard_reason_)
+        switch (callEnded.discard_reason_->get_id()) {
+            case td::td_api::callDiscardReasonMissed::ID:
+                notification = _("call missed");
+                break;
+            case td::td_api::callDiscardReasonDeclined::ID:
+                notification = _("declined by peer");
+                break;
+            case td::td_api::callDiscardReasonDisconnected::ID:
+                notification = _("users disconnected");
+                break;
+            case td::td_api::callDiscardReasonHungUp::ID:
+                notification = _("hung up");
+                break;
+        }
+    if (notification.empty())
+        notification = _("reason unknown");
+
+    notification = formatMessage(_("Call ended ({} seconds): {}"), {std::to_string(callEnded.duration_), notification});
+    showMessageText(account, chat, message, NULL, notification.c_str());
+}

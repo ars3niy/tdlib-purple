@@ -1319,6 +1319,9 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
             showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
             break;
         }
+        case td::td_api::messageCall::ID:
+            showCallMessage(chat, messageInfo, static_cast<td::td_api::messageCall &>(*message.content_), m_data);
+            break;
         default: {
             std::string notice = formatMessage(_("Received unsupported message type {}"),
                                                messageTypeToString(*message.content_));
