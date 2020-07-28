@@ -21,7 +21,7 @@ Binary packages for Debian, Fedora, openSUSE and Ubuntu are available at https:/
 
 AUR package for Arch: https://aur.archlinux.org/packages/telegram-tdlib-purple-git/
 
-Windows build is available from https://eion.robbmob.com/tdlib/ (copy libtelegram-tdlib.dll to libpurple plugins directory).
+Windows build is available from https://eion.robbmob.com/tdlib/ or in [releases](https://github.com/ars3niy/tdlib-purple/releases) (copy libtelegram-tdlib.dll to libpurple plugins directory).
 
 Alternatively, build from source (see below).
 
