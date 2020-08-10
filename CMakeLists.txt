@@ -32,6 +32,8 @@ if (NOT NoPkgConfig)
     pkg_get_variable(PURPLE_DATA_DIR purple datarootdir)
 endif (NOT NoPkgConfig)
 
+link_directories(${Purple_LIBRARY_DIRS})
+
 if (NOT NoWebp)
     if ("${libwebp_LIBRARIES}" STREQUAL "")
         message(FATAL_ERROR "Webp library not found, build with -DNoWebp=TRUE to disable webp sticker decoding")
@@ -39,6 +41,7 @@ if (NOT NoWebp)
     if ("${libpng_LIBRARIES}" STREQUAL "")
         message(FATAL_ERROR "libpng not found, build with -DNoWebp=TRUE to disable webp sticker decoding")
     endif ("${libpng_LIBRARIES}" STREQUAL "")
+    link_directories(${libwebp_LIBRARY_DIRS} ${libpng_LIBRARY_DIRS})
 endif (NOT NoWebp)
 
 configure_file(buildopt.h.in buildopt.h)
@@ -65,7 +68,6 @@ target_compile_definitions(telegram-tdlib PRIVATE GLIB_DISABLE_DEPRECATION_WARNI
 
 include_directories(${Purple_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 target_link_libraries(telegram-tdlib PRIVATE Td::TdStatic ${Purple_LIBRARIES})
-link_directories(${Purple_LIBRARY_DIRS})
 
 set(VERSION_SCRIPT_FLAG "-Wl,--version-script=${CMAKE_SOURCE_DIR}/ld_version_script")
 set(CMAKE_EXE_LINKER_FLAGS ${VERSION_SCRIPT_FLAG})
@@ -78,7 +80,6 @@ endif (${VERSION_SCRIPT_SUPPORTED})
 if (NOT NoWebp)
     include_directories(${libwebp_INCLUDE_DIRS} ${libpng_INCLUDE_DIRS})
     target_link_libraries(telegram-tdlib PRIVATE ${libwebp_LIBRARIES} ${libpng_LIBRARIES})
-    link_directories(${libwebp_LIBRARY_DIRS} ${libpng_LIBRARY_DIRS})
 endif (NOT NoWebp)
 
 set_property(TARGET telegram-tdlib PROPERTY CXX_STANDARD 14)
