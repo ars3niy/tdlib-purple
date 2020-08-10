@@ -1,4 +1,5 @@
-cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+# versions before 3.2 don't pass CMAKE_EXE_LINKER_FLAGS when using try_compile
 
 project(tdlib-purple VERSION 1.0 LANGUAGES CXX)
 
@@ -64,13 +65,20 @@ target_compile_definitions(telegram-tdlib PRIVATE GLIB_DISABLE_DEPRECATION_WARNI
 
 include_directories(${Purple_INCLUDE_DIRS} ${CMAKE_BINARY_DIR})
 target_link_libraries(telegram-tdlib PRIVATE Td::TdStatic ${Purple_LIBRARIES})
-    set_target_properties(telegram-tdlib PROPERTIES
-        LINK_FLAGS "-Wl,--version-script=${CMAKE_SOURCE_DIR}/ld_version_script"
-    )
+link_directories(${Purple_LIBRARY_DIRS})
+
+set(VERSION_SCRIPT_FLAG "-Wl,--version-script=${CMAKE_SOURCE_DIR}/ld_version_script")
+set(CMAKE_EXE_LINKER_FLAGS ${VERSION_SCRIPT_FLAG})
+try_compile(VERSION_SCRIPT_SUPPORTED ${CMAKE_BINARY_DIR} ${CMAKE_SOURCE_DIR}/cmake/testflag.cpp)
+set(CMAKE_EXE_LINKER_FLAGS "")
+if (${VERSION_SCRIPT_SUPPORTED})
+    set_target_properties(telegram-tdlib PROPERTIES LINK_FLAGS ${VERSION_SCRIPT_FLAG})
+endif (${VERSION_SCRIPT_SUPPORTED})
 
 if (NOT NoWebp)
     include_directories(${libwebp_INCLUDE_DIRS} ${libpng_INCLUDE_DIRS})
     target_link_libraries(telegram-tdlib PRIVATE ${libwebp_LIBRARIES} ${libpng_LIBRARIES})
+    link_directories(${libwebp_LIBRARY_DIRS} ${libpng_LIBRARY_DIRS})
 endif (NOT NoWebp)
 
 set_property(TARGET telegram-tdlib PROPERTY CXX_STANDARD 14)
