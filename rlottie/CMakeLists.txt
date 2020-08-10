@@ -82,7 +82,7 @@ if (NOT LOTTIE_ASAN)
     if(APPLE)
         target_link_libraries(rlottie
                             PUBLIC
-                                 "-Wl, -undefined error"
+                                 "-Wl,-undefined,error"
                               )
     else()
         target_link_libraries(rlottie
