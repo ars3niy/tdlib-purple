@@ -614,3 +614,27 @@ TEST_F(SupergroupTest, JoinByPublicLink_JoinFail)
     tgl.reply(make_object<error>(100, "error"));
     prpl.verifyNoEvents();
 }
+
+TEST_F(SupergroupTest, ReceiveChannelPost)
+{
+    constexpr int32_t date         = 12345;
+    constexpr int64_t messageId    = 10000;
+    constexpr int     purpleChatId = 1;
+    loginWithSupergroup();
+
+    auto message = makeMessage(messageId, 0, groupChatId, false, date, makeTextMessage("Hello"));
+    message->is_channel_post_ = true;
+    tgl.update(make_object<updateNewMessage>(std::move(message)));
+
+    tgl.verifyRequest(viewMessages(
+        groupChatId,
+        {messageId},
+        true
+    ));
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        ServGotChatEvent(connection, purpleChatId, "Channel post",
+                         "Hello", PURPLE_MESSAGE_RECV, date)
+    );
+
+}

@@ -578,6 +578,8 @@ std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::
             return account.getDisplayName(message.sender_user_id_);
         else if (!message.author_signature_.empty())
             return message.author_signature_;
+        else if (message.is_channel_post_)
+            return _("Channel post");
         else if (message.forward_info_ && message.forward_info_->origin_)
             switch (message.forward_info_->origin_->get_id()) {
             case td::td_api::messageForwardOriginUser::ID:
