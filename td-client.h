@@ -30,7 +30,8 @@ public:
     void getUsers(const char *username, std::vector<const td::td_api::user *> &users);
 
     bool joinChat(const char *chatName);
-    void joinChatByLink(const char *inviteLink);
+    void joinChatByInviteLink(const char *inviteLink);
+    void joinChatByGroupName(const char *joinString, const char *groupName);
     void createGroup(const char *name, int type, const std::vector<std::string> &basicGroupMembers);
     BasicGroupMembership getBasicGroupMembership(const char *purpleChatName);
     void leaveGroup(const std::string &purpleChatName, bool deleteSupergroup);
@@ -127,7 +128,8 @@ private:
     void       addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       notifyFailedContact(const std::string &errorMessage);
-    void       joinChatByLinkResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       joinChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       joinGroupSearchChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       deleteSupergroupResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       setGroupDescriptionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       chatActionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);

@@ -17,7 +17,7 @@ std::string  getPurpleChatName(const td::td_api::chat &chat);
 GHashTable  *getChatComponents(const td::td_api::chat &chat);
 
 const char  *getChatName(GHashTable *components);
-const char  *getChatInviteLink(GHashTable *components);
+const char  *getChatJoinString(GHashTable *components);
 const char  *getChatGroupName(GHashTable *components);
 int          getChatGroupType(GHashTable *components);
 

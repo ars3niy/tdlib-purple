@@ -434,3 +434,183 @@ TEST_F(SupergroupTest, GetInviteLink)
 
     g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);
 }
+
+TEST_F(SupergroupTest, JoinByLink_InvalidLink1)
+{
+    login();
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup(""));
+    g_hash_table_insert(components, (char *)"link", g_strdup("http://example.com"));
+
+    pluginInfo().join_chat(connection, components);
+    // Not a join link nor a group link - fail immediately
+    tgl.verifyNoRequests();
+
+    g_hash_table_destroy(components);
+}
+
+TEST_F(SupergroupTest, JoinByLink_InvalidLink2)
+{
+    login();
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup(""));
+    g_hash_table_insert(components, (char *)"link", g_strdup("https://t.me/invalid/link"));
+
+    pluginInfo().join_chat(connection, components);
+    // Not a join link nor a group link - fail immediately
+    tgl.verifyNoRequests();
+
+    g_hash_table_destroy(components);
+}
+
+TEST_F(SupergroupTest, JoinByPublicLink1)
+{
+    const char *const NAME         = "groupname";
+    const char *const LINK         = "https://t.me/groupname";
+    constexpr int     purpleChatId = 1;
+
+    login();
+
+    // As if "Add chat" function in pidgin was used
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup(""));
+    g_hash_table_insert(components, (char *)"link", g_strdup(LINK));
+
+    PurpleChat *chat = purple_chat_new(account, "old chat", components);
+    purple_blist_add_chat(chat, NULL, NULL);
+    prpl.discardEvents();
+
+    // And now that chat is being joined
+    pluginInfo().join_chat(connection, components);
+
+    tgl.verifyRequest(searchPublicChat(NAME));
+    tgl.update(make_object<updateSupergroup>(make_object<supergroup>(
+        groupId, "", 0, make_object<chatMemberStatusLeft>(), 2,
+        false, false, false, false, false, false, "", false
+    )));
+    tgl.update(make_object<updateNewChat>(makeChat(
+        groupChatId, make_object<chatTypeSupergroup>(groupId, false), groupChatTitle,
+        nullptr, 0, 0, 0
+    )));
+    tgl.reply(makeChat(
+        groupChatId, make_object<chatTypeSupergroup>(groupId, false), groupChatTitle,
+        nullptr, 0, 0, 0
+    ));
+
+    uint64_t joinRequestId = tgl.verifyRequest(joinChat(groupChatId));
+    prpl.verifyNoEvents();
+
+    tgl.update(make_object<updateSupergroup>(make_object<supergroup>(
+        groupId, "", 0, make_object<chatMemberStatusMember>(), 2,
+        false, false, false, false, false, false, "", false
+    )));
+    tgl.update(make_object<updateChatChatList>(groupChatId, make_object<chatListMain>()));
+    prpl.verifyEvents(AddChatEvent(
+        groupChatPurpleName, groupChatTitle, account, NULL, NULL
+    ));
+    tgl.verifyRequests({
+        make_object<getSupergroupFullInfo>(groupId),
+        make_object<getSupergroupMembers>(
+            groupId,
+            make_object<supergroupMembersFilterRecent>(),
+            0,
+            200
+        ),
+    });
+
+    tgl.reply(joinRequestId, make_object<ok>());
+    prpl.verifyEvents(
+        RemoveChatEvent("", LINK),
+        ServGotJoinedChatEvent(
+            connection, purpleChatId, groupChatPurpleName, groupChatTitle
+        )
+    );
+}
+
+TEST_F(SupergroupTest, JoinByPublicLink2)
+{
+    login();
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup(""));
+    g_hash_table_insert(components, (char *)"link", g_strdup("https://t.me/s/groupname"));
+
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+    tgl.verifyRequest(searchPublicChat("groupname"));
+}
+
+TEST_F(SupergroupTest, JoinByPublicLink_SearchFail)
+{
+    login();
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup(""));
+    g_hash_table_insert(components, (char *)"link", g_strdup("https://t.me/s/groupname"));
+
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+    tgl.verifyRequest(searchPublicChat("groupname"));
+    tgl.reply(make_object<error>(100, "error"));
+
+    tgl.verifyNoRequests();
+    prpl.verifyNoEvents();
+}
+
+TEST_F(SupergroupTest, JoinByPublicLink_NotGroupChat)
+{
+    login();
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup(""));
+    g_hash_table_insert(components, (char *)"link", g_strdup("https://t.me/s/groupname"));
+
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+    tgl.verifyRequest(searchPublicChat("groupname"));
+
+    tgl.update(make_object<updateUser>(makeUser(
+        userIds[0],
+        userFirstNames[0],
+        userLastNames[0],
+        "",
+        make_object<userStatusOffline>()
+    )));
+    tgl.update(standardPrivateChat(0));
+    tgl.reply(std::move(standardPrivateChat(0)->chat_));
+
+    tgl.verifyNoRequests();
+    prpl.verifyNoEvents();
+}
+
+TEST_F(SupergroupTest, JoinByPublicLink_JoinFail)
+{
+    login();
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup(""));
+    g_hash_table_insert(components, (char *)"link", g_strdup("https://t.me/s/groupname"));
+
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+    tgl.verifyRequest(searchPublicChat("groupname"));
+
+    tgl.update(make_object<updateSupergroup>(make_object<supergroup>(
+        groupId, "", 0, make_object<chatMemberStatusLeft>(), 2,
+        false, false, false, false, false, false, "", false
+    )));
+    tgl.update(make_object<updateNewChat>(makeChat(
+        groupChatId, make_object<chatTypeSupergroup>(groupId, false), groupChatTitle,
+        nullptr, 0, 0, 0
+    )));
+    tgl.reply(makeChat(
+        groupChatId, make_object<chatTypeSupergroup>(groupId, false), groupChatTitle,
+        nullptr, 0, 0, 0
+    ));
+
+    tgl.verifyRequest(joinChat(groupChatId));
+    tgl.reply(make_object<error>(100, "error"));
+    prpl.verifyNoEvents();
+}

@@ -5,7 +5,7 @@
 #include <math.h>
 
 static char chatNameComponent[] = "id";
-static char inviteKey[]         = "link";
+static char joinStringKey[]     = "link";
 static char nameKey[]           = "name";
 static char typeKey[]           = "type";
 
@@ -25,8 +25,8 @@ GList *getChatJoinInfo()
     GList *info = g_list_append (NULL, pce);
 
     pce = g_new0 (struct proto_chat_entry, 1);
-    pce->label = _("Invite link (empty if creating new):");
-    pce->identifier = inviteKey;
+    pce->label = _("Join URL or name (empty if creating new):");
+    pce->identifier = joinStringKey;
     pce->required = FALSE;
     info = g_list_append (info, pce);
 
@@ -70,9 +70,9 @@ const char *getChatName(GHashTable *components)
     return (const char *)g_hash_table_lookup(components, chatNameComponent);
 }
 
-const char *getChatInviteLink(GHashTable *components)
+const char *getChatJoinString(GHashTable *components)
 {
-    return (const char *)g_hash_table_lookup(components, inviteKey);
+    return (const char *)g_hash_table_lookup(components, joinStringKey);
 }
 
 const char *getChatGroupName(GHashTable *components)

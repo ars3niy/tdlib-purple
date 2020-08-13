@@ -631,25 +631,25 @@ void getNamesFromAlias(const char *alias, std::string &firstName, std::string &l
 }
 
 static void findChatsByComponents(PurpleBlistNode *node,
-                                  const char *inviteLink, const char *groupName, int groupType,
+                                  const char *joinString, const char *groupName, int groupType,
                                   std::vector<PurpleChat *> &result)
 {
     PurpleBlistNodeType nodeType = purple_blist_node_get_type(node);
 
     if (nodeType == PURPLE_BLIST_CHAT_NODE) {
-        PurpleChat *chat          = PURPLE_CHAT(node);
-        GHashTable *components    = purple_chat_get_components(chat);
-        const char *nodeName      = getChatName(components);
-        const char *nodeLink      = getChatInviteLink(components);
-        const char *nodeGroupName = getChatGroupName(components);
-        int         nodeGroupType = getChatGroupType(components);
+        PurpleChat *chat           = PURPLE_CHAT(node);
+        GHashTable *components     = purple_chat_get_components(chat);
+        const char *nodeName       = getChatName(components);
+        const char *nodeJoinString = getChatJoinString(components);
+        const char *nodeGroupName  = getChatGroupName(components);
+        int         nodeGroupType  = getChatGroupType(components);
 
         if (!nodeName) nodeName = "";
-        if (!nodeLink) nodeLink = "";
+        if (!nodeJoinString) nodeJoinString = "";
         if (!nodeGroupName) nodeGroupName = "";
 
-        if (!strcmp(nodeName, "") && !strcmp(nodeLink, inviteLink)) {
-            if ((*inviteLink != '\0') ||
+        if (!strcmp(nodeName, "") && !strcmp(nodeJoinString, joinString)) {
+            if ((*joinString != '\0') ||
                 (!strcmp(nodeGroupName, groupName) && (nodeGroupType == groupType)))
             {
                 result.push_back(chat);
@@ -660,18 +660,18 @@ static void findChatsByComponents(PurpleBlistNode *node,
     for (PurpleBlistNode *child = purple_blist_node_get_first_child(node); child;
          child = purple_blist_node_get_sibling_next(child))
     {
-        findChatsByComponents(child, inviteLink, groupName, groupType, result);
+        findChatsByComponents(child, joinString, groupName, groupType, result);
     }
 }
 
-std::vector<PurpleChat *>findChatsByInviteLink(const std::string &inviteLink)
+std::vector<PurpleChat *>findChatsByJoinString(const std::string &joinString)
 {
     std::vector<PurpleChat *> result;
 
     for (PurpleBlistNode *root = purple_blist_get_root(); root;
          root = purple_blist_node_get_sibling_next(root)) // LOL
     {
-        findChatsByComponents(root, inviteLink.c_str(), "", 0, result);
+        findChatsByComponents(root, joinString.c_str(), "", 0, result);
     }
 
     return result;

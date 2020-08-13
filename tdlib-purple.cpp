@@ -338,11 +338,27 @@ static std::array<const char *, 3> invitePrefixes {
     "https://telegram.dog/joinchat/"
 };
 
+static std::array<const char *, 2> groupLinkPrefixes {
+    "https://t.me/s/",
+    "https://t.me/"
+};
+
 static bool isValidInviteLink(const char *link)
 {
     return !strncmp(link, invitePrefixes[0], strlen(invitePrefixes[0])) ||
            !strncmp(link, invitePrefixes[1], strlen(invitePrefixes[1])) ||
            !strncmp(link, invitePrefixes[2], strlen(invitePrefixes[2]));
+}
+
+static std::string getGroupUsernameFromLink(const char *link)
+{
+    for (const char *prefix: groupLinkPrefixes) {
+        size_t prefixLen = strlen(prefix);
+        if (!strncmp(link, prefix, prefixLen) && (strchr(link + prefixLen, '/') == NULL))
+            return link + prefixLen;
+    }
+
+    return std::string();
 }
 
 static void create_group_chat_cb (RequestData *data, PurpleRequestFields* fields)
@@ -394,21 +410,31 @@ static void tgprpl_chat_join (PurpleConnection *gc, GHashTable *data)
 {
     PurpleTdClient *tdClient   = static_cast<PurpleTdClient *>(purple_connection_get_protocol_data(gc));
     const char     *name       = getChatName(data);
-    const char     *inviteLink = getChatInviteLink(data);
+    const char     *joinString = getChatJoinString(data);
 
     if (name && *name) {
         if (!tdClient->joinChat(name))
             purple_serv_got_join_chat_failed (gc, data);
-    } else if (inviteLink && *inviteLink) {
-        // Some user-friendliness
-        if (!isValidInviteLink(inviteLink)) {
-            std::string message = formatMessage(_("Invite link must begin with {}, {}, or {}"),
-                                                {invitePrefixes[0], invitePrefixes[1], invitePrefixes[2]});
-            purple_notify_error(gc, _("Failed to join chat"), message.c_str(), NULL);
-            purple_serv_got_join_chat_failed (gc, data);
+    } else if (joinString && *joinString) {
+        if (isValidInviteLink(joinString))
+            tdClient->joinChatByInviteLink(joinString);
+        else {
+            std::string name = getGroupUsernameFromLink(joinString);
+            if (name.empty() && (strchr(joinString, '/') == NULL))
+                name = joinString;
+
+            if (!name.empty())
+                tdClient->joinChatByGroupName(joinString, name.c_str());
+            else {
+                std::string extraMessage = formatMessage(_("Invite link must start with {}, {} or {}. Public group link must be {}name or {}name."),
+                                                         {invitePrefixes[0], invitePrefixes[1], invitePrefixes[2],
+                                                         groupLinkPrefixes[0], groupLinkPrefixes[1]});
+                purple_notify_error(gc, _("Failed to join chat"),
+                                    _("Must be invite link, public group link or group name"),
+                                    extraMessage.c_str());
+                purple_serv_got_join_chat_failed (gc, data);
+            }
         }
-        else 
-            tdClient->joinChatByLink(inviteLink);
     } else {
         const char *groupName  = getChatGroupName(data);
         int         groupType  = getChatGroupType(data);

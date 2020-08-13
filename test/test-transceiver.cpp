@@ -424,6 +424,16 @@ static void compare(const getSupergroupMembers &actual, const getSupergroupMembe
     COMPARE(limit_);
 }
 
+static void compare(const searchPublicChat &actual, const searchPublicChat &expected)
+{
+    COMPARE(username_);
+}
+
+static void compare(const joinChat &actual, const joinChat &expected)
+{
+    COMPARE(chat_id_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -472,6 +482,8 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(addChatMember)
         C(generateChatInviteLink)
         C(getSupergroupMembers)
+        C(searchPublicChat)
+        C(joinChat)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }

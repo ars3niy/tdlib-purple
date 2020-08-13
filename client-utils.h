@@ -29,7 +29,7 @@ std::string         getSenderPurpleName(const td::td_api::chat &chat, const td::
 std::string         getForwardSource(const td::td_api::messageForwardInfo &forwardInfo,
                                      TdAccountData &accountData);
 void                getNamesFromAlias(const char *alias, std::string &firstName, std::string &lastName);
-std::vector<PurpleChat *> findChatsByInviteLink(const std::string &inviteLink);
+std::vector<PurpleChat *> findChatsByJoinString(const std::string &inviteLink);
 std::vector<PurpleChat *> findChatsByNewGroup(const char *name, int type);
 
 std::string getSenderDisplayName(const td::td_api::chat &chat, const TgMessageInfo &message,

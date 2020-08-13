@@ -1898,17 +1898,17 @@ int PurpleTdClient::sendGroupMessage(int purpleChatId, const char *message)
     return -1;
 }
 
-void PurpleTdClient::joinChatByLink(const char *inviteLink)
+void PurpleTdClient::joinChatByInviteLink(const char *inviteLink)
 {
     auto     request   = td::td_api::make_object<td::td_api::joinChatByInviteLink>(inviteLink);
-    uint64_t requestId = m_transceiver.sendQuery(std::move(request), &PurpleTdClient::joinChatByLinkResponse);
-    m_data.addPendingRequest<GroupJoinRequest>(requestId, inviteLink);
+    uint64_t requestId = m_transceiver.sendQuery(std::move(request), &PurpleTdClient::joinChatResponse);
+    m_data.addPendingRequest<GroupJoinRequest>(requestId, inviteLink, GroupJoinRequest::Type::InviteLink);
 }
 
-void PurpleTdClient::joinChatByLinkResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+void PurpleTdClient::joinChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     std::unique_ptr<GroupJoinRequest> request = m_data.getPendingRequest<GroupJoinRequest>(requestId);
-    if (object && (object->get_id() == td::td_api::chat::ID)) {
+    if (object && ((object->get_id() == td::td_api::chat::ID) || (object->get_id() == td::td_api::ok::ID))) {
         // If the chat was added with something like "Add chat" function from Pidgin, the chat in
         // contact list was created without id component (for if there was the id component,
         // tgprpl_chat_join would not have called PurpleTdClient::joinChatByLink).
@@ -1922,12 +1922,49 @@ void PurpleTdClient::joinChatByLinkResponse(uint64_t requestId, td::td_api::obje
         // Furthermore, user could have added same chat like that multiple times, in which case
         // remove all of them.
         if (request) {
-            std::vector<PurpleChat *> obsoleteChats = findChatsByInviteLink(request->inviteLink);
+            std::vector<PurpleChat *> obsoleteChats = findChatsByJoinString(request->joinString);
             for (PurpleChat *chat: obsoleteChats)
                 purple_blist_remove_chat(chat);
+            // Conversation window for the chat should be presented. If joining by invite link, it
+            // will happen automatically due to messageChatJoinByLink message. If joining a public
+            // group, conversation window needs to be created explicitly instead
+            if (request->type != GroupJoinRequest::Type::InviteLink) {
+                const td::td_api::chat *chat     = m_data.getChat(request->chatId);
+                int32_t                 purpleId = m_data.getPurpleChatId(request->chatId);
+                if (chat)
+                    getChatConversation(m_data, *chat, purpleId);
+            }
         }
     } else {
         std::string message = formatMessage(_("Failed to join chat: {}"), getDisplayedError(object));
+        purple_notify_error(purple_account_get_connection(m_account), _("Failed to join chat"),
+                            message.c_str(), NULL);
+    }
+}
+
+void PurpleTdClient::joinChatByGroupName(const char *joinString, const char *groupName)
+{
+    auto     request   = td::td_api::make_object<td::td_api::searchPublicChat>(groupName);
+    uint64_t requestId = m_transceiver.sendQuery(std::move(request), &PurpleTdClient::joinGroupSearchChatResponse);
+    m_data.addPendingRequest<GroupJoinRequest>(requestId, joinString, GroupJoinRequest::Type::Username);
+}
+
+void PurpleTdClient::joinGroupSearchChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<GroupJoinRequest> request = m_data.getPendingRequest<GroupJoinRequest>(requestId);
+    if (object && (object->get_id() == td::td_api::chat::ID)) {
+        const td::td_api::chat &chat = static_cast<const td::td_api::chat &>(*object);
+        if (chat.type_ && ((chat.type_->get_id() == td::td_api::chatTypeBasicGroup::ID) ||
+                           (chat.type_->get_id() == td::td_api::chatTypeSupergroup::ID))) {
+            auto     joinRequest = td::td_api::make_object<td::td_api::joinChat>(chat.id_);
+            uint64_t requestId   = m_transceiver.sendQuery(std::move(joinRequest), &PurpleTdClient::joinChatResponse);
+            m_data.addPendingRequest<GroupJoinRequest>(requestId, request ? request->joinString : std::string(),
+                                                       GroupJoinRequest::Type::Username, chat.id_);
+        } else
+            purple_notify_error(purple_account_get_connection(m_account), _("Failed to join chat"),
+                                _("The name belongs to a user, not a group"), NULL);
+    } else {
+        std::string message = formatMessage(_("Could not find group: {}"), getDisplayedError(object));
         purple_notify_error(purple_account_get_connection(m_account), _("Failed to join chat"),
                             message.c_str(), NULL);
     }

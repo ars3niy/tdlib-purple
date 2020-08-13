@@ -73,10 +73,17 @@ public:
 
 class GroupJoinRequest: public PendingRequest {
 public:
-    std::string inviteLink;
+    enum class Type {
+        InviteLink,
+        Username,
+    };
+    std::string joinString;
+    Type        type;
+    int64_t     chatId;
 
-    GroupJoinRequest(uint64_t requestId, const std::string &inviteLink)
-    : PendingRequest(requestId), inviteLink(inviteLink) {}
+    GroupJoinRequest(uint64_t requestId, const std::string &joinString, Type type,
+                     int64_t chatId = 0)
+    : PendingRequest(requestId), joinString(joinString), type(type), chatId(chatId) {}
 };
 
 class SendMessageRequest: public PendingRequest {
