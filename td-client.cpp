@@ -1127,10 +1127,12 @@ void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo
     } else {
         const char *option = purple_account_get_string(m_account, AccountOptions::DownloadBehaviour,
                                                        AccountOptions::DownloadBehaviourDefault());
-        if (!strcmp(option, AccountOptions::DownloadBehaviourHyperlink))
+        if ( !strcmp(option, AccountOptions::DownloadBehaviourHyperlink) ||
+             (chat.type_ && (chat.type_->get_id() != td::td_api::chatTypePrivate::ID)) )
+        {
             showFileInline(chat, message, *file, captionStr, fileDescription, nullptr,
                            &PurpleTdClient::showDownloadedFileInline);
-        else
+        } else
             requestStandardDownload(message, fileName, *file, m_transceiver, m_data);
     }
 }
