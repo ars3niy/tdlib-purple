@@ -906,3 +906,45 @@ TEST_F(FileTransferTest, SendFileToNonContact_TurboCancel)
         nullptr, 0, 0, 0
     ));
 }
+
+TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer)
+{
+    const int64_t messageId = 1;
+    const int32_t date      = 10001;
+    const int32_t fileId    = 1234;
+
+    setUiName("spectrum");
+    loginWithOneContact();
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messageDocument>(
+            make_object<document>(
+                "doc.file.name", "mime/type", nullptr, nullptr,
+                make_object<file>(
+                    fileId, 10000, 10000,
+                    make_object<localFile>("", true, true, false, false, 0, 0, 0),
+                    make_object<remoteFile>("beh", "bleh", false, true, 10000)
+                )
+            ),
+            make_object<formattedText>("document", std::vector<object_ptr<textEntity>>())
+        )
+    )));
+    tgl.verifyRequest(viewMessages(
+        chatIds[0],
+        std::vector<int64_t>(1, messageId),
+        true
+    ));
+    prpl.verifyEvents(
+        XferRequestEvent(PURPLE_XFER_RECEIVE, "doc.file.name")
+    );
+    purple_xfer_request_accepted(prpl.getLastXfer(), ".test_download");
+    prpl.verifyEvents(
+        XferAcceptedEvent(".test_download"),
+        XferLocalCancelEvent(".test_download")
+    );
+}

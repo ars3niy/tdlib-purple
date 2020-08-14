@@ -874,6 +874,7 @@ PurpleXfer *purple_xfer_new(PurpleAccount *account,
     xfer->type = type;
     xfer->who = strdup(who);
     xfer->ref = 1;
+    xfer->filename = NULL;
     xfer->local_filename = NULL;
     xfer->status = PURPLE_XFER_STATUS_UNKNOWN;
     xfer->size = 0;
@@ -890,6 +891,7 @@ void purple_xfer_unref(PurpleXfer *xfer)
 {
     if (--xfer->ref == 0) {
         free(xfer->who);
+        free(xfer->filename);
         free(xfer->local_filename);
         delete xfer;
     }
@@ -897,6 +899,7 @@ void purple_xfer_unref(PurpleXfer *xfer)
 
 void purple_xfer_request(PurpleXfer *xfer)
 {
+    EVENT(XferRequestEvent, purple_xfer_get_type(xfer), purple_xfer_get_filename(xfer), xfer);
 }
 
 std::map<std::string, size_t> fakeFiles;
@@ -947,6 +950,11 @@ const char *purple_xfer_get_remote_user(const PurpleXfer *xfer)
     return xfer->who;
 }
 
+const char *purple_xfer_get_filename(const PurpleXfer *xfer)
+{
+    return xfer->filename;
+}
+
 const char *purple_xfer_get_local_filename(const PurpleXfer *xfer)
 {
     return xfer->local_filename;
@@ -954,6 +962,7 @@ const char *purple_xfer_get_local_filename(const PurpleXfer *xfer)
 
 void purple_xfer_set_filename(PurpleXfer *xfer, const char *filename)
 {
+    xfer->filename = strdup(filename);
 }
 
 void purple_xfer_set_size(PurpleXfer *xfer, size_t size)

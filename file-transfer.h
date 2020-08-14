@@ -17,6 +17,9 @@ void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &tra
                                 TdAccountData &account, TdTransceiver::ResponseCb sendMessageResponse);
 void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData &account);
 
+void requestStandardDownload(const TgMessageInfo &message, const std::string &fileName,
+                             const td::td_api::file &file, TdTransceiver &transceiver, TdAccountData &account);
+
 unsigned getFileSize(const td::td_api::file &file);
 unsigned getFileSizeKb(const td::td_api::file &file);
 
@@ -28,6 +31,15 @@ std::string makeDocumentDescription(const DocumentType *document)
         return "(faulty file)";
     return document->file_name_ + " [" + document->mime_type_ + "]";
 }
+
+template<typename DocumentType>
+std::string getFileName(const DocumentType *document)
+{
+    return document->file_name_;
+}
+
+std::string getFileName(const td::td_api::voiceNote *document);
+std::string getFileName(const td::td_api::videoNote *document);
 
 std::string makeDocumentDescription(const td::td_api::voiceNote *document);
 std::string makeDocumentDescription(const td::td_api::videoNote *document);

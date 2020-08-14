@@ -270,6 +270,12 @@ static void compare(const XferRemoteCancelEvent &actual, const XferRemoteCancelE
     COMPARE(filename);
 }
 
+static void compare(const XferRequestEvent &actual, const XferRequestEvent &expected)
+{
+    COMPARE(type);
+    COMPARE(filename);
+}
+
 static void compare(const RoomlistInProgressEvent &actual, const RoomlistInProgressEvent &expected)
 {
     COMPARE(list);
@@ -338,6 +344,7 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(XferEnd)
         C(XferLocalCancel)
         C(XferRemoteCancel)
+        C(XferRequest)
         C(RoomlistInProgress)
         C(RoomlistAddRoom)
         default:
@@ -365,6 +372,9 @@ void PurpleEventReceiver::verifyEvent(const PurpleEvent &event)
             actionUserData  = actionEvent.user_data;
         } else if (m_events.front()->type == PurpleEventType::XferAccepted) {
             const XferAcceptedEvent &xferEvent = static_cast<const XferAcceptedEvent &>(*m_events.front());
+            lastXfer = xferEvent.xfer;
+        } else if (m_events.front()->type == PurpleEventType::XferRequest) {
+            const XferRequestEvent &xferEvent = static_cast<const XferRequestEvent &>(*m_events.front());
             lastXfer = xferEvent.xfer;
         }
 
@@ -480,6 +490,7 @@ std::string PurpleEvent::toString() const
     C(XferEnd)
     C(XferLocalCancel)
     C(XferRemoteCancel)
+    C(XferRequest)
     C(SetUserPhoto)
     C(RoomlistInProgress)
     C(RoomlistAddRoom)

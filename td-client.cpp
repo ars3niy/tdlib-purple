@@ -1115,7 +1115,8 @@ void PurpleTdClient::showDownloadedImage(int64_t chatId, TgMessageInfo &message,
 void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo &message,
                                      td::td_api::object_ptr<td::td_api::file> file,
                                      td::td_api::object_ptr<td::td_api::formattedText> caption,
-                                     const std::string &fileDescription)
+                                     const std::string &fileDescription,
+                                     const std::string &fileName)
 {
     const char *captionStr = caption ? caption->text_.c_str() : NULL;
     if (!file) {
@@ -1129,7 +1130,8 @@ void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo
         if (!strcmp(option, AccountOptions::DownloadBehaviourHyperlink))
             showFileInline(chat, message, *file, captionStr, fileDescription, nullptr,
                            &PurpleTdClient::showDownloadedFileInline);
-        else {}
+        else
+            requestStandardDownload(message, fileName, *file, m_transceiver, m_data);
     }
 }
 
@@ -1279,37 +1281,43 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
         case td::td_api::messageDocument::ID: {
             td::td_api::messageDocument &document = static_cast<td::td_api::messageDocument &>(*message.content_);
             showFileMessage(chat, messageInfo, document.document_ ? std::move(document.document_->document_) : nullptr,
-                            std::move(document.caption_), makeDocumentDescription(document.document_.get()));
+                            std::move(document.caption_), makeDocumentDescription(document.document_.get()),
+                            getFileName(document.document_.get()));
             break;
         }
         case td::td_api::messageVideo::ID: {
             td::td_api::messageVideo &video = static_cast<td::td_api::messageVideo &>(*message.content_);
             showFileMessage(chat, messageInfo, video.video_ ? std::move(video.video_->video_) : nullptr,
-                            std::move(video.caption_), makeDocumentDescription(video.video_.get()));
+                            std::move(video.caption_), makeDocumentDescription(video.video_.get()),
+                            getFileName(video.video_.get()));
             break;
         }
         case td::td_api::messageAnimation::ID: {
             td::td_api::messageAnimation &animation = static_cast<td::td_api::messageAnimation &>(*message.content_);
             showFileMessage(chat, messageInfo, animation.animation_ ? std::move(animation.animation_->animation_) : nullptr,
-                            std::move(animation.caption_), makeDocumentDescription(animation.animation_.get()));
+                            std::move(animation.caption_), makeDocumentDescription(animation.animation_.get()),
+                            getFileName(animation.animation_.get()));
             break;
         }
         case td::td_api::messageAudio::ID: {
             td::td_api::messageAudio &audio = static_cast<td::td_api::messageAudio &>(*message.content_);
             showFileMessage(chat, messageInfo, audio.audio_ ? std::move(audio.audio_->audio_) : nullptr,
-                            std::move(audio.caption_), makeDocumentDescription(audio.audio_.get()));
+                            std::move(audio.caption_), makeDocumentDescription(audio.audio_.get()),
+                            getFileName(audio.audio_.get()));
             break;
         }
         case td::td_api::messageVoiceNote::ID: {
             td::td_api::messageVoiceNote &audio = static_cast<td::td_api::messageVoiceNote &>(*message.content_);
             showFileMessage(chat, messageInfo, audio.voice_note_ ? std::move(audio.voice_note_->voice_) : nullptr,
-                            std::move(audio.caption_), makeDocumentDescription(audio.voice_note_.get()));
+                            std::move(audio.caption_), makeDocumentDescription(audio.voice_note_.get()),
+                            getFileName(audio.voice_note_.get()));
             break;
         }
         case td::td_api::messageVideoNote::ID: {
             td::td_api::messageVideoNote &video = static_cast<td::td_api::messageVideoNote &>(*message.content_);
             showFileMessage(chat, messageInfo, video.video_note_ ? std::move(video.video_note_->video_) : nullptr,
-                            nullptr, makeDocumentDescription(video.video_note_.get()));
+                            nullptr, makeDocumentDescription(video.video_note_.get()),
+                            getFileName(video.video_note_.get()));
             break;
         }
         case td::td_api::messageSticker::ID:

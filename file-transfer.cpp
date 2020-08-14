@@ -251,6 +251,23 @@ void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData& a
     }
 }
 
+static void startStandardDownload(PurpleXfer *xfer)
+{
+    purple_xfer_cancel_local(xfer);
+}
+
+void requestStandardDownload(const TgMessageInfo &message, const std::string &fileName,
+                             const td::td_api::file &file, TdTransceiver &transceiver, TdAccountData &account)
+{
+    PurpleXfer *xfer = purple_xfer_new (account.purpleAccount, PURPLE_XFER_RECEIVE, message.sender.c_str());
+    purple_xfer_set_init_fnc(xfer, startStandardDownload);
+    purple_xfer_set_cancel_recv_fnc(xfer, cancelDownload);
+    purple_xfer_set_filename(xfer, fileName.c_str());
+    purple_xfer_set_size(xfer, getFileSize(file));
+    xfer->data = NULL;
+    purple_xfer_request(xfer);
+}
+
 unsigned getFileSize(const td::td_api::file &file)
 {
     int32_t size = file.size_;
@@ -282,4 +299,17 @@ std::string makeDocumentDescription(const td::td_api::videoNote *document)
         // Unlikely error message not worth translating
         return "faulty voice note";
     return formatMessage(_("video note [{} s]"), document->duration_);
+}
+
+std::string getFileName(const td::td_api::voiceNote* document)
+{
+    td::Client::Response resp = td::Client::execute({0, td::td_api::make_object<td::td_api::getFileExtension>(document->mime_type_)});
+    if (resp.object && (resp.object->get_id() == td::td_api::text::ID))
+        return std::string(_("voiceNote")) + '.' + static_cast<const td::td_api::text &>(*resp.object).text_;
+    return _("voiceNote");
+}
+
+std::string getFileName(const td::td_api::videoNote *document)
+{
+    return std::string(_("videoNote")) + ".avi";
 }
