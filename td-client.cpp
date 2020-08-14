@@ -13,7 +13,6 @@ enum {
     // Typing notifications seems to be resent every 5-6 seconds, so 10s timeout hould be appropriate
     REMOTE_TYPING_NOTICE_TIMEOUT = 10,
     SUPERGROUP_MEMBER_LIMIT      = 200,
-    FILE_DOWNLOAD_PRIORITY       = 1,
 };
 
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)
@@ -969,7 +968,7 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, TgMessageInf
         showFileInline(chat, message, *file, caption, _("photo"), nullptr, &PurpleTdClient::showDownloadedImage);
 }
 
-struct DownloadInfo {
+struct InlineDownloadInfo {
     int32_t         fileId;
     int64_t         chatId;
     TgMessageInfo   message;
@@ -980,12 +979,12 @@ struct DownloadInfo {
 
 void PurpleTdClient::startDownload(void *user_data)
 {
-    std::unique_ptr<DownloadInfo> info(static_cast<DownloadInfo *>(user_data));
+    std::unique_ptr<InlineDownloadInfo> info(static_cast<InlineDownloadInfo *>(user_data));
     info->tdClient->downloadFile(info->fileId, info->chatId, info->message, info->fileDescription,
                                  nullptr, info->callback);
 }
 
-static void ignoreDownload(DownloadRequest *info)
+static void ignoreDownload(InlineDownloadInfo *info)
 {
     delete info;
 }
@@ -1003,7 +1002,7 @@ void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, TgMessageInfo 
     downloadReq->limit_       = 0;
     downloadReq->synchronous_ = true;
 
-    uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq), &PurpleTdClient::downloadResponse);
+    uint64_t requestId = m_transceiver.sendQuery(std::move(downloadReq), &PurpleTdClient::inlineDownloadResponse);
     std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, chatId,
                                                message, fileId, 0, fileDescription, thumbnail.release(),
                                                callback);
@@ -1024,7 +1023,7 @@ void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file 
                                          chatName, std::string(sizeStr)});
     g_free(sizeStr);
 
-    DownloadInfo *info = new DownloadInfo;
+    InlineDownloadInfo *info = new InlineDownloadInfo;
     info->fileId = file.id_;
     info->chatId = chat.id_;
     info->message = std::move(message);
@@ -1044,26 +1043,7 @@ void PurpleTdClient::startInlineDownloadProgress(uint64_t requestId, td::td_api:
         ::startInlineDownloadProgress(*request, m_transceiver, m_data);
 }
 
-static std::string getDownloadPath(const td::td_api::Object *object)
-{
-    if (!object)
-        purple_debug_misc(config::pluginId, "No response after downloading file\n");
-    else if (object->get_id() == td::td_api::file::ID) {
-        const td::td_api::file &file = static_cast<const td::td_api::file &>(*object);
-        if (!file.local_)
-            purple_debug_misc(config::pluginId, "No local file info after downloading\n");
-        else if (!file.local_->is_downloading_completed_)
-            purple_debug_misc(config::pluginId, "File not completely downloaded\n");
-        else
-            return file.local_->path_;
-    } else
-        purple_debug_misc(config::pluginId, "Unexpected response to downloading file: id %d\n",
-                          (int)object->get_id());
-
-    return "";
-}
-
-void PurpleTdClient::downloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+void PurpleTdClient::inlineDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     std::unique_ptr<DownloadRequest> request = m_data.getPendingRequest<DownloadRequest>(requestId);
     std::string                      path    = getDownloadPath(object.get());
@@ -1072,7 +1052,7 @@ void PurpleTdClient::downloadResponse(uint64_t requestId, td::td_api::object_ptr
 
         if (!path.empty())
             (this->*(request->callback))(request->chatId, request->message, path, NULL,
-                                        request->fileDescription, std::move(request->thumbnail));
+                                         request->fileDescription, std::move(request->thumbnail));
     }
 }
 
@@ -1089,7 +1069,7 @@ void PurpleTdClient::showDownloadedImage(int64_t chatId, TgMessageInfo &message,
     const td::td_api::chat *chat = m_data.getChat(chatId);
     if (chat) {
         std::string  text;
-        std::string notice;
+        std::string  notice;
         gchar       *data   = NULL;
         size_t       len    = 0;
 

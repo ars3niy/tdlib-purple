@@ -1049,6 +1049,12 @@ size_t purple_xfer_get_size(const PurpleXfer *xfer)
     return xfer->size;
 }
 
+gboolean
+purple_xfer_write_file(PurpleXfer *xfer, const guchar *buffer, gsize size)
+{
+    return TRUE;
+}
+
 void serv_got_chat_in(PurpleConnection *g, int id, const char *who,
 					  PurpleMessageFlags flags, const char *message, time_t mtime)
 {

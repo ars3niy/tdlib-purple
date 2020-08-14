@@ -137,7 +137,7 @@ static void cancelDownload(PurpleXfer *xfer)
 
     int32_t fileId;
     if (data->account->getFileIdForTransfer(xfer, fileId)) {
-        purple_debug_misc(config::pluginId, "Cancelling upload of %s (file id %d)\n",
+        purple_debug_misc(config::pluginId, "Cancelling download of %s (file id %d)\n",
                             purple_xfer_get_local_filename(xfer), fileId);
         auto cancelRequest = td::td_api::make_object<td::td_api::cancelDownloadFile>();
         cancelRequest->file_id_ = fileId;
@@ -202,11 +202,20 @@ static void updateDownloadProgress(const td::td_api::file &file, PurpleXfer *xfe
 
     if (xfer) {
         purple_xfer_set_size(xfer, fileSize);
+
         if ((downloadedSize != 0) && (downloadReq->downloadedSize == 0)) {
-            close(downloadReq->tempFd);
+            // For "inline" file downloads with fake-file-name PurpleXfer tracking progress,
+            // both if below should evaluate to true - close the fake file and start transfer
+            // (which reopens the fake file).
+            // For downloads using PurpleXfer in standard way, both if should evaluate to false:
+            // purple_xfer_start is called when downloadFile request is sent.
+            if (downloadReq->tempFd >= 0)
+                close(downloadReq->tempFd);
             downloadReq->tempFd = -1;
-            purple_xfer_start(xfer, -1, NULL, 0);
+            //!!!! if (purple_xfer_get_status(xfer) != PURPLE_XFER_STATUS_STARTED)
+                purple_xfer_start(xfer, -1, NULL, 0);
         }
+
         purple_xfer_set_bytes_sent(xfer, downloadedSize);
         purple_xfer_update_progress(xfer);
     }
@@ -251,9 +260,93 @@ void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData& a
     }
 }
 
+std::string getDownloadPath(const td::td_api::Object *downloadResponse)
+{
+    if (!downloadResponse)
+        purple_debug_misc(config::pluginId, "No response after downloading file\n");
+    else if (downloadResponse->get_id() == td::td_api::file::ID) {
+        const td::td_api::file &file = static_cast<const td::td_api::file &>(*downloadResponse);
+        if (!file.local_)
+            purple_debug_misc(config::pluginId, "No local file info after downloading\n");
+        else if (!file.local_->is_downloading_completed_)
+            purple_debug_misc(config::pluginId, "File not completely downloaded\n");
+        else
+            return file.local_->path_;
+    } else
+        purple_debug_misc(config::pluginId, "Unexpected response to downloading file: id %d\n",
+                          (int)downloadResponse->get_id());
+
+    return "";
+}
+
+static void standardDownloadResponse(TdAccountData *account, uint64_t requestId,
+                                     td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<DownloadRequest> request = account->getPendingRequest<DownloadRequest>(requestId);
+    std::string                      path    = getDownloadPath(object.get());
+    if (!request) return;
+
+    PurpleXfer *download;
+    int64_t     chatId;
+
+    if (account->getFileTransfer(request->fileId, download, chatId)) {
+        std::unique_ptr<DownloadData> data(static_cast<DownloadData *>(download->data));
+        gchar *content = NULL;
+        gsize fileSize = 0;
+        GError *error  = NULL;
+
+        if (!path.empty() && g_file_get_contents(path.c_str(), &content, &fileSize, &error)) {
+            purple_xfer_ref(download);
+            purple_xfer_set_bytes_sent(download, 0);
+            purple_xfer_set_size(download, fileSize);
+            purple_xfer_write_file(download, reinterpret_cast<guchar *>(content), fileSize);
+            // write_file can cancel the transfer - ref above prevents it from being freed
+            if (!purple_xfer_is_canceled(download)) {
+                purple_xfer_set_completed(download, TRUE);
+                purple_xfer_end(download);
+            }
+            purple_xfer_unref(download);
+            // !!!! account->removeFileTransfer(request->fileId);
+        } else {
+            if (error) {
+                purple_xfer_error(PURPLE_XFER_RECEIVE, account->purpleAccount, download->who, error->message);
+                g_error_free(error);
+            }
+            purple_xfer_cancel_remote(download);
+        }
+
+        g_free(content);
+    }
+}
+
 static void startStandardDownload(PurpleXfer *xfer)
 {
-    purple_xfer_cancel_local(xfer);
+    DownloadData *data = static_cast<DownloadData *>(xfer->data);
+    if (!data) return;
+
+    int32_t fileId;
+    if (data->account->getFileIdForTransfer(xfer, fileId)) {
+        td::td_api::object_ptr<td::td_api::downloadFile> downloadReq =
+            td::td_api::make_object<td::td_api::downloadFile>();
+        downloadReq->file_id_     = fileId;
+        downloadReq->priority_    = FILE_DOWNLOAD_PRIORITY;
+        downloadReq->offset_      = 0;
+        downloadReq->limit_       = 0;
+        downloadReq->synchronous_ = true;
+
+        uint64_t requestId = data->transceiver->sendQuery(std::move(downloadReq),
+                                                          [account=data->account](uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object) {
+                                                              standardDownloadResponse(account, requestId, std::move(object));
+                                                          });
+        TgMessageInfo message;
+        std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, 0,
+                                                        message, fileId, 0, "", nullptr,
+                                                        nullptr);
+        data->account->addPendingRequest<DownloadRequest>(requestId, std::move(request));
+        // Start immediately, because standardDownloadResponse will call purple_xfer_write_file, which
+        // will fail if purple_xfer_start hasn't been called
+        // !!!! purple_xfer_start(xfer, -1, NULL, 0);
+    }
 }
 
 void requestStandardDownload(const TgMessageInfo &message, const std::string &fileName,
@@ -264,7 +357,8 @@ void requestStandardDownload(const TgMessageInfo &message, const std::string &fi
     purple_xfer_set_cancel_recv_fnc(xfer, cancelDownload);
     purple_xfer_set_filename(xfer, fileName.c_str());
     purple_xfer_set_size(xfer, getFileSize(file));
-    xfer->data = NULL;
+    xfer->data = new DownloadData(account, transceiver);
+    account.addFileTransfer(file.id_, xfer, 0);
     purple_xfer_request(xfer);
 }
 

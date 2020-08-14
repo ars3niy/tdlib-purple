@@ -36,9 +36,9 @@ public:
     std::vector<td::Client::Response>   m_rxQueue;
 
     TdTransceiver::UpdateCb             m_updateCb;
-    uint64_t                                           m_lastQueryId;
-    std::map<std::uint64_t, TdTransceiver::ResponseCb> m_responseHandlers;
-    std::vector<TimerInfo>                             m_timers;
+    uint64_t                                            m_lastQueryId;
+    std::map<std::uint64_t, TdTransceiver::ResponseCb2> m_responseHandlers;
+    std::vector<TimerInfo>                              m_timers;
 };
 
 TdTransceiverImpl::TdTransceiverImpl(PurpleTdClient *owner, TdTransceiver::UpdateCb updateCb,
@@ -183,7 +183,7 @@ int TdTransceiverImpl::rxCallback(gpointer user_data)
         else if (response.id == 0)
             ((self->m_owner)->*(self->m_updateCb))(*response.object);
         else {
-            TdTransceiver::ResponseCb callback = nullptr;
+            TdTransceiver::ResponseCb2 callback = nullptr;
             auto it = self->m_responseHandlers.find(response.id);
             if (it != self->m_responseHandlers.end()) {
                 callback = it->second;
@@ -192,7 +192,7 @@ int TdTransceiverImpl::rxCallback(gpointer user_data)
                 purple_debug_misc(config::pluginId, "Ignoring response to request %" G_GUINT64_FORMAT "\n",
                                   response.id);
             if (callback)
-                ((self->m_owner)->*callback)(response.id, std::move(response.object));
+                callback(response.id, std::move(response.object));
         }
     }
 
@@ -208,7 +208,7 @@ int TdTransceiverImpl::rxCallback(gpointer user_data)
     return FALSE; // This idle handler will not be called again
 }
 
-uint64_t TdTransceiver::sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler)
+uint64_t TdTransceiver::sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb2 handler)
 {
     uint64_t queryId = ++m_impl->m_lastQueryId;
     purple_debug_misc(config::pluginId, "Sending query id %lu\n", (unsigned long)queryId);
@@ -219,6 +219,17 @@ uint64_t TdTransceiver::sendQuery(td::td_api::object_ptr<td::td_api::Function> f
     else
         m_impl->m_client->send({queryId, std::move(f)});
     return queryId;
+}
+
+uint64_t TdTransceiver::sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler)
+{
+    if (!handler)
+        return sendQuery(std::move(f), ResponseCb2());
+
+    return sendQuery(std::move(f),
+                     [tdClient=m_impl->m_owner, handler](uint64_t requestId, TdObjectPtr object) {
+                        (tdClient->*handler)(requestId, std::move(object));
+                     });
 }
 
 uint64_t TdTransceiver::sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::Function> f,

@@ -913,7 +913,7 @@ TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer)
     const int32_t date      = 10001;
     const int32_t fileId    = 1234;
 
-    setUiName("spectrum");
+    setUiName("spectrum"); // No longer pidgin - now downloads will use libpurple transfers
     loginWithOneContact();
 
     tgl.update(make_object<updateNewMessage>(makeMessage(
@@ -942,6 +942,7 @@ TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer)
     prpl.verifyEvents(
         XferRequestEvent(PURPLE_XFER_RECEIVE, "doc.file.name")
     );
+
     purple_xfer_request_accepted(prpl.getLastXfer(), ".test_download");
     prpl.verifyEvents(
         XferAcceptedEvent(".test_download"),

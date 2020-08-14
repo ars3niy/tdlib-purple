@@ -147,7 +147,7 @@ private:
                                TgMessageInfo &message, FileDownloadCb callback);
     static void startDownload(void *user_data);
     void       startInlineDownloadProgress(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object>);
-    void       downloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       inlineDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       showDownloadedImage(int64_t chatId, TgMessageInfo &message,
                                    const std::string &filePath, const char *caption,
                                    const std::string &fileDesc,

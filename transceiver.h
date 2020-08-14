@@ -8,6 +8,7 @@
 #include <map>
 #include <atomic>
 #include <purple.h>
+#include <functional>
 
 class PurpleTdClient;
 class TdTransceiverImpl;
@@ -33,13 +34,15 @@ class TdTransceiver {
 private:
     using TdObjectPtr = td::td_api::object_ptr<td::td_api::Object>;
 public:
-    using ResponseCb = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
-    using UpdateCb   = void (PurpleTdClient::*)(td::td_api::Object &object);
+    using ResponseCb  = void (PurpleTdClient::*)(uint64_t requestId, TdObjectPtr object);
+    using ResponseCb2 = std::function<void(uint64_t, TdObjectPtr)>;
+    using UpdateCb    = void (PurpleTdClient::*)(td::td_api::Object &object);
 
     TdTransceiver(PurpleTdClient *owner, PurpleAccount *account, UpdateCb updateCb,
                   ITransceiverBackend *testBackend);
     ~TdTransceiver();
     uint64_t sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb handler);
+    uint64_t sendQuery(td::td_api::object_ptr<td::td_api::Function> f, ResponseCb2 handler);
 
     uint64_t sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::Function> f,
                                   ResponseCb handler, unsigned timeoutSeconds);

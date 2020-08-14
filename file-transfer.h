@@ -4,6 +4,10 @@
 #include "account-data.h"
 #include "transceiver.h"
 
+enum {
+    FILE_DOWNLOAD_PRIORITY       = 1,
+};
+
 bool saveImage(int id, char **fileName);
 void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer *xfer,
                          TdTransceiver &transceiver, TdAccountData &account,
@@ -19,6 +23,7 @@ void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData &a
 
 void requestStandardDownload(const TgMessageInfo &message, const std::string &fileName,
                              const td::td_api::file &file, TdTransceiver &transceiver, TdAccountData &account);
+std::string getDownloadPath(const td::td_api::Object *downloadResponse);
 
 unsigned getFileSize(const td::td_api::file &file);
 unsigned getFileSizeKb(const td::td_api::file &file);
