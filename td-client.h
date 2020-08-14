@@ -134,7 +134,7 @@ private:
     void       setGroupDescriptionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       chatActionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
-    void       showFile(const td::td_api::chat &chat, TgMessageInfo &message,
+    void       showFileInline(const td::td_api::chat &chat, TgMessageInfo &message,
                         const td::td_api::file &file, const char *caption, const std::string &fileDesc,
                         td::td_api::object_ptr<td::td_api::file> thumbnail,
                         FileDownloadCb downloadCallback);
@@ -146,13 +146,13 @@ private:
                                const std::string &fileDesc, const td::td_api::chat &chat,
                                TgMessageInfo &message, FileDownloadCb callback);
     static void startDownload(void *user_data);
-    void       startDownloadProgress(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object>);
+    void       startInlineDownloadProgress(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object>);
     void       downloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       showDownloadedImage(int64_t chatId, TgMessageInfo &message,
                                    const std::string &filePath, const char *caption,
                                    const std::string &fileDesc,
                                    td::td_api::object_ptr<td::td_api::file> thumbnail);
-    void       showDownloadedFile(int64_t chatId, TgMessageInfo &message,
+    void       showDownloadedFileInline(int64_t chatId, TgMessageInfo &message,
                                         const std::string &filePath, const char *caption,
                                         const std::string &fileDescription,
                                         td::td_api::object_ptr<td::td_api::file> thumbnail);

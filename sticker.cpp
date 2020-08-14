@@ -165,7 +165,7 @@ void showWebpSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
         std::string text = "\n<img id=\"" + std::to_string(id) + "\">";
         showMessageText(account, chat, message, text.c_str(), NULL);
     } else
-        showGenericFile(chat, message, filePath, fileDescription, account);
+        showGenericFileInline(chat, message, filePath, fileDescription, account);
 }
 
 #ifndef NoLottie

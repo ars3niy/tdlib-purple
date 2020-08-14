@@ -12,10 +12,10 @@ void uploadResponseError(PurpleXfer *xfer, const std::string &message, TdAccount
 void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_api::file &file,
                                  TdTransceiver &transceiver, TdAccountData &account,
                                  TdTransceiver::ResponseCb sendMessageResponse);
-void startDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver, TdAccountData &account);
+void startInlineDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver, TdAccountData &account);
 void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &transceiver,
                                 TdAccountData &account, TdTransceiver::ResponseCb sendMessageResponse);
-void finishDownloadProgress(DownloadRequest &downloadReq, TdAccountData &account);
+void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData &account);
 
 unsigned getFileSize(const td::td_api::file &file);
 unsigned getFileSizeKb(const td::td_api::file &file);

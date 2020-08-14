@@ -1431,16 +1431,23 @@ PurpleMediaCaps purple_media_manager_get_ui_caps(PurpleMediaManager *manager)
     return PURPLE_MEDIA_CAPS_NONE;
 }
 
+GHashTable *uiInfo = NULL;
+
 GHashTable *purple_core_get_ui_info()
 {
-    static GHashTable *info = NULL;
-    if (!info) {
-        info = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
-        static char nameKey[] = "name";
-        static char name[] = "test";
-        g_hash_table_insert(info, nameKey, name);
-    }
-    return info;
+    if (!uiInfo)
+        uiInfo = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+
+    return uiInfo;
+}
+
+void setUiName(const char *name)
+{
+    if (!uiInfo)
+        uiInfo = g_hash_table_new_full(g_str_hash, g_str_equal, NULL, NULL);
+
+    static char nameKey[] = "name";
+    g_hash_table_insert(uiInfo, nameKey, const_cast<char *>(name));
 }
 
 };

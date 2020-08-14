@@ -147,7 +147,7 @@ static void cancelDownload(PurpleXfer *xfer)
     }
 }
 
-void startDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver, TdAccountData &account)
+void startInlineDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver, TdAccountData &account)
 {
     purple_debug_misc(config::pluginId, "Tracking download progress of file id %d: downloaded %d/%d\n",
         (int)request.fileId, (int)request.downloadedSize, (int)request.fileSize);
@@ -228,7 +228,7 @@ void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &tra
     updateDownloadProgress(file, xfer, account);
 }
 
-void finishDownloadProgress(DownloadRequest &downloadReq, TdAccountData& account)
+void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData& account)
 {
     PurpleXfer *download;
     int64_t     chatId;

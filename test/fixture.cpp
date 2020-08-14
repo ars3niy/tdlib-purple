@@ -18,6 +18,7 @@ void CommTest::SetUp()
     connection->account = account;
     account->gc = connection;
     prpl.discardEvents();
+    setUiName("Pidgin");
 }
 
 void CommTest::TearDown()

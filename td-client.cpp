@@ -896,11 +896,11 @@ static const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td:
     return selectedSize ? selectedSize->photo_.get() : nullptr;
 }
 
-void PurpleTdClient::showFile(const td::td_api::chat &chat, TgMessageInfo &message,
-                              const td::td_api::file &file, const char *caption,
-                              const std::string &fileDesc,
-                              td::td_api::object_ptr<td::td_api::file> thumbnail,
-                              FileDownloadCb downloadCallback)
+void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo &message,
+                                    const td::td_api::file &file, const char *caption,
+                                    const std::string &fileDesc,
+                                    td::td_api::object_ptr<td::td_api::file> thumbnail,
+                                    FileDownloadCb downloadCallback)
 {
     std::string notice;
     bool        askDownload  = false;
@@ -966,7 +966,7 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, TgMessageInf
         std::string notice = makeNoticeWithSender(chat, message, errorMessage, m_account);
         showMessageText(m_data, chat, message, caption, notice.c_str());
     } else
-        showFile(chat, message, *file, caption, _("photo"), nullptr, &PurpleTdClient::showDownloadedImage);
+        showFileInline(chat, message, *file, caption, _("photo"), nullptr, &PurpleTdClient::showDownloadedImage);
 }
 
 struct DownloadInfo {
@@ -1008,7 +1008,7 @@ void PurpleTdClient::downloadFile(int32_t fileId, int64_t chatId, TgMessageInfo 
                                                message, fileId, 0, fileDescription, thumbnail.release(),
                                                callback);
     m_data.addPendingRequest<DownloadRequest>(requestId, std::move(request));
-    m_transceiver.setQueryTimer(requestId, &PurpleTdClient::startDownloadProgress, 1, false);
+    m_transceiver.setQueryTimer(requestId, &PurpleTdClient::startInlineDownloadProgress, 1, false);
 }
 
 void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file &file,
@@ -1037,11 +1037,11 @@ void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file 
                           info, 2, _("_Yes"), startDownload, _("_No"), ignoreDownload);
 }
 
-void PurpleTdClient::startDownloadProgress(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object>)
+void PurpleTdClient::startInlineDownloadProgress(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object>)
 {
     DownloadRequest *request = m_data.findPendingRequest<DownloadRequest>(requestId);
     if (request)
-        ::startDownloadProgress(*request, m_transceiver, m_data);
+        ::startInlineDownloadProgress(*request, m_transceiver, m_data);
 }
 
 static std::string getDownloadPath(const td::td_api::Object *object)
@@ -1068,7 +1068,7 @@ void PurpleTdClient::downloadResponse(uint64_t requestId, td::td_api::object_ptr
     std::unique_ptr<DownloadRequest> request = m_data.getPendingRequest<DownloadRequest>(requestId);
     std::string                      path    = getDownloadPath(object.get());
     if (request) {
-        finishDownloadProgress(*request, m_data);
+        finishInlineDownloadProgress(*request, m_data);
 
         if (!path.empty())
             (this->*(request->callback))(request->chatId, request->message, path, NULL,
@@ -1123,9 +1123,14 @@ void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo
         std::string notice = formatMessage("Faulty file: {}", fileDescription);
         notice = makeNoticeWithSender(chat, message, notice.c_str(), m_account);
         showMessageText(m_data, chat, message, captionStr, notice.c_str());
-    } else
-        showFile(chat, message, *file, captionStr, fileDescription, nullptr,
-                 &PurpleTdClient::showDownloadedFile);
+    } else {
+        const char *option = purple_account_get_string(m_account, AccountOptions::DownloadBehaviour,
+                                                       AccountOptions::DownloadBehaviourDefault());
+        if (!strcmp(option, AccountOptions::DownloadBehaviourHyperlink))
+            showFileInline(chat, message, *file, captionStr, fileDescription, nullptr,
+                           &PurpleTdClient::showDownloadedFileInline);
+        else {}
+    }
 }
 
 void PurpleTdClient::showStickerMessage(const td::td_api::chat &chat, TgMessageInfo &message,
@@ -1137,7 +1142,7 @@ void PurpleTdClient::showStickerMessage(const td::td_api::chat &chat, TgMessageI
     if (sticker.sticker_) {
         auto thumbnail = sticker.thumbnail_ ? std::move(sticker.thumbnail_->photo_) : nullptr;
 
-        showFile(chat, message, *sticker.sticker_, NULL, _("sticker"), std::move(thumbnail),
+        showFileInline(chat, message, *sticker.sticker_, NULL, _("sticker"), std::move(thumbnail),
                  &PurpleTdClient::showDownloadedSticker);
     }
 }
@@ -1182,7 +1187,7 @@ void PurpleTdClient::showDownloadedSticker(int64_t chatId, TgMessageInfo &messag
         } else {
             const td::td_api::chat *chat = m_data.getChat(chatId);
             if (chat)
-                showGenericFile(*chat, message, filePath, fileDescription, m_data);
+                showGenericFileInline(*chat, message, filePath, fileDescription, m_data);
         }
     } else {
         const td::td_api::chat *chat = m_data.getChat(chatId);
@@ -1229,14 +1234,14 @@ void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
     }
 }
 
-void PurpleTdClient::showDownloadedFile(int64_t chatId, TgMessageInfo &message,
+void PurpleTdClient::showDownloadedFileInline(int64_t chatId, TgMessageInfo &message,
                                         const std::string &filePath, const char *caption,
                                         const std::string &fileDescription,
                                         td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
     if (chat)
-        showGenericFile(*chat, message, filePath, fileDescription, m_data);
+        showGenericFileInline(*chat, message, filePath, fileDescription, m_data);
 }
 
 void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::message &message,

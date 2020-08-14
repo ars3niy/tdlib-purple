@@ -930,9 +930,9 @@ std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageIn
     return prefix + noticeText;
 }
 
-void showGenericFile(const td::td_api::chat &chat, const TgMessageInfo &message,
-                     const std::string &filePath, const std::string &fileDescription,
-                     TdAccountData &account)
+void showGenericFileInline(const td::td_api::chat &chat, const TgMessageInfo &message,
+                           const std::string &filePath, const std::string &fileDescription,
+                           TdAccountData &account)
 {
     if (filePath.find('"') != std::string::npos) {
         std::string notice = makeNoticeWithSender(chat, message, "Cannot show file: path contains quotes",
