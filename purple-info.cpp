@@ -141,3 +141,18 @@ PurpleTdClient *getTdClient(PurpleAccount *account)
     else
         return NULL;
 }
+
+const char *getUiName()
+{
+    GHashTable *ui_info = purple_core_get_ui_info();
+    const char *name = static_cast<char *>(g_hash_table_lookup(ui_info, "name"));
+    return name ? name : "";
+}
+
+const char *AccountOptions::DownloadBehaviourDefault()
+{
+    if (!strcasecmp(getUiName(), "pidgin"))
+        return AccountOptions::DownloadBehaviourHyperlink;
+    else
+        return AccountOptions::DownloadBehaviourStandard;
+}

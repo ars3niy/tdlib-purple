@@ -37,6 +37,10 @@ namespace AccountOptions {
     constexpr const char *AcceptSecretChatsDefault   = AcceptSecretChatsAsk;
     constexpr const char *AnimatedStickers           = "animated-stickers";
     constexpr gboolean    AnimatedStickersDefault    = TRUE;
+    constexpr const char *DownloadBehaviour          = "download-behaviour";
+    constexpr const char *DownloadBehaviourHyperlink = "hyperlink";
+    constexpr const char *DownloadBehaviourStandard  = "file-transfer";
+    const char           *DownloadBehaviourDefault();
 };
 
 namespace BuddyOptions {
@@ -47,5 +51,6 @@ unsigned getAutoDownloadLimitKb(PurpleAccount *account);
 bool     isSizeWithinLimit(unsigned size, unsigned limit);
 bool     ignoreBigDownloads(PurpleAccount *account);
 PurpleTdClient *getTdClient(PurpleAccount *account);
+const char *getUiName();
 
 #endif

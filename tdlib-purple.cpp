@@ -830,18 +830,31 @@ static void tgprpl_init (PurplePlugin *plugin)
     rlottie::configureModelCacheSize(0);
 #endif
 
+    GList *choices = NULL;
+    if (!strcmp(AccountOptions::DownloadBehaviourDefault(), AccountOptions::DownloadBehaviourHyperlink)) {
+        addChoice(choices, _("Inline (hyperlinks in chat)"), AccountOptions::DownloadBehaviourHyperlink);
+        addChoice(choices, _("Standard file transfers"), AccountOptions::DownloadBehaviourStandard);
+    } else {
+        addChoice(choices, _("Standard file transfers"), AccountOptions::DownloadBehaviourStandard);
+        addChoice(choices, _("Inline (hyperlinks is chat)"), AccountOptions::DownloadBehaviourHyperlink);
+    }
+    
+    PurpleAccountOption *opt = purple_account_option_list_new (_("File downloads"),
+                                                               AccountOptions::DownloadBehaviour, choices);
+    prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
+
+    opt = purple_account_option_string_new (_("Inline auto-download size limit, MB (0 for unlimited)"),
+                                            AccountOptions::AutoDownloadLimit,
+                                            AccountOptions::AutoDownloadLimitDefault);
+    prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
+
     static_assert(AccountOptions::BigDownloadHandlingDefault == AccountOptions::BigDownloadHandlingAsk,
                   "default choice must be first");
-    GList *choices = NULL;
+    choices = NULL;
     addChoice(choices, _("Ask"), AccountOptions::BigDownloadHandlingAsk);
     addChoice(choices, _("Discard"), AccountOptions::BigDownloadHandlingDiscard);
 
-    PurpleAccountOption  *opt = purple_account_option_string_new (_("Auto-download size limit, MB (0 for unlimited)"),
-                                                                  AccountOptions::AutoDownloadLimit,
-                                                                  AccountOptions::AutoDownloadLimitDefault);
-    prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
-
-    opt = purple_account_option_list_new (_("Bigger file transfers"), AccountOptions::BigDownloadHandling, choices);
+    opt = purple_account_option_list_new (_("Bigger inline file downloads"), AccountOptions::BigDownloadHandling, choices);
     prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
 
     static_assert(AccountOptions::AcceptSecretChatsDefault == AccountOptions::AcceptSecretChatsAsk,

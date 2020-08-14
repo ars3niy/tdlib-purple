@@ -3,6 +3,7 @@
 #include "config.h"
 #include "buildopt.h"
 #include "format.h"
+#include "purple-info.h"
 
 static td::td_api::object_ptr<td::td_api::callProtocol> getCallProtocol()
 {
@@ -176,12 +177,8 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
     PurpleMediaManager *mediaManager = purple_media_manager_get();
     PurpleMediaCaps capabilities = purple_media_manager_get_ui_caps(mediaManager);
 
-    GHashTable *ui_info = purple_core_get_ui_info();
-    const char *name = static_cast<char *>(g_hash_table_lookup(ui_info, "name"));
-    bool isPidgin = name && !strcmp(name, "Pidgin");
-
     if (!(capabilities & PURPLE_MEDIA_CAPS_AUDIO) && !(capabilities & PURPLE_MEDIA_CAPS_AUDIO_SINGLE_DIRECTION) &&
-        !isPidgin) {
+        (strcasecmp(getUiName(), "pidgin") != 0)) {
 #else
     if (true) {
 #endif
