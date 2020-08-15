@@ -1098,6 +1098,11 @@ void AccountThread::setSingleThread()
     g_singleThread = true;
 }
 
+bool AccountThread::isSingleThread()
+{
+    return g_singleThread;
+}
+
 void AccountThread::startThread()
 {
     if (!g_singleThread) {

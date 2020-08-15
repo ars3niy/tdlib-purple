@@ -281,6 +281,56 @@ std::string getDownloadPath(const td::td_api::Object *downloadResponse)
     return "";
 }
 
+struct DownloadWrapup {
+    PurpleXfer *download;
+    FILE       *tdlibFile;
+    std::string tdlibPath;
+};
+
+static gboolean wrapupDownload(void *data)
+{
+    DownloadWrapup *wrapupData = static_cast<DownloadWrapup *>(data);
+    unsigned chunkSize = AccountThread::isSingleThread() ? 10 : 1048576;
+
+    bool last = false;
+    if (!purple_xfer_is_canceled(wrapupData->download)) {
+        if (purple_xfer_get_bytes_sent(wrapupData->download) + chunkSize >= purple_xfer_get_size(wrapupData->download)) {
+            last = true;
+            chunkSize = purple_xfer_get_size(wrapupData->download) - purple_xfer_get_bytes_sent(wrapupData->download);
+        }
+
+        uint8_t *buf = new uint8_t[chunkSize];
+        unsigned bytesRead = fread(buf, 1, chunkSize, wrapupData->tdlibFile);
+        if (bytesRead < chunkSize) {
+            fprintf(stderr, "%u < %u\n", bytesRead, chunkSize);
+            std::string message = formatMessage("Failed to transfer {}: error reading {}",
+                                                {purple_xfer_get_local_filename(wrapupData->download),
+                                                wrapupData->tdlibPath});
+            purple_debug_warning(config::pluginId, "%s\n", message.c_str());
+            purple_xfer_error(PURPLE_XFER_RECEIVE, purple_xfer_get_account(wrapupData->download),
+                              wrapupData->download->who, message.c_str());
+            last = true;
+        }
+
+        purple_xfer_write_file(wrapupData->download, buf, bytesRead);
+        delete[] buf;
+
+        if (last) {
+            purple_xfer_set_completed(wrapupData->download, TRUE);
+            purple_xfer_end(wrapupData->download);
+        }
+    } else
+        last = true;
+
+    if (last) {
+        purple_xfer_unref(wrapupData->download);
+        fclose(wrapupData->tdlibFile);
+        delete wrapupData;
+        return G_SOURCE_REMOVE;
+    } else
+        return G_SOURCE_CONTINUE;
+}
+
 static void standardDownloadResponse(TdAccountData *account, uint64_t requestId,
                                      td::td_api::object_ptr<td::td_api::Object> object)
 {
@@ -294,38 +344,43 @@ static void standardDownloadResponse(TdAccountData *account, uint64_t requestId,
     if (account->getFileTransfer(request->fileId, download, chatId)) {
         std::unique_ptr<DownloadData> data(static_cast<DownloadData *>(download->data));
         download->data = NULL;
+        account->removeFileTransfer(request->fileId);
 
-        gchar *content = NULL;
-        gsize fileSize = 0;
-        GError *error  = NULL;
+        FILE *f = NULL;
+        if (!path.empty())
+            f = fopen(path.c_str(), "r");
 
-        if (!path.empty() && g_file_get_contents(path.c_str(), &content, &fileSize, &error)) {
-            purple_xfer_ref(download);
+        if (f) {
             purple_xfer_set_bytes_sent(download, 0);
-            purple_xfer_set_size(download, fileSize);
-            purple_xfer_write_file(download, reinterpret_cast<guchar *>(content), fileSize);
-            // write_file can cancel the transfer - ref above prevents it from being freed
-            if (!purple_xfer_is_canceled(download)) {
-                purple_xfer_set_completed(download, TRUE);
-                purple_xfer_end(download);
+            long fileSize;
+            if (fseek(f, 0, SEEK_END) == 0) {
+                fileSize = ftell(f);
+                if (fileSize >= 0)
+                    purple_xfer_set_size(download, fileSize);
+                fseek(f, 0, SEEK_SET);
             }
-            purple_xfer_unref(download);
-            account->removeFileTransfer(request->fileId);
+
+            DownloadWrapup *idleData = new DownloadWrapup;
+            idleData->download = download;
+            idleData->tdlibFile = f;
+            idleData->tdlibPath = path;
+            purple_xfer_ref(download);
+            if (AccountThread::isSingleThread()) {
+                while (wrapupDownload(idleData) == G_SOURCE_CONTINUE) ;
+            } else
+                g_idle_add(wrapupDownload, idleData);
         } else {
-            if (error) {
+            if (!path.empty()) {
                 // Unlikely error message not worth translating
-                std::string message = formatMessage("Failed to read {}: {}", {path, std::string(error->message)});
+                std::string message = formatMessage("Failed to open {}: {}", {path, std::string(strerror(errno))});
                 purple_debug_misc(config::pluginId, "%s\n", message.c_str());
                 purple_xfer_error(PURPLE_XFER_RECEIVE, account->purpleAccount, download->who, message.c_str());
-                g_error_free(error);
             }
             if (path.empty())
                 purple_debug_warning(config::pluginId, "Incomplete file in download response for %s\n",
                                      purple_xfer_get_local_filename(download));
             purple_xfer_cancel_remote(download);
         }
-
-        g_free(content);
     }
 }
 

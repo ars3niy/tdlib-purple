@@ -985,7 +985,7 @@ TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer_Progress)
     const int64_t messageId = 1;
     const int32_t date      = 10001;
     const int32_t fileId    = 1234;
-    uint8_t       data[]    = {1, 2, 3, 4, 5};
+    uint8_t       data[]    = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12};
     const char *outputFileName = ".test_download";
 
     setUiName("spectrum"); // No longer pidgin - now downloads will use libpurple transfers
@@ -1051,7 +1051,8 @@ TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer_Progress)
     ));
 
     prpl.verifyEvents(
-        XferWriteFileEvent(outputFileName, data, sizeof(data)),
+        XferWriteFileEvent(outputFileName, data, 10),
+        XferWriteFileEvent(outputFileName, data+10, sizeof(data)-10),
         XferCompletedEvent(outputFileName, TRUE, sizeof(data)),
         XferEndEvent(outputFileName)
     );

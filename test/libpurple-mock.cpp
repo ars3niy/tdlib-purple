@@ -965,6 +965,11 @@ void purple_xfer_set_filename(PurpleXfer *xfer, const char *filename)
     xfer->filename = strdup(filename);
 }
 
+PurpleAccount *purple_xfer_get_account(const PurpleXfer *xfer)
+{
+    return xfer->account;
+}
+
 void purple_xfer_set_size(PurpleXfer *xfer, size_t size)
 {
     xfer->size = size;
@@ -1019,6 +1024,11 @@ PurpleXferType purple_xfer_get_type(const PurpleXfer *xfer)
 void purple_xfer_set_bytes_sent(PurpleXfer *xfer, size_t bytes_sent)
 {
     xfer->bytes_sent = bytes_sent;
+}
+
+size_t purple_xfer_get_bytes_sent(const PurpleXfer *xfer)
+{
+    return xfer->bytes_sent;
 }
 
 void purple_xfer_set_completed(PurpleXfer *xfer, gboolean completed)

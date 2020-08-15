@@ -69,6 +69,7 @@ class AccountThread {
 public:
     using Callback = void (PurpleTdClient::*)(AccountThread *thread);
     static void setSingleThread();
+    static bool isSingleThread();
 
     AccountThread(PurpleAccount *purpleAccount, Callback callback);
     virtual ~AccountThread() {}
