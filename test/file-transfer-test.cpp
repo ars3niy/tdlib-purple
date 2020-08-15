@@ -907,11 +907,13 @@ TEST_F(FileTransferTest, SendFileToNonContact_TurboCancel)
     ));
 }
 
-TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer)
+TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer_TinyFile)
 {
     const int64_t messageId = 1;
     const int32_t date      = 10001;
     const int32_t fileId    = 1234;
+    uint8_t       data[]    = {1, 2, 3, 4, 5};
+    const char *outputFileName = ".test_download";
 
     setUiName("spectrum"); // No longer pidgin - now downloads will use libpurple transfers
     loginWithOneContact();
@@ -943,9 +945,117 @@ TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer)
         XferRequestEvent(PURPLE_XFER_RECEIVE, "doc.file.name")
     );
 
-    purple_xfer_request_accepted(prpl.getLastXfer(), ".test_download");
+    purple_xfer_request_accepted(prpl.getLastXfer(), outputFileName);
     prpl.verifyEvents(
-        XferAcceptedEvent(".test_download"),
-        XferLocalCancelEvent(".test_download")
+        XferAcceptedEvent(outputFileName),
+        XferStartEvent(outputFileName)
     );
+
+    tgl.verifyRequest(downloadFile(fileId, 1, 0, 0, true));
+
+    char *tdlibFileName = NULL;
+    int fd = g_file_open_tmp("tdlib_test_XXXXXX", &tdlibFileName, NULL);
+    ASSERT_TRUE(fd >= 0);
+    ASSERT_EQ((ssize_t)sizeof(data), write(fd, data, sizeof(data)));
+    ::close(fd);
+
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(tdlibFileName, true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    tgl.update(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(tdlibFileName, true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+
+    prpl.verifyEvents(
+        XferWriteFileEvent(outputFileName, data, sizeof(data)),
+        XferCompletedEvent(outputFileName, TRUE, sizeof(data)),
+        XferEndEvent(outputFileName)
+    );
+
+    remove(tdlibFileName);
+    g_free(tdlibFileName);
+}
+
+TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer_Progress)
+{
+    const int64_t messageId = 1;
+    const int32_t date      = 10001;
+    const int32_t fileId    = 1234;
+    uint8_t       data[]    = {1, 2, 3, 4, 5};
+    const char *outputFileName = ".test_download";
+
+    setUiName("spectrum"); // No longer pidgin - now downloads will use libpurple transfers
+    loginWithOneContact();
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messageDocument>(
+            make_object<document>(
+                "doc.file.name", "mime/type", nullptr, nullptr,
+                make_object<file>(
+                    fileId, 10000, 10000,
+                    make_object<localFile>("", true, true, false, false, 0, 0, 0),
+                    make_object<remoteFile>("beh", "bleh", false, true, 10000)
+                )
+            ),
+            make_object<formattedText>("document", std::vector<object_ptr<textEntity>>())
+        )
+    )));
+    tgl.verifyRequest(viewMessages(
+        chatIds[0],
+        std::vector<int64_t>(1, messageId),
+        true
+    ));
+    prpl.verifyEvents(
+        XferRequestEvent(PURPLE_XFER_RECEIVE, "doc.file.name")
+    );
+
+    purple_xfer_request_accepted(prpl.getLastXfer(), outputFileName);
+    prpl.verifyEvents(
+        XferAcceptedEvent(outputFileName),
+        XferStartEvent(outputFileName)
+    );
+
+    tgl.verifyRequest(downloadFile(fileId, 1, 0, 0, true));
+
+    char *tdlibFileName = NULL;
+    int fd = g_file_open_tmp("tdlib_test_XXXXXX", &tdlibFileName, NULL);
+    ASSERT_TRUE(fd >= 0);
+    ASSERT_EQ((ssize_t)sizeof(data), write(fd, data, sizeof(data)));
+    ::close(fd);
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(tdlibFileName, true, true, true, false, 0, 0, 2000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+    prpl.verifyEvents(XferProgressEvent(outputFileName, 2000));
+
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(tdlibFileName, true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    tgl.update(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(tdlibFileName, true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+
+    prpl.verifyEvents(
+        XferWriteFileEvent(outputFileName, data, sizeof(data)),
+        XferCompletedEvent(outputFileName, TRUE, sizeof(data)),
+        XferEndEvent(outputFileName)
+    );
+
+    remove(tdlibFileName);
+    g_free(tdlibFileName);
 }

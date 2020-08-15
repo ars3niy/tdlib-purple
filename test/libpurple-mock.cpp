@@ -1052,6 +1052,14 @@ size_t purple_xfer_get_size(const PurpleXfer *xfer)
 gboolean
 purple_xfer_write_file(PurpleXfer *xfer, const guchar *buffer, gsize size)
 {
+    if (xfer->status != PURPLE_XFER_STATUS_STARTED) {
+        purple_debug_misc("purple_xfer_write_file", "write_file requires a transfer in progress\n");
+        purple_xfer_cancel_local(xfer);
+        return FALSE;
+    }
+    EXPECT_LE(xfer->bytes_sent + size, xfer->size);
+    xfer->bytes_sent += size;
+    EVENT(XferWriteFileEvent, xfer->local_filename, buffer, size);
     return TRUE;
 }
 

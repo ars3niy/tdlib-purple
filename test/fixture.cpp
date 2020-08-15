@@ -184,7 +184,7 @@ void checkFile(const char *filename, void *content, unsigned size)
     gchar *actualContent;
     gsize  actualSize;
     ASSERT_TRUE(g_file_get_contents(filename, &actualContent, &actualSize, NULL)) << filename << " does not exist";
-    ASSERT_EQ(actualSize, size);
-    ASSERT_EQ(0, memcmp(content, actualContent, size));
+    ASSERT_EQ(actualSize, size) << "Wrong file size for " << filename;
+    ASSERT_EQ(0, memcmp(content, actualContent, size)) << "Wrong content for " << filename;
     g_free(actualContent);
 }

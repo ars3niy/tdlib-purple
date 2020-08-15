@@ -276,6 +276,12 @@ static void compare(const XferRequestEvent &actual, const XferRequestEvent &expe
     COMPARE(filename);
 }
 
+static void compare(const XferWriteFileEvent &actual, const XferWriteFileEvent &expected)
+{
+    COMPARE(filename);
+    COMPARE(data);
+}
+
 static void compare(const RoomlistInProgressEvent &actual, const RoomlistInProgressEvent &expected)
 {
     COMPARE(list);
@@ -345,6 +351,7 @@ static void compareEvents(const PurpleEvent &actual, const PurpleEvent &expected
         C(XferLocalCancel)
         C(XferRemoteCancel)
         C(XferRequest)
+        C(XferWriteFile)
         C(RoomlistInProgress)
         C(RoomlistAddRoom)
         default:
@@ -491,6 +498,7 @@ std::string PurpleEvent::toString() const
     C(XferLocalCancel)
     C(XferRemoteCancel)
     C(XferRequest)
+    C(XferWriteFile)
     C(SetUserPhoto)
     C(RoomlistInProgress)
     C(RoomlistAddRoom)

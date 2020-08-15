@@ -97,6 +97,7 @@ enum class PurpleEventType: uint8_t {
     XferLocalCancel,
     XferRemoteCancel,
     XferRequest,
+    XferWriteFile,
     SetUserPhoto,
     RoomlistInProgress,
     RoomlistAddRoom
@@ -505,6 +506,18 @@ struct XferRequestEvent: PurpleEvent {
     XferRequestEvent(PurpleXferType type, const char *filename, PurpleXfer *xfer = NULL)
     : PurpleEvent(PurpleEventType::XferRequest), xfer(xfer), type(type),
       filename(filename ? filename : "") {}
+};
+
+struct XferWriteFileEvent: PurpleEvent {
+    std::string          filename;
+    std::vector<uint8_t> data;
+
+    XferWriteFileEvent(const char *filename, const uint8_t *content, unsigned size)
+    : PurpleEvent(PurpleEventType::XferWriteFile), filename(filename)
+    {
+        data.resize(size);
+        memmove(data.data(), content, size);
+    }
 };
 
 struct SetUserPhotoEvent: PurpleEvent {

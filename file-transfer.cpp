@@ -133,6 +133,7 @@ static void nop(PurpleXfer *xfer)
 static void cancelDownload(PurpleXfer *xfer)
 {
     std::unique_ptr<DownloadData> data(static_cast<DownloadData *>(xfer->data));
+    xfer->data = NULL;
     if (!data) return;
 
     int32_t fileId;
@@ -212,7 +213,7 @@ static void updateDownloadProgress(const td::td_api::file &file, PurpleXfer *xfe
             if (downloadReq->tempFd >= 0)
                 close(downloadReq->tempFd);
             downloadReq->tempFd = -1;
-            //!!!! if (purple_xfer_get_status(xfer) != PURPLE_XFER_STATUS_STARTED)
+            if (purple_xfer_get_status(xfer) != PURPLE_XFER_STATUS_STARTED)
                 purple_xfer_start(xfer, -1, NULL, 0);
         }
 
@@ -244,6 +245,7 @@ void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData& a
 
     if (account.getFileTransfer(downloadReq.fileId, download, chatId)) {
         std::unique_ptr<DownloadData> data(static_cast<DownloadData *>(download->data));
+        download->data = NULL;
         purple_xfer_set_bytes_sent(download, downloadReq.fileSize);
         purple_xfer_set_completed(download, TRUE);
         purple_xfer_end(download);
@@ -291,6 +293,8 @@ static void standardDownloadResponse(TdAccountData *account, uint64_t requestId,
 
     if (account->getFileTransfer(request->fileId, download, chatId)) {
         std::unique_ptr<DownloadData> data(static_cast<DownloadData *>(download->data));
+        download->data = NULL;
+
         gchar *content = NULL;
         gsize fileSize = 0;
         GError *error  = NULL;
@@ -306,12 +310,18 @@ static void standardDownloadResponse(TdAccountData *account, uint64_t requestId,
                 purple_xfer_end(download);
             }
             purple_xfer_unref(download);
-            // !!!! account->removeFileTransfer(request->fileId);
+            account->removeFileTransfer(request->fileId);
         } else {
             if (error) {
-                purple_xfer_error(PURPLE_XFER_RECEIVE, account->purpleAccount, download->who, error->message);
+                // Unlikely error message not worth translating
+                std::string message = formatMessage("Failed to read {}: {}", {path, std::string(error->message)});
+                purple_debug_misc(config::pluginId, "%s\n", message.c_str());
+                purple_xfer_error(PURPLE_XFER_RECEIVE, account->purpleAccount, download->who, message.c_str());
                 g_error_free(error);
             }
+            if (path.empty())
+                purple_debug_warning(config::pluginId, "Incomplete file in download response for %s\n",
+                                     purple_xfer_get_local_filename(download));
             purple_xfer_cancel_remote(download);
         }
 
@@ -345,7 +355,7 @@ static void startStandardDownload(PurpleXfer *xfer)
         data->account->addPendingRequest<DownloadRequest>(requestId, std::move(request));
         // Start immediately, because standardDownloadResponse will call purple_xfer_write_file, which
         // will fail if purple_xfer_start hasn't been called
-        // !!!! purple_xfer_start(xfer, -1, NULL, 0);
+        purple_xfer_start(xfer, -1, NULL, 0);
     }
 }
 
