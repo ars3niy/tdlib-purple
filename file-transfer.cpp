@@ -303,9 +303,11 @@ static gboolean wrapupDownload(void *data)
         unsigned bytesRead = fread(buf, 1, chunkSize, wrapupData->tdlibFile);
         if (bytesRead < chunkSize) {
             fprintf(stderr, "%u < %u\n", bytesRead, chunkSize);
-            std::string message = formatMessage("Failed to transfer {}: error reading {}",
+            // Unlikely error message not worth translating
+            std::string message = formatMessage("Failed to download {}: error reading {} after {} bytes",
                                                 {purple_xfer_get_local_filename(wrapupData->download),
-                                                wrapupData->tdlibPath});
+                                                wrapupData->tdlibPath,
+                                                std::to_string(purple_xfer_get_bytes_sent(wrapupData->download) + bytesRead)});
             purple_debug_warning(config::pluginId, "%s\n", message.c_str());
             purple_xfer_error(PURPLE_XFER_RECEIVE, purple_xfer_get_account(wrapupData->download),
                               wrapupData->download->who, message.c_str());
