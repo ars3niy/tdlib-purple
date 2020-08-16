@@ -287,6 +287,11 @@ struct DownloadWrapup {
     std::string tdlibPath;
 };
 
+#if !GLIB_CHECK_VERSION(2,32,0)
+#define G_SOURCE_REMOVE         FALSE
+#define G_SOURCE_CONTINUE       TRUE
+#endif
+
 static gboolean wrapupDownload(void *data)
 {
     DownloadWrapup *wrapupData = static_cast<DownloadWrapup *>(data);
