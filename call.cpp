@@ -253,10 +253,8 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
 
 void discardCurrentCall(TdAccountData &account, TdTransceiver &transceiver)
 {
-    if (account.hasActiveCall()) {
-        deactivateCall(account);
+    if (account.hasActiveCall())
         discardCall(account.getActiveCallId(), transceiver);
-    }
 }
 
 void showCallMessage(const td::td_api::chat &chat, const TgMessageInfo &message,

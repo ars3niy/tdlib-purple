@@ -302,7 +302,6 @@ static gboolean wrapupDownload(void *data)
         uint8_t *buf = new uint8_t[chunkSize];
         unsigned bytesRead = fread(buf, 1, chunkSize, wrapupData->tdlibFile);
         if (bytesRead < chunkSize) {
-            fprintf(stderr, "%u < %u\n", bytesRead, chunkSize);
             // Unlikely error message not worth translating
             std::string message = formatMessage("Failed to download {}: error reading {} after {} bytes",
                                                 {purple_xfer_get_local_filename(wrapupData->download),
