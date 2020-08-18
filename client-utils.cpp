@@ -810,7 +810,9 @@ static void appendText(std::vector<MessagePart> &parts, const char *s, size_t le
             parts.emplace_back();
 
         std::string sourceText(s, len);
-        char *newText = purple_unescape_html(sourceText.c_str());
+        char *halfNewText = purple_markup_strip_html(sourceText.c_str());
+        char *newText = purple_unescape_html(halfNewText);
+        g_free(halfNewText);
 
         const char *remaining    = newText;
         size_t      lenRemaining = strlen(newText);

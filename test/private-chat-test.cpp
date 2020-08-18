@@ -957,14 +957,14 @@ TEST_F(PrivateChatTest, MessageSendResponseError)
     );
 }
 
-TEST_F(PrivateChatTest, SendMessage_SpecialCharacters)
+TEST_F(PrivateChatTest, SendMessage_SpecialCharactersAndHtml)
 {
     loginWithOneContact();
 
     ASSERT_EQ(0, pluginInfo().send_im(
         connection,
         purpleUserName(0).c_str(),
-        "1&lt;2 3&gt;2",
+        "<font size=\"3\">1&lt;2 3&gt;2</font>",
         PURPLE_MESSAGE_SEND
     ));
     tgl.verifyRequest(sendMessage(

@@ -1270,6 +1270,18 @@ char *purple_unescape_html(const char *html)
     return g_strdup(s.c_str());
 }
 
+char *purple_markup_strip_html(const char *str)
+{
+    std::string s(str);
+    size_t pos;
+    while ((pos = s.find("<")) != std::string::npos) {
+        size_t tagend = s.find(">", pos);
+        if (tagend != std::string::npos)
+            s.erase(pos, tagend-pos+1);
+    }
+    return g_strdup(s.c_str());
+}
+
 PurpleProxyInfo *purple_proxy_get_setup(PurpleAccount *account)
 {
     return account->proxy_info;
