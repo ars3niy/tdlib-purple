@@ -867,7 +867,7 @@ TEST_F(PrivateChatTest, ReplyToOldMessage_FetchFailed)
         ServGotImEvent(
             connection,
             purpleUserName(0),
-            fmt::format(replyPattern, "unknown user", "[message unavailable]", "reply"),
+            fmt::format(replyPattern, "Unknown user", "[message unavailable]", "reply"),
             PURPLE_MESSAGE_RECV,
             date
         )

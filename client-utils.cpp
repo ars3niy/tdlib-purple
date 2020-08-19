@@ -461,7 +461,7 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
         originalName = account.getDisplayName(*originalAuthor);
     else {
         // TRANSLATOR: In-line placeholder if the original author of a quote is unknown. Is at the beginning of the line if and only if you make it so, see "<b>&bt {} wrote:"...
-        originalName = _("unknown user");
+        originalName = _("Unknown user");
     }
 
     std::string text;
@@ -1032,7 +1032,9 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
     if (user)
         userDescription = '\'' + account.getDisplayName(*user) + '\'';
     else {
-        // TRANSLATOR: Place-holder for an unknown username
+        // TRANSLATOR: Place-holder for an unknown username. Is at the beginning of the line if and
+        // only if you make it so, see "Rejected secret chat with {}", "Rejected secret chat with {}",
+        // and "Accept secret chat with {} on…".
         userDescription = _("(unknown user)");
     }
 
