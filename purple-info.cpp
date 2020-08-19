@@ -19,24 +19,28 @@ GList *getChatJoinInfo()
     // First entry is the internal chat name used to look up conversations
     struct proto_chat_entry *pce;
     pce = g_new0 (struct proto_chat_entry, 1);
+    // TRANSLATOR: Info item *and* dialog item.
     pce->label = _("Chat ID (don't change):");
     pce->identifier = chatNameComponent;
     pce->required = FALSE;
     GList *info = g_list_append (NULL, pce);
 
     pce = g_new0 (struct proto_chat_entry, 1);
+    // TRANSLATOR: Info item *and* dialog item.
     pce->label = _("Join URL or name (empty if creating new):");
     pce->identifier = joinStringKey;
     pce->required = FALSE;
     info = g_list_append (info, pce);
 
     pce = g_new0 (struct proto_chat_entry, 1);
+    // TRANSLATOR: Info item *and* dialog item.
     pce->label = _("Group name (if creating a group):");
     pce->identifier = nameKey;
     pce->required = FALSE;
     info = g_list_append (info, pce);
 
     pce = g_new0 (struct proto_chat_entry, 1);
+    // TRANSLATOR: Info item *and* dialog item.
     pce->label = _("Group to create: 1=small 2=big 3=channel");
     pce->identifier = typeKey;
     pce->required = FALSE;
@@ -108,7 +112,9 @@ unsigned getAutoDownloadLimitKb(PurpleAccount *account)
     float dlLimit = strtof(dlLimitStr.c_str(), &endptr);
 
     if (*endptr != '\0') {
+        // TRANSLATOR: Buddy-window error message, argument will be a "number".
         std::string message = formatMessage(_("Invalid auto-download limit '{}', resetting to default"), dlLimitStr);
+        // TRANSLATOR: Title of a buddy-window error message
         purple_notify_warning(account, _("Download limit"), message.c_str(), NULL);
         purple_account_set_string(account, AccountOptions::AutoDownloadLimit,
                                   AccountOptions::AutoDownloadLimitDefault);

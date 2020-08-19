@@ -24,7 +24,9 @@ bool initiateCall(int32_t userId, TdAccountData &account, TdTransceiver &transce
         callRequest->protocol_ = getCallProtocol();
         transceiver.sendQuery(std::move(callRequest), nullptr);
     } else
+        // TRANSLATOR: Dialog title of an error message.
         purple_notify_warning(account.purpleAccount, _("Voice call"),
+                              // TRANSLATOR: Dialog content of an error message.
                               _("Cannot start new call, already in another call"), NULL);
 #endif
 
@@ -134,7 +136,9 @@ static bool activateCall(const td::td_api::call &call, const std::string &buddyN
     if (!buddyName.empty()) {
         // For an outgoing call, "type /hangup to terminate" has already been shown when the call
         // was initiated
+        // TRANSLATOR: In-chat status message
         const char *message = call.is_outgoing_ ? _("Call active") :
+                                                  // TRANSLATOR: In-chat status message
                                                   _("Call active, type /hangup to terminate");
         showMessageTextIm(account, buddyName.c_str(), NULL, message,
                           time(NULL), PURPLE_MESSAGE_SYSTEM);
@@ -163,6 +167,7 @@ static void notifyCallError(const td::td_api::callStateError &error, const std::
     else
         // Unlikely message not worth translating
         message = "unknown error";
+    // TRANSLATOR: In-chat error message, argument is text
     message = formatMessage(_("Call failed: {}"), message);
     if (!buddyName.empty())
         showMessageTextIm(account, buddyName.c_str(), NULL, message.c_str(),
@@ -186,6 +191,7 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
         if (call.state_ && (call.state_->get_id() == td::td_api::callStatePending::ID)) {
             if (!buddyName.empty())
                 showMessageTextIm(account, buddyName.c_str(), NULL,
+                                  // TRANSLATOR: In-chat error message
                                   _("Received incoming call, but calls are not supported"),
                                   time(NULL), PURPLE_MESSAGE_SYSTEM);
 
@@ -199,6 +205,7 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
     if (!call.is_outgoing_ && (call.state_->get_id() == td::td_api::callStatePending::ID)) {
         if (!account.hasActiveCall()) {
             account.setActiveCall(call.id_);
+            // TRANSLATOR: Dialog content, user will have the options "OK" and "Cancel".
             std::string message = formatMessage(_("{} wishes to start a call with you."),
                                                 account.getDisplayName(call.user_id_));
             CallRequestData *request = new CallRequestData;
@@ -206,13 +213,18 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
             request->transceiver = &transceiver;
             request->account = &account;
             purple_request_action(purple_account_get_connection(account.purpleAccount),
+                                  // TRANSLATOR: Dialog title, asking about an incoming telephone call (OK/Cancel)
                                   _("Voice call"), message.c_str(), NULL,
                                   PURPLE_DEFAULT_ACTION_NONE,
                                   account.purpleAccount, !buddyName.empty() ? buddyName.c_str() : NULL, NULL,
-                                  request, 2, _("_OK"), acceptCallCb, _("_Cancel"), discardCallCb);
+                                  // TRANSLATOR: Dialog option, regarding a phone call; the alternative is "_Cancel"
+                                  request, 2, _("_OK"), acceptCallCb,
+                                  // TRANSLATOR: Dialog option, regarding a phone call; the alternative is "_OK"
+                                  _("_Cancel"), discardCallCb);
         } else if (call.id_ != account.getActiveCallId()) {
             if (!buddyName.empty())
                 showMessageTextIm(account, buddyName.c_str(), NULL,
+                                // TRANSLATOR: In-chat error message
                                 _("Received incoming call while already in another call"),
                                 time(NULL), PURPLE_MESSAGE_SYSTEM);
 
@@ -223,6 +235,7 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
             account.setActiveCall(call.id_);
             if (!buddyName.empty())
                 showMessageTextIm(account, buddyName.c_str(), NULL,
+                                // TRANSLATOR: In-chat status message
                                 _("Call pending, type /hangup to terminate"),
                                 time(NULL), PURPLE_MESSAGE_SYSTEM);
         } else if (call.id_ != account.getActiveCallId()) {
@@ -264,21 +277,28 @@ void showCallMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
     if (callEnded.discard_reason_)
         switch (callEnded.discard_reason_->get_id()) {
             case td::td_api::callDiscardReasonMissed::ID:
+                // TRANSLATOR: In-line reason for an ended call; appears after a colon (':')
                 notification = _("call missed");
                 break;
             case td::td_api::callDiscardReasonDeclined::ID:
+                // TRANSLATOR: In-line reason for an ended call; appears after a colon (':')
                 notification = _("declined by peer");
                 break;
             case td::td_api::callDiscardReasonDisconnected::ID:
+                // TRANSLATOR: In-line reason for an ended call; appears after a colon (':')
                 notification = _("users disconnected");
                 break;
             case td::td_api::callDiscardReasonHungUp::ID:
+                // TRANSLATOR: In-line reason for an ended call; appears after a colon (':')
                 notification = _("hung up");
                 break;
         }
-    if (notification.empty())
+    if (notification.empty()) {
+        // TRANSLATOR: In-line reason for an ended call; appears after a colon (':')
         notification = _("reason unknown");
+    }
 
+    // TRANSLATOR: In-chat message, arguments will be a number and a few words (like "hung up")
     notification = formatMessage(_("Call ended ({} seconds): {}"), {std::to_string(callEnded.duration_), notification});
     showMessageText(account, chat, message, NULL, notification.c_str());
 }
