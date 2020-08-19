@@ -455,6 +455,7 @@ std::string makeDocumentDescription(const td::td_api::voiceNote *document)
     if (!document)
         // Unlikely error message not worth translating
         return "faulty voice note";
+    // TRANSLATOR: In-line document type. Argument will be a mime type.
     return formatMessage(_("voice note [{}]"), document->mime_type_);
 }
 
@@ -463,18 +464,22 @@ std::string makeDocumentDescription(const td::td_api::videoNote *document)
     if (!document)
         // Unlikely error message not worth translating
         return "faulty voice note";
+    // TRANSLATOR: In-line document type. Argument will be a number.
     return formatMessage(_("video note [{} s]"), document->duration_);
 }
 
 std::string getFileName(const td::td_api::voiceNote* document)
 {
     td::Client::Response resp = td::Client::execute({0, td::td_api::make_object<td::td_api::getFileExtension>(document->mime_type_)});
-    if (resp.object && (resp.object->get_id() == td::td_api::text::ID))
+    if (resp.object && (resp.object->get_id() == td::td_api::text::ID)) {
+        // TRANSLATOR: Filename. Keep it short, and as few special characters as possible.
         return std::string(_("voiceNote")) + '.' + static_cast<const td::td_api::text &>(*resp.object).text_;
+    }
     return _("voiceNote");
 }
 
 std::string getFileName(const td::td_api::videoNote *document)
 {
+    // TRANSLATOR: Filename. Keep it short, and as few special characters as possible.
     return std::string(_("videoNote")) + ".avi";
 }

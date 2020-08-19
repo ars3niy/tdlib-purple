@@ -290,6 +290,7 @@ bool PurpleTdClient::addProxy()
         tdProxyType = td::td_api::make_object<td::td_api::proxyTypeHttp>(username, password, true);
         break;
     default:
+        // TRANSLATOR: Buddy-window error message, argument will be some kind of proxy-identifier.
         errorMessage = formatMessage(_("Proxy type {} is not supported"), proxyTypeToString(proxyType));
         break;
     }
@@ -312,13 +313,17 @@ bool PurpleTdClient::addProxy()
 
 static std::string getDisplayedError(const td::td_api::object_ptr<td::td_api::Object> &object)
 {
-    if (!object)
+    if (!object) {
+        // TRANSLATOR: Reason for a proxy error, will appear after a color (':')
         return _("No response received");
+    }
     else if (object->get_id() == td::td_api::error::ID) {
         const td::td_api::error &error = static_cast<const td::td_api::error &>(*object);
         return formatMessage(errorCodeMessage(), {std::to_string(error.code_), error.message_});
-    } else
+    } else {
+        // TRANSLATOR: Reason for a proxy error, will appear after a color (':')
         return _("Unexpected response");
+    }
 }
 
 void PurpleTdClient::addProxyResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -328,6 +333,7 @@ void PurpleTdClient::addProxyResponse(uint64_t requestId, td::td_api::object_ptr
         if (m_proxies)
             removeOldProxies();
     } else {
+        // TRANSLATOR: Buddy-window error message
         std::string message = formatMessage(_("Could not set proxy: {}"), getDisplayedError(object));
         purple_connection_error(purple_account_get_connection(m_account), message.c_str());
     }
@@ -340,6 +346,7 @@ void PurpleTdClient::getProxiesResponse(uint64_t requestId, td::td_api::object_p
         if (!m_isProxyAdded || m_addedProxy)
             removeOldProxies();
     } else {
+        // TRANSLATOR: Buddy-window error message
         std::string message = formatMessage(_("Could not get proxies: {}"), getDisplayedError(object));
         purple_connection_error(purple_account_get_connection(m_account), message.c_str());
     }
@@ -403,42 +410,56 @@ static std::string getAuthCodeDesc(const td::td_api::AuthenticationCodeType &cod
 {
     switch (codeType.get_id()) {
     case td::td_api::authenticationCodeTypeTelegramMessage::ID:
+        // TRANSLATOR: Authentication dialog, secondary content. Appears after a colon (':'). Argument is a number.
         return formatMessage(_("Telegram message (length: {})"),
                              static_cast<const td::td_api::authenticationCodeTypeTelegramMessage &>(codeType).length_);
     case td::td_api::authenticationCodeTypeSms::ID:
+        // TRANSLATOR: Authentication dialog, secondary content. Appears after a colon (':'). Argument is a number.
         return formatMessage(_("SMS (length: {})"),
                              static_cast<const td::td_api::authenticationCodeTypeSms &>(codeType).length_);
     case td::td_api::authenticationCodeTypeCall::ID:
+        // TRANSLATOR: Authentication dialog, secondary content. Appears after a colon (':'). Argument is a number.
         return formatMessage(_("Phone call (length: {})"),
                              static_cast<const td::td_api::authenticationCodeTypeCall &>(codeType).length_);
     case td::td_api::authenticationCodeTypeFlashCall::ID:
+        // TRANSLATOR: Authentication dialog, secondary content. Appears after a colon (':'). Argument is some text-string-ish.
         return formatMessage(_("Poor man's phone call (pattern: {})"),
                              static_cast<const td::td_api::authenticationCodeTypeFlashCall &>(codeType).pattern_);
     default:
+        // Shouldn't happen, so don't translate.
         return "Pigeon post";
     }
 }
 
 void PurpleTdClient::requestAuthCode(const td::td_api::authenticationCodeInfo *codeInfo)
 {
+    // TRANSLATOR: Authentication dialog, primary content. Will be followed by instructions and an input box.
     std::string message = _("Enter authentication code") + std::string("\n");
 
     if (codeInfo) {
-        if (codeInfo->type_)
+        if (codeInfo->type_) {
+            // TRANSLATOR: Authentication dialog, secondary content. Argument will be a term.
             message += formatMessage(_("Code sent via: {}"), getAuthCodeDesc(*codeInfo->type_)) + "\n";
-        if (codeInfo->next_type_)
+        }
+        if (codeInfo->next_type_) {
+            // TRANSLATOR: Authentication dialog, secondary content. Argument will be a term.
             message += formatMessage(_("Next code will be: {}"), getAuthCodeDesc(*codeInfo->next_type_)) + "\n";
+        }
     }
 
     purple_request_input (purple_account_get_connection(m_account),
+                               // TRANSLATOR: Authentication dialog, title.
                                _("Login code"),
                                message.c_str(),
                                NULL, // secondary message
                                NULL, // default value
                                FALSE, // multiline input
                                FALSE, // masked input
+                               // TRANSLATOR: Authentication dialog, placeholder, will be displayed faintly
                                _("the code"),
+                               // TRANSLATOR: Authentication dialog, alternative is "Cancel".
                                _("OK"), G_CALLBACK(requestCodeEntered),
+                               // TRANSLATOR: Authentication dialog, alternative is "OK".
                                _("Cancel"), G_CALLBACK(requestCodeCancelled),
                                m_account,
                                NULL, // buddy
@@ -458,6 +479,7 @@ void PurpleTdClient::requestCodeEntered(PurpleTdClient *self, const gchar *code)
 void PurpleTdClient::requestCodeCancelled(PurpleTdClient *self)
 {
     purple_connection_error(purple_account_get_connection(self->m_account),
+                            // TRANSLATOR: Buddy-window, error message (title; empty content)
                             _("Authentication code required"));
 }
 
@@ -472,27 +494,37 @@ void PurpleTdClient::passwordEntered(PurpleTdClient *self, const gchar *password
 
 void PurpleTdClient::passwordCancelled(PurpleTdClient *self)
 {
+    // TRANSLATOR: Buddy-window, error message title (title; empty content)
     purple_connection_error(purple_account_get_connection(self->m_account), _("Password required"));
 }
 
 void PurpleTdClient::requestPassword(const td::td_api::authorizationStateWaitPassword &pwInfo)
 {
     std::string hints;
-    if (!pwInfo.password_hint_.empty())
+    if (!pwInfo.password_hint_.empty()) {
+        // TRANSLATOR: 2FA dialog, secondary content, appears in new line. Argument is an arbitrary string from Telegram.
         hints = formatMessage(_("Hint: {}"), pwInfo.password_hint_);
+    }
     if (!pwInfo.recovery_email_address_pattern_.empty()) {
-        if (!hints.empty()) hints += '\n';
+        if (!hints.empty())
+            hints += '\n';
+        // TRANSLATOR: 2FA dialog, secondary content, appears in new line. Argument is an e-mail address.
         hints += formatMessage(_("Recovery e-mail may have been sent to {}"), pwInfo.recovery_email_address_pattern_);
     }
     if (!purple_request_input (purple_account_get_connection(m_account),
+                               // TRANSLATOR: 2FA dialog, title
                                _("Password"),
+                               // TRANSLATOR: 2FA dialog, primary content
                                _("Enter password for two-factor authentication"),
                                hints.empty() ? NULL : hints.c_str(),
                                NULL, // default value
                                FALSE, // multiline input
                                FALSE, // masked input
+                               // TRANSLATOR: 2FA dialog, placeholder, will be displayed faintly
                                _("password"),
+                               // TRANSLATOR: 2FA dialog, alternative is "Cancel".
                                _("OK"), G_CALLBACK(passwordEntered),
+                               // TRANSLATOR: 2FA dialog, alternative is "OK".
                                _("Cancel"), G_CALLBACK(passwordCancelled),
                                m_account,
                                NULL, // buddy
@@ -500,7 +532,8 @@ void PurpleTdClient::requestPassword(const td::td_api::authorizationStateWaitPas
                                this))
     {
         purple_connection_error(purple_account_get_connection(m_account),
-            "Authentication code is required but this libpurple doesn't support input requests");
+            // TRANSLATOR: Buddy-window error message (title; no content)
+            _("Authentication code is required but this libpurple doesn't support input requests"));
     }
 }
 
@@ -511,14 +544,18 @@ void PurpleTdClient::registerUser()
 
     if (firstName.empty() && lastName.empty()) {
         if (!purple_request_input (purple_account_get_connection(m_account),
+                                // TRANSLATOR: Registration dialog, title
                                 _("Registration"),
+                                // TRANSLATOR: Registration dialog, content
                                 _("New account is being created. Please enter your display name."),
                                 NULL,
                                 NULL, // default value
                                 FALSE, // multiline input
                                 FALSE, // masked input
                                 NULL,
+                                // TRANSLATOR: Registration dialog, alternative is "Cancel"
                                 _("OK"), G_CALLBACK(displayNameEntered),
+                                // TRANSLATOR: Registration dialog, alternative is "OK"
                                 _("Cancel"), G_CALLBACK(displayNameCancelled),
                                 m_account,
                                 NULL, // buddy
@@ -526,7 +563,8 @@ void PurpleTdClient::registerUser()
                                 this))
         {
             purple_connection_error(purple_account_get_connection(m_account),
-                "Authentication is required but this libpurple doesn't support input requests");
+                // TRANSLATOR: Buddy-window error message (title; no content)
+                _("Registration is required but this libpurple doesn't support input requests"));
         }
     } else
         m_transceiver.sendQuery(td::td_api::make_object<td::td_api::registerUser>(firstName, lastName),
@@ -539,6 +577,7 @@ void PurpleTdClient::displayNameEntered(PurpleTdClient *self, const gchar *name)
     getNamesFromAlias(name, firstName, lastName);
     if (firstName.empty() && lastName.empty())
         purple_connection_error(purple_account_get_connection(self->m_account),
+                                // TRANSLATOR: Buddy-window error message after failed registration.
                                 _("Display name is required for registration"));
     else
         self->m_transceiver.sendQuery(td::td_api::make_object<td::td_api::registerUser>(firstName, lastName),
@@ -548,6 +587,7 @@ void PurpleTdClient::displayNameEntered(PurpleTdClient *self, const gchar *name)
 void PurpleTdClient::displayNameCancelled(PurpleTdClient *self)
 {
     purple_connection_error(purple_account_get_connection(self->m_account),
+                            // TRANSLATOR: Buddy-window error message after failed registration.
                             _("Display name is required for registration"));
 }
 
@@ -564,12 +604,15 @@ void PurpleTdClient::notifyAuthError(const td::td_api::object_ptr<td::td_api::Ob
     std::string message;
     switch (m_lastAuthState) {
     case td::td_api::authorizationStateWaitEncryptionKey::ID:
+        // TRANSLATOR: Buddy-window error message, argument is text (a proper reason)
         message = _("Error applying database encryption key: {}");
         break;
     case td::td_api::authorizationStateWaitPhoneNumber::ID:
+        // TRANSLATOR: Buddy-window error message, argument is text (a proper reason)
         message = _("Authentication error after sending phone number: {}");
         break;
     default:
+        // TRANSLATOR: Buddy-window error message, argument is text (a proper reason)
         message = _("Authentication error: {}");
     }
 
@@ -913,17 +956,21 @@ void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo 
         autoDownload = true;
         notice.clear();
     } else if (isSizeWithinLimit(fileSize, getAutoDownloadLimitKb(m_account))) {
-        if (!((message.type == TgMessageInfo::Type::Sticker) && !caption))
+        if (!((message.type == TgMessageInfo::Type::Sticker) && !caption)) {
+            // TRANSLATOR: In-chat notification, appears after a colon (':'). Argument is a file *type*, not a filename.
             notice = formatMessage(_("Downloading {}"), std::string(fileDesc));
+        }
         autoDownload = true;
     } else if (!ignoreBigDownloads(m_account)) {
+        // TRANSLATOR: In-chat notification, appears after a colon (':'). Argument is a file *type*, not a filename.
         notice = formatMessage(_("Requesting {} download"), std::string(fileDesc));
         askDownload = true;
     } else {
         char *fileSizeStr = fileSize ? purple_str_size_to_units(fileSize) : NULL;
-        notice = formatMessage(_("Ignoring {} download ({})"),
-                               {std::string(fileDesc), fileSizeStr ? std::string(fileSizeStr) :
-                                                                     std::string(_("unknown size"))});
+        // TRANSLATOR: Placeholder for a file size, appears in parenthesis inside a text e.g. "Ignoring image download (unknown size)"
+        std::string fileSizeStrNonnull = fileSizeStr ? std::string(fileSizeStr) : std::string(_("unknown size"));
+        // TRANSLATOR: In-chat notification, appears after a colon (':'). Arguments are a file *type*, not a filename; second argument is a file size with unit.
+        notice = formatMessage(_("Ignoring {} download ({})"), {std::string(fileDesc), fileSizeStrNonnull});
         g_free(fileSizeStr);
     }
 
@@ -958,14 +1005,18 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, TgMessageInf
     if (!file)
         // Unlikely message not worth translating
         errorMessage = "Faulty image";
-    else if (photo.is_secret_)
+    else if (photo.is_secret_) {
+        // TRANSLATOR: In-chat error message
         errorMessage = _("Ignoring secret photo");
+    }
 
     if (errorMessage) {
         std::string notice = makeNoticeWithSender(chat, message, errorMessage, m_account);
         showMessageText(m_data, chat, message, caption, notice.c_str());
-    } else
+    } else {
+        // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
         showFileInline(chat, message, *file, caption, _("photo"), nullptr, &PurpleTdClient::showDownloadedImage);
+    }
 }
 
 struct InlineDownloadInfo {
@@ -1014,11 +1065,15 @@ void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file 
                                      const std::string &fileDesc, const td::td_api::chat &chat,
                                      TgMessageInfo &message, FileDownloadCb callback)
 {
+    // TRANSLATOR: Download dialog, primary content, argument will be a username.
     std::string question = formatMessage(_("Download file from {}?"),
                                          getSenderDisplayName(chat, message, m_account));
     unsigned    size     = getFileSize(file);
+    // TRANSLATOR: Download dialog, file size, used after a colon (':')
     char *      sizeStr  = size ? purple_str_size_to_units(size) : g_strdup(_("unknown"));
-    std::string chatName = isPrivateChat(chat) ? _("private chat") : chat.title_;
+    // TRANSLATOR: Download dialog, placeholder chat title, in the sentence "posted in a private chat".
+    std::string chatName = isPrivateChat(chat) ? _("a private chat") : chat.title_;
+    // TRANSLATOR: Download dialog, secondary content. Arguments will be file description (text), chat name (text), and a file size (text!)
     std::string fileInfo = formatMessage(_("{} posted in {}, size: {}"), {fileDesc,
                                          chatName, std::string(sizeStr)});
     g_free(sizeStr);
@@ -1031,9 +1086,13 @@ void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file 
     info->tdClient = this;
     info->callback = callback;
 
+    // TRANSLATOR: Download dialog, title
     purple_request_action(purple_account_get_connection(m_account), _("Download"), question.c_str(),
                           fileInfo.c_str(), 0, m_account, NULL, NULL,
-                          info, 2, _("_Yes"), startDownload, _("_No"), ignoreDownload);
+                          // TRANSLATOR: Download dialog, alternative is "_No"
+                          info, 2, _("_Yes"), startDownload,
+                          // TRANSLATOR: Download dialog, alternative is "_Yes"
+                          _("_No"), ignoreDownload);
 }
 
 void PurpleTdClient::startInlineDownloadProgress(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object>)
@@ -1078,8 +1137,10 @@ void PurpleTdClient::showDownloadedImage(int64_t chatId, TgMessageInfo &message,
             text = makeInlineImageText(id);
         } else if (filePath.find('"') == std::string::npos)
             text = "<img src=\"file://" + filePath + "\">";
-        else
-            notice = makeNoticeWithSender(*chat, message,  "Cannot show photo: file path contains quotes", m_account);
+        else {
+            // Unlikely error, not worth translating
+            notice = makeNoticeWithSender(*chat, message, "Cannot show photo: file path contains quotes", m_account);
+        }
 
         if (caption && *caption) {
             if (!text.empty())
@@ -1126,6 +1187,7 @@ void PurpleTdClient::showStickerMessage(const td::td_api::chat &chat, TgMessageI
     if (sticker.sticker_) {
         auto thumbnail = sticker.thumbnail_ ? std::move(sticker.thumbnail_->photo_) : nullptr;
 
+        // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
         showFileInline(chat, message, *sticker.sticker_, NULL, _("sticker"), std::move(thumbnail),
                  &PurpleTdClient::showDownloadedSticker);
     }
@@ -1152,6 +1214,7 @@ void PurpleTdClient::showDownloadedSticker(int64_t chatId, TgMessageInfo &messag
         if (convertAnimated) {
             const td::td_api::chat *chat = m_data.getChat(chatId);
             if (chat) {
+                // TRANSLATOR: In-chat status update
                 std::string notice = makeNoticeWithSender(*chat, message, _("Converting sticker"), m_account);
                 showMessageText(m_data, *chat, message, NULL, notice.c_str());
             }
@@ -1211,6 +1274,7 @@ void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
         std::string text = makeInlineImageText(id);
         showMessageText(m_data, *chat, thread->message, text.c_str(), NULL);
     } else {
+        // TRANSLATOR: In-chat error message, arguments will be a file name and a proper reason
         errorMessage = formatMessage(_("Could not read sticker file {}: {}"),
                                         {thread->inputFileName, errorMessage});
         errorMessage = makeNoticeWithSender(*chat, thread->message, errorMessage.c_str(), m_account);
@@ -1247,6 +1311,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
         messageInfo.forwardedFrom = getForwardSource(*message.forward_info_, m_data);
 
     if (message.ttl_ != 0) {
+        // TRANSLATOR: In-chat error message
         const char *text   = _("Received self-destructing message, not displayed due to lack of support");
         std::string notice = makeNoticeWithSender(chat, messageInfo, text, m_account);
         showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
@@ -1308,6 +1373,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
             break;
         case td::td_api::messageChatChangeTitle::ID: {
             const auto &titleChange = static_cast<const td::td_api::messageChatChangeTitle &>(*message.content_);
+            // TRANSLATOR: In-chat status update, arguments are chat names.
             std::string notice = formatMessage(_("{} changed group name to {}"),
                                                {getSenderDisplayName(chat, messageInfo, m_account),
                                                 titleChange.title_});
@@ -1318,6 +1384,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
             showCallMessage(chat, messageInfo, static_cast<td::td_api::messageCall &>(*message.content_), m_data);
             break;
         default: {
+            // TRANSLATOR: In-chat error message, argument will be a Telegram type.
             std::string notice = formatMessage(_("Received unsupported message type {}"),
                                                messageTypeToString(*message.content_));
             notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), m_account);
@@ -1419,6 +1486,7 @@ void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_
             m_data.addTempFileUpload(message.id_, request->tempFile);
         }
     } else {
+        // TRANSLATOR: In-chat error message, argument will be a user-sent message
         std::string errorMessage = formatMessage(_("Failed to send message: {}"), getDisplayedError(object));
         const td::td_api::chat *chat = m_data.getChat(request->chatId);
         if (chat)
@@ -1690,7 +1758,9 @@ void PurpleTdClient::showUserChatAction(int32_t userId, bool isTyping)
 
 static void showFailedContactMessage(void *handle, const std::string &errorMessage)
 {
+    // TRANSLATOR: Error dialog, content
     std::string message = formatMessage(_("Failed to add contact: {}"), errorMessage);
+    // TRANSLATOR: Error dialog, title
     purple_notify_error(handle, _("Failed to add contact"), message.c_str(), NULL);
 }
 
@@ -1768,12 +1838,15 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
     }
 
     // For whatever reason, complaining at an earlier stage leads to error message not being shown in pidgin
-    if (!isPhoneNumber(request->phoneNumber.c_str()))
+    if (!isPhoneNumber(request->phoneNumber.c_str())) {
+        // TRANSLATOR: Buddy-window error message, title (no content)
         notifyFailedContact(formatMessage(_("{} is not a valid phone number"), request->phoneNumber));
-    else if (userId)
+    } else if (userId)
         addContactById(userId, request->phoneNumber, request->alias, request->groupName);
-    else
+    else {
+        // TRANSLATOR: Buddy-window error message, title (no content), argument will be a phone number.
         notifyFailedContact(formatMessage(_("No user found with phone number '{}'"), request->phoneNumber));
+    }
 }
 
 void PurpleTdClient::addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -1931,7 +2004,9 @@ void PurpleTdClient::joinChatResponse(uint64_t requestId, td::td_api::object_ptr
             }
         }
     } else {
+        // TRANSLATOR: Error dialog, content
         std::string message = formatMessage(_("Failed to join chat: {}"), getDisplayedError(object));
+        // TRANSLATOR: Error dialog, title
         purple_notify_error(purple_account_get_connection(m_account), _("Failed to join chat"),
                             message.c_str(), NULL);
     }
@@ -1956,10 +2031,14 @@ void PurpleTdClient::joinGroupSearchChatResponse(uint64_t requestId, td::td_api:
             m_data.addPendingRequest<GroupJoinRequest>(requestId, request ? request->joinString : std::string(),
                                                        GroupJoinRequest::Type::Username, chat.id_);
         } else
+            // TRANSLATOR: Error dialog, title
             purple_notify_error(purple_account_get_connection(m_account), _("Failed to join chat"),
+                                // TRANSLATOR: Error dialog, content
                                 _("The name belongs to a user, not a group"), NULL);
     } else {
+        // TRANSLATOR: Error dialog, content, argument is a reason (text)
         std::string message = formatMessage(_("Could not find group: {}"), getDisplayedError(object));
+        // TRANSLATOR: Error dialog, title
         purple_notify_error(purple_account_get_connection(m_account), _("Failed to join chat"),
                             message.c_str(), NULL);
     }
@@ -1974,22 +2053,28 @@ void PurpleTdClient::createGroup(const char *name, int type,
         createRequest->title_ = name;
 
         std::string errorMessage;
-        if (basicGroupMembers.empty())
+        if (basicGroupMembers.empty()) {
+            // TRANSLATOR: Error dialog, secondary content
             errorMessage = _("Cannot create basic group without additional members");
+        }
         for (const std::string &memberName: basicGroupMembers) {
             int32_t userId = stringToUserId(memberName.c_str());
             if (userId != 0) {
-                if (!m_data.getUser(userId))
+                if (!m_data.getUser(userId)) {
                     errorMessage = formatMessage(_("No known user with id {}"), userId);
+                }
             } else {
                 std::vector<const td::td_api::user*> users;
                 m_data.getUsersByDisplayName(memberName.c_str(), users);
                 if (users.size() == 1)
                     userId = users[0]->id_;
-                else if (users.empty())
+                else if (users.empty()) {
+                    // TRANSLATOR: Error dialog, secondary content, argument is a username
                     errorMessage = formatMessage(_("No known user by the name '{}'"), memberName);
-                else
-                    errorMessage = "More than one user known with name '" + memberName + "'";
+                } else {
+                    // TRANSLATOR: Error dialog, secondary content, argument is a username
+                    errorMessage = formatMessage(_("More than one user known with name '{}'"), memberName);
+                }
             }
             if (!errorMessage.empty())
                 break;
@@ -1998,7 +2083,10 @@ void PurpleTdClient::createGroup(const char *name, int type,
 
         if (!errorMessage.empty())
             purple_notify_error(purple_account_get_connection(m_account),
-                                _("Failed to create group"), _("Invalid group members"),
+                                // TRANSLATOR: Error dialog, title
+                                _("Failed to create group"),
+                                // TRANSLATOR: Error dialog, primary content
+                                _("Invalid group members"),
                                 errorMessage.c_str());
         else
             request = std::move(createRequest);
@@ -2059,8 +2147,10 @@ void PurpleTdClient::deleteSupergroupResponse(uint64_t requestId, td::td_api::ob
 {
     if (!object || (object->get_id() != td::td_api::ok::ID)) {
         std::string errorMessage = getDisplayedError(object).c_str();
-        purple_notify_error(m_account, _("Error"), _("Failed to delete group or channel"),
-                            errorMessage.c_str());
+        purple_notify_error(m_account,
+                            // TRANSLATOR: Error dialog, title
+                            _("Failed to delete group or channel"),
+                            errorMessage.c_str(), NULL);
     }
 }
 
@@ -2084,7 +2174,10 @@ void PurpleTdClient::setGroupDescriptionResponse(uint64_t requestId, td::td_api:
 {
     if (!object || (object->get_id() != td::td_api::ok::ID)) {
         std::string message = getDisplayedError(object);
-        purple_notify_error(m_account, _("Error"), _("Failed to set group description"), message.c_str());
+        purple_notify_error(m_account,
+                            // TRANSLATOR: Error dialog, title
+                            _("Failed to set group description"),
+                            message.c_str(), NULL);
     }
 }
 
@@ -2101,9 +2194,11 @@ void PurpleTdClient::kickUserFromChat(PurpleConversation *conv, const char *name
 
     std::vector<const td::td_api::user *> users = getUsersByPurpleName(name, m_data, "kick user");
     if (users.size() != 1) {
+        // TRANSLATOR: In-chat error message, appears after a colon (':')
         const char *reason = users.empty() ? _("User not found") :
                                              // Unlikely error message not worth translating
                                              "More than one user found with this name";
+        // TRANSLATOR: In-chat error message, argument is a reason (text)
         std::string message = formatMessage(_("Cannot kick user: {}"), std::string(reason));
         purple_conversation_write(conv, NULL, message.c_str(), PURPLE_MESSAGE_NO_LOG, 0);
         return;
@@ -2140,12 +2235,15 @@ void PurpleTdClient::chatActionResponse(uint64_t requestId, td::td_api::object_p
             std::string message = getDisplayedError(object);
             switch (request->type) {
                 case ChatActionRequest::Type::Kick:
+                    // TRANSLATOR: In-chat error message, argument is a reason (text)
                     message = formatMessage(_("Cannot kick user: {}"), message);
                     break;
                 case ChatActionRequest::Type::Invite:
+                    // TRANSLATOR: In-chat error message, argument is a reason (text)
                     message = formatMessage(_("Cannot add user to group: {}"), message);
                     break;
                 case ChatActionRequest::Type::GenerateInviteLink:
+                    // TRANSLATOR: In-chat error message, argument is a reason (text)
                     message = formatMessage(_("Cannot generate invite link: {}"), message);
                     break;
             }
@@ -2171,9 +2269,11 @@ void PurpleTdClient::addUserToChat(int purpleChatId, const char *name)
 
     std::vector<const td::td_api::user *> users = getUsersByPurpleName(name, m_data, "kick user");
     if (users.size() != 1) {
+        // TRANSLATOR: In-chat error message, appears after a colon (':')
         const char *reason = users.empty() ? _("User not found") :
                                              // Unlikely error message not worth translating
                                              "More than one user found with this name";
+        // TRANSLATOR: In-chat error message, argument is a reason (text)
         std::string message = formatMessage(_("Cannot add user to group: {}"), std::string(reason));
         showChatNotification(m_data, *chat, message.c_str(), PURPLE_MESSAGE_NO_LOG);
         return;
@@ -2231,6 +2331,7 @@ void PurpleTdClient::getGroupChatList(PurpleRoomlist *roomlist)
                                                        getChatNameComponent(), TRUE);
     fields = g_list_append (fields, f);
     // "description" is hard-coded in bitlbee as possible field for chat topic
+    // TRANSLATOR: Groupchat infobox key
     f = purple_roomlist_field_new(PURPLE_ROOMLIST_FIELD_STRING, _("Description"), "description", FALSE);
     fields = g_list_append (fields, f);
     purple_roomlist_set_fields (roomlist, fields);
@@ -2278,15 +2379,20 @@ static void inputCancelled(void *data)
 
 void PurpleTdClient::requestRecoveryEmailConfirmation(const std::string &emailInfo)
 {
-    std::string secondary = "Password will be changed after new e-mail is confirmed\n" + emailInfo;
+    // TRANSLATOR: 2FA setup confirmation dialog, secondary content, argument is an e-mail description (address and code length)
+    std::string secondary = formatMessage(_("Password will be changed after new e-mail is confirmed\n{}"), emailInfo);
     PurpleConnection *gc = purple_account_get_connection(m_account);
+    // TRANSLATOR: 2FA setup confirmation dialog, title
     purple_request_input(gc, _("Two-factor authentication"),
+                         // TRANSLATOR: 2FA setup confirmation dialog, primary content
                          _("Enter verification code received in the e-mail"), secondary.c_str(),
                          NULL,  // default value
                          FALSE, // multiline input
                          FALSE, // masked input
                          NULL,
+                         // TRANSLATOR: 2FA setup confirmation dialog, alternative is "Cancel"
                          _("OK"), G_CALLBACK(PurpleTdClient::verifyRecoveryEmail),
+                         // TRANSLATOR: 2FA setup confirmation dialog, alternative is "Cancel"
                          _("Cancel"), G_CALLBACK(inputCancelled),
                          purple_connection_get_account(gc),
                          NULL, // buddy
@@ -2296,9 +2402,15 @@ void PurpleTdClient::requestRecoveryEmailConfirmation(const std::string &emailIn
 
 static void notifyPasswordChangeSuccess(PurpleAccount *account, const td::td_api::passwordState &passwordState)
 {
+    // TRANSLATOR: 2FA success notification, title
     purple_notify_info(account, _("Two-factor authentication"),
-                        passwordState.has_password_ ? _("Password set") : _("Password cleared"),
+                        // TRANSLATOR: 2FA success notification, primary content
+                        passwordState.has_password_ ? _("Password set") :
+                                                      // TRANSLATOR: 2FA success notification, primary content
+                                                      _("Password cleared"),
+                        // TRANSLATOR: 2FA success notification, secondary content
                         passwordState.has_recovery_email_address_ ? _("Recovery e-mail is configured") :
+                                                                    // TRANSLATOR: 2FA success notification, secondary content
                                                                     _("No recovery e-mail configured"));
 }
 
@@ -2307,6 +2419,7 @@ void PurpleTdClient::setTwoFactorAuthResponse(uint64_t requestId, td::td_api::ob
     if (object && (object->get_id() == td::td_api::passwordState::ID)) {
         const td::td_api::passwordState &passwordState = static_cast<const td::td_api::passwordState &>(*object);
         if (passwordState.recovery_email_address_code_info_) {
+            // TRANSLATOR: 2FA setup confirmation dialog, e-mail description
             std::string emailInfo = formatMessage(_("Code sent to {} (length: {})"),
                                                   {passwordState.recovery_email_address_code_info_->email_address_pattern_,
                                                    std::to_string(passwordState.recovery_email_address_code_info_->length_)});
@@ -2315,7 +2428,10 @@ void PurpleTdClient::setTwoFactorAuthResponse(uint64_t requestId, td::td_api::ob
             notifyPasswordChangeSuccess(m_account, passwordState);
     } else {
         std::string errorMessage = getDisplayedError(object);
-        purple_notify_error(m_account, _("Two-factor authentication"), _("Failed to set password"), errorMessage.c_str());
+        // TRANSLATOR: 2FA failure notification, title
+        purple_notify_error(m_account, _("Two-factor authentication"),
+                            // TRANSLATOR: 2FA failure notification, primary content
+                            _("Failed to set password"), errorMessage.c_str());
     }
 }
 
@@ -2333,17 +2449,26 @@ void PurpleTdClient::verifyRecoveryEmailResponse(uint64_t requestId, td::td_api:
         const td::td_api::passwordState &passwordState = static_cast<const td::td_api::passwordState &>(*object);
         if (passwordState.recovery_email_address_code_info_) {
             if (passwordState.recovery_email_address_code_info_->length_ > 0) {
+                // TRANSLATOR: 2FA repeated confirmation, secondary content
                 std::string emailInfo = formatMessage(_("E-mail address: {}"),
                                                       passwordState.recovery_email_address_code_info_->email_address_pattern_);
+                // TRANSLATOR: 2FA repeated confirmation, title
                 purple_notify_info(m_account, _("Two-factor authentication"),
+                                   // TRANSLATOR: 2FA repeated confirmation, primary content
                                    _("For some reason, new confirmation code was sent"), emailInfo.c_str());
             } else
-                purple_notify_error(m_account, _("Two-factor authentication"), _("Looks like the code was wrong"), NULL);
+                // TRANSLATOR: 2FA failure notification, title
+                purple_notify_error(m_account, _("Two-factor authentication"),
+                                    // TRANSLATOR: 2FA failure notification, content
+                                    _("Looks like the code was wrong"), NULL);
         } else
             notifyPasswordChangeSuccess(m_account, passwordState);
     } else {
         std::string errorMessage = getDisplayedError(object);
-        purple_notify_error(m_account, _("Two-factor authentication"), _("Failed to verify recovery e-mail"), errorMessage.c_str());
+        // TRANSLATOR: 2FA failure notification, title
+        purple_notify_error(m_account, _("Two-factor authentication"),
+                            // TRANSLATOR: 2FA failure notification, primary content
+                            _("Failed to verify recovery e-mail"), errorMessage.c_str());
     }
 }
 
@@ -2413,12 +2538,17 @@ void PurpleTdClient::sendMessageCreatePrivateChatResponse(uint64_t requestId, td
             int ret = transmitMessage(chat->id_, request->message.c_str(), m_transceiver, m_data,
                                       &PurpleTdClient::sendMessageResponse);
             // Messages copied from libpurple
-            if (ret == -E2BIG)
+            if (ret == -E2BIG) {
+                // TRANSLATOR: In-chat error message
                 errorMessage = _("Unable to send message: The message is too large.");
-            else if (ret < 0)
+            } else if (ret < 0) {
+                // TRANSLATOR: In-chat error message
                 errorMessage = _("Unable to send message.");
-        } else
+            }
+        } else {
+            // TRANSLATOR: In-chat(?) error message, argument is an error description (text)
             errorMessage = formatMessage(_("Failed to open chat: {}"), getDisplayedError(object));
+        }
 
         if (!errorMessage.empty())
             showMessageTextIm(m_data, request->username.c_str(), NULL, errorMessage.c_str(),

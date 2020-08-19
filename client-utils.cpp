@@ -14,6 +14,7 @@ enum {
 
 const char *errorCodeMessage()
 {
+    // TRANSLATOR: In-line error message, appears after a colon (':'), arguments will be a number and some error text from Telegram
     return _("code {} ({})");
 }
 
@@ -244,6 +245,7 @@ void updatePrivateChat(TdAccountData &account, const td::td_api::chat &chat, con
                                                                             account.purpleAccount);
         if (oldConv) {
             purple_conv_im_write(purple_conversation_get_im_data(oldConv), nullptr,
+                                 // TRANSLATOR: In-chat status update
                                  _("Future messages in this conversation will be shown in a different tab"),
                                  PURPLE_MESSAGE_SYSTEM, time(NULL));
         }
@@ -457,13 +459,16 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
     std::string originalName;
     if (originalAuthor)
         originalName = account.getDisplayName(*originalAuthor);
-    else
-        originalName = _("unknown user");
+    else {
+        // TRANSLATOR: In-line placeholder if the original author of a quote is unknown. Is at the beginning of the line if and only if you make it so, see "<b>&bt {} wrote:"...
+        originalName = _("Unknown user");
+    }
 
     std::string text;
-    if (!message || !message->content_)
+    if (!message || !message->content_) {
+        // TRANSLATOR: In-line placeholder when something unknown is being replied to.
         text = _("[message unavailable]");
-    else switch (message->content_->get_id()) {
+    } else switch (message->content_->get_id()) {
         case td::td_api::messageText::ID: {
             const td::td_api::messageText &messageText = static_cast<const td::td_api::messageText &>(*message->content_);
             if (messageText.text_)
@@ -474,6 +479,7 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
         }
         case td::td_api::messagePhoto::ID: {
             const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message->content_);
+            // TRANSLATOR: In-line placeholder when a photo is being replied to.
             text = _("[photo]");
             if (photo.caption_)
                 text += " " + photo.caption_->text_;
@@ -481,35 +487,44 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
         }
         case td::td_api::messageDocument::ID: {
             const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message->content_);
-            if (document.document_)
+            if (document.document_) {
+                // TRANSLATOR: In-line placeholder when a file is being replied to. Arguments will be the file name and MIME type (e.g. "application/gzip")
                 text = formatMessage(_("[file: {} ({})"), {document.document_->file_name_,
                                                            document.document_->mime_type_});
-            else
+            } else {
+                // TRANSLATOR: In-line placeholder when an unknown file is being replied to.
                 text = _("[file]");
+            }
             if (document.caption_)
                 text += " " + document.caption_->text_;
             break;
         }
         case td::td_api::messageVideo::ID: {
             const td::td_api::messageVideo &video = static_cast<const td::td_api::messageVideo &>(*message->content_);
-            if (video.video_)
+            if (video.video_) {
+                // TRANSLATOR: In-line placeholder when a video is being replied to. Argument will be the file name.
                 text = formatMessage(_("[video: {}]"), video.video_->file_name_);
-            else
+            } else {
+                // TRANSLATOR: In-line placeholder when an unknown video/gif is being replied to.
                 text = _("[video]");
+            }
             if (video.caption_)
                 text += " " + video.caption_->text_;
             break;
         }
         case td::td_api::messageSticker::ID:
+            // TRANSLATOR: In-line placeholder when a sticker is being replied to.
             text = _("[sticker]");
             break;
         default:
+            // TRANSLATOR: In-line placeholder when a message is being replied to, and the message has a weird type.
             text = formatMessage(_("[message type {}]"), messageTypeToString(*message->content_));
     }
 
     for (unsigned i = 0; i < text.size(); i++)
         if (text[i] == '\n') text[i] = ' ';
 
+    // TRANSLATOR: In-chat notification of a reply. Arguments will be username and the original text or description thereof. Please preserve the HTML.
     return formatMessage(_("<b>&gt; {} wrote:</b>\n&gt; {}"), {originalName, text});
 }
 
@@ -526,6 +541,7 @@ void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const
     if (!message.forwardedFrom.empty()) {
         if (!newText.empty())
             newText += "\n";
+        // TRANSLATOR: In-chat notification of forward. Argument will be a username. Please preserve the HTML.
         newText += formatMessage(_("<b>Forwarded from {}:</b>"), message.forwardedFrom);
     }
     if (text) {
@@ -578,9 +594,10 @@ std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::
             return account.getDisplayName(message.sender_user_id_);
         else if (!message.author_signature_.empty())
             return message.author_signature_;
-        else if (message.is_channel_post_)
+        else if (message.is_channel_post_) {
+            // TRANSLATOR: The "sender" of a message that was "sent" by the channel itself. Will be used like a username.
             return _("Channel post");
-        else if (message.forward_info_ && message.forward_info_->origin_)
+        } else if (message.forward_info_ && message.forward_info_->origin_)
             switch (message.forward_info_->origin_->get_id()) {
             case td::td_api::messageForwardOriginUser::ID:
                 return account.getDisplayName(static_cast<const td::td_api::messageForwardOriginUser &>(*message.forward_info_->origin_).sender_user_id_);
@@ -957,6 +974,7 @@ void notifySendFailed(const td::td_api::updateMessageSendFailed &sendFailed, TdA
             messageInfo.outgoing = true;
             std::string errorMessage = formatMessage(errorCodeMessage(), {std::to_string(sendFailed.error_code_),
                                                      sendFailed.error_message_});
+            // TRANSLATOR: In-chat error message, argument will be text.
             errorMessage = formatMessage(_("Failed to send message: {}"), errorMessage);
             showMessageText(account, *chat, messageInfo, NULL, errorMessage.c_str());
         }
@@ -972,9 +990,13 @@ static void secretChatNotSupported(int32_t secretChatId, const std::string &user
                                    TdTransceiver &transceiver, PurpleAccount *purpleAccount)
 {
     closeSecretChat(secretChatId, transceiver);
+    // TRANSLATOR: Dialog content, argument will be a username
     std::string message = formatMessage(_("Rejected secret chat with {}"), userDescription);
     purple_notify_info(purple_account_get_connection(purpleAccount),
-                        _("Secret chat"), message.c_str(), "Secret chats not supported");
+                        // TRANSLATOR: Dialog title
+                        _("Secret chat"), message.c_str(),
+                        // TRANSLATOR: Dialog secondary content; used as a justification for a failing chat.
+                        _("Secret chats not supported"));
 }
 
 struct SecretChatInfo {
@@ -1009,8 +1031,12 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
     std::string userDescription;
     if (user)
         userDescription = '\'' + account.getDisplayName(*user) + '\'';
-    else
+    else {
+        // TRANSLATOR: Place-holder for an unknown username. Is at the beginning of the line if and
+        // only if you make it so, see "Rejected secret chat with {}", "Rejected secret chat with {}",
+        // and "Accept secret chat with {} on…".
         userDescription = _("(unknown user)");
+    }
 
     if (!isExisting) {
         const char *secretChatHandling = purple_account_get_string(account.purpleAccount,
@@ -1018,20 +1044,29 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
                                                                    AccountOptions::AcceptSecretChatsDefault);
         if (!strcmp(secretChatHandling, AccountOptions::AcceptSecretChatsNever)) {
             closeSecretChat(secretChatId, transceiver);
+            // TRANSLATOR: Dialog content, argument will be a username
             std::string message = formatMessage(_("Rejected secret chat with {}"), userDescription);
             purple_notify_info(purple_account_get_connection(account.purpleAccount),
+                               // TRANSLATOR: Dialog title
                                _("Secret chat"), message.c_str(), NULL);
         } else if (!strcmp(secretChatHandling, AccountOptions::AcceptSecretChatsAlways))
             secretChatNotSupported(secretChatId, userDescription, transceiver, account.purpleAccount);
         else {
+            // TRANSLATOR: Dialog content, argument will be a username, options will be "_Accept" and "_Cancel".
             std::string message = formatMessage(_("Accept secret chat with {} on this device?"), userDescription);
             SecretChatInfo *data = new SecretChatInfo{secretChatId, userDescription, &transceiver, account.purpleAccount};
             purple_request_action(purple_account_get_connection(account.purpleAccount),
-                _("Secret chat"), message.c_str(), _("Secret chats can only have one "
+                // TRANSLATOR: Dialog title
+                _("Secret chat"), message.c_str(),
+                // TRANSLATOR: Dialog secondary content. Options will be "_Accept" and "_Cancel".
+                _("Secret chats can only have one "
                 "end point. If you accept a secret chat on this device, its messages will not be available anywhere "
                 "else. If you decline, you can still accept the chat on other devices."),
                 0, account.purpleAccount, NULL, NULL, data, 2,
-                _("_Accept"), acceptSecretChatCb, _("_Cancel"), discardSecretChatCb);
+                // TRANSLATOR: Dialog option, regarding a secret chat; the alternative is "_Cancel"
+                _("_Accept"), acceptSecretChatCb,
+                // TRANSLATOR: Dialog option, regarding a secret chat; the alternative is "_Accept"
+                _("_Cancel"), discardSecretChatCb);
         }
     }
 }

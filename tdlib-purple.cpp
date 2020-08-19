@@ -31,6 +31,7 @@ static const char *getLastOnline(const td::td_api::UserStatus &status)
 {
     switch (status.get_id()) {
         case td::td_api::userStatusOnline::ID:
+            // TRANSLATOR: Buddy infobox, value for "last online"
             return _("now");
         case td::td_api::userStatusOffline::ID: {
             const td::td_api::userStatusOffline &offline = static_cast<const td::td_api::userStatusOffline &>(status);
@@ -38,10 +39,13 @@ static const char *getLastOnline(const td::td_api::UserStatus &status)
             return ctime(&timestamp);
         }
         case td::td_api::userStatusRecently::ID:
+            // TRANSLATOR: Buddy infobox, value for "last online"
             return _("recently");
         case td::td_api::userStatusLastWeek::ID:
+            // TRANSLATOR: Buddy infobox, value for "last online"
             return _("last week");
         case td::td_api::userStatusLastMonth::ID:
+            // TRANSLATOR: Buddy infobox, value for "last online"
             return _("last month");
     }
 
@@ -58,8 +62,10 @@ static void tgprpl_tooltip_text (PurpleBuddy *buddy, PurpleNotifyUserInfo *info,
 
     if ((users.size() == 1) && users[0]->status_) {
         const char *lastOnline = getLastOnline(*users[0]->status_);
-        if (lastOnline && *lastOnline)
+        if (lastOnline && *lastOnline) {
+            // TRANSLATOR: Buddy infobox, key
             purple_notify_user_info_add_pair(info, _("Last online"), lastOnline);
+        }
     }
 }
 
@@ -120,17 +126,29 @@ static void leaveGroup(PurpleBlistNode *node, gpointer data)
         RequestData *request   = new RequestData(account);
         request->stringData = chatName ? chatName : "";
 
-        if (tdClient->getBasicGroupMembership(chatName) == BasicGroupMembership::Creator)
+        if (tdClient->getBasicGroupMembership(chatName) == BasicGroupMembership::Creator) {
+            // TRANSLATOR: Owning group deletion dialog, title
             purple_request_action(purple_account_get_connection(account), _("Leaving group"),
+                                  // TRANSLATOR: Owning group deletion dialog, primary content
                                   _("Confirm deleting group"),
+                                  // TRANSLATOR: Owning group deletion dialog, secondary content
                                   _("Leaving basic group you created will delete the group. Continue?"),
                                   0, account, NULL, NULL, request, 2,
-                                  _("_Yes"), leaveGroupConfirm, _("_No"), cancelRequest);
-        else
+                                  // TRANSLATOR: Owning group deletion dialog, alternative is "_No"
+                                  _("_Yes"), leaveGroupConfirm,
+                                  // TRANSLATOR: Owning group deletion dialog, alternative is "_Yes"
+                                  _("_No"), cancelRequest);
+        } else {
+            // TRANSLATOR: Group leave dialog, title
             purple_request_action(purple_account_get_connection(account), _("Leaving group"),
+                                  // TRANSLATOR: Group leave dialog, content
                                   _("Leave the group?"), NULL,
                                   0, account, NULL, NULL, request, 2,
-                                  _("_Yes"), leaveGroupConfirm, _("_No"), cancelRequest);
+                                  // TRANSLATOR: Group leave dialog, alternative is "_No"
+                                  _("_Yes"), leaveGroupConfirm,
+                                  // TRANSLATOR: Group leave dialog, alternative is "_Yes"
+                                  _("_No"), cancelRequest);
+        }
     }
 }
 
@@ -145,16 +163,23 @@ static void deleteGroup(PurpleBlistNode *node, gpointer data)
     if (tdClient) {
         const char  *chatName  = getChatName(purple_chat_get_components(chat));
 
-        if (tdClient->getBasicGroupMembership(chatName) == BasicGroupMembership::NonCreator)
-            purple_notify_error(account, _("Error"), _("Cannot delete group"),
-                                _("Cannot delete basic group created by someone else"));
-        else {
+        if (tdClient->getBasicGroupMembership(chatName) == BasicGroupMembership::NonCreator) {
+            // TRANSLATOR: Group deletion error dialog, title
+            purple_notify_error(account, _("Cannot delete group"),
+                                // TRANSLATOR: Group deletion error dialog, content
+                                _("Cannot delete basic group created by someone else"), NULL);
+        } else {
             RequestData *request = new RequestData(account);
             request->stringData = chatName ? chatName : "";
+            // TRANSLATOR: Group deletion confirmation dialog, title
             purple_request_action(purple_account_get_connection(account), _("Deleting group"),
+                                  // TRANSLATOR: Group deletion confirmation dialog, content
                                   _("Delete the group?"), NULL,
                                   0, account, NULL, NULL, request, 2,
-                                  _("_Yes"), deleteGroupConfirm, _("_No"), cancelRequest);
+                                  // TRANSLATOR: Group deletion dialog, alternative is "_No"
+                                  _("_Yes"), deleteGroupConfirm,
+                                  // TRANSLATOR: Group deletion dialog, alternative is "_Yes"
+                                  _("_No"), cancelRequest);
         }
     }
 }
@@ -181,16 +206,19 @@ static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
             return menu;
 
         PurpleMenuAction* action;
+        // TRANSLATOR: Group menu action item
         action = purple_menu_action_new(_("Leave group"),
                                         PURPLE_CALLBACK(leaveGroup),
                                         NULL, NULL);
         menu = g_list_append(menu, action);
 
+        // TRANSLATOR: Group menu action item
         action = purple_menu_action_new(_("Delete group"),
                                         PURPLE_CALLBACK(deleteGroup),
                                         NULL, NULL);
         menu = g_list_append(menu, action);
 
+        // TRANSLATOR: Group menu action item
         action = purple_menu_action_new(_("Show invite link"),
                                         PURPLE_CALLBACK(showInviteLink),
                                         NULL, NULL);
@@ -262,25 +290,36 @@ static void tgprpl_info_show (PurpleConnection *gc, const char *who)
     tdClient->getUsers(who, users);
 
     PurpleNotifyUserInfo *info = purple_notify_user_info_new();
-    if (users.empty())
+    if (users.empty()) {
+        // TRANSLATOR: Buddy infobox, error
         purple_notify_user_info_add_pair(info, _("User not found"), NULL);
+    }
 
     for (const td::td_api::user *user: users) {
         if (purple_notify_user_info_get_entries(info))
             purple_notify_user_info_add_section_break(info);
 
+        // TRANSLATOR: Buddy infobox, key
         purple_notify_user_info_add_pair(info, _("First name"), user->first_name_.c_str());
+        // TRANSLATOR: Buddy infobox, key
         purple_notify_user_info_add_pair(info, _("Last name"), user->last_name_.c_str());
-        if (!user->username_.empty())
+        if (!user->username_.empty()) {
+            // TRANSLATOR: Buddy infobox, key
             purple_notify_user_info_add_pair(info, _("Username"), user->username_.c_str());
-        if (!user->phone_number_.empty())
+        }
+        if (!user->phone_number_.empty()) {
+            // TRANSLATOR: Buddy infobox, key
             purple_notify_user_info_add_pair(info, _("Phone number"), user->phone_number_.c_str());
+        }
         if (user->status_) {
             const char *lastOnline = getLastOnline(*user->status_);
-            if (lastOnline && *lastOnline)
+            if (lastOnline && *lastOnline) {
+                // TRANSLATOR: Buddy infobox, key
                 purple_notify_user_info_add_pair(info, _("Last online"), lastOnline);
+            }
         }
         std::string username = getPurpleBuddyName(*user);
+        // TRANSLATOR: Buddy infobox, key
         purple_notify_user_info_add_pair(info, _("Internal id"), username.c_str());
     }
 
@@ -324,8 +363,11 @@ static void tgprpl_request_delete_contact (PurpleConnection *gc, PurpleBuddy *bu
     RequestData *data = new RequestData(purple_connection_get_account(gc));
     data->stringData = purple_buddy_get_name(buddy);
 
-//     purple_request_yes_no(gc, _("Remove contact"), _("Remove contact"),
+    // TRANSLATOR: Buddy deletion confirmation, title
+//     purple_request_yes_no(gc, _("Remove contact"),
+//                           // TRANSLATOR: Buddy deletion confirmation, content
 //                           _("Remove from global contact list and delete chat history from the server?\n"),
+//                           NULL,
 //                           0, purple_connection_get_account(gc), purple_buddy_get_name(buddy),
 //                           NULL, data, request_delete_contact_on_server_yes,
 //                           cancelRequest);
@@ -383,8 +425,10 @@ static void requestCreateBasicGroup(PurpleConnection *gc, const char *name)
     // the user to specify at least one other one.
     PurpleRequestFields* fields = purple_request_fields_new ();
     PurpleRequestFieldGroup* group = purple_request_field_group_new (
+        // TRANSLATOR: Group creation dialog, secondary content
         _("Invite at least one additional user by specifying their full name (autocompletion available)."));
 
+    // TRANSLATOR: Group creation dialog, label
     PurpleRequestField *field = purple_request_field_string_new ("user1", _("Username"), NULL, FALSE);
     purple_request_field_set_type_hint (field, "screenname");
     purple_request_field_group_add_field (group, field);
@@ -401,8 +445,14 @@ static void requestCreateBasicGroup(PurpleConnection *gc, const char *name)
 
     RequestData *data = new RequestData(purple_connection_get_account(gc));
     data->stringData = name;
-    purple_request_fields (gc, _("Create group chat"), _("Invite users"), NULL, fields, _("OK"),
-                           G_CALLBACK(create_group_chat_cb), _("Cancel"), G_CALLBACK(cancelRequest),
+    // TRANSLATOR: Group creation dialog, title
+    purple_request_fields (gc, _("Create group chat"),
+                           // TRANSLATOR: Group creation dialog, primary content
+                           _("Invite users"), NULL, fields,
+                           // TRANSLATOR: Group creation dialog, alternative is "Cancel"
+                           _("OK"), G_CALLBACK(create_group_chat_cb),
+                           // TRANSLATOR: Group creation dialog, alternative is "OK"
+                           _("Cancel"), G_CALLBACK(cancelRequest),
                            purple_connection_get_account(gc), NULL, NULL, data);
 }
 
@@ -426,10 +476,13 @@ static void tgprpl_chat_join (PurpleConnection *gc, GHashTable *data)
             if (!name.empty())
                 tdClient->joinChatByGroupName(joinString, name.c_str());
             else {
+                // TRANSLATOR: Join error dialog, secondary content. all five arguments are URLs. "name" should be part of the URL.
                 std::string extraMessage = formatMessage(_("Invite link must start with {}, {} or {}. Public group link must be {}name or {}name."),
                                                          {invitePrefixes[0], invitePrefixes[1], invitePrefixes[2],
                                                          groupLinkPrefixes[0], groupLinkPrefixes[1]});
+                // TRANSLATOR: Join error dialog, title
                 purple_notify_error(gc, _("Failed to join chat"),
+                                    // TRANSLATOR: Join error dialog, primary content
                                     _("Must be invite link, public group link or group name"),
                                     extraMessage.c_str());
                 purple_serv_got_join_chat_failed (gc, data);
@@ -446,7 +499,10 @@ static void tgprpl_chat_join (PurpleConnection *gc, GHashTable *data)
             else
                 tdClient->createGroup(groupName, groupType, {});
         } else {
-            purple_notify_error(gc, _("Failed to join chat"), _("Please enter group name and valid type"), NULL);
+            // TRANSLATOR: Join error dialog, title
+            purple_notify_error(gc, _("Failed to join chat"),
+                                // TRANSLATOR: Join error dialog, primary content
+                                _("Please enter group name and valid type"), NULL);
             purple_serv_got_join_chat_failed (gc, data);
         }
     }
@@ -604,6 +660,7 @@ static GHashTable *tgprpl_get_account_text_table (PurpleAccount *pa)
     GHashTable *HT;
     HT = g_hash_table_new (g_str_hash, g_str_equal);
     static char label[] = "login_label";
+    // TRANSLATOR: Account creation, telephone hint. Keep it short!
     g_hash_table_insert(HT, label, _("phone no. (+ country prefix)"));
     return HT;
 }
@@ -762,11 +819,13 @@ static gboolean tgprpl_load (PurplePlugin *plugin)
     purple_cmd_register("kick", "s", PURPLE_CMD_P_PLUGIN,
                         (PurpleCmdFlag)(PURPLE_CMD_FLAG_CHAT | PURPLE_CMD_FLAG_PRPL_ONLY),
                         config::pluginId, tgprpl_cmd_kick,
+                        // TRANSLATOR: Command description, the initial "kick <user>" must remain verbatim!
                         _("kick <user>: Kick a user from the room using name or internal id"), NULL);
 
     purple_cmd_register("hangup", "", PURPLE_CMD_P_PLUGIN,
                         (PurpleCmdFlag)(PURPLE_CMD_FLAG_IM | PURPLE_CMD_FLAG_PRPL_ONLY),
                         config::pluginId, hangupCommand,
+                        // TRANSLATOR: Command description, the initial "hangup <user>" must remain verbatim!
                         _("hangup: Terminate any active call (with any user)"), NULL);
 
     return TRUE;
@@ -786,17 +845,20 @@ static gboolean tdlibFatalErrorHandler(void *data)
 {
     char *message = static_cast<char *>(data);
     const char *dbMessage =
+        // TRANSLATOR: Tdlib crash dialog, secondary content. Argument is a filesystem path. Please keep the space after it!
         _("The error may be caused by corrupt account data. "
           "If this is the case, it could be fixed by removing account data under {} . "
           "You will be required to log in into the account again.");
 
+    // TRANSLATOR: Tdlib crash dialog, primary content. Argument is a tdlib-provided error message.
+    // Please keep the string "tdlib" verbatim. Will be followed by a newline and more text.
     std::string details = formatMessage(_("tdlib error: {}"), std::string(message));
     details += '\n';
     details += formatMessage(dbMessage, PurpleTdClient::getBaseDatabasePath());
 
-    purple_notify_error(getPluginInfo(), _("Telegram plugin"),
-                        _("Fatal error encountered in telegram plugin"),
-                        details.c_str());
+    // TRANSLATOR: Tdlib crash dialog, title
+    purple_notify_error(getPluginInfo(), _("Fatal error encountered in telegram plugin"),
+                        details.c_str(), NULL);
 
     free(message);
     return FALSE; // this idle handler will not be called again
@@ -807,6 +869,8 @@ static void tdlibFatalErrorCallback(const char *message)
     g_idle_add(tdlibFatalErrorHandler, strdup(message));
     // The error must have come either from the poll thread or from one of the threads created by tdlib.
     // So, hang the thread to avoid crash.
+    // FIXME: This effectively kills entire libpurple, not just the account, and requires a restart.
+    // We should probably also add instructions on how to disable the account in accounts.xml.
     while (1) sleep(1000);
 }
 
@@ -832,17 +896,21 @@ static void tgprpl_init (PurplePlugin *plugin)
 
     GList *choices = NULL;
     if (!strcmp(AccountOptions::DownloadBehaviourDefault(), AccountOptions::DownloadBehaviourHyperlink)) {
+        // TRANSLATOR: Account settings, value for file downloads (hyperlink link file:///tmp/asdf)
         addChoice(choices, _("Inline (hyperlinks in chat)"), AccountOptions::DownloadBehaviourHyperlink);
+        // TRANSLATOR: Account settings, value for file downloads (file transfer dialog)
         addChoice(choices, _("Standard file transfers"), AccountOptions::DownloadBehaviourStandard);
     } else {
         addChoice(choices, _("Standard file transfers"), AccountOptions::DownloadBehaviourStandard);
-        addChoice(choices, _("Inline (hyperlinks is chat)"), AccountOptions::DownloadBehaviourHyperlink);
+        addChoice(choices, _("Inline (hyperlinks in chat)"), AccountOptions::DownloadBehaviourHyperlink);
     }
     
+    // TRANSLATOR: Account settings, key (choice)
     PurpleAccountOption *opt = purple_account_option_list_new (_("File downloads"),
                                                                AccountOptions::DownloadBehaviour, choices);
     prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
 
+    // TRANSLATOR: Account settings, key (choice)
     opt = purple_account_option_string_new (_("Inline auto-download size limit, MB (0 for unlimited)"),
                                             AccountOptions::AutoDownloadLimit,
                                             AccountOptions::AutoDownloadLimitDefault);
@@ -851,23 +919,31 @@ static void tgprpl_init (PurplePlugin *plugin)
     static_assert(AccountOptions::BigDownloadHandlingDefault == AccountOptions::BigDownloadHandlingAsk,
                   "default choice must be first");
     choices = NULL;
+    // TRANSLATOR: Account settings, value for large file downloads
     addChoice(choices, _("Ask"), AccountOptions::BigDownloadHandlingAsk);
+    // TRANSLATOR: Account settings, value for large file downloads
     addChoice(choices, _("Discard"), AccountOptions::BigDownloadHandlingDiscard);
 
+    // TRANSLATOR: Account settings, key (choice)
     opt = purple_account_option_list_new (_("Bigger inline file downloads"), AccountOptions::BigDownloadHandling, choices);
     prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
 
     static_assert(AccountOptions::AcceptSecretChatsDefault == AccountOptions::AcceptSecretChatsAsk,
                   "default choice must be first");
     choices = NULL;
+    // TRANSLATOR: Account settings, value for 'Accept secret chats'
     addChoice(choices, _("Ask"), AccountOptions::AcceptSecretChatsAsk);
+    // TRANSLATOR: Account settings, value for 'Accept secret chats'
     addChoice(choices, _("Always"), AccountOptions::AcceptSecretChatsAlways);
+    // TRANSLATOR: Account settings, value for 'Accept secret chats'
     addChoice(choices, _("Never"), AccountOptions::AcceptSecretChatsNever);
 
+    // TRANSLATOR: Account settings, key (choice)
     opt = purple_account_option_list_new (_("Accept secret chats"), AccountOptions::AcceptSecretChats, choices);
     prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
 
 #ifndef NoLottie
+    // TRANSLATOR: Account settings, key (boolean)
     opt = purple_account_option_bool_new(_("Show animated stickers"), AccountOptions::AnimatedStickers,
                                          AccountOptions::AnimatedStickersDefault);
     prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
@@ -881,21 +957,26 @@ static void requestTwoFactorAuth(PurpleConnection *gc, const char *primaryText, 
     PurpleRequestFields     *fields  = purple_request_fields_new();
     PurpleRequestFieldGroup *group   = purple_request_field_group_new(NULL);
 
+    // TRANSLATOR: 2FA settings, key
     PurpleRequestField *field = purple_request_field_string_new ("oldpw", _("Current password"), NULL, FALSE);
     purple_request_field_string_set_masked(field, TRUE);
     purple_request_field_group_add_field (group, field);
 
+    // TRANSLATOR: 2FA settings, key
     field = purple_request_field_string_new ("pw1", _("New password"), NULL, FALSE);
     purple_request_field_string_set_masked(field, TRUE);
     purple_request_field_group_add_field (group, field);
 
+    // TRANSLATOR: 2FA settings, key
     field = purple_request_field_string_new ("pw2", _("Repeat password"), NULL, FALSE);
     purple_request_field_string_set_masked(field, TRUE);
     purple_request_field_group_add_field (group, field);
 
+    // TRANSLATOR: 2FA settings, key
     field = purple_request_field_string_new ("hint", _("Password hint"), NULL, FALSE);
     purple_request_field_group_add_field (group, field);
 
+    // TRANSLATOR: 2FA settings, key
     field = purple_request_field_string_new ("email", _("Recovery e-mail"), email, FALSE);
     purple_request_field_group_add_field (group, field);
 
@@ -903,8 +984,12 @@ static void requestTwoFactorAuth(PurpleConnection *gc, const char *primaryText, 
 
     RequestData *data = new RequestData(purple_connection_get_account(gc));
     data->account = purple_connection_get_account(gc);
-    purple_request_fields (gc, _("Two-factor authentication"), primaryText, NULL, fields, _("OK"),
-                           G_CALLBACK(setTwoFactorAuth), _("Cancel"), G_CALLBACK(cancelRequest),
+    // TRANSLATOR: 2FA settings, title
+    purple_request_fields (gc, _("Two-factor authentication"), primaryText, NULL, fields,
+                           // TRANSLATOR: 2FA settings, alternative is "Cancel"
+                           _("OK"), G_CALLBACK(setTwoFactorAuth),
+                           // TRANSLATOR: 2FA settings, alternative is "OK"
+                           _("Cancel"), G_CALLBACK(cancelRequest),
                            purple_connection_get_account(gc), NULL, NULL, data);
 }
 
@@ -912,6 +997,7 @@ static int reRequestTwoFactorAuth(gpointer user_data)
 {
     std::unique_ptr<RequestData> request(static_cast<RequestData *>(user_data));
     requestTwoFactorAuth(purple_account_get_connection(request->account),
+                        // TRANSLATOR: 2FA settings, primary content (after mistype)
                         _("Please enter same password twice"), request->stringData.c_str());
     return FALSE; // this idle handler will not be called again
 }
@@ -942,6 +1028,7 @@ static void setTwoFactorAuth(RequestData *data, PurpleRequestFields* fields)
 static void configureTwoFactorAuth(PurplePluginAction *action)
 {
     PurpleConnection *gc = static_cast<PurpleConnection *>(action->context);
+    // TRANSLATOR: 2FA settings, primary content
     requestTwoFactorAuth(gc, _("Enter new password and recovery e-mail address"), NULL);
 }
 
@@ -950,6 +1037,7 @@ static GList *tgprpl_actions (PurplePlugin *plugin, gpointer context)
     GList *actionsList = NULL;
     PurplePluginAction *action;
 
+    // TRANSLATOR: 2FA settings, title
     action = purple_plugin_action_new(_("Configure two-factor authentication..."),
                                       configureTwoFactorAuth);
     actionsList = g_list_append(actionsList, action);
