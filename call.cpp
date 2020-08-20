@@ -138,7 +138,7 @@ static bool activateCall(const td::td_api::call &call, const std::string &buddyN
         // was initiated
         // TRANSLATOR: In-chat status message
         const char *message = call.is_outgoing_ ? _("Call active") :
-                                                  // TRANSLATOR: In-chat status message
+                                                  // TRANSLATOR: In-chat status message. Please keep '/hangup' verbatim!
                                                   _("Call active, type /hangup to terminate");
         showMessageTextIm(account, buddyName.c_str(), NULL, message,
                           time(NULL), PURPLE_MESSAGE_SYSTEM);
@@ -235,7 +235,7 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
             account.setActiveCall(call.id_);
             if (!buddyName.empty())
                 showMessageTextIm(account, buddyName.c_str(), NULL,
-                                // TRANSLATOR: In-chat status message
+                                // TRANSLATOR: In-chat status message. Please keep '/hangup' verbatim!
                                 _("Call pending, type /hangup to terminate"),
                                 time(NULL), PURPLE_MESSAGE_SYSTEM);
         } else if (call.id_ != account.getActiveCallId()) {

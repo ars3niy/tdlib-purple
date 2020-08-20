@@ -466,7 +466,7 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
 
     std::string text;
     if (!message || !message->content_) {
-        // TRANSLATOR: In-line placeholder when something unknown is being replied to.
+        // TRANSLATOR: In-chat placeholder when something unknown is being replied to.
         text = _("[message unavailable]");
     } else switch (message->content_->get_id()) {
         case td::td_api::messageText::ID: {
@@ -489,7 +489,7 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
             const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message->content_);
             if (document.document_) {
                 // TRANSLATOR: In-line placeholder when a file is being replied to. Arguments will be the file name and MIME type (e.g. "application/gzip")
-                text = formatMessage(_("[file: {0} ({1})"), {document.document_->file_name_,
+                text = formatMessage(_("[file: {0} ({1})]"), {document.document_->file_name_,
                                                            document.document_->mime_type_});
             } else {
                 // TRANSLATOR: In-line placeholder when an unknown file is being replied to.
