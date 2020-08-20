@@ -68,6 +68,7 @@ before_install:
   - if [ "x${INSTALL_LOCAL_LOTTIE}" = "xy" ] ; then sudo apt-get install -y -qq librlottie-dev ; fi
 
 script:
+  - LINTACCEL_IGNORE_MISSING=y ./po/lint_accelerators.py
   - ./travis_build_td.sh
   - cd build
 # TODO: Try out building with the voip library?
