@@ -1102,7 +1102,7 @@ TEST_F(PrivateChatTest, CallEnded)
         NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
         ConversationWriteEvent(
             purpleUserName(0), purpleUserName(0),
-            "Call ended (137 seconds): reason unknown",
+            "Call ended (00:02:17): reason unknown",
             PURPLE_MESSAGE_SYSTEM, 0
         )
     );

@@ -298,7 +298,7 @@ void showCallMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
         notification = _("reason unknown");
     }
 
-    // TRANSLATOR: In-chat message, arguments will be a number and a few words (like "hung up")
-    notification = formatMessage(_("Call ended ({} seconds): {}"), {std::to_string(callEnded.duration_), notification});
+    // TRANSLATOR: In-chat message, arguments will be a duration and a few words (like "hung up")
+    notification = formatMessage(_("Call ended ({}): {}"), {formatDuration(callEnded.duration_), notification});
     showMessageText(account, chat, message, NULL, notification.c_str());
 }

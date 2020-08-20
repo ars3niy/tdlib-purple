@@ -464,8 +464,8 @@ std::string makeDocumentDescription(const td::td_api::videoNote *document)
     if (!document)
         // Unlikely error message not worth translating
         return "faulty voice note";
-    // TRANSLATOR: In-line document type. Argument will be a number.
-    return formatMessage(_("video note [{} s]"), document->duration_);
+    // TRANSLATOR: In-line document type. Argument will be a duration.
+    return formatMessage(_("video note [{}]"), formatDuration(document->duration_));
 }
 
 std::string getFileName(const td::td_api::voiceNote* document)

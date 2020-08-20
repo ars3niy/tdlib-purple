@@ -13,4 +13,6 @@ std::string formatMessage(const char *fmt, T arg)
     return formatMessage(fmt, {std::to_string(arg)});
 }
 
+std::string formatDuration(int32_t seconds);
+
 #endif
