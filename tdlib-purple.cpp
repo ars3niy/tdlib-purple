@@ -476,8 +476,8 @@ static void tgprpl_chat_join (PurpleConnection *gc, GHashTable *data)
             if (!name.empty())
                 tdClient->joinChatByGroupName(joinString, name.c_str());
             else {
-                // TRANSLATOR: Join error dialog, secondary content. all five arguments are URLs. "name" should be part of the URL.
-                std::string extraMessage = formatMessage(_("Invite link must start with {}, {} or {}. Public group link must be {}name or {}name."),
+                // TRANSLATOR: Join error dialog, secondary content. all five arguments are URLs. "name" should be part of the URL, and indicate that it can be a name in your language.
+                std::string extraMessage = formatMessage(_("Invite link must start with {0}, {1} or {2}. Public group link must be {3}name or {4}name."),
                                                          {invitePrefixes[0], invitePrefixes[1], invitePrefixes[2],
                                                          groupLinkPrefixes[0], groupLinkPrefixes[1]});
                 // TRANSLATOR: Join error dialog, title

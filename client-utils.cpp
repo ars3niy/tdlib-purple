@@ -15,7 +15,7 @@ enum {
 const char *errorCodeMessage()
 {
     // TRANSLATOR: In-line error message, appears after a colon (':'), arguments will be a number and some error text from Telegram
-    return _("code {} ({})");
+    return _("code {0} ({1})");
 }
 
 std::string messageTypeToString(const td::td_api::MessageContent &content)
@@ -489,7 +489,7 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
             const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message->content_);
             if (document.document_) {
                 // TRANSLATOR: In-line placeholder when a file is being replied to. Arguments will be the file name and MIME type (e.g. "application/gzip")
-                text = formatMessage(_("[file: {} ({})"), {document.document_->file_name_,
+                text = formatMessage(_("[file: {0} ({1})"), {document.document_->file_name_,
                                                            document.document_->mime_type_});
             } else {
                 // TRANSLATOR: In-line placeholder when an unknown file is being replied to.
@@ -525,7 +525,7 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
         if (text[i] == '\n') text[i] = ' ';
 
     // TRANSLATOR: In-chat notification of a reply. Arguments will be username and the original text or description thereof. Please preserve the HTML.
-    return formatMessage(_("<b>&gt; {} wrote:</b>\n&gt; {}"), {originalName, text});
+    return formatMessage(_("<b>&gt; {0} wrote:</b>\n&gt; {1}"), {originalName, text});
 }
 
 void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const TgMessageInfo &message,
