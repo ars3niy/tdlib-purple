@@ -457,10 +457,10 @@ void PurpleTdClient::requestAuthCode(const td::td_api::authenticationCodeInfo *c
                                FALSE, // masked input
                                // TRANSLATOR: Authentication dialog, placeholder, will be displayed faintly
                                _("the code"),
-                               // TRANSLATOR: Authentication dialog, alternative is "Cancel".
-                               _("OK"), G_CALLBACK(requestCodeEntered),
-                               // TRANSLATOR: Authentication dialog, alternative is "OK".
-                               _("Cancel"), G_CALLBACK(requestCodeCancelled),
+                               // TRANSLATOR: Authentication dialog, alternative is "_Cancel". The underscore marks accelerator keys, they must be different!
+                               _("_OK"), G_CALLBACK(requestCodeEntered),
+                               // TRANSLATOR: Authentication dialog, alternative is "_OK". The underscore marks accelerator keys, they must be different!
+                               _("_Cancel"), G_CALLBACK(requestCodeCancelled),
                                m_account,
                                NULL, // buddy
                                NULL, // conversation
@@ -522,10 +522,10 @@ void PurpleTdClient::requestPassword(const td::td_api::authorizationStateWaitPas
                                FALSE, // masked input
                                // TRANSLATOR: 2FA dialog, placeholder, will be displayed faintly
                                _("password"),
-                               // TRANSLATOR: 2FA dialog, alternative is "Cancel".
-                               _("OK"), G_CALLBACK(passwordEntered),
-                               // TRANSLATOR: 2FA dialog, alternative is "OK".
-                               _("Cancel"), G_CALLBACK(passwordCancelled),
+                               // TRANSLATOR: 2FA dialog, alternative is "_Cancel". The underscore marks accelerator keys, they must be different!
+                               _("_OK"), G_CALLBACK(passwordEntered),
+                               // TRANSLATOR: 2FA dialog, alternative is "_OK". The underscore marks accelerator keys, they must be different!
+                               _("_Cancel"), G_CALLBACK(passwordCancelled),
                                m_account,
                                NULL, // buddy
                                NULL, // conversation
@@ -553,10 +553,10 @@ void PurpleTdClient::registerUser()
                                 FALSE, // multiline input
                                 FALSE, // masked input
                                 NULL,
-                                // TRANSLATOR: Registration dialog, alternative is "Cancel"
-                                _("OK"), G_CALLBACK(displayNameEntered),
-                                // TRANSLATOR: Registration dialog, alternative is "OK"
-                                _("Cancel"), G_CALLBACK(displayNameCancelled),
+                                // TRANSLATOR: Registration dialog, alternative is "_Cancel". The underscore marks accelerator keys, they must be different!
+                                _("_OK"), G_CALLBACK(displayNameEntered),
+                                // TRANSLATOR: Registration dialog, alternative is "_OK". The underscore marks accelerator keys, they must be different!
+                                _("_Cancel"), G_CALLBACK(displayNameCancelled),
                                 m_account,
                                 NULL, // buddy
                                 NULL, // conversation
@@ -2390,10 +2390,10 @@ void PurpleTdClient::requestRecoveryEmailConfirmation(const std::string &emailIn
                          FALSE, // multiline input
                          FALSE, // masked input
                          NULL,
-                         // TRANSLATOR: 2FA setup confirmation dialog, alternative is "Cancel"
-                         _("OK"), G_CALLBACK(PurpleTdClient::verifyRecoveryEmail),
-                         // TRANSLATOR: 2FA setup confirmation dialog, alternative is "Cancel"
-                         _("Cancel"), G_CALLBACK(inputCancelled),
+                         // TRANSLATOR: 2FA setup confirmation dialog, alternative is "_Cancel". The underscore marks accelerator keys, they must be different!
+                         _("_OK"), G_CALLBACK(PurpleTdClient::verifyRecoveryEmail),
+                         // TRANSLATOR: 2FA setup confirmation dialog, alternative is "_OK". The underscore marks accelerator keys, they must be different!
+                         _("_Cancel"), G_CALLBACK(inputCancelled),
                          purple_connection_get_account(gc),
                          NULL, // buddy
                          NULL, // conversation

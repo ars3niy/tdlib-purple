@@ -205,7 +205,7 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
     if (!call.is_outgoing_ && (call.state_->get_id() == td::td_api::callStatePending::ID)) {
         if (!account.hasActiveCall()) {
             account.setActiveCall(call.id_);
-            // TRANSLATOR: Dialog content, user will have the options "OK" and "Cancel".
+            // TRANSLATOR: Dialog content, user will have the options "_OK" and "_Cancel".
             std::string message = formatMessage(_("{} wishes to start a call with you."),
                                                 account.getDisplayName(call.user_id_));
             CallRequestData *request = new CallRequestData;
@@ -217,9 +217,9 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
                                   _("Voice call"), message.c_str(), NULL,
                                   PURPLE_DEFAULT_ACTION_NONE,
                                   account.purpleAccount, !buddyName.empty() ? buddyName.c_str() : NULL, NULL,
-                                  // TRANSLATOR: Dialog option, regarding a phone call; the alternative is "_Cancel"
+                                  // TRANSLATOR: Dialog option, regarding a phone call; the alternative is "_Cancel". The underscore marks accelerator keys, they must be different!
                                   request, 2, _("_OK"), acceptCallCb,
-                                  // TRANSLATOR: Dialog option, regarding a phone call; the alternative is "_OK"
+                                  // TRANSLATOR: Dialog option, regarding a phone call; the alternative is "_OK". The underscore marks accelerator keys, they must be different!
                                   _("_Cancel"), discardCallCb);
         } else if (call.id_ != account.getActiveCallId()) {
             if (!buddyName.empty())

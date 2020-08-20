@@ -449,10 +449,10 @@ static void requestCreateBasicGroup(PurpleConnection *gc, const char *name)
     purple_request_fields (gc, _("Create group chat"),
                            // TRANSLATOR: Group creation dialog, primary content
                            _("Invite users"), NULL, fields,
-                           // TRANSLATOR: Group creation dialog, alternative is "Cancel"
-                           _("OK"), G_CALLBACK(create_group_chat_cb),
-                           // TRANSLATOR: Group creation dialog, alternative is "OK"
-                           _("Cancel"), G_CALLBACK(cancelRequest),
+                           // TRANSLATOR: Group creation dialog, alternative is "_Cancel". The underscore marks accelerator keys, they must be different!
+                           _("_OK"), G_CALLBACK(create_group_chat_cb),
+                           // TRANSLATOR: Group creation dialog, alternative is "_OK". The underscore marks accelerator keys, they must be different!
+                           _("_Cancel"), G_CALLBACK(cancelRequest),
                            purple_connection_get_account(gc), NULL, NULL, data);
 }
 
@@ -986,10 +986,10 @@ static void requestTwoFactorAuth(PurpleConnection *gc, const char *primaryText, 
     data->account = purple_connection_get_account(gc);
     // TRANSLATOR: 2FA settings, title
     purple_request_fields (gc, _("Two-factor authentication"), primaryText, NULL, fields,
-                           // TRANSLATOR: 2FA settings, alternative is "Cancel"
-                           _("OK"), G_CALLBACK(setTwoFactorAuth),
-                           // TRANSLATOR: 2FA settings, alternative is "OK"
-                           _("Cancel"), G_CALLBACK(cancelRequest),
+                           // TRANSLATOR: 2FA settings, alternative is "_Cancel". The underscore marks accelerator keys, they must be different!
+                           _("_OK"), G_CALLBACK(setTwoFactorAuth),
+                           // TRANSLATOR: 2FA settings, alternative is "_OK". The underscore marks accelerator keys, they must be different!
+                           _("_Cancel"), G_CALLBACK(cancelRequest),
                            purple_connection_get_account(gc), NULL, NULL, data);
 }
 
