@@ -970,7 +970,7 @@ void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo 
         // TRANSLATOR: Placeholder for a file size, appears in parenthesis inside a text e.g. "Ignoring image download (unknown size)"
         std::string fileSizeStrNonnull = fileSizeStr ? std::string(fileSizeStr) : std::string(_("unknown size"));
         // TRANSLATOR: In-chat notification, appears after a colon (':'). Arguments are a file *type*, not a filename; second argument is a file size with unit.
-        notice = formatMessage(_("Ignoring {} download ({})"), {std::string(fileDesc), fileSizeStrNonnull});
+        notice = formatMessage(_("Ignoring {0} download ({1})"), {std::string(fileDesc), fileSizeStrNonnull});
         g_free(fileSizeStr);
     }
 
@@ -1074,7 +1074,7 @@ void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file 
     // TRANSLATOR: Download dialog, placeholder chat title, in the sentence "posted in a private chat".
     std::string chatName = isPrivateChat(chat) ? _("a private chat") : chat.title_;
     // TRANSLATOR: Download dialog, secondary content. Arguments will be file description (text), chat name (text), and a file size (text!)
-    std::string fileInfo = formatMessage(_("{} posted in {}, size: {}"), {fileDesc,
+    std::string fileInfo = formatMessage(_("{0} posted in {1}, size: {2}"), {fileDesc,
                                          chatName, std::string(sizeStr)});
     g_free(sizeStr);
 
@@ -1275,7 +1275,7 @@ void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
         showMessageText(m_data, *chat, thread->message, text.c_str(), NULL);
     } else {
         // TRANSLATOR: In-chat error message, arguments will be a file name and a proper reason
-        errorMessage = formatMessage(_("Could not read sticker file {}: {}"),
+        errorMessage = formatMessage(_("Could not read sticker file {0}: {1}"),
                                         {thread->inputFileName, errorMessage});
         errorMessage = makeNoticeWithSender(*chat, thread->message, errorMessage.c_str(), m_account);
         showMessageText(m_data, *chat, thread->message, NULL, errorMessage.c_str());
@@ -1375,7 +1375,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
         case td::td_api::messageChatChangeTitle::ID: {
             const auto &titleChange = static_cast<const td::td_api::messageChatChangeTitle &>(*message.content_);
             // TRANSLATOR: In-chat status update, arguments are chat names.
-            std::string notice = formatMessage(_("{} changed group name to {}"),
+            std::string notice = formatMessage(_("{0} changed group name to {1}"),
                                                {getSenderDisplayName(chat, messageInfo, m_account),
                                                 titleChange.title_});
             showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
@@ -2421,7 +2421,7 @@ void PurpleTdClient::setTwoFactorAuthResponse(uint64_t requestId, td::td_api::ob
         const td::td_api::passwordState &passwordState = static_cast<const td::td_api::passwordState &>(*object);
         if (passwordState.recovery_email_address_code_info_) {
             // TRANSLATOR: 2FA setup confirmation dialog, e-mail description
-            std::string emailInfo = formatMessage(_("Code sent to {} (length: {})"),
+            std::string emailInfo = formatMessage(_("Code sent to {0} (length: {1})"),
                                                   {passwordState.recovery_email_address_code_info_->email_address_pattern_,
                                                    std::to_string(passwordState.recovery_email_address_code_info_->length_)});
             requestRecoveryEmailConfirmation(emailInfo);
