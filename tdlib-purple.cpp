@@ -825,7 +825,7 @@ static gboolean tgprpl_load (PurplePlugin *plugin)
     purple_cmd_register("hangup", "", PURPLE_CMD_P_PLUGIN,
                         (PurpleCmdFlag)(PURPLE_CMD_FLAG_IM | PURPLE_CMD_FLAG_PRPL_ONLY),
                         config::pluginId, hangupCommand,
-                        // TRANSLATOR: Command description, the initial "hangup <user>" must remain verbatim!
+                        // TRANSLATOR: Command description, the initial "hangup" must remain verbatim!
                         _("hangup: Terminate any active call (with any user)"), NULL);
 
     return TRUE;
