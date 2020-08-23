@@ -531,9 +531,10 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
 void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const TgMessageInfo &message,
                      const char *text, const char *notification, uint32_t extraFlags)
 {
-    // TODO: maybe set PURPLE_MESSAGE_REMOTE_SEND when appropriate
     PurpleMessageFlags directionFlag = message.outgoing ? PURPLE_MESSAGE_SEND : PURPLE_MESSAGE_RECV;
     PurpleMessageFlags flags = (PurpleMessageFlags) (extraFlags | directionFlag);
+    if (message.outgoing && !message.sentLocally)
+        flags = (PurpleMessageFlags) (flags | PURPLE_MESSAGE_REMOTE_SEND);
 
     std::string newText;
     if (message.repliedMessageId != 0)

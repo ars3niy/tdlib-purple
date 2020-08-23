@@ -1,3 +1,4 @@
+
 #include "fixture.h"
 #include "libpurple-mock.h"
 #include <fmt/format.h>
@@ -1103,6 +1104,41 @@ TEST_F(PrivateChatTest, CallEnded)
             purpleUserName(0), purpleUserName(0),
             "Call ended (137 seconds): reason unknown",
             PURPLE_MESSAGE_SYSTEM, 0
+        )
+    );
+}
+
+TEST_F(PrivateChatTest, RemoteSend)
+{
+    constexpr int64_t messageId = 10000;
+    constexpr int32_t date      = 123456;
+
+    loginWithOneContact();
+
+    object_ptr<message> message = makeMessage(
+        messageId,
+        selfId,
+        chatIds[0],
+        true,
+        date,
+        makeTextMessage("text")
+    );
+    ASSERT_NE(nullptr, message->sending_state_);
+    message->sending_state_ = nullptr;
+    tgl.update(make_object<updateNewMessage>(std::move(message)));
+    tgl.verifyRequest(viewMessages(
+        chatIds[0],
+        {messageId},
+        true
+    ));
+    prpl.verifyEvents(
+        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
+        ConversationWriteEvent(
+            purpleUserName(0),
+            selfFirstName + " " + selfLastName,
+            "text",
+            (PurpleMessageFlags)(PURPLE_MESSAGE_SEND | PURPLE_MESSAGE_REMOTE_SEND),
+            date
         )
     );
 }
