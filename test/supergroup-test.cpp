@@ -1,6 +1,8 @@
 #include "fixture.h"
 #include <glib/gstrfuncs.h>
 
+static const char *NotificationWho = " ";
+
 class SupergroupTest: public CommTest {
 protected:
     const int32_t     groupId             = 700;
@@ -381,7 +383,7 @@ TEST_F(SupergroupTest, LeaveSupergroup)
         ConvSetTitleEvent(groupChatPurpleName, groupChatTitle),
         ChatSetTopicEvent(groupChatPurpleName, "", ""),
         ChatClearUsersEvent(groupChatPurpleName),
-        ConversationWriteEvent(groupChatPurpleName, "",
+        ConversationWriteEvent(groupChatPurpleName, NotificationWho,
                                selfFirstName + " " + selfLastName +
                                ": Received unsupported message type messageChatDeleteMember",
                                PURPLE_MESSAGE_SYSTEM, date)
@@ -411,7 +413,7 @@ TEST_F(SupergroupTest, GetInviteLink)
         ChatSetTopicEvent(groupChatPurpleName, "", ""),
         ChatClearUsersEvent(groupChatPurpleName),
         ConversationWriteEvent(
-            groupChatPurpleName, "",
+            groupChatPurpleName, NotificationWho,
             "Cannot generate invite link: code 100 (error)",
             PURPLE_MESSAGE_SYSTEM, 0
         )
@@ -430,7 +432,7 @@ TEST_F(SupergroupTest, GetInviteLink)
     tgl.reply(make_object<chatInviteLink>("http://invite"));
     prpl.verifyEvents(
         ConversationWriteEvent(
-            groupChatPurpleName, "",
+            groupChatPurpleName, NotificationWho,
             "http://invite",
             PURPLE_MESSAGE_SYSTEM, 0
         )

@@ -438,7 +438,10 @@ static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &
 
     if (notification) {
         if (conv)
-            purple_conv_chat_write(conv, "", notification, getNotificationFlags(flags), message.timestamp);
+            // Protocol plugins mostly use who="" for such messages, but this currently causes problems
+            // with Spectrum. Use some non-empty string. Pidgin will ignore the who parameter for
+            // notification messages.
+            purple_conv_chat_write(conv, " ", notification, getNotificationFlags(flags), message.timestamp);
     }
 }
 

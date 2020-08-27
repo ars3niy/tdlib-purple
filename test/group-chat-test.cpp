@@ -3,6 +3,8 @@
 #include <glib/gstrfuncs.h>
 #include <fmt/format.h>
 
+static const char *NotificationWho = " ";
+
 class GroupChatTest: public CommTest {
 protected:
     const int32_t     groupId             = 700;
@@ -160,7 +162,7 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
         ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
         ServGotChatEvent(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0], "photo",
                          PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(groupChatPurpleName, "",
+        ConversationWriteEvent(groupChatPurpleName, NotificationWho,
                                userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
                                PURPLE_MESSAGE_SYSTEM, date)
     );
@@ -483,7 +485,7 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
     // The message is shown in chat conversation
     prpl.verifyEvents(
         ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
-        ConversationWriteEvent(groupChatPurpleName, "",
+        ConversationWriteEvent(groupChatPurpleName, NotificationWho,
                                selfFirstName + " " + selfLastName + ": " +
                                "Received unsupported message type messageChatJoinByLink",
                                PURPLE_MESSAGE_SYSTEM, 12345)
@@ -578,7 +580,7 @@ TEST_F(GroupChatTest, GroupRenamed)
     prpl.verifyEvents(
         ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, "New Title"),
         ConversationWriteEvent(
-            groupChatPurpleName, "",
+            groupChatPurpleName, NotificationWho,
             userFirstNames[0] + " " + userLastNames[0] + " changed group name to New Title",
             PURPLE_MESSAGE_SYSTEM, date
         )
@@ -637,7 +639,7 @@ TEST_F(GroupChatTest, CreateRemoveBasicGroupInAnotherClient)
     prpl.verifyEvents(
         ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatPurpleName),
         ConvSetTitleEvent(groupChatPurpleName, groupChatTitle),
-        ConversationWriteEvent(groupChatPurpleName, "",
+        ConversationWriteEvent(groupChatPurpleName, NotificationWho,
                                selfFirstName + " " + selfLastName +
                                ": Received unsupported message type messageBasicGroupChatCreate",
                                PURPLE_MESSAGE_SYSTEM, date[0])
@@ -667,7 +669,7 @@ TEST_F(GroupChatTest, CreateRemoveBasicGroupInAnotherClient)
     prpl.verifyEvents(
         ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
         ChatClearUsersEvent(groupChatPurpleName),
-        ConversationWriteEvent(groupChatPurpleName, "",
+        ConversationWriteEvent(groupChatPurpleName, NotificationWho,
                                selfFirstName + " " + selfLastName +
                                ": Received unsupported message type messageChatDeleteMember",
                                PURPLE_MESSAGE_SYSTEM, date[1])
@@ -1109,7 +1111,7 @@ TEST_F(GroupChatTest, Kick)
     ));
     tgl.reply(make_object<error>(100, "error"));
     prpl.verifyEvents(ConversationWriteEvent(
-        groupChatPurpleName, "",
+        groupChatPurpleName, NotificationWho,
         "Cannot kick user: code 100 (error)",
         PURPLE_MESSAGE_SYSTEM, 0
     ));
@@ -1143,7 +1145,7 @@ TEST_F(GroupChatTest, Invite)
         purpleUserName(1).c_str()
     );
     prpl.verifyEvents(ConversationWriteEvent(
-        groupChatPurpleName, "",
+        groupChatPurpleName, NotificationWho,
         "Cannot add user to group: User not found",
         PURPLE_MESSAGE_NO_LOG, 0
     ));
@@ -1153,7 +1155,7 @@ TEST_F(GroupChatTest, Invite)
         (userFirstNames[1] + " " + userLastNames[1]).c_str()
     );
     prpl.verifyEvents(ConversationWriteEvent(
-        groupChatPurpleName, "",
+        groupChatPurpleName, NotificationWho,
         "Cannot add user to group: User not found",
         PURPLE_MESSAGE_NO_LOG, 0
     ));
@@ -1166,7 +1168,7 @@ TEST_F(GroupChatTest, Invite)
 
     tgl.reply(make_object<error>(100, "error"));
     prpl.verifyEvents(ConversationWriteEvent(
-        groupChatPurpleName, "",
+        groupChatPurpleName, NotificationWho,
         "Cannot add user to group: code 100 (error)",
         PURPLE_MESSAGE_SYSTEM, 0
     ));
@@ -1223,7 +1225,7 @@ TEST_F(GroupChatTest, GetInviteLink)
         ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
         ChatClearUsersEvent(groupChatPurpleName),
         ConversationWriteEvent(
-            groupChatPurpleName, "",
+            groupChatPurpleName, NotificationWho,
             "Cannot generate invite link: code 100 (error)",
             PURPLE_MESSAGE_SYSTEM, 0
         )
@@ -1245,7 +1247,7 @@ TEST_F(GroupChatTest, GetInviteLink)
     tgl.reply(make_object<chatInviteLink>("http://invite"));
     prpl.verifyEvents(
         ConversationWriteEvent(
-            groupChatPurpleName, "",
+            groupChatPurpleName, NotificationWho,
             "http://invite",
             PURPLE_MESSAGE_SYSTEM, 0
         )
