@@ -167,6 +167,69 @@ TEST_F(PrivateChatTest, AddContactByUsername)
     ));
 }
 
+TEST_F(PrivateChatTest, AddContactByUsername_DoesntBecomeContact)
+{
+    login();
+
+    // Adding new buddy
+    PurpleBuddy *buddy = purple_buddy_new(account, "username", "Local Alias");
+    purple_blist_add_buddy(buddy, NULL, &standardPurpleGroup, NULL);
+    prpl.discardEvents();
+    pluginInfo().add_buddy(connection, buddy, &standardPurpleGroup);
+
+    // The buddy is deleted right away, to be replaced later
+    prpl.verifyEvents(RemoveBuddyEvent(account, "username"));
+
+    tgl.verifyRequest(searchPublicChat("username"));
+
+    tgl.update(make_object<updateUser>(makeUser(
+        userIds[0],
+        userFirstNames[0],
+        userLastNames[0],
+        "",
+        make_object<userStatusOffline>()
+    )));
+    tgl.update(standardPrivateChat(0));
+    tgl.reply(makeChat(
+        chatIds[0],
+        make_object<chatTypePrivate>(userIds[0]),
+        userFirstNames[0] + " " + userLastNames[0],
+        nullptr, 0, 0, 0
+    ));
+    prpl.verifyNoEvents();
+
+    tgl.verifyRequest(addContact(
+        make_object<contact>(
+            "",
+            "Local",
+            "Alias",
+            "",
+            userIds[0]
+        ), true
+    ));
+
+    tgl.update(make_object<updateChatTitle>(chatIds[0], "Local Alias"));
+    tgl.update(make_object<updateUser>(makeUser(
+        userIds[0],
+        "Local",
+        "Alias",
+        "",
+        make_object<userStatusOffline>()
+    )));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(createPrivateChat(userIds[0], false));
+    prpl.verifyNoEvents();
+
+    tgl.reply(makeChat(
+        chatIds[0],
+        make_object<chatTypePrivate>(userIds[0]),
+        "Local Alias",
+        nullptr, 0, 0, 0
+    ));
+    prpl.verifyEvents(NewConversationEvent(PURPLE_CONV_TYPE_IM, account, "Local Alias"));
+}
+
 TEST_F(PrivateChatTest, ContactedByNew)
 {
     login();

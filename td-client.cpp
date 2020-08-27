@@ -1895,7 +1895,19 @@ void PurpleTdClient::addContactCreatePrivateChatResponse(uint64_t requestId, td:
     if (!request)
         return;
 
-    if (!object || (object->get_id() != td::td_api::chat::ID)) {
+    if (object && (object->get_id() == td::td_api::chat::ID)) {
+        const td::td_api::chat &chat = static_cast<const td::td_api::chat &>(*object);
+        const td::td_api::user *user = m_data.getUserByPrivateChat(chat);
+        if (user && !isChatInContactList(chat, user)) {
+            // Normally, the user will become a contact and this won't happen. But it does happen
+            // when adding BotFather, for example. Nothing will be added to buddy list, so open chat
+            // window just to make something happen.
+            // Since the user is not in buddy list, we have to use display name as libpurple name,
+            // otherwise conversation title will be idXXXXXXX
+            std::string displayName = m_data.getDisplayName(*user);
+            getImConversation(m_account, displayName.c_str());
+        }
+    } else {
         purple_debug_misc(config::pluginId, "Failed to create private chat to %s\n",
                           request->phoneNumber.c_str());
         notifyFailedContact(getDisplayedError(object));
