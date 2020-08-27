@@ -244,7 +244,7 @@ void updatePrivateChat(TdAccountData &account, const td::td_api::chat *chat, con
         PurpleConversation *oldConv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, displayName.c_str(),
                                                                             account.purpleAccount);
         if (oldConv) {
-            purple_conv_im_write(purple_conversation_get_im_data(oldConv), nullptr,
+            purple_conv_im_write(purple_conversation_get_im_data(oldConv), "",
                                  // TRANSLATOR: In-chat status update
                                  _("Future messages in this conversation will be shown in a different tab"),
                                  PURPLE_MESSAGE_SYSTEM, time(NULL));

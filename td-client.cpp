@@ -2194,7 +2194,7 @@ void PurpleTdClient::kickUserFromChat(PurpleConversation *conv, const char *name
 
     if (!chat) {
         // Unlikely error message not worth translating
-        purple_conversation_write(conv, NULL, "Chat not found", PURPLE_MESSAGE_NO_LOG, time(NULL));
+        purple_conversation_write(conv, "", "Chat not found", PURPLE_MESSAGE_NO_LOG, time(NULL));
         return;
     }
 
@@ -2206,7 +2206,7 @@ void PurpleTdClient::kickUserFromChat(PurpleConversation *conv, const char *name
                                              "More than one user found with this name";
         // TRANSLATOR: In-chat error message, argument is a reason (text)
         std::string message = formatMessage(_("Cannot kick user: {}"), std::string(reason));
-        purple_conversation_write(conv, NULL, message.c_str(), PURPLE_MESSAGE_NO_LOG, 0);
+        purple_conversation_write(conv, "", message.c_str(), PURPLE_MESSAGE_NO_LOG, 0);
         return;
     }
 
