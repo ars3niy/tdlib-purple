@@ -1795,7 +1795,7 @@ void PurpleTdClient::addContact(const std::string &purpleName, const std::string
 
     if (users.size() == 1)
         addContactById(users[0]->id_, "", purpleName, groupName);
-    else {
+    else if (isPhoneNumber(purpleName.c_str())) {
         td::td_api::object_ptr<td::td_api::contact> contact =
             td::td_api::make_object<td::td_api::contact>(purpleName, "", "", "", 0);
         td::td_api::object_ptr<td::td_api::importContacts> importReq =
@@ -1805,7 +1805,34 @@ void PurpleTdClient::addContact(const std::string &purpleName, const std::string
                                                      &PurpleTdClient::importContactResponse);
 
         m_data.addPendingRequest<ContactRequest>(requestId, purpleName, alias, groupName, 0);
+    } else {
+        auto     request   = td::td_api::make_object<td::td_api::searchPublicChat>(purpleName);
+        uint64_t requestId = m_transceiver.sendQuery(std::move(request), &PurpleTdClient::addBuddySearchChatResponse);
+        m_data.addPendingRequest<ContactRequest>(requestId, "", alias, groupName, 0);
     }
+}
+
+void PurpleTdClient::addBuddySearchChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+{
+    std::unique_ptr<ContactRequest> request = m_data.getPendingRequest<ContactRequest>(requestId);
+
+    if (object && (object->get_id() == td::td_api::chat::ID)) {
+        const td::td_api::chat *chat = static_cast<const td::td_api::chat *>(object.get());
+        int32_t chatType = chat->type_ ? chat->type_->get_id() : 0;
+        if (chatType == td::td_api::chatTypePrivate::ID) {
+            if (request)
+                addContactById(getUserIdByPrivateChat(*chat), "", request->alias, request->groupName);
+        } else if ((chatType == td::td_api::chatTypeBasicGroup::ID) ||
+                   (chatType == td::td_api::chatTypeSupergroup::ID))
+        {
+            // When trying to join a group but finding a user instead, we display an error message.
+            // When it's vice versa here, don't make it an error: there are enough error messages to
+            // translate as it is.
+            joinGroupSearchChatResponse(requestId, std::move(object));
+            chat = NULL;
+        }
+    } else
+        notifyFailedContact(getDisplayedError(object));
 }
 
 void PurpleTdClient::addContactById(int32_t userId, const std::string &phoneNumber, const std::string &alias,
@@ -1838,11 +1865,7 @@ void PurpleTdClient::importContactResponse(uint64_t requestId, td::td_api::objec
             userId = reply->user_ids_[0];
     }
 
-    // For whatever reason, complaining at an earlier stage leads to error message not being shown in pidgin
-    if (!isPhoneNumber(request->phoneNumber.c_str())) {
-        // TRANSLATOR: Buddy-window error message, title (no content)
-        notifyFailedContact(formatMessage(_("{} is not a valid phone number"), request->phoneNumber));
-    } else if (userId)
+    if (userId)
         addContactById(userId, request->phoneNumber, request->alias, request->groupName);
     else {
         // TRANSLATOR: Buddy-window error message, title (no content), argument will be a phone number.
@@ -1991,9 +2014,11 @@ void PurpleTdClient::joinChatResponse(uint64_t requestId, td::td_api::object_ptr
         // Furthermore, user could have added same chat like that multiple times, in which case
         // remove all of them.
         if (request) {
-            std::vector<PurpleChat *> obsoleteChats = findChatsByJoinString(request->joinString);
-            for (PurpleChat *chat: obsoleteChats)
-                purple_blist_remove_chat(chat);
+            if (!request->joinString.empty()) {
+                std::vector<PurpleChat *> obsoleteChats = findChatsByJoinString(request->joinString);
+                for (PurpleChat *chat: obsoleteChats)
+                    purple_blist_remove_chat(chat);
+            }
             // Conversation window for the chat should be presented. If joining by invite link, it
             // will happen automatically due to messageChatJoinByLink message. If joining a public
             // group, conversation window needs to be created explicitly instead

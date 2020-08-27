@@ -124,6 +124,7 @@ private:
     void       addChat(td::td_api::object_ptr<td::td_api::chat> chat);
     void       handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction);
     void       showUserChatAction(int32_t userId, bool isTyping);
+    void       addBuddySearchChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       addContactCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);

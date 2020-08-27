@@ -91,6 +91,82 @@ TEST_F(PrivateChatTest, AddContactByPhone)
     ));
 }
 
+TEST_F(PrivateChatTest, AddContactByUsername)
+{
+    login();
+
+    // Adding new buddy
+    PurpleBuddy *buddy = purple_buddy_new(account, "username", "Local Alias");
+    purple_blist_add_buddy(buddy, NULL, &standardPurpleGroup, NULL);
+    prpl.discardEvents();
+    pluginInfo().add_buddy(connection, buddy, &standardPurpleGroup);
+
+    // The buddy is deleted right away, to be replaced later
+    prpl.verifyEvents(RemoveBuddyEvent(account, "username"));
+
+    tgl.verifyRequest(searchPublicChat("username"));
+
+    tgl.update(make_object<updateUser>(makeUser(
+        userIds[0],
+        userFirstNames[0],
+        userLastNames[0],
+        "",
+        make_object<userStatusOffline>()
+    )));
+    tgl.update(standardPrivateChat(0));
+    tgl.reply(makeChat(
+        chatIds[0],
+        make_object<chatTypePrivate>(userIds[0]),
+        userFirstNames[0] + " " + userLastNames[0],
+        nullptr, 0, 0, 0
+    ));
+    prpl.verifyNoEvents();
+
+    tgl.verifyRequest(addContact(
+        make_object<contact>(
+            "",
+            "Local",
+            "Alias",
+            "",
+            userIds[0]
+        ), true
+    ));
+
+    // tdlib actually sends updateChatTitle first (if it didn't, it should still work, the buddy
+    // should be created as userFirstNames[0] + " " + userLastNames[0] and then renamed to "Local Alias"
+    tgl.update(make_object<updateChatTitle>(chatIds[0], "Local Alias"));
+    // We are notified that the user is now a contact
+    object_ptr<user> userInfo = makeUser(
+        userIds[0],
+        "Local",
+        "Alias",
+        "",
+        make_object<userStatusOffline>()
+    );
+    userInfo->is_contact_ = true;
+    tgl.update(make_object<updateUser>(std::move(userInfo)));
+
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(createPrivateChat(userIds[0], false));
+
+    // is_contact was true, so add buddy
+    prpl.verifyEvents(AddBuddyEvent(
+        purpleUserName(0),
+        "Local Alias",
+        account,
+        NULL,
+        &standardPurpleGroup,
+        NULL
+    ));
+    tgl.reply(makeChat(
+        chatIds[0],
+        make_object<chatTypePrivate>(userIds[0]),
+        "Local Alias",
+        nullptr, 0, 0, 0
+    ));
+}
+
 TEST_F(PrivateChatTest, ContactedByNew)
 {
     login();
