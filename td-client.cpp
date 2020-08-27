@@ -1080,11 +1080,6 @@ void PurpleTdClient::inlineDownloadResponse(uint64_t requestId, td::td_api::obje
     }
 }
 
-static std::string makeInlineImageText(int imgstoreId)
-{
-    return "\n<img id=\"" + std::to_string(imgstoreId) + "\">";
-}
-
 void PurpleTdClient::showDownloadedImage(int64_t chatId, TgMessageInfo &message,
                                          const std::string &filePath, const char *caption,
                                          const std::string &fileDesc,
@@ -1237,7 +1232,7 @@ void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
     if (success) {
         int id = purple_imgstore_add_with_id (imageData, imageSize, NULL);
         std::string text = makeInlineImageText(id);
-        showMessageText(m_data, *chat, thread->message, text.c_str(), NULL);
+        showMessageText(m_data, *chat, thread->message, text.c_str(), NULL, PURPLE_MESSAGE_IMAGES);
     } else {
         // TRANSLATOR: In-chat error message, arguments will be a file name and a proper reason
         errorMessage = formatMessage(_("Could not read sticker file {0}: {1}"),

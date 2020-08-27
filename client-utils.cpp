@@ -450,6 +450,11 @@ std::string getMessageText(const td::td_api::formattedText &text)
     return result;
 }
 
+std::string makeInlineImageText(int imgstoreId)
+{
+    return "\n<img id=\"" + std::to_string(imgstoreId) + "\">";
+}
+
 static std::string quoteMessage(const td::td_api::message *message, TdAccountData &account)
 {
     const td::td_api::user *originalAuthor = nullptr;

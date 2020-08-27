@@ -162,8 +162,8 @@ void showWebpSticker(const td::td_api::chat &chat, const TgMessageInfo &message,
 {
     int id = p2tgl_imgstore_add_with_id_webp(filePath.c_str());
     if (id != 0) {
-        std::string text = "\n<img id=\"" + std::to_string(id) + "\">";
-        showMessageText(account, chat, message, text.c_str(), NULL);
+        std::string text = makeInlineImageText(id);
+        showMessageText(account, chat, message, text.c_str(), NULL, PURPLE_MESSAGE_IMAGES);
     } else
         showGenericFileInline(chat, message, filePath, fileDescription, account);
 }

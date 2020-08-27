@@ -348,7 +348,7 @@ TEST_F(FileTransferTest, DISABLED_WebpStickerDecode)
         connection,
         purpleUserName(0),
         "\n<img id=\"" + std::to_string(getLastImgstoreId()) + "\">",
-        PURPLE_MESSAGE_RECV,
+        (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
         date
     ));
 }
@@ -398,7 +398,7 @@ TEST_F(FileTransferTest, DISABLED_AnimatedStickerDecode)
             purpleUserName(0),
             // Sticker was converted to gif
             "\n<img id=\"" + std::to_string(getLastImgstoreId()) + "\">",
-            PURPLE_MESSAGE_RECV,
+            (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
             date
         )
     );
