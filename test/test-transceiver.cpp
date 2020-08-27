@@ -39,6 +39,19 @@ void TestTransceiver::verifyRequests(std::initializer_list<td::td_api::object_pt
     verifyNoRequests();
 }
 
+void TestTransceiver::verifyRequests(const std::vector<const td::td_api::Function *> requests)
+{
+    m_lastRequestIds.clear();
+    for (auto pReq: requests) {
+        verifyRequestImpl(*pReq);
+        if (!m_requests.empty()) {
+            m_lastRequestIds.push_back(m_requests.front().id);
+            m_requests.pop();
+        }
+    }
+    verifyNoRequests();
+}
+
 guint TestTransceiver::addTimeout(guint interval, GSourceFunc function, gpointer data)
 {
     m_timers.emplace_back();

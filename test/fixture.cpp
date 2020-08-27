@@ -1,6 +1,7 @@
 #include "fixture.h"
 #include "tdlib-purple.h"
 #include "libpurple-mock.h"
+#include "printout.h"
 
 CommTest::CommTest()
 {
@@ -35,13 +36,27 @@ void CommTest::TearDown()
     clearFakeFiles();
 }
 
+static bool isFunction(const td::TlObject &object)
+{
+    return requestToString(object).substr(0, 3) != "Id ";
+}
+
+static bool isObject(const td::TlObject &object)
+{
+    return responseToString(object).substr(0, 3) != "Id ";
+}
+
 void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, object_ptr<users> getContactsReply,
                      object_ptr<chats> getChatsReply,
                      std::initializer_list<std::unique_ptr<PurpleEvent>> postUpdateEvents,
-                     std::initializer_list<object_ptr<Function>> postUpdateRequests,
-                     std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents)
+                     std::initializer_list<object_ptr<td::TlObject>> postUpdateRequestsAndResponses,
+                     std::initializer_list<std::unique_ptr<PurpleEvent>> postChatListEvents)
 {
     pluginInfo().login(account);
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 2)
+    );
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
     tgl.verifyRequests({
@@ -74,18 +89,13 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     tgl.reply(make_object<ok>());
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
-    tgl.verifyNoRequests();
+    prpl.verifyEvents(ConnectionSetStateEvent(connection, PURPLE_CONNECTED));
+    uint64_t contactRequestId = tgl.verifyRequest(getContacts());
 
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
-    tgl.verifyNoRequests();
-    prpl.verifyEvents(
-        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
-        ConnectionUpdateProgressEvent(connection, 1, 3)
-    );
-
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateUpdating>()));
+    prpl.verifyNoEvents();
     tgl.verifyNoRequests();
-    prpl.verifyEvents(ConnectionUpdateProgressEvent(connection, 2, 3));
 
     tgl.update(make_object<updateUser>(makeUser(
         selfId,
@@ -97,12 +107,23 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
     for (const object_ptr<Object> &update: extraUpdates)
         tgl.update(std::move(const_cast<object_ptr<Object> &>(update))); // Take that!
     prpl.verifyEvents2(std::move(postUpdateEvents));
-    tgl.verifyRequests(std::move(postUpdateRequests));
+
+    std::vector<const Function *> postUpdateRequests;
+    for (const object_ptr<td::TlObject> &object: postUpdateRequestsAndResponses) {
+        if (isFunction(*object))
+            postUpdateRequests.push_back(static_cast<const Function*>(object.get()));
+        if (isObject(*object)) {
+            if (!postUpdateRequests.empty())
+                tgl.verifyRequests(postUpdateRequests);
+            postUpdateRequests.clear();
+            tgl.reply(td::move_tl_object_as<Object>(const_cast<object_ptr<td::TlObject> &>(object)));
+        }
+    }
+    tgl.verifyRequests(postUpdateRequests);
 
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
-    tgl.verifyRequest(getContacts());
 
-    tgl.reply(std::move(getContactsReply));
+    tgl.reply(contactRequestId, std::move(getContactsReply));
 
     tgl.verifyRequest(getChats());
     bool hasChats = !getChatsReply->chat_ids_.empty();
@@ -112,14 +133,13 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
         tgl.reply(make_object<chats>());
     }
 
-    if ((postLoginEvents.size() == 1) && (*postLoginEvents.begin() == nullptr))
+    if ((postChatListEvents.size() == 1) && (*postChatListEvents.begin() == nullptr))
         prpl.verifyEvents(
-            ConnectionSetStateEvent(connection, PURPLE_CONNECTED),
             AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
             ShowAccountEvent(account)
         );
     else
-        prpl.verifyEvents2(std::move(postLoginEvents));
+        prpl.verifyEvents2(std::move(postChatListEvents));
 }
 
 void CommTest::loginWithOneContact()
@@ -128,11 +148,11 @@ void CommTest::loginWithOneContact()
         {standardUpdateUser(0), standardPrivateChat(0), makeUpdateChatListMain(chatIds[0])},
         make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
         make_object<chats>(std::vector<int64_t>(1, chatIds[0])),
-        {}, {},
         {
-            std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
             std::make_unique<AddBuddyEvent>(purpleUserName(0), userFirstNames[0] + " " + userLastNames[0],
                                             account, nullptr, nullptr, nullptr),
+        }, {},
+        {
             std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_OFFLINE),
             std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
             std::make_unique<ShowAccountEvent>(account)

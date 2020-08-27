@@ -20,6 +20,7 @@ PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBac
     m_data(acct)
 {
     m_account = acct;
+    setPurpleConnectionInProgress();
 }
 
 PurpleTdClient::~PurpleTdClient()
@@ -48,20 +49,6 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         if (update_authorization_state.authorization_state_) {
             m_lastAuthState = update_authorization_state.authorization_state_->get_id();
             processAuthorizationState(*update_authorization_state.authorization_state_);
-        }
-        break;
-    }
-
-    case td::td_api::updateConnectionState::ID: {
-        auto &connectionUpdate = static_cast<td::td_api::updateConnectionState &>(update);
-        purple_debug_misc(config::pluginId, "Incoming update: connection state\n");
-        if (connectionUpdate.state_) {
-            if (connectionUpdate.state_->get_id() == td::td_api::connectionStateReady::ID)
-                connectionReady();
-            else if (connectionUpdate.state_->get_id() == td::td_api::connectionStateConnecting::ID)
-                setPurpleConnectionInProgress();
-            else if (connectionUpdate.state_->get_id() == td::td_api::connectionStateUpdating::ID)
-                setPurpleConnectionUpdating();
         }
         break;
     }
@@ -259,8 +246,7 @@ void PurpleTdClient::processAuthorizationState(td::td_api::AuthorizationState &a
 
     case td::td_api::authorizationStateReady::ID:
         purple_debug_misc(config::pluginId, "Authorization state update: ready\n");
-        if (m_connectionReady)
-            onLoggedIn();
+        onLoggedIn();
         break;
     }
 }
@@ -621,37 +607,21 @@ void PurpleTdClient::notifyAuthError(const td::td_api::object_ptr<td::td_api::Ob
     purple_connection_error(purple_account_get_connection(m_account), message.c_str());
 }
 
-void PurpleTdClient::connectionReady()
-{
-    purple_debug_misc(config::pluginId, "Connection ready\n");
-    m_connectionReady = true;
-    if (m_lastAuthState == td::td_api::authorizationStateReady::ID)
-        onLoggedIn();
-}
-
 void PurpleTdClient::setPurpleConnectionInProgress()
 {
     purple_debug_misc(config::pluginId, "Connection in progress\n");
-    m_connectionReady = false;
     PurpleConnection *gc = purple_account_get_connection(m_account);
 
     if (PURPLE_CONNECTION_IS_CONNECTED(gc))
         purple_blist_remove_account(m_account);
     purple_connection_set_state (gc, PURPLE_CONNECTING);
-    purple_connection_update_progress(gc, "Connecting", 1, 3);
-}
-
-void PurpleTdClient::setPurpleConnectionUpdating()
-{
-    purple_debug_misc(config::pluginId, "Updating account status\n");
-    m_connectionReady = false;
-    PurpleConnection *gc = purple_account_get_connection(m_account);
-
-    purple_connection_update_progress(gc, "Updating status", 2, 3);
+    purple_connection_update_progress(gc, "Connecting", 1, 2);
 }
 
 void PurpleTdClient::onLoggedIn()
 {
+    purple_connection_set_state (purple_account_get_connection(m_account), PURPLE_CONNECTED);
+
     // This query ensures an updateUser for every contact
     m_transceiver.sendQuery(td::td_api::make_object<td::td_api::getContacts>(),
                             &PurpleTdClient::getContactsResponse);
@@ -663,8 +633,6 @@ void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_
     if (object && (object->get_id() == td::td_api::users::ID)) {
         td::td_api::object_ptr<td::td_api::users> users = td::move_tl_object_as<td::td_api::users>(object);
         m_data.setContacts(users->user_ids_);
-        // td::td_api::chats response will be preceded by a string of updateNewChat for all chats
-        // apparently even if td::td_api::getChats has limit_ of like 1
         auto getChatsRequest = td::td_api::make_object<td::td_api::getChats>();
         getChatsRequest->chat_list_ = td::td_api::make_object<td::td_api::chatListMain>();
         getChatsRequest->offset_order_ = INT64_MAX;
@@ -709,7 +677,7 @@ void PurpleTdClient::requestMissingPrivateChats()
 {
     if (m_usersForNewPrivateChats.empty()) {
         purple_debug_misc(config::pluginId, "Login sequence complete\n");
-        updatePurpleChatListAndReportConnected();
+        onChatListReady();
     } else {
         int32_t userId = m_usersForNewPrivateChats.back();
         m_usersForNewPrivateChats.pop_back();
@@ -861,16 +829,13 @@ void PurpleTdClient::updateSupergroupFull(int32_t groupId, td::td_api::object_pt
     m_data.updateSupergroupInfo(groupId, std::move(groupInfo));
 }
 
-void PurpleTdClient::updatePurpleChatListAndReportConnected()
+void PurpleTdClient::onChatListReady()
 {
-    purple_connection_set_state (purple_account_get_connection(m_account), PURPLE_CONNECTED);
-
+    m_chatListReady = true;
     std::vector<const td::td_api::chat *> chats;
     m_data.getChats(chats);
 
     for (const td::td_api::chat *chat: chats) {
-        updateChat(chat);
-
         const td::td_api::user *user = m_data.getUserByPrivateChat(*chat);
         if (user && isChatInContactList(*chat, user)) {
             std::string userName = getPurpleBuddyName(*user);
@@ -1535,7 +1500,9 @@ void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> userInf
     m_data.updateUser(std::move(userInfo));
 
     // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
-    // user find_buddy either
+    // user find_buddy either.
+    // Updates are only supposed to come after authorizationStateReady which sets account to connected.
+    // But check purple_account_is_connected just in case.
     if (purple_account_is_connected(m_account)) {
         const td::td_api::user *user = m_data.getUser(userId);
         const td::td_api::chat *chat = m_data.getPrivateChatByUserId(userId);
@@ -1577,7 +1544,7 @@ void PurpleTdClient::avatarDownloadResponse(uint64_t requestId, td::td_api::obje
                 const td::td_api::user *user = m_data.getUser(request->userId);
                 const td::td_api::chat *chat = m_data.getPrivateChatByUserId(request->userId);
                 if (user && chat && isChatInContactList(*chat, user))
-                    updatePrivateChat(m_data, *chat, *user);
+                    updatePrivateChat(m_data, chat, *user);
             } else if (request->chatId) {
                 m_data.updateSmallChatPhoto(request->chatId, std::move(file));
                 const td::td_api::chat *chat = m_data.getPrivateChatByUserId(request->userId);
@@ -1605,7 +1572,9 @@ void PurpleTdClient::updateGroup(td::td_api::object_ptr<td::td_api::basicGroup> 
     int32_t id       = group->id_;
     m_data.updateBasicGroup(std::move(group));
 
-    // purple_blist_find_chat doesn't work if account is not connected
+    // purple_blist_find_chat doesn't work if account is not connected.
+    // Updates are only supposed to come after authorizationStateReady which sets account to connected.
+    // But check purple_account_is_connected just in case.
     if (purple_account_is_connected(m_account))
         updateBasicGroupChat(m_data, id);
 }
@@ -1621,7 +1590,9 @@ void PurpleTdClient::updateSupergroup(td::td_api::object_ptr<td::td_api::supergr
     int32_t id       = group->id_;
     m_data.updateSupergroup(std::move(group));
 
-    // purple_blist_find_chat doesn't work if account is not connected
+    // purple_blist_find_chat doesn't work if account is not connected.
+    // Updates are only supposed to come after authorizationStateReady which sets account to connected.
+    // But check purple_account_is_connected just in case.
     if (purple_account_is_connected(m_account))
         updateSupergroupChat(m_data, id);
 }
@@ -1640,7 +1611,9 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
         downloadChatPhoto(*chat);
 
     // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
-    // user find_buddy either
+    // user find_buddy either.
+    // Updates are only supposed to come after authorizationStateReady which sets account to connected.
+    // But check purple_account_is_connected just in case.
     if (!purple_account_is_connected(m_account))
         return;
 
@@ -1666,7 +1639,7 @@ void PurpleTdClient::updateUserInfo(const td::td_api::user &user, const td::td_a
 {
     if (privateChat && isChatInContactList(*privateChat, &user)) {
         downloadProfilePhoto(user);
-        updatePrivateChat(m_data, *privateChat, user);
+        updatePrivateChat(m_data, privateChat, user);
     }
 
     // User could have renamed, or they may have become, or ceased being, libpurple buddy.
@@ -2375,7 +2348,7 @@ void PurpleTdClient::getGroupChatList(PurpleRoomlist *roomlist)
     purple_roomlist_set_fields (roomlist, fields);
 
     purple_roomlist_set_in_progress(roomlist, TRUE);
-    if (purple_account_is_connected(m_account)) {
+    if (m_chatListReady) {
         std::vector<const td::td_api::chat *> chats;
         m_data.getChats(chats);
         populateGroupChatList(roomlist, chats, m_data);

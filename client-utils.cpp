@@ -158,17 +158,16 @@ PurpleConvChat *getChatConversation(TdAccountData &account, const td::td_api::ch
         if (chatPurpleId != 0) {
             purple_debug_misc(config::pluginId, "Creating conversation for chat %s (purple id %d)\n",
                               chat.title_.c_str(), chatPurpleId);
-            // when a message arrives during login, libpurple won't find the chat in contact
-            // list because even it has been in the contact list since before, the chat lookup
-            // doesn't work when account is not connected. Therefore, it won't know chat title and
-            // would show chatXXXXXXXXXXX name in the conversation window instead.
             serv_got_joined_chat(purple_account_get_connection(account.purpleAccount), chatPurpleId, chatName.c_str());
             conv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_CHAT, chatName.c_str(),
                                                          account.purpleAccount);
             if (conv == NULL)
                 purple_debug_warning(config::pluginId, "Did not create conversation for chat %s\n", chat.title_.c_str());
             else {
-                //... so, fix conversation title if we can't find chat in contact list
+                // Sometimes when the group has just been created, or we left it and then got
+                // messageChatDeleteMember, the chat will not be in buddy list. In that case,
+                // libpurpleis going to use chatXXXXXXXXXXX as chat title. Set chat title explicitly
+                // to prevent that.
                 PurpleChat *purpleChat = purple_blist_find_chat(account.purpleAccount, chatName.c_str());
                 if (!purpleChat) {
                     purple_debug_misc(config::pluginId, "Setting conversation title to '%s'\n", chat.title_.c_str());
@@ -217,14 +216,15 @@ PurpleConvChat *findChatConversation(PurpleAccount *account, const td::td_api::c
     return NULL;
 }
 
-void updatePrivateChat(TdAccountData &account, const td::td_api::chat &chat, const td::td_api::user &user)
+void updatePrivateChat(TdAccountData &account, const td::td_api::chat *chat, const td::td_api::user &user)
 {
     std::string purpleUserName = getPurpleBuddyName(user);
+    std::string alias          = chat ? chat->title_ : makeBasicDisplayName(user);
 
     PurpleBuddy *buddy = purple_find_buddy(account.purpleAccount, purpleUserName.c_str());
     if (buddy == NULL) {
-        purple_debug_misc(config::pluginId, "Adding new buddy %s for user %s, chat id %" G_GINT64_FORMAT "\n",
-                          chat.title_.c_str(), purpleUserName.c_str(), chat.id_);
+        purple_debug_misc(config::pluginId, "Adding new buddy %s for user %s\n",
+                          alias.c_str(), purpleUserName.c_str());
 
         const ContactRequest *contactReq = account.findContactRequest(user.id_);
         PurpleGroup          *group      = (contactReq && !contactReq->groupName.empty()) ?
@@ -232,7 +232,7 @@ void updatePrivateChat(TdAccountData &account, const td::td_api::chat &chat, con
         if (group)
             purple_debug_misc(config::pluginId, "Adding into group %s\n", purple_group_get_name(group));
 
-        buddy = purple_buddy_new(account.purpleAccount, purpleUserName.c_str(), chat.title_.c_str());
+        buddy = purple_buddy_new(account.purpleAccount, purpleUserName.c_str(), alias.c_str());
         purple_blist_add_buddy(buddy, NULL, group, NULL);
         // If a new buddy has been added here, it means that there was updateNewChat with the private
         // chat. This means either we added them to contacts or started messaging them, or they
@@ -250,7 +250,7 @@ void updatePrivateChat(TdAccountData &account, const td::td_api::chat &chat, con
                                  PURPLE_MESSAGE_SYSTEM, time(NULL));
         }
     } else {
-        purple_blist_alias_buddy(buddy, chat.title_.c_str());
+        purple_blist_alias_buddy(buddy, alias.c_str());
 
         const char *oldPhotoIdStr = purple_blist_node_get_string(PURPLE_BLIST_NODE(buddy), BuddyOptions::ProfilePhotoId);
         int64_t     oldPhotoId    = 0;

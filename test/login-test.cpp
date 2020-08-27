@@ -10,6 +10,10 @@ TEST_F(LoginTest, Login)
 TEST_F(LoginTest, ConnectionReadyBeforeAuthReady)
 {
     pluginInfo().login(account);
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 2)
+    );
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
     tgl.verifyRequests({
@@ -44,15 +48,12 @@ TEST_F(LoginTest, ConnectionReadyBeforeAuthReady)
 
     tgl.verifyRequest(setAuthenticationPhoneNumber("+" + selfPhoneNumber, nullptr));
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
-    prpl.verifyEvents(
-        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
-        ConnectionUpdateProgressEvent(connection, 1, 3)
-    );
-
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
     tgl.verifyNoRequests();
+    prpl.verifyNoEvents();
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
+    prpl.verifyEvents(ConnectionSetStateEvent(connection, PURPLE_CONNECTED));
     tgl.reply(make_object<ok>());
 
     tgl.verifyRequest(getContacts());
@@ -70,7 +71,6 @@ TEST_F(LoginTest, ConnectionReadyBeforeAuthReady)
     tgl.reply(make_object<chats>());
 
     prpl.verifyEvents(
-        ConnectionSetStateEvent(connection, PURPLE_CONNECTED),
         AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
         ShowAccountEvent(account)
     );
@@ -81,6 +81,10 @@ TEST_F(LoginTest, RegisterNewAccount_WithAlias_ConnectionReadyBeforeAuthReady)
     purple_account_set_alias(account, (selfFirstName + " " + selfLastName).c_str());
     prpl.discardEvents();
     pluginInfo().login(account);
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 2)
+    );
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
     tgl.verifyRequests({
@@ -130,11 +134,6 @@ TEST_F(LoginTest, RegisterNewAccount_WithAlias_ConnectionReadyBeforeAuthReady)
     tgl.verifyRequest(checkAuthenticationCode("12345"));
 
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
-    prpl.verifyEvents(
-        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
-        ConnectionUpdateProgressEvent(connection, 1, 3)
-    );
-
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
 
     tgl.update(make_object<updateAuthorizationState>(
@@ -154,6 +153,7 @@ TEST_F(LoginTest, RegisterNewAccount_WithAlias_ConnectionReadyBeforeAuthReady)
     prpl.verifyNoEvents();
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
+    prpl.verifyEvents(ConnectionSetStateEvent(connection, PURPLE_CONNECTED));
     tgl.reply(make_object<ok>());
 
     tgl.verifyRequest(getContacts());
@@ -171,7 +171,6 @@ TEST_F(LoginTest, RegisterNewAccount_WithAlias_ConnectionReadyBeforeAuthReady)
     tgl.reply(make_object<chats>());
 
     prpl.verifyEvents(
-        ConnectionSetStateEvent(connection, PURPLE_CONNECTED),
         AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
         ShowAccountEvent(account)
     );
@@ -180,6 +179,10 @@ TEST_F(LoginTest, RegisterNewAccount_WithAlias_ConnectionReadyBeforeAuthReady)
 TEST_F(LoginTest, RegisterNewAccount_NoAlias)
 {
     pluginInfo().login(account);
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 2)
+    );
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
     tgl.verifyRequests({
@@ -248,6 +251,7 @@ TEST_F(LoginTest, RegisterNewAccount_NoAlias)
     tgl.verifyRequest(registerUser(selfFirstName, selfLastName));
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
+    prpl.verifyEvents(ConnectionSetStateEvent(connection, PURPLE_CONNECTED));
     tgl.reply(make_object<ok>());
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
     tgl.verifyRequest(getContacts());
@@ -258,6 +262,10 @@ TEST_F(LoginTest, TwoFactorAuthentication)
     purple_account_set_alias(account, (selfFirstName + " " + selfLastName).c_str());
     prpl.discardEvents();
     pluginInfo().login(account);
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 2)
+    );
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
     tgl.verifyRequests({
@@ -307,12 +315,8 @@ TEST_F(LoginTest, TwoFactorAuthentication)
     tgl.verifyRequest(checkAuthenticationCode("12345"));
 
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
-    prpl.verifyEvents(
-        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
-        ConnectionUpdateProgressEvent(connection, 1, 3)
-    );
-
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
+    prpl.verifyNoEvents();
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitPassword>(
         "hint", true, "user@example.com"
@@ -324,6 +328,7 @@ TEST_F(LoginTest, TwoFactorAuthentication)
     tgl.verifyRequest(checkAuthenticationPassword("password"));
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
+    prpl.verifyEvents(ConnectionSetStateEvent(connection, PURPLE_CONNECTED));
     tgl.reply(make_object<ok>());
     tgl.verifyRequest(getContacts());
 }
@@ -338,10 +343,10 @@ TEST_F(LoginTest, RenameBuddyAtConnect)
         {standardUpdateUser(0), standardPrivateChat(0), makeUpdateChatListMain(chatIds[0])},
         make_object<users>(1, std::vector<int32_t>(1, userIds[0])),
         make_object<chats>(std::vector<int64_t>(1, chatIds[0])),
-        {}, {},
         {
-            std::make_unique<ConnectionSetStateEvent>(connection, PURPLE_CONNECTED),
             std::make_unique<AliasBuddyEvent>(purpleUserName(0), userFirstNames[0] + " " + userLastNames[0]),
+        }, {},
+        {
             std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_OFFLINE),
             std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
             std::make_unique<ShowAccountEvent>(account)
@@ -396,6 +401,10 @@ TEST_F(LoginTest, AddedProxyCofiguration)
     account->proxy_info = &purpleProxy;
 
     pluginInfo().login(account);
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 2)
+    );
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
     tgl.verifyRequests({
@@ -445,6 +454,10 @@ TEST_F(LoginTest, ChangedProxyCofiguration)
     account->proxy_info = &purpleProxy;
 
     pluginInfo().login(account);
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 2)
+    );
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
     tgl.verifyRequests({
@@ -485,6 +498,10 @@ TEST_F(LoginTest, ChangedProxyCofiguration)
 TEST_F(LoginTest, RemovedProxyCofiguration)
 {
     pluginInfo().login(account);
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 2)
+    );
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
     tgl.verifyRequests({
@@ -522,6 +539,10 @@ TEST_F(LoginTest, RemovedProxyCofiguration)
 TEST_F(LoginTest, getChatsSequence)
 {
     pluginInfo().login(account);
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 2)
+    );
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
     tgl.verifyRequests({
@@ -555,15 +576,12 @@ TEST_F(LoginTest, getChatsSequence)
 
     tgl.verifyRequest(setAuthenticationPhoneNumber("+" + selfPhoneNumber, nullptr));
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateConnecting>()));
-    prpl.verifyEvents(
-        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
-        ConnectionUpdateProgressEvent(connection, 1, 3)
-    );
-
     tgl.update(make_object<updateConnectionState>(make_object<connectionStateReady>()));
     tgl.verifyNoRequests();
+    prpl.verifyNoEvents();
 
     tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateReady>()));
+    prpl.verifyEvents(ConnectionSetStateEvent(connection, PURPLE_CONNECTED));
     tgl.reply(make_object<ok>());
 
     tgl.verifyRequest(getContacts());
@@ -607,7 +625,6 @@ TEST_F(LoginTest, getChatsSequence)
 
     // updateUser were missing (not realistic though), so no buddies
     prpl.verifyEvents(
-        ConnectionSetStateEvent(connection, PURPLE_CONNECTED),
         AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
         ShowAccountEvent(account)
     );

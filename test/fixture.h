@@ -39,8 +39,8 @@ protected:
                object_ptr<users> getContactsReply = make_object<users>(),
                object_ptr<chats> getChatsReply = make_object<chats>(),
                std::initializer_list<std::unique_ptr<PurpleEvent>> postUpdateEvents = {},
-               std::initializer_list<object_ptr<Function>> postUpdateRequests = {},
-               std::initializer_list<std::unique_ptr<PurpleEvent>> postLoginEvents = {nullptr});
+               std::initializer_list<object_ptr<td::TlObject>> postUpdateRequestsAndResponses = {},
+               std::initializer_list<std::unique_ptr<PurpleEvent>> postChatListEvents = {nullptr});
     void loginWithOneContact();
     void runTimeouts() { tgl.runTimeouts(); }
 

@@ -3,7 +3,7 @@
 
 #include <td/telegram/td_api.hpp>
 
-std::string requestToString(const td::td_api::Function &req);
-std::string responseToString(const td::td_api::Object &object);
+std::string requestToString(const td::TlObject &req);
+std::string responseToString(const td::TlObject &object);
 
 #endif

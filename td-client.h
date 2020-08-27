@@ -76,9 +76,7 @@ private:
     static void displayNameCancelled(PurpleTdClient *self);
     void       authResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       notifyAuthError(const td::td_api::object_ptr<td::td_api::Object> &response);
-    void       connectionReady();
     void       setPurpleConnectionInProgress();
-    void       setPurpleConnectionUpdating();
     void       onLoggedIn();
     void       getContactsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
@@ -86,7 +84,7 @@ private:
     void       loginCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     // List of chats is requested after connection is ready, and when response is received,
     // then we report to libpurple that we are connected
-    void       updatePurpleChatListAndReportConnected();
+    void       onChatListReady();
     // Login sequence end
 
     void       showMessage(const td::td_api::chat &chat, td::td_api::message &message,
@@ -177,8 +175,8 @@ private:
     TdTransceiver         m_transceiver;
     TdAccountData         m_data;
     int32_t               m_lastAuthState = 0;
-    bool                  m_connectionReady = false;
     std::vector<int32_t>  m_usersForNewPrivateChats;
+    bool                  m_chatListReady = false;
     bool                  m_isProxyAdded = false;
     int64_t               m_lastChatOrderOffset = 0;
     std::vector<PurpleRoomlist *>               m_pendingRoomLists;

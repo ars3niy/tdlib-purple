@@ -2,7 +2,7 @@
 
 using namespace td::td_api;
 
-std::string requestToString(const Function &req)
+std::string requestToString(const td::TlObject &req)
 {
 #define C(class) case class::ID: return #class;
     switch (req.get_id()) {
@@ -375,7 +375,7 @@ std::string requestToString(const Function &req)
     return "Id " + std::to_string(req.get_id());
 }
 
-std::string responseToString(const td::td_api::Object &object)
+std::string responseToString(const td::TlObject &object)
 {
 #define C(class) case class::ID: return #class;
     switch (object.get_id()) {
