@@ -69,6 +69,7 @@ static std::string messageTypeToString(const td::td_api::MessageContent &content
 
 std::string getUnsupportedMessageDescription(const td::td_api::MessageContent &content)
 {
+    // TRANSLSATOR: In-line placeholder when an unsupported message is being replied to.
     return formatMessage(_("Unsupported message type {}"), messageTypeToString(content));
 }
 
