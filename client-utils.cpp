@@ -18,7 +18,7 @@ const char *errorCodeMessage()
     return _("code {0} ({1})");
 }
 
-std::string messageTypeToString(const td::td_api::MessageContent &content)
+static std::string messageTypeToString(const td::td_api::MessageContent &content)
 {
 #define C(type) case td::td_api::type::ID: return #type;
     switch (content.get_id()) {
@@ -65,6 +65,11 @@ std::string messageTypeToString(const td::td_api::MessageContent &content)
     }
 #undef C
     return "id " + std::to_string(content.get_id());
+}
+
+std::string getUnsupportedMessageDescription(const td::td_api::MessageContent &content)
+{
+    return formatMessage(_("Unsupported message type {}"), messageTypeToString(content));
 }
 
 std::string proxyTypeToString(PurpleProxyType proxyType)
@@ -468,6 +473,7 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
     if (originalAuthor)
         originalName = account.getDisplayName(*originalAuthor);
     else {
+        // message == NULL means it could not be fetched, or took too long to fetch
         // TRANSLATOR: In-line placeholder if the original author of a quote is unknown. Is at the beginning of the line if and only if you make it so, see "<b>&bt {} wrote:"...
         originalName = _("Unknown user");
     }
@@ -500,8 +506,8 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
                 text = formatMessage(_("[file: {0} ({1})]"), {document.document_->file_name_,
                                                            document.document_->mime_type_});
             } else {
-                // TRANSLATOR: In-line placeholder when an unknown file is being replied to.
-                text = _("[file]");
+                // Not supposed to be possible, but just in case
+                text = "[file]";
             }
             if (document.caption_)
                 text += " " + document.caption_->text_;
@@ -513,8 +519,8 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
                 // TRANSLATOR: In-line placeholder when a video is being replied to. Argument will be the file name.
                 text = formatMessage(_("[video: {}]"), video.video_->file_name_);
             } else {
-                // TRANSLATOR: In-line placeholder when an unknown video/gif is being replied to.
-                text = _("[video]");
+                // Not supposed to be possible, but just in case
+                text = "[video]";
             }
             if (video.caption_)
                 text += " " + video.caption_->text_;
@@ -525,8 +531,8 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
             text = _("[sticker]");
             break;
         default:
-            // TRANSLATOR: In-line placeholder when a message is being replied to, and the message has a weird type.
-            text = formatMessage(_("[message type {}]"), messageTypeToString(*message->content_));
+            text = '[' + getUnsupportedMessageDescription(*message->content_) + ']';
+            break;
     }
 
     for (unsigned i = 0; i < text.size(); i++)
@@ -604,7 +610,7 @@ std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::
         else if (!message.author_signature_.empty())
             return message.author_signature_;
         else if (message.is_channel_post_) {
-            // TRANSLATOR: The "sender" of a message that was "sent" by the channel itself. Will be used like a username.
+            // TRANSLATOR: The "sender" of a message that was posted to a channel. Will be used like a username.
             return _("Channel post");
         } else if (message.forward_info_ && message.forward_info_->origin_)
             switch (message.forward_info_->origin_->get_id()) {
@@ -999,13 +1005,10 @@ static void secretChatNotSupported(int32_t secretChatId, const std::string &user
                                    TdTransceiver &transceiver, PurpleAccount *purpleAccount)
 {
     closeSecretChat(secretChatId, transceiver);
-    // TRANSLATOR: Dialog content, argument will be a username
-    std::string message = formatMessage(_("Rejected secret chat with {}"), userDescription);
+    std::string message = formatMessage("Rejected secret chat with {}", userDescription);
     purple_notify_info(purple_account_get_connection(purpleAccount),
-                        // TRANSLATOR: Dialog title
-                        _("Secret chat"), message.c_str(),
-                        // TRANSLATOR: Dialog secondary content; used as a justification for a failing chat.
-                        _("Secret chats not supported"));
+                        "Secret chat", message.c_str(),
+                        "Secret chats not supported");
 }
 
 struct SecretChatInfo {
@@ -1041,10 +1044,8 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
     if (user)
         userDescription = '\'' + account.getDisplayName(*user) + '\'';
     else {
-        // TRANSLATOR: Place-holder for an unknown username. Is at the beginning of the line if and
-        // only if you make it so, see "Rejected secret chat with {}", "Rejected secret chat with {}",
-        // and "Accept secret chat with {} on…".
-        userDescription = _("(unknown user)");
+        // Not supposed to be possible, because every user id should be preceded by user info
+        userDescription = "(unknown user)";
     }
 
     if (!isExisting) {

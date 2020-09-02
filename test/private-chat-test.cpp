@@ -640,7 +640,7 @@ TEST_F(PrivateChatTest, OtherMessage)
         NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
         ConversationWriteEvent(
             purpleUserName(0), purpleUserName(0),
-            userFirstNames[0] + " " + userLastNames[0] + ": Received unsupported message type messageGame",
+            userFirstNames[0] + " " + userLastNames[0] + ": Unsupported message type messageGame",
             PURPLE_MESSAGE_SYSTEM, date
         )
     );

@@ -8,7 +8,7 @@
 
 const char *errorCodeMessage();
 
-std::string         messageTypeToString(const td::td_api::MessageContent &content);
+std::string         getUnsupportedMessageDescription(const td::td_api::MessageContent &content);
 std::string         proxyTypeToString(PurpleProxyType proxyType);
 
 const char *        getPurpleStatusId(const td::td_api::UserStatus &tdStatus);

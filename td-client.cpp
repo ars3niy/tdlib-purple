@@ -300,15 +300,16 @@ bool PurpleTdClient::addProxy()
 static std::string getDisplayedError(const td::td_api::object_ptr<td::td_api::Object> &object)
 {
     if (!object) {
-        // TRANSLATOR: Reason for a proxy error, will appear after a color (':')
-        return _("No response received");
+        // Dead code at the time of writing this - NULL response can happen if sendQueryWithTimeout
+        // was used, but it isn't used in a way that can lead to this message
+        return "No response received";
     }
     else if (object->get_id() == td::td_api::error::ID) {
         const td::td_api::error &error = static_cast<const td::td_api::error &>(*object);
         return formatMessage(errorCodeMessage(), {std::to_string(error.code_), error.message_});
     } else {
-        // TRANSLATOR: Reason for a proxy error, will appear after a color (':')
-        return _("Unexpected response");
+        // Should not be possible
+        return "Unexpected response";
     }
 }
 
@@ -408,7 +409,7 @@ static std::string getAuthCodeDesc(const td::td_api::AuthenticationCodeType &cod
         return formatMessage(_("Phone call (length: {})"),
                              static_cast<const td::td_api::authenticationCodeTypeCall &>(codeType).length_);
     case td::td_api::authenticationCodeTypeFlashCall::ID:
-        // TRANSLATOR: Authentication dialog, secondary content. Appears after a colon (':'). Argument is some text-string-ish.
+        // TRANSLATOR: Authentication dialog, secondary content. Official name "flash call". Appears after a colon (':'). Argument is some text-string-ish.
         return formatMessage(_("Poor man's phone call (pattern: {})"),
                              static_cast<const td::td_api::authenticationCodeTypeFlashCall &>(codeType).pattern_);
     default:
@@ -441,8 +442,7 @@ void PurpleTdClient::requestAuthCode(const td::td_api::authenticationCodeInfo *c
                                NULL, // default value
                                FALSE, // multiline input
                                FALSE, // masked input
-                               // TRANSLATOR: Authentication dialog, placeholder, will be displayed faintly
-                               _("the code"),
+                               NULL,
                                // TRANSLATOR: Authentication dialog, alternative is "_Cancel". The underscore marks accelerator keys, they must be different!
                                _("_OK"), G_CALLBACK(requestCodeEntered),
                                // TRANSLATOR: Authentication dialog, alternative is "_OK". The underscore marks accelerator keys, they must be different!
@@ -465,7 +465,7 @@ void PurpleTdClient::requestCodeEntered(PurpleTdClient *self, const gchar *code)
 void PurpleTdClient::requestCodeCancelled(PurpleTdClient *self)
 {
     purple_connection_error(purple_account_get_connection(self->m_account),
-                            // TRANSLATOR: Buddy-window, error message (title; empty content)
+                            // TRANSLATOR: Connection failure, error message (title; empty content)
                             _("Authentication code required"));
 }
 
@@ -480,7 +480,7 @@ void PurpleTdClient::passwordEntered(PurpleTdClient *self, const gchar *password
 
 void PurpleTdClient::passwordCancelled(PurpleTdClient *self)
 {
-    // TRANSLATOR: Buddy-window, error message title (title; empty content)
+    // TRANSLATOR: Connection failure, error message title (title; empty content)
     purple_connection_error(purple_account_get_connection(self->m_account), _("Password required"));
 }
 
@@ -506,8 +506,7 @@ void PurpleTdClient::requestPassword(const td::td_api::authorizationStateWaitPas
                                NULL, // default value
                                FALSE, // multiline input
                                FALSE, // masked input
-                               // TRANSLATOR: 2FA dialog, placeholder, will be displayed faintly
-                               _("password"),
+                               NULL,
                                // TRANSLATOR: 2FA dialog, alternative is "_Cancel". The underscore marks accelerator keys, they must be different!
                                _("_OK"), G_CALLBACK(passwordEntered),
                                // TRANSLATOR: 2FA dialog, alternative is "_OK". The underscore marks accelerator keys, they must be different!
@@ -517,9 +516,9 @@ void PurpleTdClient::requestPassword(const td::td_api::authorizationStateWaitPas
                                NULL, // conversation
                                this))
     {
+        // Only happens with like empathy, not worth translating
         purple_connection_error(purple_account_get_connection(m_account),
-            // TRANSLATOR: Buddy-window error message (title; no content)
-            _("Authentication code is required but this libpurple doesn't support input requests"));
+            "Authentication code is required but this libpurple doesn't support input requests");
     }
 }
 
@@ -548,9 +547,9 @@ void PurpleTdClient::registerUser()
                                 NULL, // conversation
                                 this))
         {
+            // Same as when requesting authentication code - not worth translating
             purple_connection_error(purple_account_get_connection(m_account),
-                // TRANSLATOR: Buddy-window error message (title; no content)
-                _("Registration is required but this libpurple doesn't support input requests"));
+                "Registration is required but this libpurple doesn't support input requests");
         }
     } else
         m_transceiver.sendQuery(td::td_api::make_object<td::td_api::registerUser>(firstName, lastName),
@@ -563,7 +562,7 @@ void PurpleTdClient::displayNameEntered(PurpleTdClient *self, const gchar *name)
     getNamesFromAlias(name, firstName, lastName);
     if (firstName.empty() && lastName.empty())
         purple_connection_error(purple_account_get_connection(self->m_account),
-                                // TRANSLATOR: Buddy-window error message after failed registration.
+                                // TRANSLATOR: Connection error message after failed registration.
                                 _("Display name is required for registration"));
     else
         self->m_transceiver.sendQuery(td::td_api::make_object<td::td_api::registerUser>(firstName, lastName),
@@ -573,7 +572,7 @@ void PurpleTdClient::displayNameEntered(PurpleTdClient *self, const gchar *name)
 void PurpleTdClient::displayNameCancelled(PurpleTdClient *self)
 {
     purple_connection_error(purple_account_get_connection(self->m_account),
-                            // TRANSLATOR: Buddy-window error message after failed registration.
+                            // TRANSLATOR: Connection error message after failed registration.
                             _("Display name is required for registration"));
 }
 
@@ -590,16 +589,13 @@ void PurpleTdClient::notifyAuthError(const td::td_api::object_ptr<td::td_api::Ob
     std::string message;
     switch (m_lastAuthState) {
     case td::td_api::authorizationStateWaitEncryptionKey::ID:
-        // TRANSLATOR: Buddy-window error message, argument is text (a proper reason)
+        // TRANSLATOR: Connection error message, argument is text (a proper reason)
         message = _("Error applying database encryption key: {}");
         break;
-    case td::td_api::authorizationStateWaitPhoneNumber::ID:
-        // TRANSLATOR: Buddy-window error message, argument is text (a proper reason)
-        message = _("Authentication error after sending phone number: {}");
-        break;
     default:
-        // TRANSLATOR: Buddy-window error message, argument is text (a proper reason)
+        // TRANSLATOR: Connection error message, argument is text (a proper reason)
         message = _("Authentication error: {}");
+        break;
     }
 
     message = formatMessage(message.c_str(), getDisplayedError(response));
@@ -931,11 +927,9 @@ void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo 
         notice = formatMessage(_("Requesting {} download"), std::string(fileDesc));
         askDownload = true;
     } else {
-        char *fileSizeStr = fileSize ? purple_str_size_to_units(fileSize) : NULL;
-        // TRANSLATOR: Placeholder for a file size, appears in parenthesis inside a text e.g. "Ignoring image download (unknown size)"
-        std::string fileSizeStrNonnull = fileSizeStr ? std::string(fileSizeStr) : std::string(_("unknown size"));
+        char *fileSizeStr = purple_str_size_to_units(fileSize); // File size above limit, so it's non-zero
         // TRANSLATOR: In-chat notification, appears after a colon (':'). Arguments are a file *type*, not a filename; second argument is a file size with unit.
-        notice = formatMessage(_("Ignoring {0} download ({1})"), {std::string(fileDesc), fileSizeStrNonnull});
+        notice = formatMessage(_("Ignoring {0} download ({1})"), {std::string(fileDesc), std::string(fileSizeStr)});
         g_free(fileSizeStr);
     }
 
@@ -971,7 +965,7 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, TgMessageInf
         // Unlikely message not worth translating
         errorMessage = "Faulty image";
     else if (photo.is_secret_) {
-        // TRANSLATOR: In-chat error message
+        // TRANSLATOR: In-chat warning message
         errorMessage = _("Ignoring secret photo");
     }
 
@@ -1034,8 +1028,8 @@ void PurpleTdClient::requestDownload(const char *sender, const td::td_api::file 
     std::string question = formatMessage(_("Download file from {}?"),
                                          getSenderDisplayName(chat, message, m_account));
     unsigned    size     = getFileSize(file);
-    // TRANSLATOR: Download dialog, file size, used after a colon (':')
-    char *      sizeStr  = size ? purple_str_size_to_units(size) : g_strdup(_("unknown"));
+    // This dialog is used for files larger than the limit, so size should be non-zero
+    char *      sizeStr  = purple_str_size_to_units(size);
     // TRANSLATOR: Download dialog, placeholder chat title, in the sentence "posted in a private chat".
     std::string chatName = isPrivateChat(chat) ? _("a private chat") : chat.title_;
     // TRANSLATOR: Download dialog, secondary content. Arguments will be file description (text), chat name (text), and a file size (text!)
@@ -1272,7 +1266,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
         messageInfo.forwardedFrom = getForwardSource(*message.forward_info_, m_data);
 
     if (message.ttl_ != 0) {
-        // TRANSLATOR: In-chat error message
+        // TRANSLATOR: In-chat warning message
         const char *text   = _("Received self-destructing message, not displayed due to lack of support");
         std::string notice = makeNoticeWithSender(chat, messageInfo, text, m_account);
         showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
@@ -1346,8 +1340,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
             break;
         default: {
             // TRANSLATOR: In-chat error message, argument will be a Telegram type.
-            std::string notice = formatMessage(_("Received unsupported message type {}"),
-                                               messageTypeToString(*message.content_));
+            std::string notice = getUnsupportedMessageDescription(*message.content_);
             notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), m_account);
             showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
         }
@@ -2078,8 +2071,8 @@ void PurpleTdClient::createGroup(const char *name, int type,
                     // TRANSLATOR: Error dialog, secondary content, argument is a username
                     errorMessage = formatMessage(_("No known user by the name '{}'"), memberName);
                 } else {
-                    // TRANSLATOR: Error dialog, secondary content, argument is a username
-                    errorMessage = formatMessage(_("More than one user known with name '{}'"), memberName);
+                    // Unlikely error message not worth translating
+                    errorMessage = formatMessage("More than one user known with name '{}'", memberName);
                 }
             }
             if (!errorMessage.empty())
@@ -2455,13 +2448,11 @@ void PurpleTdClient::verifyRecoveryEmailResponse(uint64_t requestId, td::td_api:
         const td::td_api::passwordState &passwordState = static_cast<const td::td_api::passwordState &>(*object);
         if (passwordState.recovery_email_address_code_info_) {
             if (passwordState.recovery_email_address_code_info_->length_ > 0) {
-                // TRANSLATOR: 2FA repeated confirmation, secondary content
-                std::string emailInfo = formatMessage(_("E-mail address: {}"),
+                // Not expected to happen, so not worth translating
+                std::string emailInfo = formatMessage("E-mail address: {}",
                                                       passwordState.recovery_email_address_code_info_->email_address_pattern_);
-                // TRANSLATOR: 2FA repeated confirmation, title
                 purple_notify_info(m_account, _("Two-factor authentication"),
-                                   // TRANSLATOR: 2FA repeated confirmation, primary content
-                                   _("For some reason, new confirmation code was sent"), emailInfo.c_str());
+                                   "For some reason, new confirmation code was sent", emailInfo.c_str());
             } else
                 // TRANSLATOR: 2FA failure notification, title
                 purple_notify_error(m_account, _("Two-factor authentication"),
@@ -2470,11 +2461,11 @@ void PurpleTdClient::verifyRecoveryEmailResponse(uint64_t requestId, td::td_api:
         } else
             notifyPasswordChangeSuccess(m_account, passwordState);
     } else {
+        // Shouldn't really happen, so not worth translating. The only reasonable failure is wrong
+        // code, which is handled elsewhere.
         std::string errorMessage = getDisplayedError(object);
-        // TRANSLATOR: 2FA failure notification, title
-        purple_notify_error(m_account, _("Two-factor authentication"),
-                            // TRANSLATOR: 2FA failure notification, primary content
-                            _("Failed to verify recovery e-mail"), errorMessage.c_str());
+        purple_notify_error(m_account, "Two-factor authentication",
+                            "Failed to verify recovery e-mail", errorMessage.c_str());
     }
 }
 

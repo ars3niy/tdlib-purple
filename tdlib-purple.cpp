@@ -850,9 +850,8 @@ static gboolean tdlibFatalErrorHandler(void *data)
           "If this is the case, it could be fixed by removing account data under {} . "
           "You will be required to log in into the account again.");
 
-    // TRANSLATOR: Tdlib crash dialog, primary content. Argument is a tdlib-provided error message.
-    // Please keep the string "tdlib" verbatim. Will be followed by a newline and more text.
-    std::string details = formatMessage(_("tdlib error: {}"), std::string(message));
+    // tdlib messages are untranslated, so can as well leave "tdlib error" untranslated as well
+    std::string details = formatMessage("tdlib error: {}", std::string(message));
     details += '\n';
     details += formatMessage(dbMessage, PurpleTdClient::getBaseDatabasePath());
 
@@ -868,9 +867,12 @@ static void tdlibFatalErrorCallback(const char *message)
 {
     g_idle_add(tdlibFatalErrorHandler, strdup(message));
     // The error must have come either from the poll thread or from one of the threads created by tdlib.
-    // So, hang the thread to avoid crash.
-    // FIXME: This effectively kills entire libpurple, not just the account, and requires a restart.
-    // We should probably also add instructions on how to disable the account in accounts.xml.
+    // So, hang the thread to avoid crash. All other accounts will be unaffected until an attempt to
+    // disconnect this account is made, because then TdTransceiver constructor will wait forever for
+    // poll thread to terminate, and everything will hang.
+    // However, it's still possible to disable auto-login on the problematic account using
+    // purple_account_set_enabled (Account -> Disable in pidgin, etc.), because it will first disable
+    // auto-login, and only then disconnect the account and hang.
     while (1) sleep(1000);
 }
 

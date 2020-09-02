@@ -385,7 +385,7 @@ TEST_F(SupergroupTest, LeaveSupergroup)
         ChatClearUsersEvent(groupChatPurpleName),
         ConversationWriteEvent(groupChatPurpleName, NotificationWho,
                                selfFirstName + " " + selfLastName +
-                               ": Received unsupported message type messageChatDeleteMember",
+                               ": Unsupported message type messageChatDeleteMember",
                                PURPLE_MESSAGE_SYSTEM, date)
     );
 
