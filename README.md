@@ -19,6 +19,12 @@ the conversion can be disabled in account settings, or even at compile time (see
 
 Binary packages for Debian, Fedora, openSUSE and Ubuntu are available at https://download.opensuse.org/repositories/home:/ars3n1y/ .
 
+Adding Ubuntu repository:
+```
+curl -fsSL https://download.opensuse.org/repositories/home:ars3n1y/xUbuntu_NN.NN/Release.key | sudo apt-key add -
+sudo apt-add-repository 'deb http://download.opensuse.org/repositories/home:/ars3n1y/xUbuntu_NN.NN/ /'
+```
+
 AUR package for Arch: https://aur.archlinux.org/packages/telegram-tdlib-purple-git/
 
 Windows build is available from https://eion.robbmob.com/tdlib/ or in [releases](https://github.com/ars3niy/tdlib-purple/releases) (copy libtelegram-tdlib.dll to libpurple plugins directory).
