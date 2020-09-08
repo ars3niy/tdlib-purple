@@ -50,47 +50,47 @@ ShowUnInstDetails show
 Section "MainSection" SEC01
     ;Check for pidgin installation
     Call GetPidginInstPath
-    
-    SetOverwrite try
-    
-	SetOutPath "$PidginDir\pixmaps\pidgin"
-	File "/oname=protocols\16\telegram.png" "data\telegram16.png"
-	File "/oname=protocols\22\telegram.png" "data\telegram22.png"
-	File "/oname=protocols\48\telegram.png" "data\telegram48.png"
 
     SetOverwrite try
-	copy:
-		ClearErrors
-		Delete "$PidginDir\plugins\${PRPL_INSTALL_TARGET}"
-		IfErrors dllbusy
-		SetOutPath "$PidginDir\plugins"
-	    File "/oname=${PRPL_INSTALL_TARGET}" "${BUILD_DIR}\${PRPL_LIBRARY}"
-		Goto after_copy
-	dllbusy:
-		MessageBox MB_RETRYCANCEL "${PRPL_INSTALL_TARGET} is busy. Please close Pidgin (including tray icon) and try again" IDCANCEL cancel
-		Goto copy
-	cancel:
-		Abort "Installation of ${PRODUCT_NAME} aborted"
-	after_copy:
 
-	SetOutPath "$PidginDir\locale"
-	!include "${BUILD_DIR}\lang.nsi"
+    SetOutPath "$PidginDir\pixmaps\pidgin"
+    File "/oname=protocols\16\telegram.png" "data\telegram16.png"
+    File "/oname=protocols\22\telegram.png" "data\telegram22.png"
+    File "/oname=protocols\48\telegram.png" "data\telegram48.png"
+
+    SetOverwrite try
+    copy:
+        ClearErrors
+        Delete "$PidginDir\plugins\${PRPL_INSTALL_TARGET}"
+        IfErrors dllbusy
+        SetOutPath "$PidginDir\plugins"
+        File "/oname=${PRPL_INSTALL_TARGET}" "${BUILD_DIR}\${PRPL_LIBRARY}"
+        Goto after_copy
+    dllbusy:
+        MessageBox MB_RETRYCANCEL "${PRPL_INSTALL_TARGET} is busy. Please close Pidgin (including tray icon) and try again" IDCANCEL cancel
+        Goto copy
+    cancel:
+        Abort "Installation of ${PRODUCT_NAME} aborted"
+    after_copy:
+
+    SetOutPath "$PidginDir\locale"
+    !include "${BUILD_DIR}\lang.nsi"
 
 SectionEnd
 
 Function GetPidginInstPath
-  Push $0
-  ReadRegStr $0 HKLM "Software\pidgin" ""
-	IfFileExists "$0\pidgin.exe" cont
-	ReadRegStr $0 HKCU "Software\pidgin" ""
-	IfFileExists "$0\pidgin.exe" cont
-		MessageBox MB_OK|MB_ICONINFORMATION "Failed to find Pidgin installation."
-		Abort "Failed to find Pidgin installation. Please install Pidgin first."
-  cont:
-	StrCpy $PidginDir $0
+    Push $0
+    ReadRegStr $0 HKLM "Software\pidgin" ""
+        IfFileExists "$0\pidgin.exe" cont
+        ReadRegStr $0 HKCU "Software\pidgin" ""
+        IfFileExists "$0\pidgin.exe" cont
+            MessageBox MB_OK|MB_ICONINFORMATION "Failed to find Pidgin installation."
+            Abort "Failed to find Pidgin installation. Please install Pidgin first."
+    cont:
+        StrCpy $PidginDir $0
 FunctionEnd
 
 Function RunPidgin
-	ExecShell "" "$PidginDir\pidgin.exe"
+    ExecShell "" "$PidginDir\pidgin.exe"
 FunctionEnd
 
