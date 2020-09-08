@@ -146,5 +146,15 @@ install(FILES data/tdlib-purple.metainfo.xml DESTINATION "${SHARE_INSTALL_PREFIX
 
 add_subdirectory(test)
 
-add_custom_command(OUTPUT libtelegram-tdlib-stripped.dll COMMAND i686-w64-mingw32-strip -o libtelegram-tdlib-stripped.dll libtelegram-tdlib.dll DEPENDS telegram-tdlib)
-add_custom_target(nsis makensis -DBUILD_DIR=${CMAKE_BINARY_DIR} -DPRPL_LIBRARY=libtelegram-tdlib-stripped.dll -DPLUGIN_VERSION=${VERSION} ${CMAKE_SOURCE_DIR}/tdlib-purple.nsi DEPENDS libtelegram-tdlib-stripped.dll)
+add_custom_command(
+    OUTPUT libtelegram-tdlib-stripped.dll
+    COMMAND i686-w64-mingw32-strip -o libtelegram-tdlib-stripped.dll libtelegram-tdlib.dll
+    DEPENDS telegram-tdlib
+)
+add_custom_command(
+    OUTPUT lang.nsi
+    COMMAND ${CMAKE_SOURCE_DIR}/po/gen-nsi.sh lang.nsi
+    DEPENDS ${CMAKE_SOURCE_DIR}/po/gen-nsi.sh
+    DEPENDS ${CMAKE_SOURCE_DIR}/po/LINGUAS
+)
+add_custom_target(nsis makensis -DBUILD_DIR=${CMAKE_BINARY_DIR} -DPRPL_LIBRARY=libtelegram-tdlib-stripped.dll -DPLUGIN_VERSION=${VERSION} ${CMAKE_SOURCE_DIR}/tdlib-purple.nsi DEPENDS libtelegram-tdlib-stripped.dll lang.nsi)

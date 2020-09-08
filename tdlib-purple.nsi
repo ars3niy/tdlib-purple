@@ -72,10 +72,10 @@ Section "MainSection" SEC01
 	cancel:
 		Abort "Installation of ${PRODUCT_NAME} aborted"
 	after_copy:
-	
-	;SetOutPath "$PidginDir\locale"
-	;File /nonfatal "/oname=變\LC_MESSAGES\telegram-purple.mo" "po\變.mo"
-	
+
+	SetOutPath "$PidginDir\locale"
+	!include "${BUILD_DIR}\lang.nsi"
+
 SectionEnd
 
 Function GetPidginInstPath
