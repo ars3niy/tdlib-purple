@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 # versions before 3.2 don't pass CMAKE_EXE_LINKER_FLAGS when using try_compile
 
-project(tdlib-purple VERSION 1.0 LANGUAGES CXX)
+set(VERSION 0.6.4)
+project(tdlib-purple VERSION ${VERSION} LANGUAGES CXX)
 
 find_package(Td REQUIRED)
 math(EXPR TDLIB_VERSION_NUMBER "10000*${Td_VERSION_MAJOR} + 100*${Td_VERSION_MINOR} + ${Td_VERSION_PATCH}")
@@ -144,3 +145,6 @@ install(FILES data/telegram48.png DESTINATION "${PURPLE_DATA_DIR}/pixmaps/pidgin
 install(FILES data/tdlib-purple.metainfo.xml DESTINATION "${SHARE_INSTALL_PREFIX}/metainfo")
 
 add_subdirectory(test)
+
+add_custom_command(OUTPUT libtelegram-tdlib-stripped.dll COMMAND i686-w64-mingw32-strip -o libtelegram-tdlib-stripped.dll libtelegram-tdlib.dll DEPENDS telegram-tdlib)
+add_custom_target(nsis makensis -DBUILD_DIR=${CMAKE_BINARY_DIR} -DPRPL_LIBRARY=libtelegram-tdlib-stripped.dll -DPLUGIN_VERSION=${VERSION} ${CMAKE_SOURCE_DIR}/tdlib-purple.nsi DEPENDS libtelegram-tdlib-stripped.dll)
