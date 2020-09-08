@@ -27,7 +27,7 @@ sudo apt-add-repository 'deb http://download.opensuse.org/repositories/home:/ars
 
 AUR package for Arch: https://aur.archlinux.org/packages/telegram-tdlib-purple-git/
 
-Windows build is available from https://eion.robbmob.com/tdlib/ or in [releases](https://github.com/ars3niy/tdlib-purple/releases) (copy libtelegram-tdlib.dll to libpurple plugins directory).
+Windows build is available from https://eion.robbmob.com/tdlib/ (copy libtelegram-tdlib.dll to libpurple plugins directory) or in [releases](https://github.com/ars3niy/tdlib-purple/releases).
 
 Alternatively, build from source (see below).
 
