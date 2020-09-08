@@ -73,7 +73,6 @@ Section "MainSection" SEC01
         Abort "Installation of ${PRODUCT_NAME} aborted"
     after_copy:
 
-    SetOutPath "$PidginDir\locale"
     !include "${BUILD_DIR}\lang.nsi"
 
 SectionEnd
