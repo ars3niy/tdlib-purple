@@ -1,0 +1,26 @@
+# 
+# Translators:
+# abuyop <abuyop@gmail.com>, 2020
+# 
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"POT-Creation-Date: 2020-07-06 03:30+0200\n"
+"PO-Revision-Date: 2020-07-06 01:31+0000\n"
+"Last-Translator: abuyop <abuyop@gmail.com>, 2020\n"
+"Language-Team: Malay (https://www.transifex.com/tdlib-purple-developers/teams/110016/ms/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: ms\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. (itstool) path: component/name
+#: tdlib-purple.metainfo.untranslated.xml:5
+msgid "Telegram plugin"
+msgstr "Pemalam Telegram"
+
+#. (itstool) path: component/summary
+#: tdlib-purple.metainfo.untranslated.xml:6
+msgid "Telegram protocol plugin for libpurple using tdlib"
+msgstr "Pemalam protokol Telegram untuk libpurple menggunakan tdlib"

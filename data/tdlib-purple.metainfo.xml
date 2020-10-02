@@ -3,9 +3,19 @@
     <id>tdlib_purple</id>
     <extends>pidgin.desktop</extends>
     <name>Telegram plugin</name>
+    <name xml:lang="cs">Zásuvný modul Telegram</name>
     <name xml:lang="de">Telegram Plugin</name>
+    <name xml:lang="fur">Plugin di Telegram</name>
+    <name xml:lang="ms">Pemalam Telegram</name>
+    <name xml:lang="pl">Wtyczka protokołu Telegram</name>
+    <name xml:lang="sq">Shtojcë Telegram</name>
     <summary>Telegram protocol plugin for libpurple using tdlib</summary>
+    <summary xml:lang="cs">Zásuvný modul Telegram protokol pro libpurple používající tdlib</summary>
     <summary xml:lang="de">Telegram Protokoll-Plugin für libpurple, benutzt tdlib</summary>
+    <summary xml:lang="fur">Plugin dal protocol Telegram par libpurple che al dopre tdlib</summary>
+    <summary xml:lang="ms">Pemalam protokol Telegram untuk libpurple menggunakan tdlib</summary>
+    <summary xml:lang="pl">Wtyczka protokołu Telegram dla biblioteki libpurple używająca tdlib</summary>
+    <summary xml:lang="sq">Shtojcë protokolli Telegram për libpurple, që përdor tdlib</summary>
     <url type="homepage">https://github.com/ars3niy/tdlib-purple</url>
     <metadata_license>FSFAP</metadata_license>
     <project_license>GPL-2.0+</project_license>
