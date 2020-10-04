@@ -1401,33 +1401,48 @@ void PurpleTdClient::findMessageResponse(uint64_t requestId, td::td_api::object_
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
 {
-    std::vector<const td::td_api::user *> users = getUsersByPurpleName(buddyName, m_data, "send message");
-    if (users.size() != 1) {
-        // Unlikely error messages not worth translating
-        std::string errorMessage;
-        if (users.empty())
-            errorMessage = "User not found";
-        else
-            errorMessage = formatMessage("More than one user known with name '{}'", std::string(buddyName));
-        showMessageTextIm(m_data, buddyName, NULL, errorMessage.c_str(), time(NULL), PURPLE_MESSAGE_ERROR);
-        return -1;
+    SecretChatId secretChatId           = purpleBuddyNameToSecretChatId(buddyName);
+    const td::td_api::user *privateUser = nullptr;
+    const td::td_api::chat *chat        = nullptr;
+
+    if (secretChatId.valid()) {
+        chat = m_data.getChatBySecretChat(secretChatId);
+        if (!chat) {
+            showMessageTextIm(m_data, buddyName, NULL, "Secret chat not found", time(NULL), PURPLE_MESSAGE_ERROR);
+            return -1;
+        }
+    } else {
+        std::vector<const td::td_api::user *> users = getUsersByPurpleName(buddyName, m_data, "send message");
+        if (users.size() != 1) {
+            // Unlikely error messages not worth translating
+            std::string errorMessage;
+            if (users.empty())
+                errorMessage = "User not found";
+            else
+                errorMessage = formatMessage("More than one user known with name '{}'", std::string(buddyName));
+            showMessageTextIm(m_data, buddyName, NULL, errorMessage.c_str(), time(NULL), PURPLE_MESSAGE_ERROR);
+            return -1;
+        }
+        privateUser = users[0];
+        chat = m_data.getPrivateChatByUserId(getId(*privateUser));
     }
 
-    const td::td_api::chat *chat = m_data.getPrivateChatByUserId(getId(*users[0]));
     if (chat) {
         int ret = transmitMessage(getId(*chat), message, m_transceiver, m_data, &PurpleTdClient::sendMessageResponse);
         if (ret < 0)
             return ret;
         // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
         return 0;
-    } else {
-        purple_debug_misc(config::pluginId, "Requesting private chat for user id %d\n", (int)users[0]->id_);
+    } else if (privateUser) {
+        purple_debug_misc(config::pluginId, "Requesting private chat for user id %d\n", privateUser->id_);
         td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
-            td::td_api::make_object<td::td_api::createPrivateChat>(users[0]->id_, false);
+            td::td_api::make_object<td::td_api::createPrivateChat>(privateUser->id_, false);
         uint64_t requestId = m_transceiver.sendQuery(std::move(createChat), &PurpleTdClient::sendMessageCreatePrivateChatResponse);
         m_data.addPendingRequest<NewPrivateChatForMessage>(requestId, buddyName, message);
         return 0;
     }
+
+    return -1;
 }
 
 void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
@@ -1451,8 +1466,15 @@ void PurpleTdClient::sendMessageResponse(uint64_t requestId, td::td_api::object_
 
 void PurpleTdClient::sendTyping(const char *buddyName, bool isTyping)
 {
-    std::vector<const td::td_api::user *> users = getUsersByPurpleName(buddyName, m_data, "send typing notification");
-    const td::td_api::chat *chat = (users.size() == 1) ? m_data.getPrivateChatByUserId(getId(*users[0])) : nullptr;
+    const td::td_api::chat *chat = nullptr;
+    SecretChatId secretChatId = purpleBuddyNameToSecretChatId(buddyName);
+    if (secretChatId.valid())
+        chat = m_data.getChatBySecretChat(secretChatId);
+    else {
+        std::vector<const td::td_api::user *> users = getUsersByPurpleName(buddyName, m_data, "send typing notification");
+        if (users.size() == 1)
+            chat = m_data.getPrivateChatByUserId(getId(*users[0]));
+    }
 
     if (chat) {
         auto sendAction = td::td_api::make_object<td::td_api::sendChatAction>();
@@ -2485,10 +2507,15 @@ void PurpleTdClient::sendFileToChat(PurpleXfer *xfer, const char *purpleName,
     const td::td_api::chat *chat        = nullptr;
 
     if (type == PURPLE_CONV_TYPE_IM) {
-        std::vector<const td::td_api::user *> users = getUsersByPurpleName(purpleName, m_data, "send message");
-        if (users.size() == 1) {
-            privateUser = users[0];
-            chat = m_data.getPrivateChatByUserId(getId(*privateUser));
+        SecretChatId secretChatId = purpleBuddyNameToSecretChatId(purpleName);
+        if (secretChatId.valid())
+            chat = m_data.getChatBySecretChat(secretChatId);
+        else {
+            std::vector<const td::td_api::user *> users = getUsersByPurpleName(purpleName, m_data, "send message");
+            if (users.size() == 1) {
+                privateUser = users[0];
+                chat = m_data.getPrivateChatByUserId(getId(*privateUser));
+            }
         }
     } else if (type == PURPLE_CONV_TYPE_CHAT)
         chat = m_data.getChatByPurpleId(purpleChatId);
