@@ -109,26 +109,6 @@ if (NOT DEFINED SHARE_INSTALL_PREFIX)
     set(SHARE_INSTALL_PREFIX "share")
 endif (NOT DEFINED SHARE_INSTALL_PREFIX)
 
-if (NOT NoTranslations)
-    find_package(Gettext REQUIRED)
-    file(STRINGS po/LINGUAS _linguas)
-    foreach(_lang ${_linguas})
-        GETTEXT_PROCESS_PO_FILES(
-            ${_lang} ALL
-            PO_FILES "${CMAKE_SOURCE_DIR}/po/${_lang}.po"
-        )
-        install(
-            FILES ${CMAKE_CURRENT_BINARY_DIR}/${_lang}.gmo
-            DESTINATION "${SHARE_INSTALL_PREFIX}/locale/${_lang}/LC_MESSAGES"
-            RENAME tdlib-purple.mo
-        )
-    endforeach()
-
-    find_package(Intl REQUIRED)
-    target_include_directories(telegram-tdlib PRIVATE ${Intl_INCLUDE_DIRS})
-    target_link_libraries(telegram-tdlib PRIVATE ${Intl_LIBRARIES})
-endif (NOT NoTranslations)
-
 if (NOT tgvoip_INCLUDE_DIRS STREQUAL "")
     target_include_directories(telegram-tdlib SYSTEM PRIVATE ${tgvoip_INCLUDE_DIRS})
 endif (NOT tgvoip_INCLUDE_DIRS STREQUAL "")
@@ -159,4 +139,29 @@ add_custom_command(
     DEPENDS ${CMAKE_SOURCE_DIR}/po/gen-nsi.sh
     DEPENDS ${CMAKE_SOURCE_DIR}/po/LINGUAS
 )
-add_custom_target(nsis makensis -DBUILD_DIR=${CMAKE_BINARY_DIR} -DPRPL_LIBRARY=libtelegram-tdlib-stripped.dll -DPLUGIN_VERSION=${VERSION} ${CMAKE_SOURCE_DIR}/tdlib-purple.nsi DEPENDS libtelegram-tdlib-stripped.dll lang.nsi)
+add_custom_target(nsis
+    makensis -DBUILD_DIR=${CMAKE_BINARY_DIR} -DPRPL_LIBRARY=libtelegram-tdlib-stripped.dll -DPLUGIN_VERSION=${VERSION} ${CMAKE_SOURCE_DIR}/tdlib-purple.nsi
+    DEPENDS libtelegram-tdlib-stripped.dll lang.nsi
+)
+
+if (NOT NoTranslations)
+    find_package(Gettext REQUIRED)
+    file(STRINGS po/LINGUAS _linguas)
+    foreach(_lang ${_linguas})
+        GETTEXT_PROCESS_PO_FILES(
+            ${_lang} ALL
+            PO_FILES "${CMAKE_SOURCE_DIR}/po/${_lang}.po"
+        )
+        install(
+            FILES ${CMAKE_CURRENT_BINARY_DIR}/${_lang}.gmo
+            DESTINATION "${SHARE_INSTALL_PREFIX}/locale/${_lang}/LC_MESSAGES"
+            RENAME tdlib-purple.mo
+        )
+        add_custom_target(__stinky_${_lang} DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${_lang}.gmo)
+        add_dependencies(nsis __stinky_${_lang})
+    endforeach()
+
+    find_package(Intl REQUIRED)
+    target_include_directories(telegram-tdlib PRIVATE ${Intl_INCLUDE_DIRS})
+    target_link_libraries(telegram-tdlib PRIVATE ${Intl_LIBRARIES})
+endif (NOT NoTranslations)
