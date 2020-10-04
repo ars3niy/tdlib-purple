@@ -102,6 +102,15 @@ UserId stringToUserId(const char *s)
     return UserId(x);
 }
 
+SecretChatId stringToSecretChatId(const char *s)
+{
+    SecretChatId::IdType id;
+    if (sscanf(s, "%" G_GINT32_FORMAT "", &id) == 1)
+        return SecretChatId(id);
+
+    return SecretChatId::invalid;
+}
+
 ChatId getChatId(const td::td_api::updateChatChatList &update)
 {
     return ChatId(update.chat_id_);

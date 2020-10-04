@@ -2620,3 +2620,21 @@ bool PurpleTdClient::terminateCall(PurpleConversation *conv)
     discardCurrentCall(m_data, m_transceiver);
     return true;
 }
+
+void PurpleTdClient::createSecretChat(const char* buddyName)
+{
+    std::vector<const td::td_api::user *> users = getUsersByPurpleName(buddyName, m_data, "create secret chat");
+    if (users.size() != 1) {
+        // Unlikely error messages not worth translating
+        const char *reason = users.empty() ? "User not found" :
+                                             "More than one user found with this name";
+        std::string message = formatMessage(_("Cannot kick user: {}"), std::string(reason));
+        purple_notify_error(purple_account_get_connection(m_account),
+                            _("Failed to create secret chat"),
+                            message.c_str(), NULL);
+        return;
+    }
+
+    auto request = td::td_api::make_object<td::td_api::createNewSecretChat>(getId(*users[0]).value());
+    m_transceiver.sendQuery(std::move(request), nullptr);
+}

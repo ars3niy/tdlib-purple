@@ -196,6 +196,18 @@ static void showInviteLink(PurpleBlistNode *node, gpointer data)
         tdClient->showInviteLink(getChatName(purple_chat_get_components(chat)));
 }
 
+static void createSecretChat(PurpleBlistNode *node, gpointer data)
+{
+    if (! PURPLE_BLIST_NODE_IS_BUDDY(node))
+        return;
+
+    PurpleBuddy    *buddy    = PURPLE_BUDDY(node);
+    PurpleAccount  *account  = purple_buddy_get_account(buddy);
+    PurpleTdClient *tdClient = getTdClient(account);
+    if (tdClient)
+        tdClient->createSecretChat(purple_buddy_get_name(buddy));
+}
+
 static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
 {
     GList *menu = NULL;
@@ -223,7 +235,17 @@ static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
                                         PURPLE_CALLBACK(showInviteLink),
                                         NULL, NULL);
         menu = g_list_append(menu, action);
-    }
+    } else if ( PURPLE_BLIST_NODE_IS_BUDDY(node) &&
+                purpleBuddyNameToUserId(purple_buddy_get_name(PURPLE_BUDDY(node))).valid() )
+    {
+        fprintf(stderr, "Creating secret chat menu for %s\n", purple_buddy_get_name(PURPLE_BUDDY(node)));
+        PurpleMenuAction *action;
+        action = purple_menu_action_new(_("Start secret chat"),
+                                        PURPLE_CALLBACK(createSecretChat),
+                                        NULL, NULL);
+        menu = g_list_append(menu, action);
+    } else if (PURPLE_BLIST_NODE_IS_BUDDY(node))
+        fprintf(stderr, "Not creating secret chat menu for %s\n", purple_buddy_get_name(PURPLE_BUDDY(node)));
 
     return menu;
 }

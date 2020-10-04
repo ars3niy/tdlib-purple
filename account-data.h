@@ -22,6 +22,7 @@ namespace tgvoip {
 bool        isPhoneNumber(const char *s);
 const char *getCanonicalPhoneNumber(const char *s);
 UserId      purpleBuddyNameToUserId(const char *s);
+SecretChatId purpleBuddyNameToSecretChatId(const char *s);
 bool        isPrivateChat(const td::td_api::chat &chat);
 UserId      getUserIdByPrivateChat(const td::td_api::chat &chat);
 bool        isChatInContactList(const td::td_api::chat &chat, const td::td_api::user *privateChatUser);

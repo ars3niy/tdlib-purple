@@ -78,6 +78,7 @@ DEFINE_ID_CLASS(SupergroupId, int32_t)
 DEFINE_ID_CLASS(SecretChatId, int32_t)
     friend SecretChatId getId(const td::td_api::secretChat &secretChat);
     friend SecretChatId getSecretChatId(const td::td_api::chatTypeSecret &update);
+    friend SecretChatId stringToSecretChatId(const char *s);
 };
 
 #undef DEFINE_ID_CLASS
@@ -115,6 +116,8 @@ SupergroupId getSupergroupId(const td::td_api::updateSupergroupFullInfo &update)
 SupergroupId getSupergroupId(const td::td_api::chatTypeSupergroup &chatType);
 
 SecretChatId getSecretChatId(const td::td_api::chatTypeSecret &update);
+
+SecretChatId stringToSecretChatId(const char *s);
 
 namespace std {
     static inline std::string to_string(UserId id) { return to_string(id.value()); }
