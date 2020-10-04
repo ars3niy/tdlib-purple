@@ -1927,24 +1927,36 @@ void PurpleTdClient::renameContact(const char *buddyName, const char *newAlias)
 
 void PurpleTdClient::removeContactAndPrivateChat(const std::string &buddyName)
 {
-    UserId userId = purpleBuddyNameToUserId(buddyName.c_str());
+    const td::td_api::chat *chat         = nullptr;
+    UserId                  userId       = purpleBuddyNameToUserId(buddyName.c_str());
+    SecretChatId            secretChatId = purpleBuddyNameToSecretChatId(buddyName.c_str());
+
+    if (userId.valid())
+        chat = m_data.getPrivateChatByUserId(userId);
+    else if (secretChatId.valid())
+        chat = m_data.getChatBySecretChat(secretChatId);
+
+    if (chat) {
+        ChatId chatId = getId(*chat);
+        chat = nullptr;
+        m_data.deleteChat(chatId); // Prevent re-creating buddy if any updateChat* or updateUser arrives
+
+        auto deleteChat = td::td_api::make_object<td::td_api::deleteChatHistory>();
+        deleteChat->chat_id_ = chatId.value();
+        deleteChat->remove_from_chat_list_ = true;
+        deleteChat->revoke_ = false;
+        m_transceiver.sendQuery(std::move(deleteChat), nullptr);
+    }
+
     if (userId.valid()) {
-        const td::td_api::chat *chat   = m_data.getPrivateChatByUserId(userId);
-        if (chat) {
-            ChatId chatId = getId(*chat);
-            chat = nullptr;
-            m_data.deleteChat(chatId); // Prevent re-creating buddy if any updateChat* or updateUser arrives
-
-            auto deleteChat = td::td_api::make_object<td::td_api::deleteChatHistory>();
-            deleteChat->chat_id_ = chatId.value();
-            deleteChat->remove_from_chat_list_ = true;
-            deleteChat->revoke_ = false;
-            m_transceiver.sendQuery(std::move(deleteChat), nullptr);
-        }
-
         auto removeContact = td::td_api::make_object<td::td_api::removeContacts>();
         removeContact->user_ids_.push_back(userId.value());
         m_transceiver.sendQuery(std::move(removeContact), nullptr);
+    }
+
+    if (secretChatId.valid()) {
+        auto closeChat = td::td_api::make_object<td::td_api::closeSecretChat>(secretChatId.value());
+        m_transceiver.sendQuery(std::move(closeChat), nullptr);
     }
 }
 

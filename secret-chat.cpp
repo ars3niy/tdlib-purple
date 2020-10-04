@@ -27,18 +27,6 @@ static void discardSecretChatCb(SecretChatInfo *data)
     closeSecretChat(info->secretChatId, *info->transceiver);
 }
 
-static void deleteSecretChat(SecretChatId secretChatId, TdTransceiver &transceiver, TdAccountData &account)
-{
-    const td::td_api::chat *chat = account.getChatBySecretChat(secretChatId);
-    if (chat) {
-        auto deleteChat = td::td_api::make_object<td::td_api::deleteChatHistory>();
-        deleteChat->chat_id_ = getId(*chat).value();
-        deleteChat->remove_from_chat_list_ = true;
-        deleteChat->revoke_ = false;
-        transceiver.sendQuery(std::move(deleteChat), nullptr);
-    }
-}
-
 static void updateReadySecretChat(SecretChatId secretChatId, TdTransceiver &transceiver, TdAccountData &account)
 {
     const td::td_api::chat *chat = account.getChatBySecretChat(secretChatId);
@@ -104,9 +92,7 @@ void updateKnownSecretChat(SecretChatId secretChatId, bool isNew, TdTransceiver 
         userDescription = "(unknown user)";
     }
 
-    if (state == td::td_api::secretChatStateClosed::ID)
-        deleteSecretChat(secretChatId, transceiver, account);
-    else if (isNew && !secretChat->is_outbound_ && (state == td::td_api::secretChatStatePending::ID)) {
+    if (isNew && !secretChat->is_outbound_ && (state == td::td_api::secretChatStatePending::ID)) {
         const char *secretChatHandling = purple_account_get_string(account.purpleAccount,
                                                                    AccountOptions::AcceptSecretChats,
                                                                    AccountOptions::AcceptSecretChatsDefault);
