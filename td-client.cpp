@@ -5,6 +5,7 @@
 #include "sticker.h"
 #include "file-transfer.h"
 #include "call.h"
+#include "secret-chat.h"
 #include <unistd.h>
 #include <stdlib.h>
 #include <algorithm>

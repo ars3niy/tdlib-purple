@@ -32,6 +32,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     ../file-transfer.cpp
     ../call.cpp
     ../identifiers.cpp
+    ../secret-chat.cpp
 )
 
 set_property(TARGET tests PROPERTY CXX_STANDARD 14)
