@@ -81,6 +81,14 @@ SupergroupId getSupergroupId(const td::td_api::chat &chat)
     return SupergroupId::invalid;
 }
 
+SecretChatId getSecretChatId(const td::td_api::chat &chat)
+{
+    if (chat.type_ && (chat.type_->get_id() == td::td_api::chatTypeSecret::ID))
+        return getSecretChatId(static_cast<const td::td_api::chatTypeSecret&>(*chat.type_));
+
+    return SecretChatId::invalid;
+}
+
 bool isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &status)
 {
     if (!status)
@@ -494,6 +502,19 @@ bool TdAccountData::isGroupChatWithMembership(const td::td_api::chat &chat) cons
     return false;
 }
 
+const td::td_api::chat *TdAccountData::getChatBySecretChat(SecretChatId secretChatId)
+{
+    auto it = std::find_if(m_chatInfo.begin(), m_chatInfo.end(),
+                           [secretChatId](const ChatMap::value_type &entry) {
+                               return (getSecretChatId(*entry.second.chat) == secretChatId);
+                           });
+
+    if (it != m_chatInfo.end())
+        return it->second.chat.get();
+    else
+        return nullptr;
+}
+
 void TdAccountData::getChats(std::vector<const td::td_api::chat *> &chats) const
 {
     chats.clear();
@@ -660,12 +681,13 @@ void TdAccountData::removeFileTransfer(int32_t fileId)
 void TdAccountData::addSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat)
 {
     if (secretChat)
-        m_secretChats.insert(getId(*secretChat));
+        m_secretChats[getId(*secretChat)] = std::move(secretChat);
 }
 
-bool TdAccountData::getSecretChat(SecretChatId id)
+const td::td_api::secretChat *TdAccountData::getSecretChat(SecretChatId id)
 {
-    return (m_secretChats.find(id) != m_secretChats.end());
+    auto it = m_secretChats.find(id);
+    return (it != m_secretChats.end()) ? it->second.get() : nullptr;
 }
 
 std::vector<std::pair<BasicGroupId, const td::td_api::basicGroupFullInfo *>>

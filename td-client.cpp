@@ -1595,6 +1595,13 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
     purple_debug_misc(config::pluginId, "Update chat: %" G_GINT64_FORMAT " private user=%d basic group=%d supergroup=%d\n",
                       chat->id_, privateChatUser ? privateChatUser->id_ : 0, basicGroupId.value(), supergroupId.value());
 
+    SecretChatId secretChatId = getSecretChatId(*chat);
+    if (secretChatId.valid()) {
+        const td::td_api::secretChat *sc = m_data.getSecretChat(secretChatId);
+        if (sc && sc->state_ && (sc->state_->get_id() == td::td_api::secretChatStateClosed::ID))
+            deleteSecretChat(secretChatId, m_transceiver, m_data);
+    }
+
     if (!privateChatUser)
         downloadChatPhoto(*chat);
 

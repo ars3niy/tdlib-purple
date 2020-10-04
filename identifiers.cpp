@@ -145,9 +145,9 @@ BasicGroupId getBasicGroupId(const td::td_api::updateBasicGroupFullInfo &update)
     return BasicGroupId(update.basic_group_id_);
 }
 
-BasicGroupId getBasicGroupId(const td::td_api::chatTypeBasicGroup &update)
+BasicGroupId getBasicGroupId(const td::td_api::chatTypeBasicGroup &chatType)
 {
-    return BasicGroupId(update.basic_group_id_);
+    return BasicGroupId(chatType.basic_group_id_);
 }
 
 SupergroupId getSupergroupId(const td::td_api::updateSupergroupFullInfo &update)
@@ -155,7 +155,12 @@ SupergroupId getSupergroupId(const td::td_api::updateSupergroupFullInfo &update)
     return SupergroupId(update.supergroup_id_);
 }
 
-SupergroupId getSupergroupId(const td::td_api::chatTypeSupergroup &update)
+SupergroupId getSupergroupId(const td::td_api::chatTypeSupergroup &chatType)
 {
-    return SupergroupId(update.supergroup_id_);
+    return SupergroupId(chatType.supergroup_id_);
+}
+
+SecretChatId getSecretChatId(const td::td_api::chatTypeSecret &chatType)
+{
+    return SecretChatId(chatType.secret_chat_id_);
 }

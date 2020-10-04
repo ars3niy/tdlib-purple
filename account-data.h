@@ -23,10 +23,11 @@ bool        isPhoneNumber(const char *s);
 const char *getCanonicalPhoneNumber(const char *s);
 UserId      purpleBuddyNameToUserId(const char *s);
 bool        isPrivateChat(const td::td_api::chat &chat);
-UserId      getUserIdByPrivateChat(const td::td_api::chat &chat); // return 0 if not private chat
+UserId      getUserIdByPrivateChat(const td::td_api::chat &chat);
 bool        isChatInContactList(const td::td_api::chat &chat, const td::td_api::user *privateChatUser);
-BasicGroupId getBasicGroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeBasicGroup
-SupergroupId getSupergroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeSupergroup
+BasicGroupId getBasicGroupId(const td::td_api::chat &chat);
+SupergroupId getSupergroupId(const td::td_api::chat &chat);
+SecretChatId getSecretChatId(const td::td_api::chat &chat);
 bool        isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &status);
 
 enum {
@@ -213,6 +214,7 @@ public:
     using TdSupergroupPtr     = td::td_api::object_ptr<td::td_api::supergroup>;
     using TdSupergroupInfoPtr = td::td_api::object_ptr<td::td_api::supergroupFullInfo>;
     using TdChatMembersPtr    = td::td_api::object_ptr<td::td_api::chatMembers>;
+    using SecretChatPtr       = td::td_api::object_ptr<td::td_api::secretChat>;
 
     struct {
         unsigned maxCaptionLength = 0;
@@ -267,6 +269,8 @@ public:
     const td::td_api::chat       *getSupergroupChatByGroup(SupergroupId groupId) const;
     bool                          isGroupChatWithMembership(const td::td_api::chat &chat) const;
 
+    const td::td_api::chat       *getChatBySecretChat(SecretChatId secretChatId);
+
     template<typename ReqType, typename... ArgsType>
     void addPendingRequest(ArgsType... args)
     {
@@ -301,7 +305,7 @@ public:
     void                       removeFileTransfer(int32_t fileId);
 
     void                       addSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat);
-    bool                       getSecretChat(SecretChatId id);
+    const td::td_api::secretChat *getSecretChat(SecretChatId id);
 
     auto                       getBasicGroupsWithMember(UserId userId) ->
                                std::vector<std::pair<BasicGroupId, const td::td_api::basicGroupFullInfo *>>;
@@ -357,7 +361,7 @@ private:
     ChatMap                            m_chatInfo;
     std::map<BasicGroupId, GroupInfo>  m_groups;
     std::map<SupergroupId, SupergroupInfo>  m_supergroups;
-    std::set<SecretChatId>             m_secretChats;
+    std::map<SecretChatId, SecretChatPtr>   m_secretChats;
     int                                m_lastChatPurpleId = 0;
 
     // List of contacts for which private chat is not known yet.

@@ -36,13 +36,28 @@ static void discardSecretChatCb(SecretChatInfo *data)
     closeSecretChat(info->secretChatId, *info->transceiver);
 }
 
+void deleteSecretChat(SecretChatId secretChatId, TdTransceiver &transceiver, TdAccountData &account)
+{
+    const td::td_api::chat *chat = account.getChatBySecretChat(secretChatId);
+    if (chat) {
+        auto deleteChat = td::td_api::make_object<td::td_api::deleteChatHistory>();
+        deleteChat->chat_id_ = getId(*chat).value();
+        deleteChat->remove_from_chat_list_ = true;
+        deleteChat->revoke_ = false;
+        transceiver.sendQuery(std::move(deleteChat), nullptr);
+    }
+}
+
 void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
                       TdTransceiver &transceiver, TdAccountData &account)
 {
     if (!secretChat) return;
 
     SecretChatId secretChatId = getId(*secretChat);
-    bool    isExisting   = account.getSecretChat(secretChatId);
+    bool         isExisting   = account.getSecretChat(secretChatId);
+    auto         state        = secretChat->state_ ? secretChat->state_->get_id() :
+                                td::td_api::secretChatStateClosed::ID;
+
     const td::td_api::user *user = account.getUser(getUserId(*secretChat));
     account.addSecretChat(std::move(secretChat));
 
@@ -53,6 +68,9 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
         // Not supposed to be possible, because every user id should be preceded by user info
         userDescription = "(unknown user)";
     }
+
+    if (state == td::td_api::secretChatStateClosed::ID)
+        deleteSecretChat(secretChatId, transceiver, account);
 
     if (!isExisting) {
         const char *secretChatHandling = purple_account_get_string(account.purpleAccount,
