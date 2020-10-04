@@ -54,7 +54,8 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
     if (!secretChat) return;
 
     SecretChatId secretChatId = getId(*secretChat);
-    bool         isExisting   = account.getSecretChat(secretChatId);
+    bool         isOutbound   = secretChat->is_outbound_;
+    bool         isExisting   = (account.getSecretChat(secretChatId) != nullptr);
     auto         state        = secretChat->state_ ? secretChat->state_->get_id() :
                                 td::td_api::secretChatStateClosed::ID;
 
@@ -72,7 +73,7 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
     if (state == td::td_api::secretChatStateClosed::ID)
         deleteSecretChat(secretChatId, transceiver, account);
 
-    if (!isExisting) {
+    if (!isExisting && !isOutbound && (state == td::td_api::secretChatStatePending::ID)) {
         const char *secretChatHandling = purple_account_get_string(account.purpleAccount,
                                                                    AccountOptions::AcceptSecretChats,
                                                                    AccountOptions::AcceptSecretChatsDefault);
