@@ -2,6 +2,7 @@
 #define _ACCOUNT_DATA_H
 
 #include "buildopt.h"
+#include "identifiers.h"
 #include <td/telegram/td_api.h>
 
 #include <map>
@@ -20,12 +21,12 @@ namespace tgvoip {
 
 bool        isPhoneNumber(const char *s);
 const char *getCanonicalPhoneNumber(const char *s);
-int32_t     stringToUserId(const char *s);
+UserId      purpleBuddyNameToUserId(const char *s);
 bool        isPrivateChat(const td::td_api::chat &chat);
-int32_t     getUserIdByPrivateChat(const td::td_api::chat &chat); // return 0 if not private chat
+UserId      getUserIdByPrivateChat(const td::td_api::chat &chat); // return 0 if not private chat
 bool        isChatInContactList(const td::td_api::chat &chat, const td::td_api::user *privateChatUser);
-int32_t     getBasicGroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeBasicGroup
-int32_t     getSupergroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeSupergroup
+BasicGroupId getBasicGroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeBasicGroup
+SupergroupId getSupergroupId(const td::td_api::chat &chat); // returns 0 if not chatTypeSupergroup
 bool        isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &status);
 
 enum {
@@ -43,18 +44,26 @@ public:
 
 class GroupInfoRequest: public PendingRequest {
 public:
-    int32_t groupId;
+    BasicGroupId groupId;
 
-    GroupInfoRequest(uint64_t requestId, int32_t groupId)
+    GroupInfoRequest(uint64_t requestId, BasicGroupId groupId)
+    : PendingRequest(requestId), groupId(groupId) {}
+};
+
+class SupergroupInfoRequest: public PendingRequest {
+public:
+    SupergroupId groupId;
+
+    SupergroupInfoRequest(uint64_t requestId, SupergroupId groupId)
     : PendingRequest(requestId), groupId(groupId) {}
 };
 
 class GroupMembersRequestCont: public PendingRequest {
 public:
-    int32_t groupId;
+    SupergroupId groupId;
     td::td_api::object_ptr<td::td_api::chatMembers> members;
 
-    GroupMembersRequestCont(uint64_t requestId, int32_t groupId, td::td_api::chatMembers *members)
+    GroupMembersRequestCont(uint64_t requestId, SupergroupId groupId, td::td_api::chatMembers *members)
     : PendingRequest(requestId), groupId(groupId), members(std::move(members)) {}
 };
 
@@ -63,10 +72,10 @@ public:
     std::string phoneNumber;
     std::string alias;
     std::string groupName;
-    int32_t     userId;
+    UserId      userId;
 
     ContactRequest(uint64_t requestId, const std::string &phoneNumber, const std::string &alias,
-                   const std::string &groupName, int32_t userId)
+                   const std::string &groupName, UserId userId)
     : PendingRequest(requestId), phoneNumber(phoneNumber), alias(alias), groupName(groupName),
       userId(userId) {}
 };
@@ -79,19 +88,19 @@ public:
     };
     std::string joinString;
     Type        type;
-    int64_t     chatId;
+    ChatId      chatId;
 
     GroupJoinRequest(uint64_t requestId, const std::string &joinString, Type type,
-                     int64_t chatId = 0)
+                     ChatId chatId = ChatId::invalid)
     : PendingRequest(requestId), joinString(joinString), type(type), chatId(chatId) {}
 };
 
 class SendMessageRequest: public PendingRequest {
 public:
-    int64_t     chatId;
+    ChatId      chatId;
     std::string tempFile;
 
-    SendMessageRequest(uint64_t requestId, int64_t chatId, const char *tempFile)
+    SendMessageRequest(uint64_t requestId, ChatId chatId, const char *tempFile)
     : PendingRequest(requestId), chatId(chatId), tempFile(tempFile ? tempFile : "") {}
 };
 
@@ -106,9 +115,9 @@ public:
 class UploadRequest: public PendingRequest {
 public:
     PurpleXfer *xfer;
-    int64_t     chatId;
+    ChatId      chatId;
 
-    UploadRequest(uint64_t requestId, PurpleXfer *xfer, int64_t chatId)
+    UploadRequest(uint64_t requestId, PurpleXfer *xfer, ChatId chatId)
     : PendingRequest(requestId), xfer(xfer), chatId(chatId) {}
 };
 
@@ -128,7 +137,7 @@ struct TgMessageInfo {
 };
 
 class PurpleTdClient;
-using FileDownloadCb = void (PurpleTdClient::*)(int64_t chatId, TgMessageInfo &message,
+using FileDownloadCb = void (PurpleTdClient::*)(ChatId chatId, TgMessageInfo &message,
                                                 const std::string &filePath, const char *caption,
                                                 const std::string &fileDescription,
                                                 td::td_api::object_ptr<td::td_api::file> thumbnail);
@@ -137,7 +146,7 @@ using FileDownloadCb = void (PurpleTdClient::*)(int64_t chatId, TgMessageInfo &m
 // time-consuming downloads
 class DownloadRequest: public PendingRequest {
 public:
-    int64_t        chatId;
+    ChatId         chatId;
     TgMessageInfo  message;
     int32_t        fileId;
     int32_t        fileSize;
@@ -149,7 +158,7 @@ public:
     FileDownloadCb callback;
 
     // Could not pass object_ptr through variadic funciton :(
-    DownloadRequest(uint64_t requestId, int64_t chatId, TgMessageInfo &message,
+    DownloadRequest(uint64_t requestId, ChatId chatId, TgMessageInfo &message,
                     int32_t fileId, int32_t fileSize, const std::string &fileDescription,
                     td::td_api::file *thumbnail, FileDownloadCb callback)
     : PendingRequest(requestId), chatId(chatId), message(std::move(message)), fileId(fileId),
@@ -159,13 +168,13 @@ public:
 
 class AvatarDownloadRequest: public PendingRequest {
 public:
-    int32_t userId;
-    int64_t chatId;
+    UserId userId;
+    ChatId chatId;
 
     AvatarDownloadRequest(uint64_t requestId, const td::td_api::user *user)
-    : PendingRequest(requestId), userId(user->id_), chatId(0) {}
+    : PendingRequest(requestId), userId(getId(*user)), chatId(ChatId::invalid) {}
     AvatarDownloadRequest(uint64_t requestId, const td::td_api::chat *chat)
-    : PendingRequest(requestId), userId(0), chatId(chat->id_) {}
+    : PendingRequest(requestId), userId(UserId::invalid), chatId(getId(*chat)) {}
 };
 
 class NewPrivateChatForMessage: public PendingRequest {
@@ -189,9 +198,9 @@ public:
         Invite,
         GenerateInviteLink
     };
-    Type    type;
-    int64_t chatId;
-    ChatActionRequest(uint64_t requestId, Type type, int64_t chatId)
+    Type   type;
+    ChatId chatId;
+    ChatActionRequest(uint64_t requestId, Type type, ChatId chatId)
     : PendingRequest(requestId), type(type), chatId(chatId) {}
 };
 
@@ -214,48 +223,48 @@ public:
     TdAccountData(PurpleAccount *purpleAccount) : purpleAccount(purpleAccount) {}
 
     void updateUser(TdUserPtr user);
-    void setUserStatus(int32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
-    void updateSmallProfilePhoto(int32_t userId, td::td_api::object_ptr<td::td_api::file> photo);
+    void setUserStatus(UserId UserId, td::td_api::object_ptr<td::td_api::UserStatus> status);
+    void updateSmallProfilePhoto(UserId userId, td::td_api::object_ptr<td::td_api::file> photo);
     void updateBasicGroup(TdGroupPtr group);
-    void setBasicGroupInfoRequested(int32_t groupId);
-    bool isBasicGroupInfoRequested(int32_t groupId);
-    void updateBasicGroupInfo(int32_t groupId, TdGroupInfoPtr groupInfo);
+    void setBasicGroupInfoRequested(BasicGroupId groupId);
+    bool isBasicGroupInfoRequested(BasicGroupId groupId);
+    void updateBasicGroupInfo(BasicGroupId groupId, TdGroupInfoPtr groupInfo);
     void updateSupergroup(TdSupergroupPtr group);
-    void setSupergroupInfoRequested(int32_t groupId);
-    bool isSupergroupInfoRequested(int32_t groupId);
-    void updateSupergroupInfo(int32_t groupId, TdSupergroupInfoPtr groupInfo);
-    void updateSupergroupMembers(int32_t groupId, TdChatMembersPtr members);
+    void setSupergroupInfoRequested(SupergroupId groupId);
+    bool isSupergroupInfoRequested(SupergroupId groupId);
+    void updateSupergroupInfo(SupergroupId groupId, TdSupergroupInfoPtr groupInfo);
+    void updateSupergroupMembers(SupergroupId groupId, TdChatMembersPtr members);
 
     void addChat(TdChatPtr chat); // Updates existing chat if any
-    void updateChatChatList(int64_t chatId, td::td_api::object_ptr<td::td_api::ChatList> list);
-    void updateChatTitle(int64_t chatId, const std::string &title);
-    void updateSmallChatPhoto(int64_t chatId, td::td_api::object_ptr<td::td_api::file> photo);
-    void updateChatOrder(int64_t chatId, int64_t order);
-    void setContacts(const std::vector<std::int32_t> &userIds);
-    void getContactsWithNoChat(std::vector<std::int32_t> &userIds);
+    void updateChatChatList(ChatId chatId, td::td_api::object_ptr<td::td_api::ChatList> list);
+    void updateChatTitle(ChatId chatId, const std::string &title);
+    void updateSmallChatPhoto(ChatId chatId, td::td_api::object_ptr<td::td_api::file> photo);
+    void updateChatOrder(ChatId chatId, int64_t order);
+    void setContacts(const td::td_api::users &users);
+    void getContactsWithNoChat(std::vector<UserId> &userIds);
     void getChats(std::vector<const td::td_api::chat *> &chats) const;
-    void deleteChat(int64_t id);
-    void getSmallestOrderChat(const td::td_api::ChatList &list, int64_t &chatId, int64_t &order);
+    void deleteChat(ChatId id);
+    void getSmallestOrderChat(const td::td_api::ChatList &list, ChatId &chatId, int64_t &order);
 
-    const td::td_api::chat       *getChat(int64_t chatId) const;
-    int                           getPurpleChatId(int64_t tdChatId);
+    const td::td_api::chat       *getChat(ChatId chatId) const;
+    int                           getPurpleChatId(ChatId tdChatId);
     const td::td_api::chat       *getChatByPurpleId(int32_t purpleChatId) const;
-    const td::td_api::chat       *getPrivateChatByUserId(int32_t userId) const;
-    const td::td_api::user       *getUser(int32_t userId) const;
+    const td::td_api::chat       *getPrivateChatByUserId(UserId userId) const;
+    const td::td_api::user       *getUser(UserId userId) const;
     const td::td_api::user       *getUserByPhone(const char *phoneNumber) const;
     const td::td_api::user       *getUserByPrivateChat(const td::td_api::chat &chat);
     std::string                   getDisplayName(const td::td_api::user &user) const;
-    std::string                   getDisplayName(int32_t userId) const;
+    std::string                   getDisplayName(UserId userId) const;
     void                          getUsersByDisplayName(const char *displayName,
                                                         std::vector<const td::td_api::user*> &users);
 
-    const td::td_api::basicGroup *getBasicGroup(int32_t groupId) const;
-    const td::td_api::basicGroupFullInfo *getBasicGroupInfo(int32_t groupId) const;
-    const td::td_api::supergroup *getSupergroup(int32_t groupId) const;
-    const td::td_api::supergroupFullInfo *getSupergroupInfo(int32_t groupId) const;
-    const td::td_api::chatMembers*getSupergroupMembers(int32_t groupId) const;
-    const td::td_api::chat       *getBasicGroupChatByGroup(int32_t groupId) const;
-    const td::td_api::chat       *getSupergroupChatByGroup(int32_t groupId) const;
+    const td::td_api::basicGroup *getBasicGroup(BasicGroupId groupId) const;
+    const td::td_api::basicGroupFullInfo *getBasicGroupInfo(BasicGroupId groupId) const;
+    const td::td_api::supergroup *getSupergroup(SupergroupId groupId) const;
+    const td::td_api::supergroupFullInfo *getSupergroupInfo(SupergroupId groupId) const;
+    const td::td_api::chatMembers*getSupergroupMembers(SupergroupId groupId) const;
+    const td::td_api::chat       *getBasicGroupChatByGroup(BasicGroupId groupId) const;
+    const td::td_api::chat       *getSupergroupChatByGroup(SupergroupId groupId) const;
     bool                          isGroupChatWithMembership(const td::td_api::chat &chat) const;
 
     template<typename ReqType, typename... ArgsType>
@@ -280,22 +289,22 @@ public:
         return dynamic_cast<ReqType *>(findPendingRequestImpl(requestId));
     }
 
-    const ContactRequest *     findContactRequest(int32_t userId);
+    const ContactRequest *     findContactRequest(UserId userId);
     void                       addTempFileUpload(int64_t messageId, const std::string &path);
     std::string                extractTempFileUpload(int64_t messageId);
     DownloadRequest *          findDownloadRequest(int32_t fileId);
 
-    void                       addFileTransfer(int32_t fileId, PurpleXfer *xfer, int64_t chatId);
+    void                       addFileTransfer(int32_t fileId, PurpleXfer *xfer, ChatId chatId);
     void                       addPurpleFileTransfer(int32_t fileId, PurpleXfer *xfer);
-    bool                       getFileTransfer(int32_t fileId, PurpleXfer *&xfer, int64_t &chatId);
+    bool                       getFileTransfer(int32_t fileId, PurpleXfer *&xfer, ChatId &chatId);
     bool                       getFileIdForTransfer(PurpleXfer *xfer, int &fileId);
     void                       removeFileTransfer(int32_t fileId);
 
     void                       addSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat);
-    bool                       getSecretChat(int32_t id);
+    bool                       getSecretChat(SecretChatId id);
 
-    auto                       getBasicGroupsWithMember(int32_t userId) ->
-                               std::vector<std::pair<int32_t, const td::td_api::basicGroupFullInfo *>>;
+    auto                       getBasicGroupsWithMember(UserId userId) ->
+                               std::vector<std::pair<BasicGroupId, const td::td_api::basicGroupFullInfo *>>;
 
     bool                       hasActiveCall();
     void                       setActiveCall(int32_t id);
@@ -338,21 +347,21 @@ private:
 
     struct FileTransferInfo {
         int32_t     fileId;
-        int64_t     chatId;
+        ChatId      chatId;
         PurpleXfer *xfer;
     };
 
-    using ChatMap = std::map<int64_t, ChatInfo>;
-    using UserMap = std::map<int32_t, UserInfo>;
+    using ChatMap = std::map<ChatId, ChatInfo>;
+    using UserMap = std::map<UserId, UserInfo>;
     UserMap                            m_userInfo;
     ChatMap                            m_chatInfo;
-    std::map<int32_t, GroupInfo>       m_groups;
-    std::map<int32_t, SupergroupInfo>  m_supergroups;
-    std::set<int32_t>                  m_secretChats;
+    std::map<BasicGroupId, GroupInfo>  m_groups;
+    std::map<SupergroupId, SupergroupInfo>  m_supergroups;
+    std::set<SecretChatId>             m_secretChats;
     int                                m_lastChatPurpleId = 0;
 
     // List of contacts for which private chat is not known yet.
-    std::vector<int32_t>               m_contactUserIdsNoChat;
+    std::vector<UserId>                m_contactUserIdsNoChat;
 
     // Used to remember stuff during asynchronous communication when adding contact
     std::vector<ContactRequest>        m_addContactRequests;

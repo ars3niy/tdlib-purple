@@ -1,6 +1,7 @@
 #ifndef _PURPLE_INFO_H
 #define _PURPLE_INFO_H
 
+#include "identifiers.h"
 #include <purple.h>
 #include <td/telegram/td_api.h>
 
@@ -21,7 +22,7 @@ const char  *getChatJoinString(GHashTable *components);
 const char  *getChatGroupName(GHashTable *components);
 int          getChatGroupType(GHashTable *components);
 
-int64_t      getTdlibChatId(const char *chatName);
+ChatId       getTdlibChatId(const char *chatName);
 
 namespace AccountOptions {
     constexpr const char *AutoDownloadLimit          = "media-size-threshold";

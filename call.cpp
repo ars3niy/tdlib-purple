@@ -66,7 +66,7 @@ static void discardCallCb(CallRequestData *data, int action)
     request->account->removeActiveCall();
 }
 
-static std::string getPurpleUserName(int32_t userId, TdAccountData &account)
+static std::string getPurpleUserName(UserId userId, TdAccountData &account)
 {
     const td::td_api::user *user = account.getUser(userId);
     if (user) {
@@ -176,7 +176,7 @@ static void notifyCallError(const td::td_api::callStateError &error, const std::
 
 void updateCall(const td::td_api::call &call, TdAccountData &account, TdTransceiver &transceiver)
 {
-    std::string buddyName = getPurpleUserName(call.user_id_, account);
+    std::string buddyName = getPurpleUserName(getUserId(call), account);
 
 #ifndef NoVoip
     PurpleMediaManager *mediaManager = purple_media_manager_get();
@@ -207,7 +207,7 @@ void updateCall(const td::td_api::call &call, TdAccountData &account, TdTranscei
             account.setActiveCall(call.id_);
             // TRANSLATOR: Dialog content, user will have the options "_OK" and "_Cancel".
             std::string message = formatMessage(_("{} wishes to start a call with you."),
-                                                account.getDisplayName(call.user_id_));
+                                                account.getDisplayName(getUserId(call)));
             CallRequestData *request = new CallRequestData;
             request->callId = call.id_;
             request->transceiver = &transceiver;

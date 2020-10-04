@@ -9,11 +9,11 @@ enum {
 };
 
 bool saveImage(int id, char **fileName);
-void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer *xfer,
+void startDocumentUpload(ChatId chatId, const std::string &filename, PurpleXfer *xfer,
                          TdTransceiver &transceiver, TdAccountData &account,
                          TdTransceiver::ResponseCb response);
 void uploadResponseError(PurpleXfer *xfer, const std::string &message, TdAccountData &account);
-void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_api::file &file,
+void startDocumentUploadProgress(ChatId chatId, PurpleXfer *xfer, const td::td_api::file &file,
                                  TdTransceiver &transceiver, TdAccountData &account,
                                  TdTransceiver::ResponseCb sendMessageResponse);
 void startInlineDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver, TdAccountData &account);

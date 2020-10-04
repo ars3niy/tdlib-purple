@@ -202,7 +202,7 @@ static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
 
     if (PURPLE_BLIST_NODE_IS_CHAT(node)) {
         PurpleChat *chat = PURPLE_CHAT(node);
-        if (getTdlibChatId(getChatName(purple_chat_get_components(chat))) == 0)
+        if (!getTdlibChatId(getChatName(purple_chat_get_components(chat))).valid())
             return menu;
 
         PurpleMenuAction* action;

@@ -90,15 +90,12 @@ int getChatGroupType(GHashTable *components)
     return s ? atoi(s) : 0;
 }
 
-int64_t getTdlibChatId(const char *chatName)
+ChatId getTdlibChatId(const char *chatName)
 {
-    if (chatName && !strncmp(chatName, "chat", 4)) {
-        int64_t id;
-        if (sscanf(chatName+4, "%" G_GINT64_FORMAT "", &id) == 1)
-            return id;
-    }
+    if (chatName && !strncmp(chatName, "chat", 4))
+        return stringToChatId(chatName+4);
 
-    return 0;
+    return ChatId::invalid;
 }
 
 unsigned getAutoDownloadLimitKb(PurpleAccount *account)

@@ -20,8 +20,8 @@ PurpleConvChat *    getChatConversation(TdAccountData &account, const td::td_api
                                         int chatPurpleId);
 PurpleConvChat *    findChatConversation(PurpleAccount *account, const td::td_api::chat &chat);
 void                updatePrivateChat(TdAccountData &account, const td::td_api::chat *chat, const td::td_api::user &user);
-void                updateBasicGroupChat(TdAccountData &account, int32_t groupId);
-void                updateSupergroupChat(TdAccountData &account, int32_t groupId);
+void                updateBasicGroupChat(TdAccountData &account, BasicGroupId groupId);
+void                updateSupergroupChat(TdAccountData &account, SupergroupId groupId);
 void                removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat);
 std::string         makeBasicDisplayName(const td::td_api::user &user);
 std::string         getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
@@ -55,7 +55,7 @@ void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::superg
 void updateSupergroupChatMembers(PurpleConvChat *purpleChat, const td::td_api::chatMembers &members,
                                  const TdAccountData &account);
 
-int  transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
+int  transmitMessage(ChatId chatId, const char *message, TdTransceiver &transceiver,
                      TdAccountData &account, TdTransceiver::ResponseCb response);
 
 void requestRecoveryEmailConfirmation(PurpleConnection *gc, const char *emailInfo);

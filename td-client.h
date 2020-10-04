@@ -99,7 +99,7 @@ private:
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
     void       findMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
-    void       updateUserStatus(uint32_t userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
+    void       updateUserStatus(UserId userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void       updateUser(td::td_api::object_ptr<td::td_api::user> user);
     void       downloadProfilePhoto(const td::td_api::user &user);
     void       avatarDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
@@ -108,20 +108,20 @@ private:
     void       updateChat(const td::td_api::chat *chat);
     void       updateUserInfo(const td::td_api::user &user, const td::td_api::chat *privateChat);
     void       downloadChatPhoto(const td::td_api::chat &chat);
-    void       requestBasicGroupFullInfo(int32_t groupId);
-    void       requestSupergroupFullInfo(int32_t groupId);
+    void       requestBasicGroupFullInfo(BasicGroupId groupId);
+    void       requestSupergroupFullInfo(SupergroupId groupId);
     void       groupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       supergroupInfoResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       supergroupMembersResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       supergroupAdministratorsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    void       updateGroupFull(int32_t groupId, td::td_api::object_ptr<td::td_api::basicGroupFullInfo> groupInfo);
-    void       updateSupergroupFull(int32_t groupId, td::td_api::object_ptr<td::td_api::supergroupFullInfo> groupInfo);
+    void       updateGroupFull(BasicGroupId groupId, td::td_api::object_ptr<td::td_api::basicGroupFullInfo> groupInfo);
+    void       updateSupergroupFull(SupergroupId groupId, td::td_api::object_ptr<td::td_api::supergroupFullInfo> groupInfo);
 
-    void       addContactById(int32_t userId, const std::string &phoneNumber, const std::string &alias,
+    void       addContactById(UserId userId, const std::string &phoneNumber, const std::string &alias,
                               const std::string &groupName);
     void       addChat(td::td_api::object_ptr<td::td_api::chat> chat);
     void       handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction);
-    void       showUserChatAction(int32_t userId, bool isTyping);
+    void       showUserChatAction(UserId userId, bool isTyping);
     void       addBuddySearchChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       importContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       addContactResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
@@ -137,7 +137,7 @@ private:
                         const td::td_api::file &file, const char *caption, const std::string &fileDesc,
                         td::td_api::object_ptr<td::td_api::file> thumbnail,
                         FileDownloadCb downloadCallback);
-    void       downloadFile(int32_t fileId, int64_t chatId, TgMessageInfo &message,
+    void       downloadFile(int32_t fileId, ChatId chatId, TgMessageInfo &message,
                             const std::string &fileDescription,
                             td::td_api::object_ptr<td::td_api::file> thumbnail,
                             FileDownloadCb callback);
@@ -147,15 +147,15 @@ private:
     static void startDownload(void *user_data);
     void       startInlineDownloadProgress(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object>);
     void       inlineDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    void       showDownloadedImage(int64_t chatId, TgMessageInfo &message,
+    void       showDownloadedImage(ChatId chatId, TgMessageInfo &message,
                                    const std::string &filePath, const char *caption,
                                    const std::string &fileDesc,
                                    td::td_api::object_ptr<td::td_api::file> thumbnail);
-    void       showDownloadedFileInline(int64_t chatId, TgMessageInfo &message,
+    void       showDownloadedFileInline(ChatId chatId, TgMessageInfo &message,
                                         const std::string &filePath, const char *caption,
                                         const std::string &fileDescription,
                                         td::td_api::object_ptr<td::td_api::file> thumbnail);
-    void       showDownloadedSticker(int64_t chatId, TgMessageInfo &message,
+    void       showDownloadedSticker(ChatId chatId, TgMessageInfo &message,
                                      const std::string &filePath, const char *caption,
                                      const std::string &fileDescription,
                                      td::td_api::object_ptr<td::td_api::file> thumbnail);
@@ -175,7 +175,7 @@ private:
     TdTransceiver         m_transceiver;
     TdAccountData         m_data;
     int32_t               m_lastAuthState = 0;
-    std::vector<int32_t>  m_usersForNewPrivateChats;
+    std::vector<UserId>   m_usersForNewPrivateChats;
     bool                  m_chatListReady = false;
     bool                  m_isProxyAdded = false;
     int64_t               m_lastChatOrderOffset = 0;

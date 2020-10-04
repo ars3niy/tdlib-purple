@@ -112,8 +112,8 @@ std::vector<const td::td_api::user *> getUsersByPurpleName(const char *buddyName
 {
     std::vector<const td::td_api::user *> result;
 
-    int32_t userId = stringToUserId(buddyName);
-    if (userId != 0) {
+    UserId userId = purpleBuddyNameToUserId(buddyName);
+    if (userId.valid()) {
         const td::td_api::user *tdUser = account.getUser(userId);
         if (tdUser != nullptr)
             result.push_back(tdUser);
@@ -190,13 +190,13 @@ PurpleConvChat *getChatConversation(TdAccountData &account, const td::td_api::ch
         PurpleConvChat *purpleChat   = purple_conversation_get_chat_data(conv);
 
         if (purpleChat && newChatCreated) {
-            int32_t                               basicGroupId = getBasicGroupId(chat);
-            const td::td_api::basicGroupFullInfo *groupInfo    = basicGroupId ? account.getBasicGroupInfo(basicGroupId) : nullptr;
+            BasicGroupId                          basicGroupId = getBasicGroupId(chat);
+            const td::td_api::basicGroupFullInfo *groupInfo    = basicGroupId.valid() ? account.getBasicGroupInfo(basicGroupId) : nullptr;
             if (groupInfo)
                 updateChatConversation(purpleChat, *groupInfo, account);
 
-            int32_t supergroupId = getSupergroupId(chat);
-            if (supergroupId) {
+            SupergroupId supergroupId = getSupergroupId(chat);
+            if (supergroupId.valid()) {
                 const td::td_api::supergroupFullInfo *supergroupInfo = account.getSupergroupInfo(supergroupId);
                 const td::td_api::chatMembers        *members        = account.getSupergroupMembers(supergroupId);
                 if (supergroupInfo)
@@ -232,7 +232,7 @@ void updatePrivateChat(TdAccountData &account, const td::td_api::chat *chat, con
         purple_debug_misc(config::pluginId, "Adding new buddy %s for user %s\n",
                           alias.c_str(), purpleUserName.c_str());
 
-        const ContactRequest *contactReq = account.findContactRequest(user.id_);
+        const ContactRequest *contactReq = account.findContactRequest(getId(user));
         PurpleGroup          *group      = (contactReq && !contactReq->groupName.empty()) ?
                                            purple_find_group(contactReq->groupName.c_str()) : NULL;
         if (group)
@@ -350,30 +350,30 @@ static void updateGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat
     }
 }
 
-void updateBasicGroupChat(TdAccountData &account, int32_t groupId)
+void updateBasicGroupChat(TdAccountData &account, BasicGroupId groupId)
 {
     const td::td_api::basicGroup *group = account.getBasicGroup(groupId);
     const td::td_api::chat       *chat  = account.getBasicGroupChatByGroup(groupId);
 
     if (!group)
-        purple_debug_misc(config::pluginId, "Basic group %d does not exist yet\n", groupId);
+        purple_debug_misc(config::pluginId, "Basic group %d does not exist yet\n", groupId.value());
     else if (!chat)
-        purple_debug_misc(config::pluginId, "Chat for basic group %d does not exist yet\n", groupId);
+        purple_debug_misc(config::pluginId, "Chat for basic group %d does not exist yet\n", groupId.value());
     else
-        updateGroupChat(account.purpleAccount, *chat, group->status_, "basic group", groupId);
+        updateGroupChat(account.purpleAccount, *chat, group->status_, "basic group", groupId.value());
 }
 
-void updateSupergroupChat(TdAccountData &account, int32_t groupId)
+void updateSupergroupChat(TdAccountData &account, SupergroupId groupId)
 {
     const td::td_api::supergroup *group = account.getSupergroup(groupId);
     const td::td_api::chat       *chat  = account.getSupergroupChatByGroup(groupId);
 
     if (!group)
-        purple_debug_misc(config::pluginId, "Supergroup %d does not exist yet\n", groupId);
+        purple_debug_misc(config::pluginId, "Supergroup %d does not exist yet\n", groupId.value());
     else if (!chat)
-        purple_debug_misc(config::pluginId, "Chat for supergroup %d does not exist yet\n", groupId);
+        purple_debug_misc(config::pluginId, "Chat for supergroup %d does not exist yet\n", groupId.value());
     else
-        updateGroupChat(account.purpleAccount, *chat, group->status_, "supergroup", groupId);
+        updateGroupChat(account.purpleAccount, *chat, group->status_, "supergroup", groupId.value());
 }
 
 void removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat)
@@ -426,7 +426,7 @@ static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &
                                 const char *notification, PurpleMessageFlags flags)
 {
     // Again, doing what facebook plugin does
-    int purpleId = account.getPurpleChatId(chat.id_);
+    int purpleId = account.getPurpleChatId(getId(chat));
     PurpleConvChat *conv = getChatConversation(account, chat, purpleId);
 
     if (text) {
@@ -468,7 +468,7 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
 {
     const td::td_api::user *originalAuthor = nullptr;
     if (message)
-        originalAuthor = account.getUser(message->sender_user_id_);
+        originalAuthor = account.getUser(getSenderUserId(*message));
 
     std::string originalName;
     if (originalAuthor)
@@ -578,7 +578,7 @@ void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const
         showMessageTextIm(account, userName.c_str(), text, notification, message.timestamp, flags);
     }
 
-    if (getBasicGroupId(chat) || getSupergroupId(chat))
+    if (getBasicGroupId(chat).valid() || getSupergroupId(chat).valid())
         showMessageTextChat(account, chat, message, text, notification, flags);
 }
 
@@ -605,9 +605,10 @@ std::string makeBasicDisplayName(const td::td_api::user &user)
 std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
                                 TdAccountData &account)
 {
-    if (!message.is_outgoing_ && (getBasicGroupId(chat) || getSupergroupId(chat))) {
-        if (message.sender_user_id_)
-            return account.getDisplayName(message.sender_user_id_);
+    if (!message.is_outgoing_ && (getBasicGroupId(chat).valid() || getSupergroupId(chat).valid())) {
+        UserId senderId = getSenderUserId(message);
+        if (senderId.valid())
+            return account.getDisplayName(senderId);
         else if (!message.author_signature_.empty())
             return message.author_signature_;
         else if (message.is_channel_post_) {
@@ -616,7 +617,7 @@ std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::
         } else if (message.forward_info_ && message.forward_info_->origin_)
             switch (message.forward_info_->origin_->get_id()) {
             case td::td_api::messageForwardOriginUser::ID:
-                return account.getDisplayName(static_cast<const td::td_api::messageForwardOriginUser &>(*message.forward_info_->origin_).sender_user_id_);
+                return account.getDisplayName(getSenderUserId(static_cast<const td::td_api::messageForwardOriginUser &>(*message.forward_info_->origin_)));
             case td::td_api::messageForwardOriginHiddenUser::ID:
                 return static_cast<const td::td_api::messageForwardOriginHiddenUser &>(*message.forward_info_->origin_).sender_name_;
             case td::td_api::messageForwardOriginChannel::ID:
@@ -638,11 +639,11 @@ std::string getForwardSource(const td::td_api::messageForwardInfo &forwardInfo,
 
     switch (forwardInfo.origin_->get_id()) {
         case td::td_api::messageForwardOriginUser::ID:
-            return account.getDisplayName(static_cast<const td::td_api::messageForwardOriginUser &>(*forwardInfo.origin_).sender_user_id_);
+            return account.getDisplayName(getSenderUserId(static_cast<const td::td_api::messageForwardOriginUser &>(*forwardInfo.origin_)));
         case td::td_api::messageForwardOriginHiddenUser::ID:
             return static_cast<const td::td_api::messageForwardOriginHiddenUser &>(*forwardInfo.origin_).sender_name_;
         case td::td_api::messageForwardOriginChannel::ID: {
-            const td::td_api::chat *chat = account.getChat(static_cast<const td::td_api::messageForwardOriginChannel&>(*forwardInfo.origin_).chat_id_);
+            const td::td_api::chat *chat = account.getChat(getChatId(static_cast<const td::td_api::messageForwardOriginChannel&>(*forwardInfo.origin_)));
             if (chat)
                 return chat->title_;
         }
@@ -736,7 +737,7 @@ static void setChatMembers(PurpleConvChat *purpleChat,
         if (!member || !isGroupMember(member->status_))
             continue;
 
-        const td::td_api::user *user = account.getUser(member->user_id_);
+        const td::td_api::user *user = account.getUser(getUserId(*member));
         if (!user || (user->type_ && (user->type_->get_id() == td::td_api::userTypeDeleted::ID)))
             continue;
 
@@ -903,7 +904,7 @@ static void parseMessage(const char *message, std::vector<MessagePart> &parts, T
     appendText(parts, textStart, s-textStart, account);
 }
 
-int transmitMessage(int64_t chatId, const char *message, TdTransceiver &transceiver,
+int transmitMessage(ChatId chatId, const char *message, TdTransceiver &transceiver,
                     TdAccountData &account, TdTransceiver::ResponseCb response)
 {
     std::vector<MessagePart> parts;
@@ -913,7 +914,7 @@ int transmitMessage(int64_t chatId, const char *message, TdTransceiver &transcei
 
     for (const MessagePart &input: parts) {
         td::td_api::object_ptr<td::td_api::sendMessage> sendMessageRequest = td::td_api::make_object<td::td_api::sendMessage>();
-        sendMessageRequest->chat_id_ = chatId;
+        sendMessageRequest->chat_id_ = chatId.value();
         char *tempFileName = NULL;
         bool  hasImage     = false;
 
@@ -935,7 +936,6 @@ int transmitMessage(int64_t chatId, const char *message, TdTransceiver &transcei
             sendMessageRequest->input_message_content_ = std::move(content);
         }
 
-        int64_t  chatId = sendMessageRequest->chat_id_;
         uint64_t requestId = transceiver.sendQuery(std::move(sendMessageRequest), response);
         account.addPendingRequest<SendMessageRequest>(requestId, chatId, tempFileName);
         if (tempFileName)
@@ -982,7 +982,7 @@ void showGenericFileInline(const td::td_api::chat &chat, const TgMessageInfo &me
 void notifySendFailed(const td::td_api::updateMessageSendFailed &sendFailed, TdAccountData &account)
 {
     if (sendFailed.message_) {
-        const td::td_api::chat *chat = account.getChat(sendFailed.message_->chat_id_);
+        const td::td_api::chat *chat = account.getChat(getChatId(*sendFailed.message_));
         if (chat) {
             TgMessageInfo messageInfo;
             messageInfo.type = TgMessageInfo::Type::Other;
@@ -997,12 +997,12 @@ void notifySendFailed(const td::td_api::updateMessageSendFailed &sendFailed, TdA
     }
 }
 
-static void closeSecretChat(int32_t secretChatId, TdTransceiver &transceiver)
+static void closeSecretChat(SecretChatId secretChatId, TdTransceiver &transceiver)
 {
-    transceiver.sendQuery(td::td_api::make_object<td::td_api::closeSecretChat>(secretChatId), nullptr);
+    transceiver.sendQuery(td::td_api::make_object<td::td_api::closeSecretChat>(secretChatId.value()), nullptr);
 }
 
-static void secretChatNotSupported(int32_t secretChatId, const std::string &userDescription,
+static void secretChatNotSupported(SecretChatId secretChatId, const std::string &userDescription,
                                    TdTransceiver &transceiver, PurpleAccount *purpleAccount)
 {
     closeSecretChat(secretChatId, transceiver);
@@ -1013,7 +1013,7 @@ static void secretChatNotSupported(int32_t secretChatId, const std::string &user
 }
 
 struct SecretChatInfo {
-    int32_t        secretChatId;
+    SecretChatId   secretChatId;
     std::string    userDescription;
     TdTransceiver *transceiver;
     PurpleAccount *purpleAccount;
@@ -1036,9 +1036,9 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
 {
     if (!secretChat) return;
 
-    int32_t secretChatId = secretChat->id_;
+    SecretChatId secretChatId = getId(*secretChat);
     bool    isExisting   = account.getSecretChat(secretChatId);
-    const td::td_api::user *user = account.getUser(secretChat->user_id_);
+    const td::td_api::user *user = account.getUser(getUserId(*secretChat));
     account.addSecretChat(std::move(secretChat));
 
     std::string userDescription;
@@ -1109,15 +1109,15 @@ void populateGroupChatList(PurpleRoomlist *roomlist, const std::vector<const td:
             PurpleRoomlistRoom *room = purple_roomlist_room_new(PURPLE_ROOMLIST_ROOMTYPE_ROOM,
                                                                 chat->title_.c_str(), NULL);
             purple_roomlist_room_add_field (roomlist, room, getPurpleChatName(*chat).c_str());
-            int32_t groupId = getBasicGroupId(*chat);
-            if (groupId) {
+            BasicGroupId groupId = getBasicGroupId(*chat);
+            if (groupId.valid()) {
                 const td::td_api::basicGroupFullInfo *fullInfo = account.getBasicGroupInfo(groupId);
                 if (fullInfo && !fullInfo->description_.empty())
                     purple_roomlist_room_add_field(roomlist, room, fullInfo->description_.c_str());
             }
-            groupId = getSupergroupId(*chat);
-            if (groupId) {
-                const td::td_api::supergroupFullInfo *fullInfo = account.getSupergroupInfo(groupId);
+            SupergroupId supergroupId = getSupergroupId(*chat);
+            if (supergroupId.valid()) {
+                const td::td_api::supergroupFullInfo *fullInfo = account.getSupergroupInfo(supergroupId);
                 if (fullInfo && !fullInfo->description_.empty())
                     purple_roomlist_room_add_field(roomlist, room, fullInfo->description_.c_str());
             }

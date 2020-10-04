@@ -14,10 +14,10 @@ private:
     void run() override;
 public:
     const std::string inputFileName;
-    const int64_t chatId;
+    const ChatId chatId;
     const TgMessageInfo message;
     StickerConversionThread(PurpleAccount *purpleAccount, Callback callback, const std::string &filename,
-                            int64_t chatId, TgMessageInfo &&message)
+                            ChatId chatId, TgMessageInfo &&message)
     : AccountThread(purpleAccount, callback), inputFileName(filename), chatId(chatId),
       message(std::move(message)) {}
 

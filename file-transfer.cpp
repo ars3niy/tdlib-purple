@@ -36,7 +36,7 @@ bool saveImage(int id, char **fileName)
     return true;
 }
 
-void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer *xfer,
+void startDocumentUpload(ChatId chatId, const std::string &filename, PurpleXfer *xfer,
                          TdTransceiver &transceiver, TdAccountData &account,
                          TdTransceiver::ResponseCb response)
 {
@@ -49,11 +49,11 @@ void startDocumentUpload(int64_t chatId, const std::string &filename, PurpleXfer
     account.addPendingRequest<UploadRequest>(requestId, xfer, chatId);
 }
 
-static void updateDocumentUploadProgress(const td::td_api::file &file, PurpleXfer *xfer, int64_t chatId,
+static void updateDocumentUploadProgress(const td::td_api::file &file, PurpleXfer *xfer, ChatId chatId,
                                          TdTransceiver &transceiver, TdAccountData &account,
                                          TdTransceiver::ResponseCb sendMessageResponse);
 
-void startDocumentUploadProgress(int64_t chatId, PurpleXfer *xfer, const td::td_api::file &file,
+void startDocumentUploadProgress(ChatId chatId, PurpleXfer *xfer, const td::td_api::file &file,
                                  TdTransceiver &transceiver, TdAccountData &account,
                                  TdTransceiver::ResponseCb sendMessageResponse)
 {
@@ -78,7 +78,7 @@ void uploadResponseError(PurpleXfer *xfer, const std::string &message, TdAccount
     purple_xfer_unref(xfer);
 }
 
-static void updateDocumentUploadProgress(const td::td_api::file &file, PurpleXfer *upload, int64_t chatId,
+static void updateDocumentUploadProgress(const td::td_api::file &file, PurpleXfer *upload, ChatId chatId,
                                          TdTransceiver &transceiver, TdAccountData &account,
                                          TdTransceiver::ResponseCb sendMessageResponse)
 {
@@ -105,9 +105,8 @@ static void updateDocumentUploadProgress(const td::td_api::file &file, PurpleXfe
             content->caption_ = td::td_api::make_object<td::td_api::formattedText>();
             content->document_ = td::td_api::make_object<td::td_api::inputFileId>(file.id_);
             sendMessageRequest->input_message_content_ = std::move(content);
-            sendMessageRequest->chat_id_ = chatId;
+            sendMessageRequest->chat_id_ = chatId.value();
 
-            int64_t  chatId = sendMessageRequest->chat_id_;
             uint64_t requestId = transceiver.sendQuery(std::move(sendMessageRequest), sendMessageResponse);
             account.addPendingRequest<SendMessageRequest>(requestId, chatId, nullptr);
         }
@@ -184,7 +183,7 @@ void startInlineDownloadProgress(DownloadRequest &request, TdTransceiver &transc
         // the progress
         xfer->data = new DownloadData(account, transceiver);
         purple_xfer_set_cancel_recv_fnc(xfer, cancelDownload);
-        account.addFileTransfer(request.fileId, xfer, 0);
+        account.addFileTransfer(request.fileId, xfer, ChatId::invalid);
     } else
         remove(tempFileName);
 
@@ -229,7 +228,7 @@ void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &tra
                                 TdAccountData &account, TdTransceiver::ResponseCb sendMessageResponse)
 {
     PurpleXfer *xfer = NULL;
-    int64_t     chatId;
+    ChatId      chatId;
     if (account.getFileTransfer(file.id_, xfer, chatId)) {
         if (xfer && (purple_xfer_get_type(xfer) == PURPLE_XFER_SEND))
             updateDocumentUploadProgress(file, xfer, chatId, transceiver, account, sendMessageResponse);
@@ -241,7 +240,7 @@ void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &tra
 void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData& account)
 {
     PurpleXfer *download;
-    int64_t     chatId;
+    ChatId      chatId;
 
     if (account.getFileTransfer(downloadReq.fileId, download, chatId)) {
         std::unique_ptr<DownloadData> data(static_cast<DownloadData *>(download->data));
@@ -345,7 +344,7 @@ static void standardDownloadResponse(TdAccountData *account, uint64_t requestId,
     if (!request) return;
 
     PurpleXfer *download;
-    int64_t     chatId;
+    ChatId      chatId;
 
     if (account->getFileTransfer(request->fileId, download, chatId)) {
         std::unique_ptr<DownloadData> data(static_cast<DownloadData *>(download->data));
@@ -410,7 +409,8 @@ static void startStandardDownload(PurpleXfer *xfer)
                                                               standardDownloadResponse(account, requestId, std::move(object));
                                                           });
         TgMessageInfo message;
-        std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, 0,
+        std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId,
+                                                        ChatId::invalid,
                                                         message, fileId, 0, "", nullptr,
                                                         nullptr);
         data->account->addPendingRequest<DownloadRequest>(requestId, std::move(request));
@@ -429,7 +429,7 @@ void requestStandardDownload(const TgMessageInfo &message, const std::string &fi
     purple_xfer_set_filename(xfer, fileName.c_str());
     purple_xfer_set_size(xfer, getFileSize(file));
     xfer->data = new DownloadData(account, transceiver);
-    account.addFileTransfer(file.id_, xfer, 0);
+    account.addFileTransfer(file.id_, xfer, ChatId::invalid);
     purple_xfer_request(xfer);
 }
 
