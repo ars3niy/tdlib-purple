@@ -11,6 +11,7 @@ public:
     explicit Identifier(IntType value) : m_value(value) {}
     bool    valid() const { return (m_value != 0); }
     IntType value() const { return m_value; }
+protected:
     using IdType = IntType;
 private:
     IntType m_value;
