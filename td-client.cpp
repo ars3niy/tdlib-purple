@@ -1128,7 +1128,7 @@ void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo
             showFileInline(chat, message, *file, captionStr, fileDescription, nullptr,
                            &PurpleTdClient::showDownloadedFileInline);
         } else
-            requestStandardDownload(message, fileName, *file, m_transceiver, m_data);
+            requestStandardDownload(getId(chat), message, fileName, *file, m_transceiver, m_data);
     }
 }
 
@@ -1255,7 +1255,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
 
     TgMessageInfo messageInfo;
     messageInfo.type             = TgMessageInfo::Type::Other;
-    messageInfo.sender           = getSenderPurpleName(chat, message, m_data);
+    messageInfo.incomingGroupchatSender           = getIncomingGroupchatSenderPurpleName(chat, message, m_data);
     messageInfo.timestamp        = message.date_;
     messageInfo.outgoing         = message.is_outgoing_;
     messageInfo.sentLocally      = (message.sending_state_ != nullptr);

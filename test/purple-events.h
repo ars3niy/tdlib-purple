@@ -436,17 +436,18 @@ struct ChatSetTopicEvent: PurpleEvent {
 
 struct XferAcceptedEvent: PurpleEvent {
     PurpleXfer *xfer = NULL;
+    std::string who;
     std::string filename;
     std::string *getFileName = NULL;
 
     XferAcceptedEvent(PurpleXfer *xfer, const std::string &filename)
-    : PurpleEvent(PurpleEventType::XferAccepted), xfer(xfer), filename(filename) {}
+    : PurpleEvent(PurpleEventType::XferAccepted), xfer(xfer), who(xfer->who), filename(filename) {}
 
-    XferAcceptedEvent(const std::string &filename)
-    : PurpleEvent(PurpleEventType::XferAccepted), filename(filename) {}
+    XferAcceptedEvent(const std::string &who, const std::string &filename)
+    : PurpleEvent(PurpleEventType::XferAccepted), who(who), filename(filename) {}
 
-    XferAcceptedEvent(std::string *getFileName)
-    : PurpleEvent(PurpleEventType::XferAccepted), getFileName(getFileName) {}
+    XferAcceptedEvent(const std::string &who, std::string *getFileName)
+    : PurpleEvent(PurpleEventType::XferAccepted), who(who), getFileName(getFileName) {}
 };
 
 struct XferStartEvent: PurpleEvent {
@@ -501,10 +502,11 @@ struct XferRemoteCancelEvent: PurpleEvent {
 struct XferRequestEvent: PurpleEvent {
     PurpleXfer     *xfer;
     PurpleXferType  type;
+    std::string     who;
     std::string     filename;
 
-    XferRequestEvent(PurpleXferType type, const char *filename, PurpleXfer *xfer = NULL)
-    : PurpleEvent(PurpleEventType::XferRequest), xfer(xfer), type(type),
+    XferRequestEvent(PurpleXferType type, const char *who, const char *filename, PurpleXfer *xfer = NULL)
+    : PurpleEvent(PurpleEventType::XferRequest), xfer(xfer), type(type), who(who),
       filename(filename ? filename : "") {}
 };
 

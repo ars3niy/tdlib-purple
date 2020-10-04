@@ -1381,7 +1381,7 @@ TEST_F(GroupChatTest, SendFile)
 
     setFakeFileSize(PATH, 10000);
     pluginInfo().chat_send_file(connection, purpleChatId, PATH);
-    prpl.verifyEvents(XferAcceptedEvent(PATH));
+    prpl.verifyEvents(XferAcceptedEvent(groupChatTitle, PATH));
     tgl.verifyRequest(uploadFile(
         make_object<inputFileLocal>(PATH),
         make_object<fileTypeDocument>(),

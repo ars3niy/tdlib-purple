@@ -899,7 +899,7 @@ void purple_xfer_unref(PurpleXfer *xfer)
 
 void purple_xfer_request(PurpleXfer *xfer)
 {
-    EVENT(XferRequestEvent, purple_xfer_get_type(xfer), purple_xfer_get_filename(xfer), xfer);
+    EVENT(XferRequestEvent, purple_xfer_get_type(xfer), xfer->who, purple_xfer_get_filename(xfer), xfer);
 }
 
 std::map<std::string, size_t> fakeFiles;

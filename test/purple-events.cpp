@@ -220,6 +220,8 @@ static void compare(const ChatSetTopicEvent &actual, const ChatSetTopicEvent &ex
 
 static void compare(const XferAcceptedEvent &actual, const XferAcceptedEvent &expected)
 {
+    COMPARE(who);
+
     if (!expected.filename.empty()) {
         COMPARE(filename);
     }
@@ -273,6 +275,7 @@ static void compare(const XferRemoteCancelEvent &actual, const XferRemoteCancelE
 static void compare(const XferRequestEvent &actual, const XferRequestEvent &expected)
 {
     COMPARE(type);
+    COMPARE(who);
     COMPARE(filename);
 }
 

@@ -443,7 +443,7 @@ static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &
         } else {
             if (purpleId != 0)
                 serv_got_chat_in(purple_account_get_connection(account.purpleAccount), purpleId,
-                                 message.sender.empty() ? "someone" : message.sender.c_str(),
+                                 message.incomingGroupchatSender.empty() ? "someone" : message.incomingGroupchatSender.c_str(),
                                  flags, text, message.timestamp);
         }
     }
@@ -608,8 +608,8 @@ std::string makeBasicDisplayName(const td::td_api::user &user)
     return result;
 }
 
-std::string getSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
-                                TdAccountData &account)
+std::string getIncomingGroupchatSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
+                                                 TdAccountData &account)
 {
     if (!message.is_outgoing_ && (getBasicGroupId(chat).valid() || getSupergroupId(chat).valid())) {
         UserId senderId = getSenderUserId(message);
@@ -959,7 +959,7 @@ std::string getSenderDisplayName(const td::td_api::chat &chat, const TgMessageIn
     else if (isPrivateChat(chat))
         return chat.title_;
     else
-        return message.sender;
+        return message.incomingGroupchatSender;
 }
 
 std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,

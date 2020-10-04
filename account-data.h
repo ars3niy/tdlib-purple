@@ -129,7 +129,7 @@ struct TgMessageInfo {
         Other
     };
     Type        type;
-    std::string sender;
+    std::string incomingGroupchatSender;
     time_t      timestamp;
     bool        outgoing;
     bool        sentLocally = false; // For outgoing messages, whether sent by this very client

@@ -216,7 +216,7 @@ TEST_F(FileTransferTest, SendFile_ErrorInUploadResponse)
 
     setFakeFileSize(PATH, 9000);
     pluginInfo().send_file(connection, purpleUserName(0).c_str(), PATH);
-    prpl.verifyEvents(XferAcceptedEvent(PATH));
+    prpl.verifyEvents(XferAcceptedEvent(purpleUserName(0), PATH));
     tgl.verifyRequest(uploadFile(
         make_object<inputFileLocal>(PATH),
         make_object<fileTypeDocument>(),
@@ -235,7 +235,7 @@ TEST_F(FileTransferTest, SendFile_SendMessageResponseError)
 
     setFakeFileSize(PATH, 9000);
     pluginInfo().send_file(connection, purpleUserName(0).c_str(), PATH);
-    prpl.verifyEvents(XferAcceptedEvent(PATH));
+    prpl.verifyEvents(XferAcceptedEvent(purpleUserName(0), PATH));
     tgl.verifyRequest(uploadFile(
         make_object<inputFileLocal>(PATH),
         make_object<fileTypeDocument>(),
@@ -312,7 +312,7 @@ TEST_F(FileTransferTest, SendFile_UnknownUser)
     setFakeFileSize(PATH, 9000);
     pluginInfo().send_file(connection, "Antonie van Leeuwenhoek", PATH);
     prpl.verifyEvents(
-        XferAcceptedEvent(PATH),
+        XferAcceptedEvent("Antonie van Leeuwenhoek", PATH),
         XferLocalCancelEvent(PATH)
     );
 }
@@ -449,7 +449,7 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_StuckAtStart)
     tgl.runTimeouts();
     std::string tempFileName;
     prpl.verifyEvents(
-        XferAcceptedEvent(&tempFileName)
+        XferAcceptedEvent(purpleUserName(0), &tempFileName)
     );
 
     tgl.update(make_object<updateFile>(make_object<file>(
@@ -548,7 +548,7 @@ TEST_F(FileTransferTest, Photo_DownloadProgress)
     tgl.runTimeouts();
     std::string tempFileName;
     prpl.verifyEvents(
-        XferAcceptedEvent(&tempFileName),
+        XferAcceptedEvent(purpleUserName(0), &tempFileName),
         XferStartEvent(&tempFileName)
     );
 
@@ -632,7 +632,7 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_StuckAtStart_Cancel)
     tgl.runTimeouts();
     std::string tempFileName;
     prpl.verifyEvents(
-        XferAcceptedEvent(&tempFileName)
+        XferAcceptedEvent(purpleUserName(0), &tempFileName)
     );
 
     purple_xfer_cancel_local(prpl.getLastXfer());
@@ -699,7 +699,7 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_Cancel)
     tgl.runTimeouts();
     std::string tempFileName;
     prpl.verifyEvents(
-        XferAcceptedEvent(&tempFileName),
+        XferAcceptedEvent(purpleUserName(0), &tempFileName),
         XferStartEvent(&tempFileName)
     );
 
@@ -786,7 +786,7 @@ TEST_F(FileTransferTest, SendFileToNonContact)
         PATH
     );
     prpl.verifyEvents(
-        XferAcceptedEvent(PATH)
+        XferAcceptedEvent(userFirstNames[0] + " " + userLastNames[0], PATH)
     );
     tgl.verifyRequest(createPrivateChat(userIds[0], false));
 
@@ -867,7 +867,7 @@ TEST_F(FileTransferTest, SendFileToNonContact_CreatePrivateChatFail)
         PATH
     );
     prpl.verifyEvents(
-        XferAcceptedEvent(PATH)
+        XferAcceptedEvent(userFirstNames[1] + " " + userLastNames[1], PATH)
     );
     tgl.verifyRequest(createPrivateChat(userIds[1], false));
 
@@ -891,7 +891,7 @@ TEST_F(FileTransferTest, SendFileToNonContact_TurboCancel)
         PATH
     );
     prpl.verifyEvents(
-        XferAcceptedEvent(PATH)
+        XferAcceptedEvent(userFirstNames[1] + " " + userLastNames[1], PATH)
     );
     tgl.verifyRequest(createPrivateChat(userIds[1], false));
 
@@ -942,12 +942,12 @@ TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer_TinyFile)
         true
     ));
     prpl.verifyEvents(
-        XferRequestEvent(PURPLE_XFER_RECEIVE, "doc.file.name")
+        XferRequestEvent(PURPLE_XFER_RECEIVE, purpleUserName(0).c_str(), "doc.file.name")
     );
 
     purple_xfer_request_accepted(prpl.getLastXfer(), outputFileName);
     prpl.verifyEvents(
-        XferAcceptedEvent(outputFileName),
+        XferAcceptedEvent(purpleUserName(0), outputFileName),
         XferStartEvent(outputFileName)
     );
 
@@ -1015,12 +1015,12 @@ TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer_Progress)
         true
     ));
     prpl.verifyEvents(
-        XferRequestEvent(PURPLE_XFER_RECEIVE, "doc.file.name")
+        XferRequestEvent(PURPLE_XFER_RECEIVE, purpleUserName(0).c_str(), "doc.file.name")
     );
 
     purple_xfer_request_accepted(prpl.getLastXfer(), outputFileName);
     prpl.verifyEvents(
-        XferAcceptedEvent(outputFileName),
+        XferAcceptedEvent(purpleUserName(0), outputFileName),
         XferStartEvent(outputFileName)
     );
 

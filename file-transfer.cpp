@@ -147,6 +147,19 @@ static void cancelDownload(PurpleXfer *xfer)
     }
 }
 
+static std::string getDownloadXferPeerName(ChatId chatId,
+                                           const TgMessageInfo &message,
+                                           TdAccountData &account)
+{
+    const td::td_api::chat *chat = account.getChat(chatId);
+    if (chat) {
+        const td::td_api::user *privateUser = account.getUserByPrivateChat(*chat);
+        if (privateUser)
+            return getPurpleBuddyName(*privateUser);
+    }
+    return message.incomingGroupchatSender;
+}
+
 void startInlineDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver, TdAccountData &account)
 {
     purple_debug_misc(config::pluginId, "Tracking download progress of file id %d: downloaded %d/%d\n",
@@ -158,7 +171,8 @@ void startInlineDownloadProgress(DownloadRequest &request, TdTransceiver &transc
         return;
 
     request.tempFileName = tempFileName;
-    PurpleXfer *xfer = purple_xfer_new (account.purpleAccount, PURPLE_XFER_RECEIVE, request.message.sender.c_str());
+    std::string who = getDownloadXferPeerName(request.chatId, request.message, account);
+    PurpleXfer *xfer = purple_xfer_new (account.purpleAccount, PURPLE_XFER_RECEIVE, who.c_str());
     purple_xfer_set_init_fnc(xfer, nop);
     purple_xfer_set_cancel_recv_fnc(xfer, nop);
     purple_xfer_set_filename(xfer, request.fileDescription.c_str());
@@ -420,10 +434,11 @@ static void startStandardDownload(PurpleXfer *xfer)
     }
 }
 
-void requestStandardDownload(const TgMessageInfo &message, const std::string &fileName,
+void requestStandardDownload(ChatId chatId, const TgMessageInfo &message, const std::string &fileName,
                              const td::td_api::file &file, TdTransceiver &transceiver, TdAccountData &account)
 {
-    PurpleXfer *xfer = purple_xfer_new (account.purpleAccount, PURPLE_XFER_RECEIVE, message.sender.c_str());
+    std::string who = getDownloadXferPeerName(chatId, message, account);
+    PurpleXfer *xfer = purple_xfer_new (account.purpleAccount, PURPLE_XFER_RECEIVE, who.c_str());
     purple_xfer_set_init_fnc(xfer, startStandardDownload);
     purple_xfer_set_cancel_recv_fnc(xfer, cancelDownload);
     purple_xfer_set_filename(xfer, fileName.c_str());
