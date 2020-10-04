@@ -577,10 +577,20 @@ void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const
     const td::td_api::user *privateUser = account.getUserByPrivateChat(chat);
     if (privateUser) {
         std::string userName;
+
+        // If the chat is in contact list telegram-wise, there should be a buddy for it.
+        // If not, libpurple won't be able to translate buddy name to alias, so use display name
+        // instead of idXXXXXXXXX
         if (isChatInContactList(chat, privateUser))
             userName = getPurpleBuddyName(*privateUser);
         else
             userName = account.getDisplayName(*privateUser);
+        showMessageTextIm(account, userName.c_str(), text, notification, message.timestamp, flags);
+    }
+
+    SecretChatId secretChatId = getSecretChatId(chat);
+    if (secretChatId.valid()) {
+        std::string userName = getSecretChatBuddyName(secretChatId);
         showMessageTextIm(account, userName.c_str(), text, notification, message.timestamp, flags);
     }
 
@@ -632,7 +642,7 @@ std::string getIncomingGroupchatSenderPurpleName(const td::td_api::chat &chat, c
     }
 
     // For outgoing messages, our name will be used instead
-    // For private chats, sender name will be determined from the chat instead
+    // For private and secret chats, sender name will be determined from the chat instead
 
     return "";
 }
@@ -956,10 +966,26 @@ std::string getSenderDisplayName(const td::td_api::chat &chat, const TgMessageIn
 {
     if (message.outgoing)
         return purple_account_get_name_for_display(account);
-    else if (isPrivateChat(chat))
+    else if (isPrivateChat(chat) || getSecretChatId(chat).valid())
         return chat.title_;
     else
         return message.incomingGroupchatSender;
+}
+
+std::string getDownloadXferPeerName(ChatId chatId,
+                                    const TgMessageInfo &message,
+                                    TdAccountData &account)
+{
+    const td::td_api::chat *chat = account.getChat(chatId);
+    if (chat) {
+        const td::td_api::user *privateUser = account.getUserByPrivateChat(*chat);
+        if (privateUser)
+            return getPurpleBuddyName(*privateUser);
+        auto secretChatId = getSecretChatId(*chat);
+        if (secretChatId.valid())
+            return getSecretChatBuddyName(secretChatId);
+    }
+    return message.incomingGroupchatSender;
 }
 
 std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,

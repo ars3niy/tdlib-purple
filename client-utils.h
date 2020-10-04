@@ -35,6 +35,9 @@ std::vector<PurpleChat *> findChatsByNewGroup(const char *name, int type);
 
 std::string getSenderDisplayName(const td::td_api::chat &chat, const TgMessageInfo &message,
                                  PurpleAccount *account);
+std::string getDownloadXferPeerName(ChatId chatId,
+                                    const TgMessageInfo &message,
+                                    TdAccountData &account);
 std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,
                                  const char *noticeText, PurpleAccount *account);
 std::string getMessageText(const td::td_api::formattedText &text);

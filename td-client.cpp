@@ -1122,8 +1122,9 @@ void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo
     } else {
         const char *option = purple_account_get_string(m_account, AccountOptions::DownloadBehaviour,
                                                        AccountOptions::DownloadBehaviourDefault());
-        if ( !strcmp(option, AccountOptions::DownloadBehaviourHyperlink) ||
-             (chat.type_ && (chat.type_->get_id() != td::td_api::chatTypePrivate::ID)) )
+        if ( !strcmp(option, AccountOptions::DownloadBehaviourHyperlink) || !chat.type_ ||
+             ((chat.type_->get_id() != td::td_api::chatTypePrivate::ID) &&
+              (chat.type_->get_id() != td::td_api::chatTypeSecret::ID)) )
         {
             showFileInline(chat, message, *file, captionStr, fileDescription, nullptr,
                            &PurpleTdClient::showDownloadedFileInline);
@@ -1255,7 +1256,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
 
     TgMessageInfo messageInfo;
     messageInfo.type             = TgMessageInfo::Type::Other;
-    messageInfo.incomingGroupchatSender           = getIncomingGroupchatSenderPurpleName(chat, message, m_data);
+    messageInfo.incomingGroupchatSender = getIncomingGroupchatSenderPurpleName(chat, message, m_data);
     messageInfo.timestamp        = message.date_;
     messageInfo.outgoing         = message.is_outgoing_;
     messageInfo.sentLocally      = (message.sending_state_ != nullptr);

@@ -147,19 +147,6 @@ static void cancelDownload(PurpleXfer *xfer)
     }
 }
 
-static std::string getDownloadXferPeerName(ChatId chatId,
-                                           const TgMessageInfo &message,
-                                           TdAccountData &account)
-{
-    const td::td_api::chat *chat = account.getChat(chatId);
-    if (chat) {
-        const td::td_api::user *privateUser = account.getUserByPrivateChat(*chat);
-        if (privateUser)
-            return getPurpleBuddyName(*privateUser);
-    }
-    return message.incomingGroupchatSender;
-}
-
 void startInlineDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver, TdAccountData &account)
 {
     purple_debug_misc(config::pluginId, "Tracking download progress of file id %d: downloaded %d/%d\n",

@@ -20,6 +20,8 @@ object_ptr<td::td_api::chat> SecretChatTest::makeChatForSecret(int32_t userId)
 
 TEST_F(SecretChatTest, AutoAccept)
 {
+    const int32_t date = 123;
+
     purple_account_set_string(account, "accept-secret-chats", "always");
     loginWithOneContact();
 
@@ -39,6 +41,9 @@ TEST_F(SecretChatTest, AutoAccept)
         makeMessage(1, userIds[0], secretChatChatId, false, 123, makeTextMessage("text"))
     ));
     tgl.verifyRequest(viewMessages(secretChatChatId, {1}, true));
+    prpl.verifyEvents(ServGotImEvent(
+        connection, secretChatBuddyName, "text", PURPLE_MESSAGE_RECV, date
+    ));
 }
 
 TEST_F(SecretChatTest, AutoDiscard)
@@ -60,6 +65,8 @@ TEST_F(SecretChatTest, AutoDiscard)
 
 TEST_F(SecretChatTest, AskAndAccept)
 {
+    const int32_t date = 123;
+
     loginWithOneContact();
 
     tgl.update(make_object<updateSecretChat>(make_object<secretChat>(
@@ -78,9 +85,12 @@ TEST_F(SecretChatTest, AskAndAccept)
     ));
 
     tgl.update(make_object<updateNewMessage>(
-        makeMessage(1, userIds[0], secretChatChatId, false, 123, makeTextMessage("text"))
+        makeMessage(1, userIds[0], secretChatChatId, false, date, makeTextMessage("text"))
     ));
     tgl.verifyRequest(viewMessages(secretChatChatId, {1}, true));
+    prpl.verifyEvents(ServGotImEvent(
+        connection, secretChatBuddyName, "text", PURPLE_MESSAGE_RECV, date
+    ));
 }
 
 TEST_F(SecretChatTest, AskAndDiscard)
