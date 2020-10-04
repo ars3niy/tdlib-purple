@@ -107,6 +107,11 @@ std::string getPurpleBuddyName(const td::td_api::user &user)
     return "id" + std::to_string(user.id_);
 }
 
+std::string getSecretChatBuddyName(SecretChatId secretChatId)
+{
+    return "secret" + std::to_string(secretChatId.value());
+}
+
 std::vector<const td::td_api::user *> getUsersByPurpleName(const char *buddyName, TdAccountData &account,
                                                            const char *action)
 {
@@ -245,7 +250,8 @@ void updatePrivateChat(TdAccountData &account, const td::td_api::chat *chat, con
         // messaged us. Either way, there is no need to for any extra notification about new contact
         // because the user will be aware anyway.
 
-        // Now, in case this buddy resulted from sending a message to group chat member
+        // Now, in case this buddy resulted from sending a message to group chat member or from
+        // someone new messaging us
         std::string displayName = account.getDisplayName(user);
         PurpleConversation *oldConv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, displayName.c_str(),
                                                                             account.purpleAccount);

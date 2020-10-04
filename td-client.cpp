@@ -1592,17 +1592,14 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
     const td::td_api::user *privateChatUser = m_data.getUserByPrivateChat(*chat);
     BasicGroupId            basicGroupId    = getBasicGroupId(*chat);
     SupergroupId            supergroupId    = getSupergroupId(*chat);
+    SecretChatId            secretChatId    = getSecretChatId(*chat);
     purple_debug_misc(config::pluginId, "Update chat: %" G_GINT64_FORMAT " private user=%d basic group=%d supergroup=%d\n",
                       chat->id_, privateChatUser ? privateChatUser->id_ : 0, basicGroupId.value(), supergroupId.value());
 
-    SecretChatId secretChatId = getSecretChatId(*chat);
-    if (secretChatId.valid()) {
-        const td::td_api::secretChat *sc = m_data.getSecretChat(secretChatId);
-        if (sc && sc->state_ && (sc->state_->get_id() == td::td_api::secretChatStateClosed::ID))
-            deleteSecretChat(secretChatId, m_transceiver, m_data);
-    }
-
-    if (!privateChatUser)
+    // For secret chats, chat photo is same as user profile photo, so hopefully already downloaded.
+    // But if not (such as when creating secret chat while downloading new photo for the user),
+    // then don't bother.
+    if (!privateChatUser && !secretChatId.valid())
         downloadChatPhoto(*chat);
 
     // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
@@ -1628,6 +1625,9 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
     } else {
         removeGroupChat(m_account, *chat);
     }
+
+    if (secretChatId.valid())
+        updateKnownSecretChat(secretChatId, false, m_transceiver, m_data);
 }
 
 void PurpleTdClient::updateUserInfo(const td::td_api::user &user, const td::td_api::chat *privateChat)
