@@ -31,11 +31,8 @@ namespace AccountOptions {
     constexpr const char *BigDownloadHandlingAsk     = "ask";
     constexpr const char *BigDownloadHandlingDiscard = "discard";
     constexpr const char *BigDownloadHandlingDefault = BigDownloadHandlingAsk;
-    constexpr const char *AcceptSecretChats          = "accept-secret-chats";
-    constexpr const char *AcceptSecretChatsAsk       = "ask";
-    constexpr const char *AcceptSecretChatsAlways    = "always";
-    constexpr const char *AcceptSecretChatsNever     = "never";
-    constexpr const char *AcceptSecretChatsDefault   = AcceptSecretChatsAsk;
+    constexpr const char *EnableSecretChats          = "enable-secret-chats";
+    constexpr gboolean    EnableSecretChatsDefault   = TRUE;
     constexpr const char *AnimatedStickers           = "animated-stickers";
     constexpr gboolean    AnimatedStickersDefault    = TRUE;
     constexpr const char *DownloadBehaviour          = "download-behaviour";

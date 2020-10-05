@@ -82,6 +82,7 @@ void TestTransceiver::runTimeouts()
 static void compare(const setTdlibParameters &actual, const setTdlibParameters &expected)
 {
     COMPARE(parameters_->database_directory_);
+    COMPARE(parameters_->use_secret_chats_);
 }
 
 static void compare(const checkDatabaseEncryptionKey &actual, const checkDatabaseEncryptionKey &expected)

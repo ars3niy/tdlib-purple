@@ -1279,7 +1279,7 @@ TEST_F(GroupChatTest, Roomlist)
             false,
             false,
             false,
-            false,
+            true, // use secret chats
             0,
             "",
             "",

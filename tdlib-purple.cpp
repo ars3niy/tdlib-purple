@@ -952,18 +952,10 @@ static void tgprpl_init (PurplePlugin *plugin)
     opt = purple_account_option_list_new (_("Bigger inline file downloads"), AccountOptions::BigDownloadHandling, choices);
     prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
 
-    static_assert(AccountOptions::AcceptSecretChatsDefault == AccountOptions::AcceptSecretChatsAsk,
-                  "default choice must be first");
-    choices = NULL;
-    // TRANSLATOR: Account settings, value for 'Accept secret chats'
-    addChoice(choices, _("Ask"), AccountOptions::AcceptSecretChatsAsk);
-    // TRANSLATOR: Account settings, value for 'Accept secret chats'
-    addChoice(choices, _("Always"), AccountOptions::AcceptSecretChatsAlways);
-    // TRANSLATOR: Account settings, value for 'Accept secret chats'
-    addChoice(choices, _("Never"), AccountOptions::AcceptSecretChatsNever);
-
-    // TRANSLATOR: Account settings, key (choice)
-    opt = purple_account_option_list_new (_("Accept secret chats"), AccountOptions::AcceptSecretChats, choices);
+    // TRANSLATOR: Account settings, key (boolean)
+    opt = purple_account_option_bool_new (_("Enable secret chats (takes effect at reconnect)"),
+                                          AccountOptions::EnableSecretChats,
+                                          AccountOptions::EnableSecretChatsDefault);
     prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
 
 #ifndef NoLottie

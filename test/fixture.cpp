@@ -70,7 +70,7 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
             false,
             false,
             false,
-            false,
+            true, // use secret chats
             0,
             "",
             "",

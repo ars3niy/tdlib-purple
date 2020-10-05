@@ -27,7 +27,7 @@ TEST_F(LoginTest, ConnectionReadyBeforeAuthReady)
             false,
             false,
             false,
-            false,
+            true, // use secret chats
             0,
             "",
             "",
@@ -98,7 +98,7 @@ TEST_F(LoginTest, RegisterNewAccount_WithAlias_ConnectionReadyBeforeAuthReady)
             false,
             false,
             false,
-            false,
+            true, // use secret chats
             0,
             "",
             "",
@@ -196,7 +196,7 @@ TEST_F(LoginTest, RegisterNewAccount_NoAlias)
             false,
             false,
             false,
-            false,
+            true, // use secret chats
             0,
             "",
             "",
@@ -279,7 +279,7 @@ TEST_F(LoginTest, TwoFactorAuthentication)
             false,
             false,
             false,
-            false,
+            true, // use secret chats
             0,
             "",
             "",
@@ -419,7 +419,7 @@ TEST_F(LoginTest, AddedProxyCofiguration)
             false,
             false,
             false,
-            false,
+            true, // use secret chats
             0,
             "",
             "",
@@ -472,7 +472,7 @@ TEST_F(LoginTest, ChangedProxyCofiguration)
             false,
             false,
             false,
-            false,
+            true, // use secret chats
             0,
             "",
             "",
@@ -515,7 +515,7 @@ TEST_F(LoginTest, RemovedProxyCofiguration)
             false,
             false,
             false,
-            false,
+            true, // use secret chats
             0,
             "",
             "",
@@ -556,7 +556,7 @@ TEST_F(LoginTest, getChatsSequence)
             false,
             false,
             false,
-            false,
+            true, // use secret chats
             0,
             "",
             "",
