@@ -1083,7 +1083,6 @@ void serv_got_im(PurpleConnection *gc, const char *who, const char *msg,
 				 PurpleMessageFlags flags, time_t mtime)
 {
     if (purple_find_conversation_with_account(PURPLE_CONV_TYPE_IM, who, gc->account) == NULL) {
-        std::cout << "Adding conversation\n";
         purple_conversation_new_impl(PURPLE_CONV_TYPE_IM, gc->account, who);
     }
     EVENT(ServGotImEvent, gc, who, msg, flags, mtime);

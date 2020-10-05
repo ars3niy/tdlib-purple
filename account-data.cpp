@@ -697,6 +697,11 @@ const td::td_api::secretChat *TdAccountData::getSecretChat(SecretChatId id)
     return (it != m_secretChats.end()) ? it->second.get() : nullptr;
 }
 
+void TdAccountData::deleteSecretChat(SecretChatId id)
+{
+    m_secretChats.erase(id);
+}
+
 std::vector<std::pair<BasicGroupId, const td::td_api::basicGroupFullInfo *>>
 TdAccountData::getBasicGroupsWithMember(UserId userId)
 {

@@ -1651,7 +1651,7 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
     }
 
     if (secretChatId.valid())
-        updateKnownSecretChat(secretChatId, false, m_transceiver, m_data);
+        updateKnownSecretChat(secretChatId, m_transceiver, m_data);
 }
 
 void PurpleTdClient::updateUserInfo(const td::td_api::user &user, const td::td_api::chat *privateChat)
@@ -1940,7 +1940,8 @@ void PurpleTdClient::removeContactAndPrivateChat(const std::string &buddyName)
     if (chat) {
         ChatId chatId = getId(*chat);
         chat = nullptr;
-        m_data.deleteChat(chatId); // Prevent re-creating buddy if any updateChat* or updateUser arrives
+        // Prevent accidentally re-creating buddy if any updateChat* or updateUser arrives
+        m_data.deleteChat(chatId);
 
         auto deleteChat = td::td_api::make_object<td::td_api::deleteChatHistory>();
         deleteChat->chat_id_ = chatId.value();

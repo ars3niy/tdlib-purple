@@ -4,11 +4,16 @@
 #include "client-utils.h"
 #include "config.h"
 
-static void updateReadySecretChat(SecretChatId secretChatId, TdTransceiver &transceiver, TdAccountData &account)
+void updateKnownSecretChat(SecretChatId secretChatId, TdTransceiver &transceiver,
+                           TdAccountData &account)
 {
+    const td::td_api::secretChat *secretChat = account.getSecretChat(secretChatId);
+
     const td::td_api::chat *chat = account.getChatBySecretChat(secretChatId);
     if (! chat) return;
 
+    int state = (secretChat && secretChat->state_) ? secretChat->state_->get_id() :
+                                                     td::td_api::secretChatStateClosed::ID;
     std::string purpleBuddyName = getSecretChatBuddyName(secretChatId);
     std::string alias = formatMessage(_("Secret chat: {}"), chat->title_);
 
@@ -36,8 +41,25 @@ static void updateReadySecretChat(SecretChatId secretChatId, TdTransceiver &tran
                                                 img, len, NULL);
             }
         }
+
+        // This should be a newly created secret chat, so if we requested it, open the conversation
+        if (secretChat && secretChat->is_outbound_) {
+            if (state == td::td_api::secretChatStatePending::ID)
+                showChatNotification(account, *chat, _("The secret chat will be available when activated by the peer"),
+                                     PURPLE_MESSAGE_NO_LOG);
+            else
+                // Shouldn't really be possible, but just in case
+                getImConversation(account.purpleAccount, purpleBuddyName.c_str());
+        }
     } else
         purple_blist_alias_buddy(buddy, alias.c_str());
+
+    if (state == td::td_api::secretChatStateReady::ID)
+        purple_prpl_got_user_status(account.purpleAccount, purpleBuddyName.c_str(),
+                                    purple_primitive_get_id_from_type(PURPLE_STATUS_AVAILABLE), NULL);
+    else
+        purple_prpl_got_user_status(account.purpleAccount, purpleBuddyName.c_str(),
+                                    purple_primitive_get_id_from_type(PURPLE_STATUS_OFFLINE), NULL);
 }
 
 void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
@@ -46,29 +68,10 @@ void updateSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat,
     if (!secretChat) return;
 
     SecretChatId secretChatId = getId(*secretChat);
-    bool         isExisting   = (account.getSecretChat(secretChatId) != nullptr);
-    account.addSecretChat(std::move(secretChat));
-    updateKnownSecretChat(secretChatId, !isExisting, transceiver, account);
-}
-
-void updateKnownSecretChat(SecretChatId secretChatId, bool isNew, TdTransceiver &transceiver,
-                           TdAccountData &account)
-{
-    const td::td_api::secretChat *secretChat = account.getSecretChat(secretChatId);
-    if (! secretChat) return;
-
-    auto state = secretChat->state_ ? secretChat->state_->get_id() :
-                                      td::td_api::secretChatStateClosed::ID;
-
-    const td::td_api::user *user = account.getUser(getUserId(*secretChat));
-    std::string userDescription;
-    if (user)
-        userDescription = '\'' + account.getDisplayName(*user) + '\'';
-    else {
-        // Not supposed to be possible, because every user id should be preceded by user info
-        userDescription = "(unknown user)";
-    }
-
-    if (state == td::td_api::secretChatStateReady::ID)
-        updateReadySecretChat(secretChatId, transceiver, account);
+    if (secretChat->state_ && (secretChat->state_->get_id() == td::td_api::secretChatStateClosed::ID))
+        // Just good manners
+        account.deleteSecretChat(secretChatId);
+    else
+        account.addSecretChat(std::move(secretChat));
+    updateKnownSecretChat(secretChatId, transceiver, account);
 }
