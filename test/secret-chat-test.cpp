@@ -46,7 +46,7 @@ TEST_F(SecretChatTest, AutoAccept)
     ));
 }
 
-TEST_F(SecretChatTest, AutoDiscard)
+TEST_F(SecretChatTest, DISABLED_AutoDiscard)
 {
     purple_account_set_string(account, "accept-secret-chats", "never");
     loginWithOneContact();
@@ -93,7 +93,7 @@ TEST_F(SecretChatTest, AskAndAccept)
     ));
 }
 
-TEST_F(SecretChatTest, AskAndDiscard)
+TEST_F(SecretChatTest, DISABLED_AskAndDiscard)
 {
     loginWithOneContact();
 
