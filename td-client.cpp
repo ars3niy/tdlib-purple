@@ -372,7 +372,7 @@ void PurpleTdClient::sendTdlibParameters()
     parameters->database_directory_ = getBaseDatabasePath() + G_DIR_SEPARATOR_S + username;
     purple_debug_misc(config::pluginId, "Account %s using database directory %s\n",
                       username, parameters->database_directory_.c_str());
-    parameters->use_message_database_ = true;
+    parameters->use_chat_info_database_ = true;
     parameters->use_secret_chats_ = purple_account_get_bool(m_account, AccountOptions::EnableSecretChats,
                                                             AccountOptions::EnableSecretChatsDefault);
     parameters->api_id_ = config::api_id;
