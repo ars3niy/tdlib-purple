@@ -77,6 +77,9 @@ static GList *tgprpl_status_types (PurpleAccount *acct)
     type = purple_status_type_new_full (PURPLE_STATUS_AVAILABLE, NULL, NULL, FALSE, TRUE, FALSE);
     types = g_list_prepend (types, type);
 
+    type = purple_status_type_new_full (PURPLE_STATUS_AWAY, NULL, NULL, FALSE, FALSE, FALSE);
+    types = g_list_prepend (types, type);
+
     type = purple_status_type_new_full (PURPLE_STATUS_OFFLINE, NULL, NULL, FALSE, TRUE, FALSE);
     types = g_list_prepend (types, type);
 

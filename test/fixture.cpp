@@ -153,7 +153,7 @@ void CommTest::loginWithOneContact()
                                             account, nullptr, nullptr, nullptr),
         }, {},
         {
-            std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_OFFLINE),
+            std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_AWAY),
             std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
             std::make_unique<ShowAccountEvent>(account)
         }

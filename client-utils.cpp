@@ -98,7 +98,7 @@ const char *getPurpleStatusId(const td::td_api::UserStatus &tdStatus)
     if (tdStatus.get_id() == td::td_api::userStatusOnline::ID)
         return purple_primitive_get_id_from_type(PURPLE_STATUS_AVAILABLE);
     else
-        return purple_primitive_get_id_from_type(PURPLE_STATUS_OFFLINE);
+        return purple_primitive_get_id_from_type(PURPLE_STATUS_AWAY);
 }
 
 std::string getPurpleBuddyName(const td::td_api::user &user)

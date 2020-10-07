@@ -279,7 +279,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList_Rem
                 "+" + selfPhoneNumber,
                 "", PURPLE_CBFLAGS_NONE, false
             ),
-            std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_OFFLINE),
+            std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_AWAY),
             std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
             std::make_unique<ShowAccountEvent>(account)
         }
@@ -1483,7 +1483,7 @@ TEST_F(GroupChatTest, OpenLeftGroupChat_ReceiveMessageAtLogin)
             make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId[1]), true)
         },
         {
-            std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_OFFLINE),
+            std::make_unique<UserStatusEvent>(account, purpleUserName(0), PURPLE_STATUS_AWAY),
             std::make_unique<AccountSetAliasEvent>(account, selfFirstName + " " + selfLastName),
             std::make_unique<ShowAccountEvent>(account)
         }
