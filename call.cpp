@@ -103,15 +103,10 @@ static bool activateCall(const td::td_api::call &call, const std::string &buddyN
     if (!voip)
         return false;
 
-    static tgvoip::VoIPController::Config config = {
-        .init_timeout      = 30.0,
-        .recv_timeout      = 30.0,
-        .data_saving       = tgvoip::DATA_SAVING_NEVER,
-        .enableAEC         = true,
-        .enableNS          = true,
-        .enableAGC         = true,
-        .enableCallUpgrade = false,
-    };
+    static tgvoip::VoIPController::Config config;
+    config.enableAEC = true;
+    config.enableNS  = true;
+    config.enableAGC = true;
     voip->SetConfig(config);
 
     std::vector<tgvoip::Endpoint> endpoints;
