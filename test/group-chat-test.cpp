@@ -1489,3 +1489,99 @@ TEST_F(GroupChatTest, OpenLeftGroupChat_ReceiveMessageAtLogin)
         }
     );
 }
+
+TEST_F(GroupChatTest, RejoinAtStartupBeforeUpdateNewChat_ChatListMainRightAway)
+{
+    constexpr int purpleChatId = 1;
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), components), NULL, NULL);
+
+    // Fabricate an open, "left" conversation for the group chat. We would get one if logging out
+    // with pidgin or finch while having chat conversation open.
+    // Use random purple chat id for good measure.
+    serv_got_joined_chat(connection, purpleChatId+10, groupChatPurpleName.c_str());
+    purple_conv_chat_left(purple_conversation_get_chat_data(purple_find_chat(connection, purpleChatId+10)));
+    prpl.discardEvents();
+
+    login(
+        {
+            make_object<updateBasicGroup>(make_object<basicGroup>(
+                groupId, 2, make_object<chatMemberStatusMember>(), true, 0
+            ))
+        }
+    );
+
+    // pidgin will do this immediately after account is reported connected, and updateNewChat will
+    // occur early in login sequence as well. But to simplify, let's say this happens now.
+    components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+    // updateNewChat hasn't happened yet, so not joining at the moment
+    prpl.verifyNoEvents();
+
+    auto groupChat = makeChat(
+        groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
+    );
+    groupChat->chat_list_ = make_object<chatListMain>();
+    tgl.update(make_object<updateNewChat>(std::move(groupChat)));
+    // Now that updateNewChat has happened, joining
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle)
+    );
+    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
+}
+
+TEST_F(GroupChatTest, RejoinAtStartupBeforeUpdateNewChat_ChatListNullFirst)
+{
+    constexpr int purpleChatId = 1;
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), components), NULL, NULL);
+
+    // Fabricate an open, "left" conversation for the group chat. We would get one if logging out
+    // with pidgin or finch while having chat conversation open.
+    // Use random purple chat id for good measure.
+    serv_got_joined_chat(connection, purpleChatId+10, groupChatPurpleName.c_str());
+    purple_conv_chat_left(purple_conversation_get_chat_data(purple_find_chat(connection, purpleChatId+10)));
+    prpl.discardEvents();
+
+    login(
+        {
+            make_object<updateBasicGroup>(make_object<basicGroup>(
+                groupId, 2, make_object<chatMemberStatusMember>(), true, 0
+            ))
+        }
+    );
+
+    // pidgin will do this immediately after account is reported connected, and updateNewChat will
+    // occur early in login sequence as well. But to simplify, let's say this happens now.
+    components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    pluginInfo().join_chat(connection, components);
+    g_hash_table_destroy(components);
+    // updateNewChat hasn't happened yet, so not joining at the moment
+    prpl.verifyNoEvents();
+
+    auto groupChat = makeChat(
+        groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
+    );
+    groupChat->chat_list_ = nullptr;
+    tgl.update(make_object<updateNewChat>(std::move(groupChat)));
+    // chat_list is null at first (which is how it actually happens) so chat is temporarily
+    // removed from buddy list.
+    // Also for that reason, still not joining, otherwise conversation title will be changed to
+    // chat-XXXXXXXXXX.
+    prpl.verifyEvents(RemoveChatEvent(groupChatPurpleName, ""));
+
+    tgl.update(make_object<updateChatChatList>(groupChatId, make_object<chatListMain>()));
+    // Chat is re-added to buddy list, and now joining
+    prpl.verifyEvents(
+        AddChatEvent(groupChatPurpleName, groupChatTitle, account, NULL, NULL),
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle)
+    );
+    tgl.verifyRequest(getBasicGroupFullInfo(groupId));
+}

@@ -248,6 +248,9 @@ public:
     void getChats(std::vector<const td::td_api::chat *> &chats) const;
     void deleteChat(ChatId id);
     void getSmallestOrderChat(const td::td_api::ChatList &list, ChatId &chatId, int64_t &order);
+    void addExpectedChat(ChatId id);
+    bool isExpectedChat(ChatId chatId);
+    void removeExpectedChat(ChatId id);
 
     const td::td_api::chat       *getChat(ChatId chatId) const;
     int                           getPurpleChatId(ChatId tdChatId);
@@ -371,6 +374,9 @@ private:
 
     // Used to remember stuff during asynchronous communication when adding contact
     std::vector<ContactRequest>        m_addContactRequests;
+
+    // Chats we want to libpurple-join when we get an updateNewChat about them
+    std::vector<ChatId>                m_expectedChats;
 
     std::vector<std::unique_ptr<PendingRequest>> m_requests;
 

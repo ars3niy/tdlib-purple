@@ -1647,7 +1647,8 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
             updateSupergroupChat(m_data, supergroupId);
         }
     } else {
-        removeGroupChat(m_account, *chat);
+        if (basicGroupId.valid() || supergroupId.valid())
+            removeGroupChat(m_account, *chat);
     }
 
     if (secretChatId.valid())
@@ -1974,9 +1975,20 @@ bool PurpleTdClient::joinChat(const char *chatName)
     int32_t                 purpleId = m_data.getPurpleChatId(id);
     PurpleConvChat         *conv     = NULL;
 
-    if (!chat)
-        purple_debug_warning(config::pluginId, "No telegram chat found for purple name %s\n", chatName);
-    else if (!m_data.isGroupChatWithMembership(*chat))
+    if (!chat) {
+        // Either the user is actively trying to join non-existent chat (for example by entering
+        // a chat ID when joining with pidgin), or this is the pidgin auto-rejoin that usually
+        // happens before we get info about telegram chats.
+        // Check if the latter is the case and if it is, schedule to rejoin when telegram chat appears
+        PurpleConversation *baseConv = purple_find_conversation_with_account(PURPLE_CONV_TYPE_CHAT,
+                                                                             chatName, m_account);
+        if (baseConv && purple_conv_chat_has_left(purple_conversation_get_chat_data(baseConv))) {
+            purple_debug_misc(config::pluginId, "Scheduling to rejoin group chat %s - "
+                              "no telegram chat found at the moment\n", chatName);
+            m_data.addExpectedChat(id);
+        } else
+            purple_debug_warning(config::pluginId, "No telegram chat found for purple name %s\n", chatName);
+    } else if (!m_data.isGroupChatWithMembership(*chat))
         purple_debug_warning(config::pluginId, "Chat %s (%s) is not a group we a member of\n",
                              chatName, chat->title_.c_str());
     else if (purpleId) {

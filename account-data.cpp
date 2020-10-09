@@ -552,6 +552,25 @@ void TdAccountData::getSmallestOrderChat(const td::td_api::ChatList &list, ChatI
     order  = minOrder;
 }
 
+void TdAccountData::addExpectedChat(ChatId id)
+{
+    if (!isExpectedChat(id))
+        m_expectedChats.push_back(id);
+}
+
+bool TdAccountData::isExpectedChat(ChatId chatId)
+{
+    return (std::find(m_expectedChats.begin(), m_expectedChats.end(), chatId) != m_expectedChats.end());
+}
+
+void TdAccountData::removeExpectedChat(ChatId id)
+{
+    auto expIt = std::find(m_expectedChats.begin(), m_expectedChats.end(), id);
+    if (expIt != m_expectedChats.end())
+        m_expectedChats.erase(expIt);
+
+}
+
 std::unique_ptr<PendingRequest> TdAccountData::getPendingRequestImpl(uint64_t requestId)
 {
     auto it = std::find_if(m_requests.begin(), m_requests.end(),
