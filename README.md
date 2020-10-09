@@ -78,9 +78,11 @@ Building without localization: `-DNoTranslations=True`
 
 Building without voice call support: `-DNoVoip=True`
 
+Building with voice call support: `-Dtgvoip_LIBRARIES="tgvoip;opus;<any other tgvoip dependencies>"`
+
 If libtgvoip is not installed in include/library path then build with
 ```
--Dtgvoip_INCLUDE_DIRS=/path/to/tgvoip/include -Dtgvoip_LIBRARIES=/path/to/libtgvoip.a
+-Dtgvoip_INCLUDE_DIRS=/path/to/tgvoip/include -Dtgvoip_LIBRARIES="/path/to/libtgvoip.a;<dependencies>"
 ```
 
 ## Proper user names in bitlbee
