@@ -157,8 +157,8 @@ if (NOT NoTranslations)
             DESTINATION "${SHARE_INSTALL_PREFIX}/locale/${_lang}/LC_MESSAGES"
             RENAME tdlib-purple.mo
         )
-        add_custom_target(__stinky_${_lang} DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${_lang}.gmo)
-        add_dependencies(nsis __stinky_${_lang})
+        add_custom_target(idontwanttohavethisrule_${_lang} DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/${_lang}.gmo)
+        add_dependencies(nsis idontwanttohavethisrule_${_lang})
     endforeach()
 
     find_package(Intl REQUIRED)
