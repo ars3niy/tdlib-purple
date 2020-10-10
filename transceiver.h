@@ -46,7 +46,11 @@ public:
 
     uint64_t sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::Function> f,
                                   ResponseCb handler, unsigned timeoutSeconds);
+    uint64_t sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::Function> f,
+                                  ResponseCb2 handler, unsigned timeoutSeconds);
     void     setQueryTimer(uint64_t queryId, ResponseCb handler, unsigned timeoutSeconds,
+                           bool cancelNormalResponse);
+    void     setQueryTimer(uint64_t queryId, ResponseCb2 handler, unsigned timeoutSeconds,
                            bool cancelNormalResponse);
 private:
     void  pollThreadLoop();

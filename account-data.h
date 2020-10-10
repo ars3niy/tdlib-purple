@@ -106,14 +106,6 @@ public:
     : PendingRequest(requestId), chatId(chatId), tempFile(tempFile ? tempFile : "") {}
 };
 
-class PendingMessage: public PendingRequest {
-public:
-    td::td_api::object_ptr<td::td_api::message> message;
-
-    PendingMessage(uint64_t requestId, td::td_api::message *message)
-    : PendingRequest(requestId), message(message) {}
-};
-
 class UploadRequest: public PendingRequest {
 public:
     PurpleXfer *xfer;
@@ -204,6 +196,35 @@ public:
     ChatId chatId;
     ChatActionRequest(uint64_t requestId, Type type, ChatId chatId)
     : PendingRequest(requestId), type(type), chatId(chatId) {}
+};
+
+struct IncomingMessage {
+    td::td_api::object_ptr<td::td_api::message> message;
+    td::td_api::object_ptr<td::td_api::message> repliedMessage;
+};
+
+class PendingMessageQueue {
+public:
+    using TdMessagePtr = td::td_api::object_ptr<td::td_api::message>;
+
+    void             addPendingMessage(TdMessagePtr message);
+    void             setMessageReady(ChatId chatId, MessageId messageId,
+                                     std::vector<IncomingMessage> &readyMessages);
+    TdMessagePtr     addReadyMessage(TdMessagePtr message);
+    IncomingMessage *findPendingMessage(ChatId chatId, MessageId messageId);
+    void             flush(std::vector<IncomingMessage> &messages);
+private:
+    struct Message {
+        IncomingMessage message;
+        bool            ready;
+    };
+    struct ChatQueue {
+        ChatId               chatId;
+        std::vector<Message> messages;
+    };
+    std::vector<ChatQueue> m_queues;
+
+    std::vector<ChatQueue>::iterator getChatQueue(ChatId chatId);
 };
 
 class TdAccountData {
@@ -320,6 +341,8 @@ public:
     int32_t                    getActiveCallId() const { return m_callId; }
     tgvoip::VoIPController    *getCallData();
     void                       removeActiveCall();
+
+    PendingMessageQueue        pendingMessages;
 private:
     TdAccountData(const TdAccountData &other) = delete;
     TdAccountData &operator=(const TdAccountData &other) = delete;

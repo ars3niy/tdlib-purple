@@ -14,7 +14,7 @@ public:
 
     // Check that given requests, and no others, have been received, and clear the queue
     uint64_t verifyRequest(const td::td_api::Function &request);
-    void verifyRequests(std::initializer_list<td::td_api::object_ptr<td::td_api::Function>> requests);
+    std::vector<uint64_t> verifyRequests(std::initializer_list<td::td_api::object_ptr<td::td_api::Function>> requests);
     void verifyRequests(const std::vector<const td::td_api::Function *> requests);
     void verifyNoRequests();
 

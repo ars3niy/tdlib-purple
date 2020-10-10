@@ -124,6 +124,116 @@ static std::string makeDisplayName(const td::td_api::user &user)
     return result;
 }
 
+auto PendingMessageQueue::getChatQueue(ChatId chatId) -> std::vector<ChatQueue>::iterator 
+{
+    return std::find_if(m_queues.begin(), m_queues.end(), [chatId](const ChatQueue &queue) {
+        return (queue.chatId == chatId);
+    });
+}
+
+void PendingMessageQueue::addPendingMessage(TdMessagePtr message)
+{
+    if (!message) return;
+
+    ChatId     chatId  = getChatId(*message);
+    auto       queueIt = getChatQueue(chatId);
+    ChatQueue *queue;
+    purple_debug_misc(config::pluginId,"MessageQueue: chat %" G_GINT64_FORMAT ": "
+                      "adding pending message %" G_GINT64_FORMAT " (not ready)\n",
+                      chatId.value(), message->id_);
+
+    if (queueIt != m_queues.end())
+        queue = &*queueIt;
+    else {
+        m_queues.emplace_back();
+        m_queues.back().chatId = chatId;
+        queue = &m_queues.back();
+    }
+
+    queue->messages.emplace_back();
+    queue->messages.back().ready = false;
+    queue->messages.back().message.message = std::move(message);
+}
+
+void PendingMessageQueue::setMessageReady(ChatId chatId, MessageId messageId,
+                                          std::vector<IncomingMessage> &readyMessages)
+{
+    readyMessages.clear();
+
+    auto queueIt = getChatQueue(chatId);
+    if (queueIt == m_queues.end()) return;
+    ChatQueue *queue = &*queueIt;
+
+    purple_debug_misc(config::pluginId,"MessageQueue: chat %" G_GINT64_FORMAT ": "
+                      "message %" G_GINT64_FORMAT " now ready\n",
+                      chatId.value(), messageId.value());
+
+    auto it = std::find_if(queue->messages.begin(), queue->messages.end(), [messageId](const Message &m) {
+        return (getId(*m.message.message) == messageId);
+    });
+    if (it == queue->messages.end()) return;
+
+    it->ready = true;
+    if (it == queue->messages.begin()) {
+        std::vector<Message>::iterator pReady;
+        for (pReady = it; pReady != queue->messages.end(); ++pReady) {
+            if (!pReady->ready) break;
+            purple_debug_misc(config::pluginId,"MessageQueue: chat %" G_GINT64_FORMAT ": "
+                              "showing message %" G_GINT64_FORMAT "\n",
+                              chatId.value(), getId(*pReady->message.message).value());
+            readyMessages.push_back(std::move(pReady->message));
+        }
+
+        queue->messages.erase(queue->messages.begin(), pReady);
+        if (queue->messages.empty()) {
+            queue = nullptr;
+            m_queues.erase(queueIt);
+        }
+    }
+}
+
+PendingMessageQueue::TdMessagePtr PendingMessageQueue::addReadyMessage(TdMessagePtr message)
+{
+    if (!message) return nullptr;
+
+    ChatId chatId  = getChatId(*message);
+    auto   queueIt = getChatQueue(chatId);
+    if (queueIt == m_queues.end())
+        return message;
+
+    purple_debug_misc(config::pluginId,"MessageQueue: chat %" G_GINT64_FORMAT ": "
+                      "adding pending message %" G_GINT64_FORMAT " (ready)\n",
+                      chatId.value(), message->id_);
+
+    ChatQueue *queue = &*queueIt;
+    queue->messages.emplace_back();
+    queue->messages.back().ready = true;
+    queue->messages.back().message.message = std::move(message);
+
+    return nullptr;
+}
+
+IncomingMessage *PendingMessageQueue::findPendingMessage(ChatId chatId, MessageId messageId)
+{
+    auto queueIt = getChatQueue(chatId);
+    if (queueIt == m_queues.end()) return nullptr;
+    ChatQueue *queue = &*queueIt;
+
+    auto it = std::find_if(queue->messages.begin(), queue->messages.end(), [messageId](const Message &m) {
+        return (getId(*m.message.message) == messageId);
+    });
+    return (it != queue->messages.end()) ? &it->message : nullptr;
+}
+
+void PendingMessageQueue::flush(std::vector<IncomingMessage> &messages)
+{
+    messages.clear();
+    for (ChatQueue &queue: m_queues)
+        for (Message &message: queue.messages)
+            messages.push_back(std::move(message.message));
+    m_queues.clear();
+}
+
 void TdAccountData::updateUser(TdUserPtr userPtr)
 {
     const td::td_api::user *user = userPtr.get();

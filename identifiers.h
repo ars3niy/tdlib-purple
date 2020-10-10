@@ -81,6 +81,11 @@ DEFINE_ID_CLASS(SecretChatId, int32_t)
     friend SecretChatId stringToSecretChatId(const char *s);
 };
 
+DEFINE_ID_CLASS(MessageId, int64_t)
+    friend MessageId getId(const td::td_api::message &message);
+    friend MessageId getReplyMessageId(const td::td_api::message &message);
+};
+
 #undef DEFINE_ID_CLASS
 
 UserId       getId(const td::td_api::user &user);
@@ -88,6 +93,7 @@ ChatId       getId(const td::td_api::chat &chat);
 BasicGroupId getId(const td::td_api::basicGroup &group);
 SupergroupId getId(const td::td_api::supergroup &group);
 SecretChatId getId(const td::td_api::secretChat &secretChat);
+MessageId    getId(const td::td_api::message &message);
 
 UserId       getUserId(const td::td_api::chatTypePrivate &privType);
 UserId       getUserId(const td::td_api::chatMember &member);
@@ -116,8 +122,9 @@ SupergroupId getSupergroupId(const td::td_api::updateSupergroupFullInfo &update)
 SupergroupId getSupergroupId(const td::td_api::chatTypeSupergroup &chatType);
 
 SecretChatId getSecretChatId(const td::td_api::chatTypeSecret &update);
-
 SecretChatId stringToSecretChatId(const char *s);
+
+MessageId    getReplyMessageId(const td::td_api::message &message);
 
 namespace std {
     static inline std::string to_string(UserId id) { return to_string(id.value()); }

@@ -14,6 +14,7 @@ add_executable(tests EXCLUDE_FROM_ALL
     file-transfer-test.cpp
     secret-chat-test.cpp
     message-split-test.cpp
+    message-order-test.cpp
     test-transceiver.cpp
     libpurple-mock.cpp
     printout.cpp

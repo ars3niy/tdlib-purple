@@ -26,7 +26,7 @@ uint64_t TestTransceiver::verifyRequest(const Function &request)
     return m_lastRequestIds.empty() ? 0 : m_lastRequestIds.back();
 }
 
-void TestTransceiver::verifyRequests(std::initializer_list<td::td_api::object_ptr<td::td_api::Function>> requests)
+std::vector<uint64_t> TestTransceiver::verifyRequests(std::initializer_list<td::td_api::object_ptr<td::td_api::Function>> requests)
 {
     m_lastRequestIds.clear();
     for (auto &pReq: requests) {
@@ -36,7 +36,9 @@ void TestTransceiver::verifyRequests(std::initializer_list<td::td_api::object_pt
             m_requests.pop();
         }
     }
+
     verifyNoRequests();
+    return m_lastRequestIds;
 }
 
 void TestTransceiver::verifyRequests(const std::vector<const td::td_api::Function *> requests)

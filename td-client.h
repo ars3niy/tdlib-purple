@@ -99,7 +99,9 @@ private:
                                const std::string &fileDescription, const std::string &fileName);
     void       showStickerMessage(const td::td_api::chat &chat, TgMessageInfo &message, td::td_api::messageSticker &sticker);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
-    void       findMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
+    void       findMessageResponse(ChatId chatId, MessageId pendingMessageId,
+                                   td::td_api::object_ptr<td::td_api::Object> object);
+    void       showMessages(std::vector<IncomingMessage> &messages);
 
     void       updateUserStatus(UserId userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void       updateUser(td::td_api::object_ptr<td::td_api::user> user);

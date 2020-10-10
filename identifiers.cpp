@@ -32,6 +32,11 @@ SecretChatId getId(const td::td_api::secretChat &secretChat)
     return SecretChatId(secretChat.id_);
 }
 
+MessageId getId(const td::td_api::message &message)
+{
+    return MessageId(message.id_);
+}
+
 UserId getUserId(const td::td_api::chatTypePrivate &privType)
 {
     return UserId(privType.user_id_);
@@ -172,4 +177,9 @@ SupergroupId getSupergroupId(const td::td_api::chatTypeSupergroup &chatType)
 SecretChatId getSecretChatId(const td::td_api::chatTypeSecret &chatType)
 {
     return SecretChatId(chatType.secret_chat_id_);
+}
+
+MessageId getReplyMessageId(const td::td_api::message &message)
+{
+    return MessageId(message.reply_to_message_id_);
 }

@@ -1,4 +1,3 @@
-
 #include "fixture.h"
 #include "libpurple-mock.h"
 #include <fmt/format.h>
@@ -970,7 +969,7 @@ TEST_F(PrivateChatTest, ReplyToOldMessage)
     );
 }
 
-TEST_F(PrivateChatTest, ReplyToOldMessage_FetchFailed)
+TEST_F(PrivateChatTest, ReplyToOldMessage_FetchTimeout)
 {
     const int32_t date     = 10002;
     const int64_t msgId    = 2;

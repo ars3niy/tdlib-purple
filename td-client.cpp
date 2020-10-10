@@ -26,6 +26,9 @@ PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBac
 
 PurpleTdClient::~PurpleTdClient()
 {
+    std::vector<IncomingMessage> messages;
+    m_data.pendingMessages.flush(messages);
+    showMessages(messages);
 }
 
 void PurpleTdClient::setLogLevel(int level)
@@ -1367,37 +1370,51 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     viewMessagesReq->message_ids_.push_back(message->id_);
     m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
 
-    int64_t messageId      = message->id_;
-    int64_t replyMessageId = message->reply_to_message_id_;
+    MessageId replyMessageId = getReplyMessageId(*message);
 
-    if (replyMessageId) {
+    if (replyMessageId.valid()) {
+        MessageId messageId = getId(*message);
+        m_data.pendingMessages.addPendingMessage(std::move(message));
         purple_debug_misc(config::pluginId, "Fetching message %" G_GINT64_FORMAT " which message %" G_GINT64_FORMAT " replies to\n",
-                          replyMessageId, messageId);
+                          replyMessageId.value(), messageId.value());
         td::td_api::object_ptr<td::td_api::getMessage> getMessageReq = td::td_api::make_object<td::td_api::getMessage>();
         getMessageReq->chat_id_    = chat->id_;
-        getMessageReq->message_id_ = replyMessageId;
-        uint64_t requestId = m_transceiver.sendQueryWithTimeout(std::move(getMessageReq),
-                                                                &PurpleTdClient::findMessageResponse, 1);
-        m_data.addPendingRequest<PendingMessage>(requestId, message.release());
-    } else
-        showMessage(*chat, *message, nullptr);
+        getMessageReq->message_id_ = replyMessageId.value();
+        m_transceiver.sendQueryWithTimeout(
+            std::move(getMessageReq),
+            [this, chatId = getId(*chat), messageId](uint64_t, td::td_api::object_ptr<td::td_api::Object> object) {
+                findMessageResponse(chatId, messageId, std::move(object));
+            }, 1);
+    } else {
+        auto readyMessage = m_data.pendingMessages.addReadyMessage(std::move(message));
+        if (readyMessage)
+            showMessage(*chat, *readyMessage, nullptr);
+    }
 }
 
-void PurpleTdClient::findMessageResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
+void PurpleTdClient::findMessageResponse(ChatId chatId, MessageId pendingMessageId,
+                                         td::td_api::object_ptr<td::td_api::Object> object)
 {
-    std::unique_ptr<PendingMessage> messageInfo = m_data.getPendingRequest<PendingMessage>(requestId);
-    if (!messageInfo || !messageInfo->message) return;
-    td::td_api::object_ptr<td::td_api::message> repliedMessage;
-
-    if (object && (object->get_id() == td::td_api::message::ID))
-        repliedMessage = td::move_tl_object_as<td::td_api::message>(object);
-    else
+    if (object && (object->get_id() == td::td_api::message::ID)) {
+        IncomingMessage *pendingMessage = m_data.pendingMessages.findPendingMessage(chatId, pendingMessageId);
+        pendingMessage->repliedMessage = td::move_tl_object_as<td::td_api::message>(object);
+    } else
         purple_debug_misc(config::pluginId, "Failed to fetch reply source for message %" G_GINT64_FORMAT "\n",
-                          messageInfo->message->id_);
+                          pendingMessageId.value());
 
-    const td::td_api::chat *chat = m_data.getChat(getChatId(*messageInfo->message));
-    if (chat)
-        showMessage(*chat, *messageInfo->message, std::move(repliedMessage));
+    std::vector<IncomingMessage> readyMessages;
+    m_data.pendingMessages.setMessageReady(chatId, pendingMessageId, readyMessages);
+    showMessages(readyMessages);
+}
+
+void PurpleTdClient::showMessages(std::vector<IncomingMessage>& messages)
+{
+    for (IncomingMessage &readyMessage: messages) {
+        if (!readyMessage.message) continue;
+        const td::td_api::chat *chat = m_data.getChat(getChatId(*readyMessage.message));
+        if (chat)
+            showMessage(*chat, *readyMessage.message, std::move(readyMessage.repliedMessage));
+    }
 }
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)

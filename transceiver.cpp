@@ -7,7 +7,7 @@
 struct TimerCallbackData {
     TdTransceiver             *m_transceiver;
     uint64_t                   requestId;
-    TdTransceiver::ResponseCb  callback;
+    TdTransceiver::ResponseCb2 callback;
     bool                       cancelResponse;
 };
 
@@ -240,7 +240,15 @@ uint64_t TdTransceiver::sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::
     return queryId;
 }
 
-void TdTransceiver::setQueryTimer(uint64_t queryId, ResponseCb handler, unsigned timeoutSeconds,
+uint64_t TdTransceiver::sendQueryWithTimeout(td::td_api::object_ptr<td::td_api::Function> f,
+                                             ResponseCb2 handler, unsigned timeoutSeconds)
+{
+    uint64_t queryId = sendQuery(std::move(f), handler);
+    setQueryTimer(queryId, handler, timeoutSeconds, true);
+    return queryId;
+}
+
+void TdTransceiver::setQueryTimer(uint64_t queryId, ResponseCb2 handler, unsigned timeoutSeconds,
                                   bool cancelNormalResponse)
 {
     TimerInfo timer;
@@ -262,13 +270,21 @@ void TdTransceiver::setQueryTimer(uint64_t queryId, ResponseCb handler, unsigned
     m_impl->m_timers.push_back(std::move(timer));
 }
 
+void TdTransceiver::setQueryTimer(uint64_t queryId, ResponseCb handler, unsigned timeoutSeconds,
+                                  bool cancelNormalResponse)
+{
+    setQueryTimer(queryId,
+                  [tdClient=m_impl->m_owner, handler](uint64_t requestId, TdObjectPtr object) {
+                      (tdClient->*handler)(requestId, std::move(object));
+                  }, timeoutSeconds, cancelNormalResponse);
+}
+
 gboolean TdTransceiver::timerCallback(gpointer userdata)
 {
     TimerCallbackData *data        = static_cast<TimerCallbackData *>(userdata);
     TdTransceiver     *transceiver = data->m_transceiver;
-    PurpleTdClient    *tdClient    = transceiver->m_impl->m_owner;
 
-    (tdClient->*(data->callback))(data->requestId, nullptr);
+    data->callback(data->requestId, nullptr);
 
     if (data->cancelResponse)
         transceiver->m_impl->m_responseHandlers.erase(data->requestId);
