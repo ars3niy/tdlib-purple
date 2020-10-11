@@ -3,6 +3,7 @@
 #include "config.h"
 #include "gif.h"
 #include "format.h"
+#include "receiving.h"
 
 #ifndef NoWebp
 #include <png.h>

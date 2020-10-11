@@ -2,6 +2,7 @@
 #include "purple-info.h"
 #include "config.h"
 #include "format.h"
+#include "receiving.h"
 #include "sticker.h"
 #include "file-transfer.h"
 #include "call.h"

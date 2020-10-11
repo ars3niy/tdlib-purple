@@ -56,6 +56,7 @@ add_library(telegram-tdlib SHARED
     purple-info.cpp
     ${CMAKE_BINARY_DIR}/config.cpp
     client-utils.cpp
+    receiving.cpp
     format.cpp
     sticker.cpp
     file-transfer.cpp

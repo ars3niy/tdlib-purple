@@ -2,6 +2,7 @@
 #include "format.h"
 #include "purple-info.h"
 #include "client-utils.h"
+#include "receiving.h"
 #include "config.h"
 
 void updateKnownSecretChat(SecretChatId secretChatId, TdTransceiver &transceiver,
