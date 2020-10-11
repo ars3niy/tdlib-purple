@@ -201,6 +201,9 @@ public:
 struct IncomingMessage {
     td::td_api::object_ptr<td::td_api::message> message;
     td::td_api::object_ptr<td::td_api::message> repliedMessage;
+    int32_t  selectedPhotoSizeId;
+    unsigned inlineFileSizeLimit;
+    bool     standardDownload;
 };
 
 class PendingMessageQueue {

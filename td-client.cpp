@@ -1345,7 +1345,7 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
 
     IncomingMessage fullMessage;
-    fullMessage.message = std::move(message);
+    makeFullMessage(std::move(message), fullMessage, m_data);
 
     if (isMessageReady(fullMessage, m_data)) {
         IncomingMessage readyMessage = m_data.pendingMessages.addReadyMessage(std::move(fullMessage));

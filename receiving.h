@@ -20,6 +20,8 @@ void showGenericFileInline(const td::td_api::chat &chat, const TgMessageInfo &me
                            TdAccountData &account);
 
 const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td::td_api::messagePhoto &photo);
+void makeFullMessage(td::td_api::object_ptr<td::td_api::message> message, IncomingMessage &fullMessage,
+                     const TdAccountData &account);
 bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &account);
 void fetchExtras(const IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAccountData &account,
                  TdTransceiver::ResponseCb2 onFetchReply);
