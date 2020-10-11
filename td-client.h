@@ -100,6 +100,7 @@ private:
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
     void       findMessageResponse(ChatId chatId, MessageId pendingMessageId,
                                    td::td_api::object_ptr<td::td_api::Object> object);
+    void       checkMessageReady(const IncomingMessage *message);
     void       showMessages(std::vector<IncomingMessage> &messages);
 
     void       updateUserStatus(UserId userId, td::td_api::object_ptr<td::td_api::UserStatus> status);

@@ -279,6 +279,7 @@ void makeFullMessage(td::td_api::object_ptr<td::td_api::message> message, Incomi
 {
     fullMessage.repliedMessage = nullptr;
     fullMessage.selectedPhotoSizeId = 0;
+    fullMessage.repliedMessageFailed = false;
 
     const char *option = purple_account_get_string(account.purpleAccount, AccountOptions::DownloadBehaviour,
                                                    AccountOptions::DownloadBehaviourDefault());
@@ -321,7 +322,7 @@ static bool isFileMessageReady(const IncomingMessage &fullMessage, ChatId chatId
          ((chat->type_->get_id() != td::td_api::chatTypePrivate::ID) &&
           (chat->type_->get_id() != td::td_api::chatTypeSecret::ID)) )
     {
-        // File will be shown as inline link
+        // File will be shown inline
         if (file->local_ && file->local_->is_downloading_completed_)
             return true;
 
@@ -343,8 +344,11 @@ bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &acc
     const td::td_api::message &message = *fullMessage.message;
     ChatId chatId = getChatId(message);
 
-    if (getReplyMessageId(message).valid() && !fullMessage.repliedMessage)
+    if (getReplyMessageId(message).valid() && !fullMessage.repliedMessage &&
+        !fullMessage.repliedMessageFailed)
+    {
         return false;
+    }
 
     if (!message.content_) return true;
 

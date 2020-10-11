@@ -1360,22 +1360,36 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
         );
         m_data.pendingMessages.addPendingMessage(std::move(fullMessage));
     }
+}
 
+void PurpleTdClient::checkMessageReady(const IncomingMessage *message)
+{
+    if (!message || !message->message) return;
+
+    if (isMessageReady(*message, m_data)) {
+        std::vector<IncomingMessage> readyMessages;
+        m_data.pendingMessages.setMessageReady(getChatId(*message->message), getId(*message->message),
+                                               readyMessages);
+        message = nullptr;
+        showMessages(readyMessages);
+    }
 }
 
 void PurpleTdClient::findMessageResponse(ChatId chatId, MessageId pendingMessageId,
                                          td::td_api::object_ptr<td::td_api::Object> object)
 {
-    if (object && (object->get_id() == td::td_api::message::ID)) {
-        IncomingMessage *pendingMessage = m_data.pendingMessages.findPendingMessage(chatId, pendingMessageId);
+    IncomingMessage *pendingMessage = m_data.pendingMessages.findPendingMessage(chatId, pendingMessageId);
+    if (!pendingMessage) return;
+
+    if (object && (object->get_id() == td::td_api::message::ID))
         pendingMessage->repliedMessage = td::move_tl_object_as<td::td_api::message>(object);
-    } else
+    else {
         purple_debug_misc(config::pluginId, "Failed to fetch reply source for message %" G_GINT64_FORMAT "\n",
                           pendingMessageId.value());
+        pendingMessage->repliedMessageFailed = true;
+    }
 
-    std::vector<IncomingMessage> readyMessages;
-    m_data.pendingMessages.setMessageReady(chatId, pendingMessageId, readyMessages);
-    showMessages(readyMessages);
+    checkMessageReady(pendingMessage);
 }
 
 void PurpleTdClient::showMessages(std::vector<IncomingMessage>& messages)

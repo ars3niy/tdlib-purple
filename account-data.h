@@ -204,6 +204,7 @@ struct IncomingMessage {
     int32_t  selectedPhotoSizeId;
     unsigned inlineFileSizeLimit;
     bool     standardDownload;
+    bool     repliedMessageFailed;
 };
 
 class PendingMessageQueue {
