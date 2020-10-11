@@ -16,7 +16,12 @@ void uploadResponseError(PurpleXfer *xfer, const std::string &message, TdAccount
 void startDocumentUploadProgress(ChatId chatId, PurpleXfer *xfer, const td::td_api::file &file,
                                  TdTransceiver &transceiver, TdAccountData &account,
                                  TdTransceiver::ResponseCb sendMessageResponse);
-void startInlineDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver, TdAccountData &account);
+void downloadFileInline(int32_t fileId, ChatId chatId, TgMessageInfo &message,
+                        const std::string &fileDescription,
+                        td::td_api::object_ptr<td::td_api::file> thumbnail,
+                        FileDownloadCb callback, PurpleTdClient *tdClient,
+                        TdTransceiver &transceiver, TdAccountData &account);
+void startInlineDownloadProgress(uint64_t requestId, TdTransceiver &transceiver, TdAccountData &account);
 void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &transceiver,
                                 TdAccountData &account, TdTransceiver::ResponseCb sendMessageResponse);
 void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData &account);
