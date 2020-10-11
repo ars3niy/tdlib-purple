@@ -788,15 +788,12 @@ void notifySendFailed(const td::td_api::updateMessageSendFailed &sendFailed, TdA
     if (sendFailed.message_) {
         const td::td_api::chat *chat = account.getChat(getChatId(*sendFailed.message_));
         if (chat) {
-            TgMessageInfo messageInfo;
-            messageInfo.type = TgMessageInfo::Type::Other;
-            messageInfo.timestamp = sendFailed.message_->date_;
-            messageInfo.outgoing = true;
             std::string errorMessage = formatMessage(errorCodeMessage(), {std::to_string(sendFailed.error_code_),
                                                      sendFailed.error_message_});
             // TRANSLATOR: In-chat error message, argument will be text.
             errorMessage = formatMessage(_("Failed to send message: {}"), errorMessage);
-            showMessageText(account, *chat, messageInfo, NULL, errorMessage.c_str());
+            showChatNotification(account, *chat, errorMessage.c_str(), sendFailed.message_->date_,
+                                 (PurpleMessageFlags)0);
         }
     }
 }

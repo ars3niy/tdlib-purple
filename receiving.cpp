@@ -222,13 +222,20 @@ void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const
 }
 
 void showChatNotification(TdAccountData &account, const td::td_api::chat &chat,
-                          const char *notification, PurpleMessageFlags flags)
+                          const char *notification, time_t timestamp, PurpleMessageFlags extraFlags)
 {
     TgMessageInfo messageInfo;
     messageInfo.type = TgMessageInfo::Type::Other;
-    messageInfo.timestamp = (flags == PURPLE_MESSAGE_NO_LOG) ? 0 : time(NULL);
+    messageInfo.timestamp = timestamp;
     messageInfo.outgoing = true;
-    showMessageText(account, chat, messageInfo, NULL, notification, flags);
+    showMessageText(account, chat, messageInfo, NULL, notification, extraFlags);
+}
+
+void showChatNotification(TdAccountData &account, const td::td_api::chat &chat,
+                          const char *notification, PurpleMessageFlags extraFlags)
+{
+    showChatNotification(account, chat, notification,
+                         (extraFlags & PURPLE_MESSAGE_NO_LOG) ? 0 : time(NULL), extraFlags);
 }
 
 void showGenericFileInline(const td::td_api::chat &chat, const TgMessageInfo &message,

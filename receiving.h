@@ -15,6 +15,8 @@ void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const
                        const char *notification, time_t timestamp, PurpleMessageFlags flags);
 void showChatNotification(TdAccountData &account, const td::td_api::chat &chat,
                           const char *notification, PurpleMessageFlags extraFlags = (PurpleMessageFlags)0);
+void showChatNotification(TdAccountData &account, const td::td_api::chat &chat,
+                          const char *notification, time_t timestamp, PurpleMessageFlags extraFlags);
 void showGenericFileInline(const td::td_api::chat &chat, const TgMessageInfo &message,
                            const std::string &filePath, const std::string &fileDescription,
                            TdAccountData &account);
