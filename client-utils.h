@@ -51,6 +51,12 @@ void showChatNotification(TdAccountData &account, const td::td_api::chat &chat,
 void showGenericFileInline(const td::td_api::chat &chat, const TgMessageInfo &message,
                            const std::string &filePath, const std::string &fileDescription,
                            TdAccountData &account);
+
+const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td::td_api::messagePhoto &photo);
+bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &account);
+void fetchExtras(const IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAccountData &account,
+                 TdTransceiver::ResponseCb2 onFetchReply);
+
 void notifySendFailed(const td::td_api::updateMessageSendFailed &sendFailed, TdAccountData &account);
 void updateChatConversation(PurpleConvChat *purpleChat, const td::td_api::basicGroupFullInfo &groupInfo,
                     const TdAccountData &account);

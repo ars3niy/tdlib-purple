@@ -874,35 +874,6 @@ void PurpleTdClient::showTextMessage(const td::td_api::chat &chat, const TgMessa
     }
 }
 
-static const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td::td_api::messagePhoto &photo)
-{
-    unsigned                     sizeLimit        = getAutoDownloadLimitKb(account);
-    const td::td_api::photoSize *selectedSize     = nullptr;
-    bool                         selectedFileSize = 0;
-    if (photo.photo_)
-        for (const auto &newSize: photo.photo_->sizes_)
-            if (newSize && newSize->photo_) {
-                unsigned fileSize            = getFileSizeKb(*newSize->photo_);
-                bool     isWithinLimit       = isSizeWithinLimit(fileSize, sizeLimit);
-                bool     selectedWithinLimit = isSizeWithinLimit(selectedFileSize, sizeLimit);
-                if (!selectedSize ||
-                    (!selectedWithinLimit && (isWithinLimit || (fileSize < selectedFileSize))) ||
-                    (selectedWithinLimit && isWithinLimit && (newSize->width_ > selectedSize->width_)))
-                {
-                    selectedSize = newSize.get();
-                    selectedFileSize = fileSize;
-                }
-            }
-
-    if (selectedSize)
-        purple_debug_misc(config::pluginId, "Selected size %dx%d for photo\n",
-                          (int)selectedSize->width_, (int)selectedSize->height_);
-    else
-        purple_debug_warning(config::pluginId, "No file found for a photo\n");
-
-    return selectedSize ? selectedSize->photo_.get() : nullptr;
-}
-
 void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo &message,
                                     const td::td_api::file &file, const char *caption,
                                     const std::string &fileDesc,
@@ -1354,14 +1325,6 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, IncomingMessage &
     }
 }
 
-static bool isMessageReady(const IncomingMessage &message)
-{
-    if (getReplyMessageId(*message.message).valid() && !message.repliedMessage)
-        return false;
-
-    return true;
-}
-
 void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
 {
     if (!message)
@@ -1383,27 +1346,18 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     IncomingMessage fullMessage;
     fullMessage.message = std::move(message);
 
-    if (isMessageReady(fullMessage)) {
+    if (isMessageReady(fullMessage, m_data)) {
         IncomingMessage readyMessage = m_data.pendingMessages.addReadyMessage(std::move(fullMessage));
         if (readyMessage.message)
             showMessage(*chat, readyMessage);
     } else {
-        MessageId messageId      = getId(*fullMessage.message);
-        MessageId replyMessageId = getReplyMessageId(*fullMessage.message);
+        MessageId messageId = getId(*fullMessage.message);
+        fetchExtras(fullMessage, m_transceiver, m_data,
+            [this, chatId = getId(*chat), messageId](uint64_t, td::td_api::object_ptr<td::td_api::Object> object) {
+                findMessageResponse(chatId, messageId, std::move(object));
+            }
+        );
         m_data.pendingMessages.addPendingMessage(std::move(fullMessage));
-
-        if (replyMessageId.valid()) {
-            purple_debug_misc(config::pluginId, "Fetching message %" G_GINT64_FORMAT " which message %" G_GINT64_FORMAT " replies to\n",
-                            replyMessageId.value(), messageId.value());
-            auto getMessageReq = td::td_api::make_object<td::td_api::getMessage>();
-            getMessageReq->chat_id_    = chat->id_;
-            getMessageReq->message_id_ = replyMessageId.value();
-            m_transceiver.sendQueryWithTimeout(
-                std::move(getMessageReq),
-                [this, chatId = getId(*chat), messageId](uint64_t, td::td_api::object_ptr<td::td_api::Object> object) {
-                    findMessageResponse(chatId, messageId, std::move(object));
-                }, 1);
-        }
     }
 
 }

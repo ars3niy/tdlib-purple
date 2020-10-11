@@ -1022,6 +1022,124 @@ void showGenericFileInline(const td::td_api::chat &chat, const TgMessageInfo &me
     }
 }
 
+const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td::td_api::messagePhoto &photo)
+{
+    unsigned                     sizeLimit        = getAutoDownloadLimitKb(account);
+    const td::td_api::photoSize *selectedSize     = nullptr;
+    bool                         selectedFileSize = 0;
+    if (photo.photo_)
+        for (const auto &newSize: photo.photo_->sizes_)
+            if (newSize && newSize->photo_) {
+                unsigned fileSize            = getFileSizeKb(*newSize->photo_);
+                bool     isWithinLimit       = isSizeWithinLimit(fileSize, sizeLimit);
+                bool     selectedWithinLimit = isSizeWithinLimit(selectedFileSize, sizeLimit);
+                if (!selectedSize ||
+                    (!selectedWithinLimit && (isWithinLimit || (fileSize < selectedFileSize))) ||
+                    (selectedWithinLimit && isWithinLimit && (newSize->width_ > selectedSize->width_)))
+                {
+                    selectedSize = newSize.get();
+                    selectedFileSize = fileSize;
+                }
+            }
+
+    if (selectedSize)
+        purple_debug_misc(config::pluginId, "Selected size %dx%d for photo\n",
+                          (int)selectedSize->width_, (int)selectedSize->height_);
+    else
+        purple_debug_warning(config::pluginId, "No file found for a photo\n");
+
+    return selectedSize ? selectedSize->photo_.get() : nullptr;
+}
+
+bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &account)
+{
+    if (!fullMessage.message) return true;
+    const td::td_api::message &message = *fullMessage.message;
+
+    if (getReplyMessageId(message).valid() && !fullMessage.repliedMessage)
+        return false;
+
+    switch (message.content_->get_id()) {
+        case td::td_api::messagePhoto::ID: {
+            const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message.content_);
+            const td::td_api::file *file = selectPhotoSize(account.purpleAccount, photo);
+            (void)file;
+            //showPhotoMessage(chat, messageInfo, static_cast<const td::td_api::messagePhoto &>(*message.content_));
+            break;
+        }
+        case td::td_api::messageDocument::ID: {
+            const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message.content_);
+            (void)document;
+            /*showFileMessage(chat, messageInfo, document.document_ ? std::move(document.document_->document_) : nullptr,
+                            std::move(document.caption_), makeDocumentDescription(document.document_.get()),
+                            getFileName(document.document_.get()));*/
+            break;
+        }
+        case td::td_api::messageVideo::ID: {
+            const td::td_api::messageVideo &video = static_cast<const td::td_api::messageVideo &>(*message.content_);
+            (void)video;
+            /*showFileMessage(chat, messageInfo, video.video_ ? std::move(video.video_->video_) : nullptr,
+                            std::move(video.caption_), makeDocumentDescription(video.video_.get()),
+                            getFileName(video.video_.get()));*/
+            break;
+        }
+        case td::td_api::messageAnimation::ID: {
+            const td::td_api::messageAnimation &animation = static_cast<const td::td_api::messageAnimation &>(*message.content_);
+            (void)animation;
+            /*showFileMessage(chat, messageInfo, animation.animation_ ? std::move(animation.animation_->animation_) : nullptr,
+                            std::move(animation.caption_), makeDocumentDescription(animation.animation_.get()),
+                            getFileName(animation.animation_.get()));*/
+            break;
+        }
+        case td::td_api::messageAudio::ID: {
+            const td::td_api::messageAudio &audio = static_cast<const td::td_api::messageAudio &>(*message.content_);
+            (void)audio;
+            /*showFileMessage(chat, messageInfo, audio.audio_ ? std::move(audio.audio_->audio_) : nullptr,
+                            std::move(audio.caption_), makeDocumentDescription(audio.audio_.get()),
+                            getFileName(audio.audio_.get()));*/
+            break;
+        }
+        case td::td_api::messageVoiceNote::ID: {
+            const td::td_api::messageVoiceNote &audio = static_cast<const td::td_api::messageVoiceNote &>(*message.content_);
+            (void)audio;
+            /*showFileMessage(chat, messageInfo, audio.voice_note_ ? std::move(audio.voice_note_->voice_) : nullptr,
+                            std::move(audio.caption_), makeDocumentDescription(audio.voice_note_.get()),
+                            getFileName(audio.voice_note_.get()));*/
+            break;
+        }
+        case td::td_api::messageVideoNote::ID: {
+            const td::td_api::messageVideoNote &video = static_cast<const td::td_api::messageVideoNote &>(*message.content_);
+            (void)video;
+            /*showFileMessage(chat, messageInfo, video.video_note_ ? std::move(video.video_note_->video_) : nullptr,
+                            nullptr, makeDocumentDescription(video.video_note_.get()),
+                            getFileName(video.video_note_.get()));*/
+            break;
+        }
+        case td::td_api::messageSticker::ID:
+            //messageInfo.type = TgMessageInfo::Type::Sticker;
+            //showStickerMessage(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message.content_));
+            break;
+    }
+
+    return true;
+}
+
+void fetchExtras(const IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAccountData &account,
+                 TdTransceiver::ResponseCb2 onFetchReply)
+{
+    MessageId messageId      = getId(*fullMessage.message);
+    MessageId replyMessageId = getReplyMessageId(*fullMessage.message);
+
+    if (replyMessageId.valid()) {
+        purple_debug_misc(config::pluginId, "Fetching message %" G_GINT64_FORMAT " which message %" G_GINT64_FORMAT " replies to\n",
+                        replyMessageId.value(), messageId.value());
+        auto getMessageReq = td::td_api::make_object<td::td_api::getMessage>();
+        getMessageReq->chat_id_    = getChatId(*fullMessage.message).value();
+        getMessageReq->message_id_ = replyMessageId.value();
+        transceiver.sendQueryWithTimeout(std::move(getMessageReq), onFetchReply, 1);
+    }
+}
+
 void notifySendFailed(const td::td_api::updateMessageSendFailed &sendFailed, TdAccountData &account)
 {
     if (sendFailed.message_) {
