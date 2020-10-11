@@ -128,6 +128,18 @@ struct TgMessageInfo {
     MessageId   repliedMessageId;
     td::td_api::object_ptr<td::td_api::message> repliedMessage;
     std::string forwardedFrom;
+
+    void assign(const TgMessageInfo &other)
+    {
+        type = other.type;
+        incomingGroupchatSender = other.incomingGroupchatSender;
+        timestamp = other.timestamp;
+        outgoing = other.outgoing;
+        sentLocally = other.sentLocally;
+        repliedMessageId = other.repliedMessageId;
+        repliedMessage = nullptr;
+        forwardedFrom = other.forwardedFrom;
+    }
 };
 
 class PurpleTdClient;
@@ -141,7 +153,10 @@ using FileDownloadCb = void (PurpleTdClient::*)(ChatId chatId, TgMessageInfo &me
 class DownloadRequest: public PendingRequest {
 public:
     ChatId         chatId;
+
+    // For inline downloads this is a copy of original TgMessageInfo from IncomingMessage.
     TgMessageInfo  message;
+
     int32_t        fileId;
     int32_t        fileSize;
     int32_t        downloadedSize;
@@ -155,9 +170,18 @@ public:
     DownloadRequest(uint64_t requestId, ChatId chatId, TgMessageInfo &message,
                     int32_t fileId, int32_t fileSize, const std::string &fileDescription,
                     td::td_api::file *thumbnail, FileDownloadCb callback)
-    : PendingRequest(requestId), chatId(chatId), message(std::move(message)), fileId(fileId),
+    : PendingRequest(requestId), chatId(chatId), fileId(fileId),
       fileSize(fileSize), downloadedSize(0), fileDescription(fileDescription),
-      thumbnail(thumbnail), callback(callback) {}
+      thumbnail(thumbnail), callback(callback)
+    {
+        // If download is started while the message is in PendingMessageQueue, repliedMessage will
+        // be on IncomingMessage, and one here in TgMessageInfo will be NULL. In this case,
+        // repliedMessage will be moved onto DownloadRequest if message leaves PendingMessageQueue
+        // before download is complete (meaning it took more than 1 second to download).
+        this->message.assign(message);
+        if (message.repliedMessage)
+            this->message.repliedMessage = std::move(message.repliedMessage);
+    }
 };
 
 class AvatarDownloadRequest: public PendingRequest {

@@ -184,6 +184,7 @@ void downloadFileInline(int32_t fileId, ChatId chatId, TgMessageInfo &message,
     std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, chatId,
                                                message, fileId, 0, fileDescription, thumbnail.release(),
                                                callback);
+
     account.addPendingRequest<DownloadRequest>(requestId, std::move(request));
     transceiver.setQueryTimer(requestId,
                               [&transceiver, &account](uint64_t reqId, td::td_api::object_ptr<td::td_api::Object>) {
