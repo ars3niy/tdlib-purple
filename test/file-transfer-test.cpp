@@ -145,7 +145,7 @@ TEST_F(FileTransferTest, SecretPhoto_AlreadyDownloaded)
         ServGotImEvent(connection, purpleUserName(0), "caption", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
             purpleUserName(0), purpleUserName(0),
-            userFirstNames[0] + " " + userLastNames[0] + ": Ignoring secret photo",
+            userFirstNames[0] + " " + userLastNames[0] + ": Ignoring secret file (photo)",
             PURPLE_MESSAGE_SYSTEM, date
         )
     );

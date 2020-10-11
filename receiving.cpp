@@ -371,49 +371,85 @@ static bool isFileMessageReady(const IncomingMessage &fullMessage, ChatId chatId
         return true;
 }
 
-static const td::td_api::file *getFileFromMessage(const IncomingMessage &fullMessage)
+void getFileFromMessage(const IncomingMessage &fullMessage, FileInfo &result)
 {
+    result.file = nullptr;
+    result.caption = "";
+    result.secret = false;
     if (!fullMessage.message || !fullMessage.message->content_)
-        return nullptr;
+        return;
     const td::td_api::message &message = *fullMessage.message;
 
     switch (message.content_->get_id()) {
         case td::td_api::messagePhoto::ID: {
             const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message.content_);
-            return getSelectedPhotoSize(fullMessage, photo);
+            result.file = getSelectedPhotoSize(fullMessage, photo);
+            result.name = ""; // will not be needed - inline download only
+            if (photo.caption_) result.caption = photo.caption_->text_;
+            // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
+            result.description = _("photo");
+            result.secret = photo.is_secret_;
+            break;
         }
         case td::td_api::messageDocument::ID: {
             const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message.content_);
-            return document.document_->document_.get();
+            result.file = document.document_ ? document.document_->document_.get() : nullptr;
+            if (document.caption_) result.caption = document.caption_->text_;
+            result.name = getFileName(document.document_.get());
+            result.description = makeDocumentDescription(document.document_.get());
+            break;
         }
         case td::td_api::messageVideo::ID: {
             const td::td_api::messageVideo &video = static_cast<const td::td_api::messageVideo &>(*message.content_);
-            return video.video_->video_.get();
+            result.file = video.video_ ? video.video_->video_.get() : nullptr;
+            if (video.caption_) result.caption = video.caption_->text_;
+            result.name = getFileName(video.video_.get());
+            result.description = makeDocumentDescription(video.video_.get());
+            result.secret = video.is_secret_;
+            break;
         }
         case td::td_api::messageAnimation::ID: {
             const td::td_api::messageAnimation &animation = static_cast<const td::td_api::messageAnimation &>(*message.content_);
-            return animation.animation_->animation_.get();
+            result.file = animation.animation_ ? animation.animation_->animation_.get() : nullptr;
+            if (animation.caption_) result.caption = animation.caption_->text_;
+            result.name = getFileName(animation.animation_.get());
+            result.description = makeDocumentDescription(animation.animation_.get());
+            result.secret = animation.is_secret_;
+            break;
         }
         case td::td_api::messageAudio::ID: {
             const td::td_api::messageAudio &audio = static_cast<const td::td_api::messageAudio &>(*message.content_);
-            return audio.audio_->audio_.get();
+            result.file = audio.audio_ ? audio.audio_->audio_.get() : nullptr;
+            if (audio.caption_) result.caption = audio.caption_->text_;
+            result.name = getFileName(audio.audio_.get());
+            result.description = makeDocumentDescription(audio.audio_.get());
+            break;
         }
         case td::td_api::messageVoiceNote::ID: {
             const td::td_api::messageVoiceNote &audio = static_cast<const td::td_api::messageVoiceNote &>(*message.content_);
-            return audio.voice_note_->voice_.get();
+            result.file = audio.voice_note_ ? audio.voice_note_->voice_.get() : nullptr;
+            if (audio.caption_) result.caption = audio.caption_->text_;
+            result.name = getFileName(audio.voice_note_.get());
+            result.description = makeDocumentDescription(audio.voice_note_.get());
+            break;
         }
         case td::td_api::messageVideoNote::ID: {
             const td::td_api::messageVideoNote &video = static_cast<const td::td_api::messageVideoNote &>(*message.content_);
-            return video.video_note_->video_.get();
+            result.file = video.video_note_ ? video.video_note_->video_.get() : nullptr;
+            result.name = getFileName(video.video_note_.get());
+            result.description = makeDocumentDescription(video.video_note_.get());
+            result.secret = video.is_secret_;
             break;
         }
         case td::td_api::messageSticker::ID: {
             const td::td_api::messageSticker &sticker = static_cast<const td::td_api::messageSticker &>(*message.content_);
-            return sticker.sticker_->sticker_.get();
+            result.file = sticker.sticker_ ? sticker.sticker_->sticker_.get() : nullptr;
+            result.name = ""; // will not be needed - inline download only
+            // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
+            result.description = _("sticker");
+            break;
         }
     }
-
-    return nullptr;
 }
 
 bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &account)
@@ -432,15 +468,16 @@ bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &acc
 
     return true; // dead code below
 
-    const td::td_api::file *file = getFileFromMessage(fullMessage);
+    FileInfo fileInfo;
+    getFileFromMessage(fullMessage, fileInfo);
     // For stickers, will wait for sticker download to display the message, but not for animated sticker conversion
-    if (file && !isFileMessageReady(fullMessage, chatId, *message.content_, *file, account))
+    if (fileInfo.file && !isFileMessageReady(fullMessage, chatId, *message.content_, *fileInfo.file, account))
         return false;
 
     return true;
 }
 
-void fetchExtras(const IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAccountData &account,
+void fetchExtras(IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAccountData &account,
                  TdTransceiver::ResponseCb2 onFetchReply)
 {
     if (!fullMessage.message) return;
@@ -459,9 +496,10 @@ void fetchExtras(const IncomingMessage &fullMessage, TdTransceiver &transceiver,
         transceiver.sendQueryWithTimeout(std::move(getMessageReq), onFetchReply, 1);
     }
 
-    const td::td_api::file *file = getFileFromMessage(fullMessage);
-    if (file && message.content_ && chat && isInlineDownload(fullMessage, *message.content_, *chat) &&
-        inlineDownloadNeedAutoDl(fullMessage, *file))
+    FileInfo fileInfo;
+    getFileFromMessage(fullMessage, fileInfo);
+    if (fileInfo.file && message.content_ && chat && isInlineDownload(fullMessage, *message.content_, *chat) &&
+        inlineDownloadNeedAutoDl(fullMessage, *fileInfo.file))
     {
     }
 }

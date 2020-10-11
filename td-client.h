@@ -91,10 +91,10 @@ private:
 
     void       showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage);
     void       showTextMessage(const td::td_api::chat &chat, const TgMessageInfo &message,const td::td_api::messageText &text);
-    void       showPhotoMessage(const td::td_api::chat &chat, TgMessageInfo &message, const td::td_api::messagePhoto &photo);
+    void       showPhotoMessage(const td::td_api::chat &chat, TgMessageInfo &message,
+                                const td::td_api::file *photoSize, const std::string &caption);
     void       showFileMessage(const td::td_api::chat &chat, TgMessageInfo &message,
-                               td::td_api::object_ptr<td::td_api::file> file,
-                               td::td_api::object_ptr<td::td_api::formattedText> caption,
+                               const td::td_api::file* file, const std::string &caption,
                                const std::string &fileDescription, const std::string &fileName);
     void       showStickerMessage(const td::td_api::chat &chat, TgMessageInfo &message, td::td_api::messageSticker &sticker);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);

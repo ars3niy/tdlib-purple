@@ -21,11 +21,21 @@ void showGenericFileInline(const td::td_api::chat &chat, const TgMessageInfo &me
                            const std::string &filePath, const std::string &fileDescription,
                            TdAccountData &account);
 
+struct FileInfo {
+    const td::td_api::file *file;
+    std::string name;
+    std::string caption;
+    std::string description;
+    bool        secret;
+};
+
 const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td::td_api::messagePhoto &photo);
+void getFileFromMessage(const IncomingMessage &fullMessage, FileInfo &result);
+
 void makeFullMessage(const td::td_api::chat &chat, td::td_api::object_ptr<td::td_api::message> message,
                      IncomingMessage &fullMessage, const TdAccountData &account);
 bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &account);
-void fetchExtras(const IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAccountData &account,
+void fetchExtras(IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAccountData &account,
                  TdTransceiver::ResponseCb2 onFetchReply);
 
 #endif

@@ -932,26 +932,17 @@ void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo 
 }
 
 void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, TgMessageInfo &message,
-                                      const td::td_api::messagePhoto &photo)
+                                      const td::td_api::file *photoSize, const std::string &caption)
 {
-    const td::td_api::file *file         = selectPhotoSize(m_account, photo);
-    const char *            caption      = photo.caption_ ? photo.caption_->text_.c_str() : NULL;
-    const char *            errorMessage = NULL;
+    const char *captionCstr = !caption.empty() ? caption.c_str() : nullptr;
 
-    if (!file)
-        // Unlikely message not worth translating
-        errorMessage = "Faulty image";
-    else if (photo.is_secret_) {
-        // TRANSLATOR: In-chat warning message
-        errorMessage = _("Ignoring secret photo");
-    }
-
-    if (errorMessage) {
-        std::string notice = makeNoticeWithSender(chat, message, errorMessage, m_account);
-        showMessageText(m_data, chat, message, caption, notice.c_str());
-    } else {
+    if (photoSize) {
         // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
-        showFileInline(chat, message, *file, caption, _("photo"), nullptr, &PurpleTdClient::showDownloadedImage);
+        showFileInline(chat, message, *photoSize, captionCstr, _("photo"), nullptr, &PurpleTdClient::showDownloadedImage);
+    } else {
+        // Unlikely message not worth translating
+        std::string notice = makeNoticeWithSender(chat, message, "Faulty image", m_account);
+        showMessageText(m_data, chat, message, captionCstr, notice.c_str());
     }
 }
 
@@ -1045,12 +1036,12 @@ void PurpleTdClient::showDownloadedImage(ChatId chatId, TgMessageInfo &message,
 }
 
 void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo &message,
-                                     td::td_api::object_ptr<td::td_api::file> file,
-                                     td::td_api::object_ptr<td::td_api::formattedText> caption,
+                                     const td::td_api::file* file,
+                                     const std::string &caption,
                                      const std::string &fileDescription,
                                      const std::string &fileName)
 {
-    const char *captionStr = caption ? caption->text_.c_str() : NULL;
+    const char *captionStr = !caption.empty() ? caption.c_str() : NULL;
     if (!file) {
         // Unlikely message not worth translating
         std::string notice = formatMessage("Faulty file: {}", fileDescription);
@@ -1204,55 +1195,33 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, IncomingMessage &
         return;
     }
 
+    FileInfo fileInfo;
+    getFileFromMessage(fullMessage, fileInfo);
+    if (fileInfo.secret) {
+        // TRANSLATOR: In-chat warning message
+        std::string notice = formatMessage("Ignoring secret file ({})", fileInfo.description);
+        notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), m_account);
+        showMessageText(m_data, chat, messageInfo, !fileInfo.caption.empty() ? fileInfo.caption.c_str() : nullptr,
+                        notice.c_str());
+        return;
+    }
+
     switch (message.content_->get_id()) {
         case td::td_api::messageText::ID:
             showTextMessage(chat, messageInfo, static_cast<const td::td_api::messageText &>(*message.content_));
             break;
         case td::td_api::messagePhoto::ID:
-            showPhotoMessage(chat, messageInfo, static_cast<const td::td_api::messagePhoto &>(*message.content_));
+            showPhotoMessage(chat, messageInfo, fileInfo.file, fileInfo.caption);
             break;
-        case td::td_api::messageDocument::ID: {
-            td::td_api::messageDocument &document = static_cast<td::td_api::messageDocument &>(*message.content_);
-            showFileMessage(chat, messageInfo, document.document_ ? std::move(document.document_->document_) : nullptr,
-                            std::move(document.caption_), makeDocumentDescription(document.document_.get()),
-                            getFileName(document.document_.get()));
+        case td::td_api::messageDocument::ID:
+        case td::td_api::messageVideo::ID:
+        case td::td_api::messageAnimation::ID:
+        case td::td_api::messageAudio::ID:
+        case td::td_api::messageVoiceNote::ID:
+        case td::td_api::messageVideoNote::ID:
+            showFileMessage(chat, messageInfo, fileInfo.file, fileInfo.caption, fileInfo.description,
+                            fileInfo.name);
             break;
-        }
-        case td::td_api::messageVideo::ID: {
-            td::td_api::messageVideo &video = static_cast<td::td_api::messageVideo &>(*message.content_);
-            showFileMessage(chat, messageInfo, video.video_ ? std::move(video.video_->video_) : nullptr,
-                            std::move(video.caption_), makeDocumentDescription(video.video_.get()),
-                            getFileName(video.video_.get()));
-            break;
-        }
-        case td::td_api::messageAnimation::ID: {
-            td::td_api::messageAnimation &animation = static_cast<td::td_api::messageAnimation &>(*message.content_);
-            showFileMessage(chat, messageInfo, animation.animation_ ? std::move(animation.animation_->animation_) : nullptr,
-                            std::move(animation.caption_), makeDocumentDescription(animation.animation_.get()),
-                            getFileName(animation.animation_.get()));
-            break;
-        }
-        case td::td_api::messageAudio::ID: {
-            td::td_api::messageAudio &audio = static_cast<td::td_api::messageAudio &>(*message.content_);
-            showFileMessage(chat, messageInfo, audio.audio_ ? std::move(audio.audio_->audio_) : nullptr,
-                            std::move(audio.caption_), makeDocumentDescription(audio.audio_.get()),
-                            getFileName(audio.audio_.get()));
-            break;
-        }
-        case td::td_api::messageVoiceNote::ID: {
-            td::td_api::messageVoiceNote &audio = static_cast<td::td_api::messageVoiceNote &>(*message.content_);
-            showFileMessage(chat, messageInfo, audio.voice_note_ ? std::move(audio.voice_note_->voice_) : nullptr,
-                            std::move(audio.caption_), makeDocumentDescription(audio.voice_note_.get()),
-                            getFileName(audio.voice_note_.get()));
-            break;
-        }
-        case td::td_api::messageVideoNote::ID: {
-            td::td_api::messageVideoNote &video = static_cast<td::td_api::messageVideoNote &>(*message.content_);
-            showFileMessage(chat, messageInfo, video.video_note_ ? std::move(video.video_note_->video_) : nullptr,
-                            nullptr, makeDocumentDescription(video.video_note_.get()),
-                            getFileName(video.video_note_.get()));
-            break;
-        }
         case td::td_api::messageSticker::ID:
             showStickerMessage(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message.content_));
             break;
