@@ -569,7 +569,7 @@ void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const
         flags = (PurpleMessageFlags) (flags | PURPLE_MESSAGE_REMOTE_SEND);
 
     std::string newText;
-    if (message.repliedMessageId != 0)
+    if (message.repliedMessageId.valid())
         newText = quoteMessage(message.repliedMessage.get(), account);
     if (!message.forwardedFrom.empty()) {
         if (!newText.empty())

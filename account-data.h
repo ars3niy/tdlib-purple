@@ -125,7 +125,7 @@ struct TgMessageInfo {
     time_t      timestamp;
     bool        outgoing;
     bool        sentLocally = false; // For outgoing messages, whether sent by this very client
-    int64_t     repliedMessageId = 0;
+    MessageId   repliedMessageId;
     td::td_api::object_ptr<td::td_api::message> repliedMessage;
     std::string forwardedFrom;
 };

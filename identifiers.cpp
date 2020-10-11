@@ -6,6 +6,7 @@ const ChatId       ChatId::invalid       = ChatId(0);
 const BasicGroupId BasicGroupId::invalid = BasicGroupId(0);
 const SupergroupId SupergroupId::invalid = SupergroupId(0);
 const SecretChatId SecretChatId::invalid = SecretChatId(0);
+const MessageId    MessageId::invalid    = MessageId(0);
 
 UserId getId(const td::td_api::user &user)
 {

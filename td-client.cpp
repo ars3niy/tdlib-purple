@@ -1266,7 +1266,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, IncomingMessage &
     messageInfo.timestamp        = message.date_;
     messageInfo.outgoing         = message.is_outgoing_;
     messageInfo.sentLocally      = (message.sending_state_ != nullptr);
-    messageInfo.repliedMessageId = message.reply_to_message_id_;
+    messageInfo.repliedMessageId = getReplyMessageId(message);
     messageInfo.repliedMessage   = std::move(fullMessage.repliedMessage);
 
     if (message.forward_info_)
