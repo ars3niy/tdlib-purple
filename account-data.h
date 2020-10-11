@@ -201,9 +201,10 @@ public:
 struct IncomingMessage {
     td::td_api::object_ptr<td::td_api::message> message;
     td::td_api::object_ptr<td::td_api::message> repliedMessage;
+    td::td_api::object_ptr<td::td_api::file>    downloadedFile;
     int32_t  selectedPhotoSizeId;
     unsigned inlineFileSizeLimit;
-    bool     standardDownload;
+    bool     standardDownloadConfigured;
     bool     repliedMessageFailed;
 };
 

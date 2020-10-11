@@ -283,7 +283,7 @@ void makeFullMessage(td::td_api::object_ptr<td::td_api::message> message, Incomi
 
     const char *option = purple_account_get_string(account.purpleAccount, AccountOptions::DownloadBehaviour,
                                                    AccountOptions::DownloadBehaviourDefault());
-    fullMessage.standardDownload = (strcmp(option, AccountOptions::DownloadBehaviourHyperlink) != 0);
+    fullMessage.standardDownloadConfigured = (strcmp(option, AccountOptions::DownloadBehaviourHyperlink) != 0);
     fullMessage.inlineFileSizeLimit = getAutoDownloadLimitKb(account.purpleAccount);
 
     if (message && message->content_) {
@@ -309,33 +309,87 @@ static const td::td_api::file *getSelectedPhotoSize(const IncomingMessage &fullM
     return nullptr;
 }
 
+static bool isInlineDownload(const IncomingMessage &fullMessage,
+                             const td::td_api::MessageContent &content,
+                             const td::td_api::chat &chat)
+{
+    return (content.get_id() == td::td_api::messagePhoto::ID) ||
+           (content.get_id() == td::td_api::messageSticker::ID) ||
+           !fullMessage.standardDownloadConfigured || !chat.type_ ||
+           ((chat.type_->get_id() != td::td_api::chatTypePrivate::ID) &&
+            (chat.type_->get_id() != td::td_api::chatTypeSecret::ID));
+}
+
+static bool inlineDownloadNeedAutoDl(const IncomingMessage &fullMessage,
+                                     const td::td_api::file &file)
+{
+    unsigned fileSize = getFileSizeKb(file);
+
+    return !((file.local_ && file.local_->is_downloading_completed_)) &&
+           isSizeWithinLimit(fileSize, fullMessage.inlineFileSizeLimit);
+}
+
 static bool isFileMessageReady(const IncomingMessage &fullMessage, ChatId chatId,
                                const td::td_api::MessageContent &content,
-                               const td::td_api::file *file, const TdAccountData &account)
+                               const td::td_api::file &file, const TdAccountData &account)
 {
     const td::td_api::chat *chat = account.getChat(chatId);
-    if (!chat || !file)
+    if (!chat)
         return true;
 
-    if ( (content.get_id() == td::td_api::messagePhoto::ID) ||
-         !fullMessage.standardDownload || !chat->type_ ||
-         ((chat->type_->get_id() != td::td_api::chatTypePrivate::ID) &&
-          (chat->type_->get_id() != td::td_api::chatTypeSecret::ID)) )
-    {
+    if (isInlineDownload(fullMessage, content, *chat)) {
         // File will be shown inline
-        if (file->local_ && file->local_->is_downloading_completed_)
-            return true;
-
         // Files above limit will either be ignored (in which case, message is ready)
         // or requested (in which case, don't try do display in order)
-        unsigned fileSize = getFileSizeKb(*file);
-        if (! isSizeWithinLimit(fileSize, fullMessage.inlineFileSizeLimit))
-            return true;
-
-        return false;
+        return !inlineDownloadNeedAutoDl(fullMessage, file);
     } else
         // Standard libpurple transfer will be used, nothing to postpone
         return true;
+}
+
+static const td::td_api::file *getFileFromMessage(const IncomingMessage &fullMessage)
+{
+    if (!fullMessage.message || !fullMessage.message->content_)
+        return nullptr;
+    const td::td_api::message &message = *fullMessage.message;
+
+    switch (message.content_->get_id()) {
+        case td::td_api::messagePhoto::ID: {
+            const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message.content_);
+            return getSelectedPhotoSize(fullMessage, photo);
+        }
+        case td::td_api::messageDocument::ID: {
+            const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message.content_);
+            return document.document_->document_.get();
+        }
+        case td::td_api::messageVideo::ID: {
+            const td::td_api::messageVideo &video = static_cast<const td::td_api::messageVideo &>(*message.content_);
+            return video.video_->video_.get();
+        }
+        case td::td_api::messageAnimation::ID: {
+            const td::td_api::messageAnimation &animation = static_cast<const td::td_api::messageAnimation &>(*message.content_);
+            return animation.animation_->animation_.get();
+        }
+        case td::td_api::messageAudio::ID: {
+            const td::td_api::messageAudio &audio = static_cast<const td::td_api::messageAudio &>(*message.content_);
+            return audio.audio_->audio_.get();
+        }
+        case td::td_api::messageVoiceNote::ID: {
+            const td::td_api::messageVoiceNote &audio = static_cast<const td::td_api::messageVoiceNote &>(*message.content_);
+            return audio.voice_note_->voice_.get();
+        }
+        case td::td_api::messageVideoNote::ID: {
+            const td::td_api::messageVideoNote &video = static_cast<const td::td_api::messageVideoNote &>(*message.content_);
+            return video.video_note_->video_.get();
+            break;
+        }
+        case td::td_api::messageSticker::ID: {
+            const td::td_api::messageSticker &sticker = static_cast<const td::td_api::messageSticker &>(*message.content_);
+            return sticker.sticker_->sticker_.get();
+        }
+    }
+
+    return nullptr;
 }
 
 bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &account)
@@ -354,65 +408,10 @@ bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &acc
 
     return true; // dead code below
 
-    switch (message.content_->get_id()) {
-        case td::td_api::messagePhoto::ID: {
-            const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message.content_);
-            const td::td_api::file *file = getSelectedPhotoSize(fullMessage, photo);
-            if (!isFileMessageReady(fullMessage, chatId, *message.content_, file, account))
-                return false;
-            break;
-        }
-        case td::td_api::messageDocument::ID: {
-            const td::td_api::messageDocument &document = static_cast<const td::td_api::messageDocument &>(*message.content_);
-            if (document.document_ && !isFileMessageReady(fullMessage, chatId, *message.content_,
-                                                          document.document_->document_.get(), account))
-                return false;
-            break;
-        }
-        case td::td_api::messageVideo::ID: {
-            const td::td_api::messageVideo &video = static_cast<const td::td_api::messageVideo &>(*message.content_);
-            if (video.video_ && !isFileMessageReady(fullMessage, chatId, *message.content_,
-                                                    video.video_->video_.get(), account))
-                return false;
-            break;
-        }
-        case td::td_api::messageAnimation::ID: {
-            const td::td_api::messageAnimation &animation = static_cast<const td::td_api::messageAnimation &>(*message.content_);
-            if (animation.animation_ && !isFileMessageReady(fullMessage, chatId, *message.content_,
-                                                            animation.animation_->animation_.get(), account))
-                return false;
-            break;
-        }
-        case td::td_api::messageAudio::ID: {
-            const td::td_api::messageAudio &audio = static_cast<const td::td_api::messageAudio &>(*message.content_);
-            if (audio.audio_ && !isFileMessageReady(fullMessage, chatId, *message.content_,
-                                                    audio.audio_->audio_.get(), account))
-                return false;
-            break;
-        }
-        case td::td_api::messageVoiceNote::ID: {
-            const td::td_api::messageVoiceNote &audio = static_cast<const td::td_api::messageVoiceNote &>(*message.content_);
-            if (audio.voice_note_ && !isFileMessageReady(fullMessage, chatId, *message.content_,
-                                                         audio.voice_note_->voice_.get(), account))
-                return false;
-            break;
-        }
-        case td::td_api::messageVideoNote::ID: {
-            const td::td_api::messageVideoNote &video = static_cast<const td::td_api::messageVideoNote &>(*message.content_);
-            if (video.video_note_ && !isFileMessageReady(fullMessage, chatId, *message.content_,
-                                                         video.video_note_->video_.get(), account))
-                return false;
-            break;
-        }
-        case td::td_api::messageSticker::ID: {
-            const td::td_api::messageSticker &sticker = static_cast<const td::td_api::messageSticker &>(*message.content_);
-            // Will wait for sticker download to display the message, but not for animated sticker conversion
-            if (sticker.sticker_ && !isFileMessageReady(fullMessage, chatId, *message.content_,
-                                                        sticker.sticker_->sticker_.get(), account))
-                return false;
-            break;
-        }
-    }
+    const td::td_api::file *file = getFileFromMessage(fullMessage);
+    // For stickers, will wait for sticker download to display the message, but not for animated sticker conversion
+    if (file && !isFileMessageReady(fullMessage, chatId, *message.content_, *file, account))
+        return false;
 
     return true;
 }
@@ -420,15 +419,25 @@ bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &acc
 void fetchExtras(const IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAccountData &account,
                  TdTransceiver::ResponseCb2 onFetchReply)
 {
-    MessageId messageId      = getId(*fullMessage.message);
-    MessageId replyMessageId = getReplyMessageId(*fullMessage.message);
+    if (!fullMessage.message) return;
+    const td::td_api::message &message = *fullMessage.message;
+    MessageId messageId      = getId(message);
+    MessageId replyMessageId = getReplyMessageId(message);
+    ChatId    chatId         = getChatId(message);
+    const td::td_api::chat *chat = account.getChat(chatId);
 
     if (replyMessageId.valid()) {
         purple_debug_misc(config::pluginId, "Fetching message %" G_GINT64_FORMAT " which message %" G_GINT64_FORMAT " replies to\n",
                         replyMessageId.value(), messageId.value());
         auto getMessageReq = td::td_api::make_object<td::td_api::getMessage>();
-        getMessageReq->chat_id_    = getChatId(*fullMessage.message).value();
+        getMessageReq->chat_id_    = chatId.value();
         getMessageReq->message_id_ = replyMessageId.value();
         transceiver.sendQueryWithTimeout(std::move(getMessageReq), onFetchReply, 1);
+    }
+
+    const td::td_api::file *file = getFileFromMessage(fullMessage);
+    if (file && message.content_ && chat && isInlineDownload(fullMessage, *message.content_, *chat) &&
+        inlineDownloadNeedAutoDl(fullMessage, *file))
+    {
     }
 }
