@@ -207,10 +207,10 @@ class PendingMessageQueue {
 public:
     using TdMessagePtr = td::td_api::object_ptr<td::td_api::message>;
 
-    void             addPendingMessage(TdMessagePtr message);
+    void             addPendingMessage(IncomingMessage &&message);
     void             setMessageReady(ChatId chatId, MessageId messageId,
                                      std::vector<IncomingMessage> &readyMessages);
-    TdMessagePtr     addReadyMessage(TdMessagePtr message);
+    IncomingMessage  addReadyMessage(IncomingMessage &&message);
     IncomingMessage *findPendingMessage(ChatId chatId, MessageId messageId);
     void             flush(std::vector<IncomingMessage> &messages);
 private:

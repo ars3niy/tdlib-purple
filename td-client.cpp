@@ -1251,9 +1251,11 @@ void PurpleTdClient::showDownloadedFileInline(ChatId chatId, TgMessageInfo &mess
         showGenericFileInline(*chat, message, filePath, fileDescription, m_data);
 }
 
-void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::message &message,
-                                 td::td_api::object_ptr<td::td_api::message> repliedMessage)
+void PurpleTdClient::showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage)
 {
+    if (!fullMessage.message) return;
+    td::td_api::message &message = *fullMessage.message;
+
     if (!message.content_)
         return;
     purple_debug_misc(config::pluginId, "Displaying message %" G_GINT64_FORMAT "\n", message.id_);
@@ -1265,7 +1267,7 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
     messageInfo.outgoing         = message.is_outgoing_;
     messageInfo.sentLocally      = (message.sending_state_ != nullptr);
     messageInfo.repliedMessageId = message.reply_to_message_id_;
-    messageInfo.repliedMessage   = std::move(repliedMessage);
+    messageInfo.repliedMessage   = std::move(fullMessage.repliedMessage);
 
     if (message.forward_info_)
         messageInfo.forwardedFrom = getForwardSource(*message.forward_info_, m_data);
@@ -1352,6 +1354,14 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, td::td_api::messa
     }
 }
 
+static bool isMessageReady(const IncomingMessage &message)
+{
+    if (getReplyMessageId(*message.message).valid() && !message.repliedMessage)
+        return false;
+
+    return true;
+}
+
 void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
 {
     if (!message)
@@ -1370,26 +1380,32 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     viewMessagesReq->message_ids_.push_back(message->id_);
     m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
 
-    MessageId replyMessageId = getReplyMessageId(*message);
+    IncomingMessage fullMessage;
+    fullMessage.message = std::move(message);
 
-    if (replyMessageId.valid()) {
-        MessageId messageId = getId(*message);
-        m_data.pendingMessages.addPendingMessage(std::move(message));
-        purple_debug_misc(config::pluginId, "Fetching message %" G_GINT64_FORMAT " which message %" G_GINT64_FORMAT " replies to\n",
-                          replyMessageId.value(), messageId.value());
-        td::td_api::object_ptr<td::td_api::getMessage> getMessageReq = td::td_api::make_object<td::td_api::getMessage>();
-        getMessageReq->chat_id_    = chat->id_;
-        getMessageReq->message_id_ = replyMessageId.value();
-        m_transceiver.sendQueryWithTimeout(
-            std::move(getMessageReq),
-            [this, chatId = getId(*chat), messageId](uint64_t, td::td_api::object_ptr<td::td_api::Object> object) {
-                findMessageResponse(chatId, messageId, std::move(object));
-            }, 1);
+    if (isMessageReady(fullMessage)) {
+        IncomingMessage readyMessage = m_data.pendingMessages.addReadyMessage(std::move(fullMessage));
+        if (readyMessage.message)
+            showMessage(*chat, readyMessage);
     } else {
-        auto readyMessage = m_data.pendingMessages.addReadyMessage(std::move(message));
-        if (readyMessage)
-            showMessage(*chat, *readyMessage, nullptr);
+        MessageId messageId      = getId(*fullMessage.message);
+        MessageId replyMessageId = getReplyMessageId(*fullMessage.message);
+        m_data.pendingMessages.addPendingMessage(std::move(fullMessage));
+
+        if (replyMessageId.valid()) {
+            purple_debug_misc(config::pluginId, "Fetching message %" G_GINT64_FORMAT " which message %" G_GINT64_FORMAT " replies to\n",
+                            replyMessageId.value(), messageId.value());
+            auto getMessageReq = td::td_api::make_object<td::td_api::getMessage>();
+            getMessageReq->chat_id_    = chat->id_;
+            getMessageReq->message_id_ = replyMessageId.value();
+            m_transceiver.sendQueryWithTimeout(
+                std::move(getMessageReq),
+                [this, chatId = getId(*chat), messageId](uint64_t, td::td_api::object_ptr<td::td_api::Object> object) {
+                    findMessageResponse(chatId, messageId, std::move(object));
+                }, 1);
+        }
     }
+
 }
 
 void PurpleTdClient::findMessageResponse(ChatId chatId, MessageId pendingMessageId,
@@ -1413,7 +1429,7 @@ void PurpleTdClient::showMessages(std::vector<IncomingMessage>& messages)
         if (!readyMessage.message) continue;
         const td::td_api::chat *chat = m_data.getChat(getChatId(*readyMessage.message));
         if (chat)
-            showMessage(*chat, *readyMessage.message, std::move(readyMessage.repliedMessage));
+            showMessage(*chat, readyMessage);
     }
 }
 

@@ -89,8 +89,7 @@ private:
     void       onChatListReady();
     // Login sequence end
 
-    void       showMessage(const td::td_api::chat &chat, td::td_api::message &message,
-                           td::td_api::object_ptr<td::td_api::message> repliedMessage);
+    void       showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage);
     void       showTextMessage(const td::td_api::chat &chat, const TgMessageInfo &message,const td::td_api::messageText &text);
     void       showPhotoMessage(const td::td_api::chat &chat, TgMessageInfo &message, const td::td_api::messagePhoto &photo);
     void       showFileMessage(const td::td_api::chat &chat, TgMessageInfo &message,

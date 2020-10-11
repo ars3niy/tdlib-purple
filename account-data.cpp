@@ -131,16 +131,16 @@ auto PendingMessageQueue::getChatQueue(ChatId chatId) -> std::vector<ChatQueue>:
     });
 }
 
-void PendingMessageQueue::addPendingMessage(TdMessagePtr message)
+void PendingMessageQueue::addPendingMessage(IncomingMessage &&message)
 {
-    if (!message) return;
+    if (!message.message) return;
 
-    ChatId     chatId  = getChatId(*message);
+    ChatId     chatId  = getChatId(*message.message);
     auto       queueIt = getChatQueue(chatId);
     ChatQueue *queue;
     purple_debug_misc(config::pluginId,"MessageQueue: chat %" G_GINT64_FORMAT ": "
                       "adding pending message %" G_GINT64_FORMAT " (not ready)\n",
-                      chatId.value(), message->id_);
+                      chatId.value(), message.message->id_);
 
     if (queueIt != m_queues.end())
         queue = &*queueIt;
@@ -152,7 +152,7 @@ void PendingMessageQueue::addPendingMessage(TdMessagePtr message)
 
     queue->messages.emplace_back();
     queue->messages.back().ready = false;
-    queue->messages.back().message.message = std::move(message);
+    queue->messages.back().message = std::move(message);
 }
 
 void PendingMessageQueue::setMessageReady(ChatId chatId, MessageId messageId,
@@ -192,25 +192,25 @@ void PendingMessageQueue::setMessageReady(ChatId chatId, MessageId messageId,
     }
 }
 
-PendingMessageQueue::TdMessagePtr PendingMessageQueue::addReadyMessage(TdMessagePtr message)
+IncomingMessage PendingMessageQueue::addReadyMessage(IncomingMessage &&message)
 {
-    if (!message) return nullptr;
+    if (!message.message) return IncomingMessage();
 
-    ChatId chatId  = getChatId(*message);
+    ChatId chatId  = getChatId(*message.message);
     auto   queueIt = getChatQueue(chatId);
     if (queueIt == m_queues.end())
-        return message;
+        return std::move(message);
 
     purple_debug_misc(config::pluginId,"MessageQueue: chat %" G_GINT64_FORMAT ": "
                       "adding pending message %" G_GINT64_FORMAT " (ready)\n",
-                      chatId.value(), message->id_);
+                      chatId.value(), message.message->id_);
 
     ChatQueue *queue = &*queueIt;
     queue->messages.emplace_back();
     queue->messages.back().ready = true;
-    queue->messages.back().message.message = std::move(message);
+    queue->messages.back().message = std::move(message);
 
-    return nullptr;
+    return IncomingMessage();
 }
 
 IncomingMessage *PendingMessageQueue::findPendingMessage(ChatId chatId, MessageId messageId)
