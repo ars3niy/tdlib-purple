@@ -1193,17 +1193,8 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, IncomingMessage &
         return;
     purple_debug_misc(config::pluginId, "Displaying message %" G_GINT64_FORMAT "\n", message.id_);
 
-    TgMessageInfo messageInfo;
-    messageInfo.type             = TgMessageInfo::Type::Other;
-    messageInfo.incomingGroupchatSender = getIncomingGroupchatSenderPurpleName(chat, message, m_data);
-    messageInfo.timestamp        = message.date_;
-    messageInfo.outgoing         = message.is_outgoing_;
-    messageInfo.sentLocally      = (message.sending_state_ != nullptr);
-    messageInfo.repliedMessageId = getReplyMessageId(message);
-    messageInfo.repliedMessage   = std::move(fullMessage.repliedMessage);
-
-    if (message.forward_info_)
-        messageInfo.forwardedFrom = getForwardSource(*message.forward_info_, m_data);
+    TgMessageInfo &messageInfo = fullMessage.messageInfo;
+    messageInfo.repliedMessage = std::move(fullMessage.repliedMessage);
 
     if (message.ttl_ != 0) {
         // TRANSLATOR: In-chat warning message
@@ -1263,7 +1254,6 @@ void PurpleTdClient::showMessage(const td::td_api::chat &chat, IncomingMessage &
             break;
         }
         case td::td_api::messageSticker::ID:
-            messageInfo.type = TgMessageInfo::Type::Sticker;
             showStickerMessage(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message.content_));
             break;
         case td::td_api::messageChatChangeTitle::ID: {
@@ -1292,7 +1282,8 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     if (!message)
         return;
 
-    const td::td_api::chat *chat = m_data.getChat(getChatId(*message));
+    ChatId chatId = getChatId(*message);
+    const td::td_api::chat *chat = m_data.getChat(chatId);
     if (!chat) {
         purple_debug_warning(config::pluginId, "Received message with unknown chat id %" G_GINT64_FORMAT "\n",
                             message->chat_id_);
@@ -1300,13 +1291,13 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     }
 
     td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
-    viewMessagesReq->chat_id_ = chat->id_;
+    viewMessagesReq->chat_id_ = chatId.value();
     viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
     viewMessagesReq->message_ids_.push_back(message->id_);
     m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
 
     IncomingMessage fullMessage;
-    makeFullMessage(std::move(message), fullMessage, m_data);
+    makeFullMessage(*chat, std::move(message), fullMessage, m_data);
 
     if (isMessageReady(fullMessage, m_data)) {
         IncomingMessage readyMessage = m_data.pendingMessages.addReadyMessage(std::move(fullMessage));
@@ -1315,7 +1306,7 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     } else {
         MessageId messageId = getId(*fullMessage.message);
         fetchExtras(fullMessage, m_transceiver, m_data,
-            [this, chatId = getId(*chat), messageId](uint64_t, td::td_api::object_ptr<td::td_api::Object> object) {
+            [this, chatId, messageId](uint64_t, td::td_api::object_ptr<td::td_api::Object> object) {
                 findMessageResponse(chatId, messageId, std::move(object));
             }
         );

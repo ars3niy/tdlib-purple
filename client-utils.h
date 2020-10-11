@@ -26,9 +26,9 @@ void                updateSupergroupChat(TdAccountData &account, SupergroupId gr
 void                removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat);
 std::string         makeBasicDisplayName(const td::td_api::user &user);
 std::string         getIncomingGroupchatSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
-                                        TdAccountData &account);
+                                                         const TdAccountData &account);
 std::string         getForwardSource(const td::td_api::messageForwardInfo &forwardInfo,
-                                     TdAccountData &accountData);
+                                     const TdAccountData &accountData);
 void                getNamesFromAlias(const char *alias, std::string &firstName, std::string &lastName);
 std::vector<PurpleChat *> findChatsByJoinString(const std::string &inviteLink);
 std::vector<PurpleChat *> findChatsByNewGroup(const char *name, int type);

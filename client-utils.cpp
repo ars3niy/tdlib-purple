@@ -414,7 +414,7 @@ std::string makeBasicDisplayName(const td::td_api::user &user)
 }
 
 std::string getIncomingGroupchatSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
-                                                 TdAccountData &account)
+                                                 const TdAccountData &account)
 {
     if (!message.is_outgoing_ && (getBasicGroupId(chat).valid() || getSupergroupId(chat).valid())) {
         UserId senderId = getSenderUserId(message);
@@ -443,7 +443,7 @@ std::string getIncomingGroupchatSenderPurpleName(const td::td_api::chat &chat, c
 }
 
 std::string getForwardSource(const td::td_api::messageForwardInfo &forwardInfo,
-                             TdAccountData &account)
+                             const TdAccountData &account)
 {
     if (!forwardInfo.origin_)
         return "";

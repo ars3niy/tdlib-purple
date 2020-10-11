@@ -281,9 +281,14 @@ const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td::td_api
     return selectedSize ? selectedSize->photo_.get() : nullptr;
 }
 
-void makeFullMessage(td::td_api::object_ptr<td::td_api::message> message, IncomingMessage &fullMessage,
-                     const TdAccountData &account)
+void makeFullMessage(const td::td_api::chat &chat, td::td_api::object_ptr<td::td_api::message> message,
+                     IncomingMessage &fullMessage, const TdAccountData &account)
 {
+    if (!message) {
+        fullMessage.message = nullptr;
+        return;
+    }
+
     fullMessage.repliedMessage = nullptr;
     fullMessage.selectedPhotoSizeId = 0;
     fullMessage.repliedMessageFailed = false;
@@ -293,13 +298,25 @@ void makeFullMessage(td::td_api::object_ptr<td::td_api::message> message, Incomi
     fullMessage.standardDownloadConfigured = (strcmp(option, AccountOptions::DownloadBehaviourHyperlink) != 0);
     fullMessage.inlineFileSizeLimit = getAutoDownloadLimitKb(account.purpleAccount);
 
+    TgMessageInfo &messageInfo = fullMessage.messageInfo;
+    messageInfo.type             = TgMessageInfo::Type::Other;
+    messageInfo.incomingGroupchatSender = getIncomingGroupchatSenderPurpleName(chat, *message, account);
+    messageInfo.timestamp        = message->date_;
+    messageInfo.outgoing         = message->is_outgoing_;
+    messageInfo.sentLocally      = (message->sending_state_ != nullptr);
+    messageInfo.repliedMessageId = getReplyMessageId(*message);
+
+    if (message->forward_info_)
+        messageInfo.forwardedFrom = getForwardSource(*message->forward_info_, account);
+
     if (message && message->content_) {
         if (message->content_->get_id() == td::td_api::messagePhoto::ID) {
             const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message->content_);
             const td::td_api::file *file = selectPhotoSize(account.purpleAccount, photo);
             if (file)
                 fullMessage.selectedPhotoSizeId = file->id_;
-        }
+        } else if (message->content_->get_id() == td::td_api::messageSticker::ID)
+            messageInfo.type = TgMessageInfo::Type::Sticker;
     }
 
     fullMessage.message = std::move(message);

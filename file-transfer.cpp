@@ -457,10 +457,10 @@ static void startStandardDownload(PurpleXfer *xfer)
                                                           [account=data->account](uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object) {
                                                               standardDownloadResponse(account, requestId, std::move(object));
                                                           });
-        TgMessageInfo message;
+        TgMessageInfo messageInfo;
         std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId,
                                                         ChatId::invalid,
-                                                        message, fileId, 0, "", nullptr,
+                                                        messageInfo, fileId, 0, "", nullptr,
                                                         nullptr);
         data->account->addPendingRequest<DownloadRequest>(requestId, std::move(request));
         // Start immediately, because standardDownloadResponse will call purple_xfer_write_file, which
