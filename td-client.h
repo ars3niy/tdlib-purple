@@ -145,15 +145,6 @@ private:
                                      TgMessageInfo &message);
     static void startInlineDownload(void *user_data);
     void       inlineDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
-    void       showDownloadedImage(const td::td_api::chat &chat, TgMessageInfo &message,
-                                   const std::string &filePath, const char *caption);
-    void       showDownloadedFileInline(ChatId chatId, TgMessageInfo &message,
-                                        const std::string &filePath, const char *caption,
-                                        const std::string &fileDescription,
-                                        td::td_api::object_ptr<td::td_api::file> thumbnail);
-    void       showDownloadedSticker(const td::td_api::chat &chat, TgMessageInfo &message,
-                                     const std::string &filePath, const std::string &fileDescription,
-                                     td::td_api::object_ptr<td::td_api::file> thumbnail);
     void       showConvertedAnimation(AccountThread *arg);
     void       sendMessageCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       uploadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);

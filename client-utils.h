@@ -62,19 +62,19 @@ public:
     static void setSingleThread();
     static bool isSingleThread();
 
-    AccountThread(PurpleAccount *purpleAccount, Callback callback);
+    AccountThread(PurpleAccount *purpleAccount);
     virtual ~AccountThread() {}
     void startThread();
 private:
     std::thread m_thread;
     std::string m_accountUserName;
     std::string m_accountProtocolId;
-    Callback    m_callback;
 
     void            threadFunc();
     static gboolean mainThreadCallback(gpointer data);
 protected:
     virtual void run() = 0;
+    virtual void callback(PurpleTdClient *tdClient) = 0;
 };
 
 #endif

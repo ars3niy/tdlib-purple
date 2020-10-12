@@ -322,3 +322,16 @@ void StickerConversionThread::run()
 }
 
 #endif
+
+StickerConversionThread::Callback StickerConversionThread::g_callback = nullptr;
+
+void StickerConversionThread::setCallback(AccountThread::Callback callback)
+{
+    g_callback = callback;
+}
+
+void StickerConversionThread::callback(PurpleTdClient* tdClient)
+{
+    if (g_callback)
+        (tdClient->*g_callback)(this);
+}

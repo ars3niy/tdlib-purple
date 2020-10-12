@@ -144,10 +144,6 @@ struct TgMessageInfo {
 };
 
 class PurpleTdClient;
-using FileDownloadCb = void (PurpleTdClient::*)(ChatId chatId, TgMessageInfo &message,
-                                                const std::string &filePath, const char *caption,
-                                                const std::string &fileDescription,
-                                                td::td_api::object_ptr<td::td_api::file> thumbnail);
 
 // Used for matching completed downloads to chats they belong to, and for starting PurpleXfer for
 // time-consuming downloads
@@ -165,15 +161,14 @@ public:
     int            tempFd = -1;
     std::string    tempFileName;
     td::td_api::object_ptr<td::td_api::file> thumbnail;
-    FileDownloadCb callback;
 
     // Could not pass object_ptr through variadic funciton :(
     DownloadRequest(uint64_t requestId, ChatId chatId, TgMessageInfo &message,
                     int32_t fileId, int32_t fileSize, const std::string &fileDescription,
-                    td::td_api::file *thumbnail, FileDownloadCb callback)
+                    td::td_api::file *thumbnail)
     : PendingRequest(requestId), chatId(chatId), fileId(fileId),
       fileSize(fileSize), downloadedSize(0), fileDescription(fileDescription),
-      thumbnail(thumbnail), callback(callback)
+      thumbnail(thumbnail)
     {
         // If download is started while the message is in PendingMessageQueue, repliedMessage will
         // be on IncomingMessage, and one here in TgMessageInfo will be NULL. In this case,

@@ -842,11 +842,10 @@ void populateGroupChatList(PurpleRoomlist *roomlist, const std::vector<const td:
     purple_roomlist_set_in_progress(roomlist, FALSE);
 }
 
-AccountThread::AccountThread(PurpleAccount* purpleAccount, AccountThread::Callback callback)
+AccountThread::AccountThread(PurpleAccount* purpleAccount)
 {
     m_accountUserName   = purple_account_get_username(purpleAccount);
     m_accountProtocolId = purple_account_get_protocol_id(purpleAccount);
-    m_callback          = callback;
 }
 
 void AccountThread::threadFunc()
@@ -888,7 +887,7 @@ gboolean AccountThread::mainThreadCallback(gpointer data)
         self->m_thread.join();
 
     if (tdClient)
-        (tdClient->*(self->m_callback))(self);
+        self->callback(tdClient);
 
     return FALSE; // this idle callback will not be called again
 }

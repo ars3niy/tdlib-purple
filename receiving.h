@@ -20,6 +20,11 @@ void showChatNotification(TdAccountData &account, const td::td_api::chat &chat,
 void showGenericFileInline(const td::td_api::chat &chat, const TgMessageInfo &message,
                            const std::string &filePath, const std::string &fileDescription,
                            TdAccountData &account);
+void showDownloadedFileInline(ChatId chatId, TgMessageInfo &message,
+                              const std::string &filePath, const char *caption,
+                              const std::string &fileDescription,
+                              td::td_api::object_ptr<td::td_api::file> thumbnail,
+                              TdTransceiver &transceiver, TdAccountData &account);
 
 struct FileInfo {
     const td::td_api::file *file;

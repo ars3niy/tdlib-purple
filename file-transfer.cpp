@@ -2,6 +2,7 @@
 #include "config.h"
 #include "client-utils.h"
 #include "format.h"
+#include "receiving.h"
 #include <unistd.h>
 
 enum {
@@ -149,7 +150,7 @@ static void cancelDownload(PurpleXfer *xfer)
 
 static void inlineDownloadResponse(uint64_t requestId,
                                    td::td_api::object_ptr<td::td_api::Object> object,
-                                   PurpleTdClient *tdClient, TdAccountData &account)
+                                   TdTransceiver &transceiver, TdAccountData &account)
 {
     std::unique_ptr<DownloadRequest> request = account.getPendingRequest<DownloadRequest>(requestId);
     std::string                      path    = getDownloadPath(object.get());
@@ -157,15 +158,15 @@ static void inlineDownloadResponse(uint64_t requestId,
         finishInlineDownloadProgress(*request, account);
 
         if (!path.empty())
-            (tdClient->*(request->callback))(request->chatId, request->message, path, NULL,
-                                             request->fileDescription, std::move(request->thumbnail));
+            showDownloadedFileInline(request->chatId, request->message, path, NULL,
+                                    request->fileDescription, std::move(request->thumbnail),
+                                    transceiver, account);
     }
 }
 
 void downloadFileInline(int32_t fileId, ChatId chatId, TgMessageInfo &message,
                         const std::string &fileDescription,
                         td::td_api::object_ptr<td::td_api::file> thumbnail,
-                        FileDownloadCb callback, PurpleTdClient *tdClient,
                         TdTransceiver &transceiver, TdAccountData &account)
 {
     td::td_api::object_ptr<td::td_api::downloadFile> downloadReq =
@@ -178,12 +179,11 @@ void downloadFileInline(int32_t fileId, ChatId chatId, TgMessageInfo &message,
 
     uint64_t requestId = transceiver.sendQuery(
         std::move(downloadReq),
-        [tdClient, &account](uint64_t reqId, td::td_api::object_ptr<td::td_api::Object> object) {
-            inlineDownloadResponse(reqId, std::move(object), tdClient, account);
+        [&transceiver, &account](uint64_t reqId, td::td_api::object_ptr<td::td_api::Object> object) {
+            inlineDownloadResponse(reqId, std::move(object), transceiver, account);
         });
     std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, chatId,
-                                               message, fileId, 0, fileDescription, thumbnail.release(),
-                                               callback);
+                                               message, fileId, 0, fileDescription, thumbnail.release());
 
     account.addPendingRequest<DownloadRequest>(requestId, std::move(request));
     transceiver.setQueryTimer(requestId,
@@ -461,8 +461,7 @@ static void startStandardDownload(PurpleXfer *xfer)
         TgMessageInfo messageInfo;
         std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId,
                                                         ChatId::invalid,
-                                                        messageInfo, fileId, 0, "", nullptr,
-                                                        nullptr);
+                                                        messageInfo, fileId, 0, "", nullptr);
         data->account->addPendingRequest<DownloadRequest>(requestId, std::move(request));
         // Start immediately, because standardDownloadResponse will call purple_xfer_write_file, which
         // will fail if purple_xfer_start hasn't been called

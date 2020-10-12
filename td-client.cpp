@@ -3,10 +3,11 @@
 #include "config.h"
 #include "format.h"
 #include "receiving.h"
-#include "sticker.h"
 #include "file-transfer.h"
 #include "call.h"
 #include "secret-chat.h"
+#include "sticker.h"
+#include "receiving.h"
 #include <unistd.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -21,6 +22,7 @@ PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBac
 :   m_transceiver(this, acct, &PurpleTdClient::processUpdate, testBackend),
     m_data(acct)
 {
+    StickerConversionThread::setCallback(&PurpleTdClient::showConvertedAnimation);
     m_account = acct;
     setPurpleConnectionInProgress();
 }
@@ -911,7 +913,8 @@ void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo 
     if (!notice.empty())
         notice = makeNoticeWithSender(chat, message, notice.c_str(), m_account);
 
-    // For photos caption will be shown after the image anyway. For all other downloads caption will
+    // If notice is empty it means file is already downloaded.
+    // For photos caption will be shown after the image. For all other downloads caption will
     // be ignored from now on, this is the only chance to show it.
     if (!notice.empty() || (message.type != TgMessageInfo::Type::Photo))
         showMessageText(m_data, chat, message, caption, !notice.empty() ? notice.c_str() : nullptr);
@@ -919,12 +922,12 @@ void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo 
     if (autoDownload || askDownload) {
         if (file.local_ && file.local_->is_downloading_completed_)
             showDownloadedFileInline(getId(chat), message, file.local_->path_, caption, fileDesc,
-                                      std::move(thumbnail));
+                                      std::move(thumbnail), m_transceiver, m_data);
         else if (autoDownload) {
             purple_debug_misc(config::pluginId, "Downloading %s (file id %d)\n", fileDesc.c_str(),
                               (int)file.id_);
             downloadFileInline(file.id_, getId(chat), message, fileDesc, std::move(thumbnail),
-                               &PurpleTdClient::showDownloadedFileInline, this, m_transceiver, m_data);
+                               m_transceiver, m_data);
         } else if (askDownload) {
             std::string sender = getSenderDisplayName(chat, message, m_account);
             requestInlineDownload(sender.c_str(), file, fileDesc, chat, message);
@@ -960,7 +963,7 @@ void PurpleTdClient::startInlineDownload(void *user_data)
 {
     std::unique_ptr<InlineDownloadInfo> info(static_cast<InlineDownloadInfo *>(user_data));
     downloadFileInline(info->fileId, info->chatId, info->message, info->fileDescription,
-                       nullptr, &PurpleTdClient::showDownloadedFileInline, info->tdClient, info->tdClient->m_transceiver,
+                       nullptr, info->tdClient->m_transceiver,
                        info->tdClient->m_data);
 }
 
@@ -1002,34 +1005,6 @@ void PurpleTdClient::requestInlineDownload(const char *sender, const td::td_api:
                           _("_No"), ignoreInlineDownload);
 }
 
-void PurpleTdClient::showDownloadedImage(const td::td_api::chat &chat, TgMessageInfo &message,
-                                         const std::string &filePath, const char *caption)
-{
-    std::string  text;
-    std::string  notice;
-    gchar       *data   = NULL;
-    size_t       len    = 0;
-
-    if (g_file_get_contents (filePath.c_str(), &data, &len, NULL)) {
-        int id = purple_imgstore_add_with_id (data, len, NULL);
-        text = makeInlineImageText(id);
-    } else if (filePath.find('"') == std::string::npos)
-        text = "<img src=\"file://" + filePath + "\">";
-    else {
-        // Unlikely error, not worth translating
-        notice = makeNoticeWithSender(chat, message, "Cannot show photo: file path contains quotes", m_account);
-    }
-
-    if (caption && *caption) {
-        if (!text.empty())
-            text += "\n";
-        text += caption;
-    }
-
-    showMessageText(m_data, chat, message, text.empty() ? NULL : text.c_str(),
-                    notice.empty() ? NULL : notice.c_str(), PURPLE_MESSAGE_IMAGES);
-}
-
 void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo &message,
                                      const td::td_api::file* file,
                                      const std::string &caption,
@@ -1069,49 +1044,6 @@ void PurpleTdClient::showStickerMessage(const td::td_api::chat &chat, TgMessageI
     }
 }
 
-static bool isTgs(const std::string &path)
-{
-    return (path.size() >= 4) && !strcmp(path.c_str() + path.size() - 4, ".tgs");
-}
-
-void PurpleTdClient::showDownloadedSticker(const td::td_api::chat &chat, TgMessageInfo &message,
-                                           const std::string &filePath,
-                                           const std::string &fileDescription,
-                                           td::td_api::object_ptr<td::td_api::file> thumbnail)
-{
-#ifndef NoLottie
-    bool convertAnimated = !message.outgoing &&
-                           purple_account_get_bool(m_account, AccountOptions::AnimatedStickers,
-                                                   AccountOptions::AnimatedStickersDefault);
-#else
-    bool convertAnimated = false;
-#endif
-    if (isTgs(filePath)) {
-        if (convertAnimated) {
-            // TRANSLATOR: In-chat status update
-            std::string notice = makeNoticeWithSender(chat, message, _("Converting sticker"), m_account);
-            showMessageText(m_data, chat, message, NULL, notice.c_str());
-            StickerConversionThread *thread;
-            thread = new StickerConversionThread(m_account, &PurpleTdClient::showConvertedAnimation,
-                                                 filePath, getId(chat), std::move(message));
-            thread->startThread();
-        } else if (thumbnail) {
-            // Avoid message like "Downloading sticker thumbnail...
-            // Also ignore size limits, but only determined testers and crazy people would notice.
-            if (thumbnail->local_ && thumbnail->local_->is_downloading_completed_)
-                showDownloadedSticker(chat, message, thumbnail->local_->path_,
-                                      fileDescription, nullptr);
-            else
-                downloadFileInline(thumbnail->id_, getId(chat), message, fileDescription, nullptr,
-                                   &PurpleTdClient::showDownloadedFileInline, this, m_transceiver, m_data);
-        } else {
-            showGenericFileInline(chat, message, filePath, fileDescription, m_data);
-        }
-    } else {
-        showWebpSticker(chat, message, filePath, fileDescription, m_data);
-    }
-}
-
 void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
 {
     std::unique_ptr<AccountThread> baseThread(arg);
@@ -1148,27 +1080,6 @@ void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
                                         {thread->inputFileName, errorMessage});
         errorMessage = makeNoticeWithSender(*chat, thread->message, errorMessage.c_str(), m_account);
         showMessageText(m_data, *chat, thread->message, NULL, errorMessage.c_str());
-    }
-}
-
-void PurpleTdClient::showDownloadedFileInline(ChatId chatId, TgMessageInfo &message,
-                                        const std::string &filePath, const char *caption,
-                                        const std::string &fileDescription,
-                                        td::td_api::object_ptr<td::td_api::file> thumbnail)
-{
-    const td::td_api::chat *chat = m_data.getChat(chatId);
-    if (!chat) return;
-
-    switch (message.type) {
-    case TgMessageInfo::Type::Photo:
-        showDownloadedImage(*chat, message, filePath, caption);
-        break;
-    case TgMessageInfo::Type::Sticker:
-        showDownloadedSticker(*chat, message, filePath, fileDescription, std::move(thumbnail));
-        break;
-    case TgMessageInfo::Type::Other:
-        showGenericFileInline(*chat, message, filePath, fileDescription, m_data);
-        break;
     }
 }
 
