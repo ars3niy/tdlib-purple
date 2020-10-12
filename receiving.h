@@ -25,6 +25,8 @@ void showDownloadedFileInline(ChatId chatId, TgMessageInfo &message,
                               const std::string &fileDescription,
                               td::td_api::object_ptr<td::td_api::file> thumbnail,
                               TdTransceiver &transceiver, TdAccountData &account);
+bool isStickerAnimated(const std::string &filePath);
+bool shouldConvertAnimatedSticker(const TgMessageInfo &message, const PurpleAccount *purpleAccount);
 void showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage,
                  TdTransceiver &transceiver, TdAccountData &account);
 void showMessages(std::vector<IncomingMessage>& messages, TdTransceiver &transceiver,

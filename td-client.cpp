@@ -31,6 +31,12 @@ PurpleTdClient::~PurpleTdClient()
 {
     std::vector<IncomingMessage> messages;
     m_data.pendingMessages.flush(messages);
+
+    // This avoids re-sending download request when displaying message. Doing this for messages
+    // that don't involve inline downloads is fine.
+    for (IncomingMessage &fullMessage: messages)
+        fullMessage.inlineDownloadTimeout = true;
+
     showMessages(messages, m_transceiver, m_data);
 }
 

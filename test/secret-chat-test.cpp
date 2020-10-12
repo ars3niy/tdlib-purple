@@ -278,21 +278,20 @@ TEST_F(SecretChatTest, Download_Inline_Progress)
         ),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
-    prpl.verifyEvents(
-        ServGotImEvent(connection, secretChatBuddyName, "document", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(
-            secretChatBuddyName, secretChatBuddyName,
-            secretChatTitle + ": Downloading doc.file.name [mime/type]",
-            PURPLE_MESSAGE_SYSTEM, date
-        )
-    );
+    prpl.verifyNoEvents();
 
     tgl.reply(make_object<ok>());
 
     tgl.runTimeouts();
     std::string tempFileName;
     prpl.verifyEvents(
-        XferAcceptedEvent(secretChatBuddyName, &tempFileName)
+        XferAcceptedEvent(secretChatBuddyName, &tempFileName),
+        ServGotImEvent(connection, secretChatBuddyName, "document", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(
+            secretChatBuddyName, secretChatBuddyName,
+            secretChatTitle + ": Downloading doc.file.name [mime/type]",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
     );
 
     tgl.update(make_object<updateFile>(make_object<file>(

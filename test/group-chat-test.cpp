@@ -158,14 +158,7 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
         make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
-    prpl.verifyEvents(
-        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
-        ServGotChatEvent(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0], "photo",
-                         PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(groupChatPurpleName, NotificationWho,
-                               userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
-                               PURPLE_MESSAGE_SYSTEM, date)
-    );
+    prpl.verifyNoEvents();
 
     tgl.reply(make_object<ok>());
     tgl.reply(make_object<file>(
@@ -173,10 +166,15 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     ));
-    prpl.verifyEvents(ServGotChatEvent(
-        connection, 1, userFirstNames[0] + " " + userLastNames[0], "<img src=\"file:///path\">",
-        (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES), date
-    ));
+    prpl.verifyEvents(
+        ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
+        ServGotChatEvent(
+            connection, 1, userFirstNames[0] + " " + userLastNames[0],
+            "<img src=\"file:///path\">\n"
+            "photo",
+            (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES), date
+        )
+    );
 }
 
 TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList_RemoveGroupMemberFromBuddies)

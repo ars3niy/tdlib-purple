@@ -391,14 +391,7 @@ TEST_F(PrivateChatTest, Document)
         ),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
-    prpl.verifyEvents(
-        ServGotImEvent(connection, purpleUserName(0), "document", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(
-            purpleUserName(0), purpleUserName(0),
-            userFirstNames[0] + " " + userLastNames[0] + ": Downloading doc.file.name [mime/type]",
-            PURPLE_MESSAGE_SYSTEM, date
-        )
-    );
+    prpl.verifyNoEvents();
 
     tgl.reply(make_object<ok>());
     tgl.reply(make_object<file>(
@@ -406,13 +399,14 @@ TEST_F(PrivateChatTest, Document)
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     ));
-    prpl.verifyEvents(ServGotImEvent(
-        connection,
-        purpleUserName(0),
-        "<a href=\"file:///path\">doc.file.name [mime/type]</a>",
-        PURPLE_MESSAGE_RECV,
-        date
-    ));
+    prpl.verifyEvents(
+        ServGotImEvent(connection, purpleUserName(0), "document", PURPLE_MESSAGE_RECV, date),
+        ServGotImEvent(
+            connection, purpleUserName(0),
+            "<a href=\"file:///path\">doc.file.name [mime/type]</a>",
+            PURPLE_MESSAGE_RECV, date
+        )
+    );
 }
 
 TEST_F(PrivateChatTest, Video)
@@ -449,14 +443,7 @@ TEST_F(PrivateChatTest, Video)
         ),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
-    prpl.verifyEvents(
-        ServGotImEvent(connection, purpleUserName(0), "video", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(
-            purpleUserName(0), purpleUserName(0),
-            userFirstNames[0] + " " + userLastNames[0] + ": Downloading video.avi [video/whatever]",
-            PURPLE_MESSAGE_SYSTEM, date
-        )
-    );
+    prpl.verifyNoEvents();
 
     tgl.reply(make_object<ok>());
     tgl.reply(make_object<file>(
@@ -464,13 +451,16 @@ TEST_F(PrivateChatTest, Video)
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     ));
-    prpl.verifyEvents(ServGotImEvent(
-        connection,
-        purpleUserName(0),
-        "<a href=\"file:///path\">video.avi [video/whatever]</a>",
-        PURPLE_MESSAGE_RECV,
-        date
-    ));
+    prpl.verifyEvents(
+        ServGotImEvent(connection, purpleUserName(0), "video", PURPLE_MESSAGE_RECV, date),
+        ServGotImEvent(
+            connection,
+            purpleUserName(0),
+            "<a href=\"file:///path\">video.avi [video/whatever]</a>",
+            PURPLE_MESSAGE_RECV,
+            date
+        )
+    );
 }
 
 TEST_F(PrivateChatTest, Audio)
@@ -507,14 +497,7 @@ TEST_F(PrivateChatTest, Audio)
         ),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
-    prpl.verifyEvents(
-        ServGotImEvent(connection, purpleUserName(0), "audio", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(
-            purpleUserName(0), purpleUserName(0),
-            userFirstNames[0] + " " + userLastNames[0] + ": Downloading symphony.ogg [audio/whatever]",
-            PURPLE_MESSAGE_SYSTEM, date
-        )
-    );
+    prpl.verifyNoEvents();
 
     tgl.reply(make_object<ok>());
     tgl.reply(make_object<file>(
@@ -522,13 +505,16 @@ TEST_F(PrivateChatTest, Audio)
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     ));
-    prpl.verifyEvents(ServGotImEvent(
-        connection,
-        purpleUserName(0),
-        "<a href=\"file:///path\">symphony.ogg [audio/whatever]</a>",
-        PURPLE_MESSAGE_RECV,
-        date
-    ));
+    prpl.verifyEvents(
+        ServGotImEvent(connection, purpleUserName(0), "audio", PURPLE_MESSAGE_RECV, date),
+        ServGotImEvent(
+            connection,
+            purpleUserName(0),
+            "<a href=\"file:///path\">symphony.ogg [audio/whatever]</a>",
+            PURPLE_MESSAGE_RECV,
+            date
+        )
+    );
 }
 
 TEST_F(PrivateChatTest, Sticker_AnimatedDisabled)
@@ -678,14 +664,7 @@ TEST_F(PrivateChatTest, Photo)
         make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
-    prpl.verifyEvents(
-        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(
-            purpleUserName(0), purpleUserName(0),
-            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
-            PURPLE_MESSAGE_SYSTEM, date
-        )
-    );
+    prpl.verifyNoEvents();
 
     tgl.reply(make_object<ok>()); // reply to viewMessages
 
@@ -708,11 +687,10 @@ TEST_F(PrivateChatTest, Photo)
     ));
 
     prpl.verifyEvents(ServGotImEvent(
-        connection,
-        purpleUserName(0),
-        "<img src=\"file:///path\">",
-        (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
-        date
+        connection, purpleUserName(0),
+        "<img src=\"file:///path\">\n"
+        "photo",
+        (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES), date
     ));
 
     tgl.update(make_object<updateFile>(make_object<file>(

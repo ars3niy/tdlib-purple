@@ -121,6 +121,7 @@ struct TgMessageInfo {
         Sticker,
         Other
     };
+    MessageId   id;
     Type        type;
     std::string incomingGroupchatSender;
     time_t      timestamp;
@@ -132,6 +133,7 @@ struct TgMessageInfo {
 
     void assign(const TgMessageInfo &other)
     {
+        id = other.id;
         type = other.type;
         incomingGroupchatSender = other.incomingGroupchatSender;
         timestamp = other.timestamp;
@@ -221,7 +223,7 @@ public:
 struct IncomingMessage {
     td::td_api::object_ptr<td::td_api::message> message;
     td::td_api::object_ptr<td::td_api::message> repliedMessage;
-    td::td_api::object_ptr<td::td_api::file>    downloadedFile;
+    std::string inlineDownloadedFilePath;
 
     // This doesn't have to be a separate struct, it exists for historical reasons.
     // Could be refactored.
@@ -231,6 +233,8 @@ struct IncomingMessage {
     unsigned inlineFileSizeLimit;
     bool     standardDownloadConfigured;
     bool     repliedMessageFailed;
+    bool     inlineDownloadComplete;
+    bool     inlineDownloadTimeout;
 };
 
 class PendingMessageQueue {

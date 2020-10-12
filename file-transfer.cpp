@@ -177,23 +177,49 @@ static void inlineDownloadResponse(uint64_t requestId,
                                    TdTransceiver &transceiver, TdAccountData &account)
 {
     std::unique_ptr<DownloadRequest> request = account.getPendingRequest<DownloadRequest>(requestId);
-    std::string                      path    = getDownloadPath(object.get());
-    if (request) {
-        finishInlineDownloadProgress(*request, account);
 
-        if (!path.empty())
-            showDownloadedFileInline(request->chatId, request->message, path, NULL,
-                                    request->fileDescription, std::move(request->thumbnail),
-                                    transceiver, account);
+    if (request) {
+        std::string path = getDownloadPath(object.get());
+        finishInlineDownloadProgress(*request, account);
+        IncomingMessage *pendingMessage = account.pendingMessages.findPendingMessage(request->chatId, request->message.id);
+
+        if (pendingMessage) {
+            // Quick download response while message still in PendingMessageQueue
+            const td::td_api::file *replacementFile = nullptr;
+
+            if (pendingMessage->message && pendingMessage->message->content_ &&
+                (pendingMessage->message->content_->get_id() == td::td_api::messageSticker::ID) &&
+                isStickerAnimated(path) &&
+                !shouldConvertAnimatedSticker(pendingMessage->messageInfo, account.purpleAccount))
+            {
+                td::td_api::messageSticker &sticker = static_cast<td::td_api::messageSticker &>(
+                    *pendingMessage->message->content_);
+                if (sticker.sticker_ && sticker.sticker_->thumbnail_)
+                    replacementFile = sticker.sticker_->thumbnail_->photo_.get();
+            }
+
+            if (replacementFile)
+                downloadFileInline(replacementFile->id_, request->chatId, request->message,
+                                   request->fileDescription, nullptr, transceiver, account);
+            else {
+                pendingMessage->inlineDownloadComplete = true;
+                pendingMessage->inlineDownloadedFilePath = path;
+                checkMessageReady(pendingMessage, transceiver, account);
+                pendingMessage = nullptr;
+            }
+        } else {
+            // Message no longer in PendingMessageQueue
+            if (!path.empty())
+                showDownloadedFileInline(request->chatId, request->message, path, NULL,
+                                         request->fileDescription, std::move(request->thumbnail),
+                                         transceiver, account);
+        }
     }
 }
 
-static void startInlineDownloadProgress(uint64_t requestId, TdTransceiver &transceiver, TdAccountData &account)
+static void startInlineDownloadProgress(DownloadRequest &request, TdTransceiver &transceiver,
+                                        TdAccountData &account)
 {
-    DownloadRequest *pRequest = account.findPendingRequest<DownloadRequest>(requestId);
-    if (!pRequest) return;
-    DownloadRequest &request = *pRequest;
-
     purple_debug_misc(config::pluginId, "Tracking download progress of file id %d: downloaded %d/%d\n",
         (int)request.fileId, (int)request.downloadedSize, (int)request.fileSize);
 
@@ -237,6 +263,26 @@ static void startInlineDownloadProgress(uint64_t requestId, TdTransceiver &trans
     g_free(tempFileName);
 }
 
+static void handleLongInlineDownload(uint64_t requestId, TdTransceiver &transceiver,
+                                     TdAccountData &account)
+{
+    DownloadRequest *pRequest = account.findPendingRequest<DownloadRequest>(requestId);
+    if (pRequest) {
+        startInlineDownloadProgress(*pRequest, transceiver, account);
+
+        IncomingMessage *pendingMessage = account.pendingMessages.findPendingMessage(pRequest->chatId, pRequest->message.id);
+        if (pendingMessage) {
+            // If the message is a reply but fetching reply source hasn't produced a response yet
+            // at this point, a successful such response may technically yet come in which case we
+            // will lose the reply source. But this is extremely unlikely, and not even a problem.
+            // TODO: fail pRequest->message.repliedMessage = std::move(pendingMessage->repliedMessage);
+            pendingMessage->inlineDownloadTimeout = true;
+            checkMessageReady(pendingMessage, transceiver, account);
+            pendingMessage = nullptr;
+        }
+    }
+}
+
 void downloadFileInline(int32_t fileId, ChatId chatId, TgMessageInfo &message,
                         const std::string &fileDescription,
                         td::td_api::object_ptr<td::td_api::file> thumbnail,
@@ -261,7 +307,7 @@ void downloadFileInline(int32_t fileId, ChatId chatId, TgMessageInfo &message,
     account.addPendingRequest<DownloadRequest>(requestId, std::move(request));
     transceiver.setQueryTimer(requestId,
                               [&transceiver, &account](uint64_t reqId, td::td_api::object_ptr<td::td_api::Object>) {
-                                  startInlineDownloadProgress(reqId, transceiver, account);
+                                  handleLongInlineDownload(reqId, transceiver, account);
                               }, 1, false);
 }
 
@@ -314,18 +360,18 @@ void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &tra
 std::string getDownloadPath(const td::td_api::Object *downloadResponse)
 {
     if (!downloadResponse)
-        purple_debug_misc(config::pluginId, "No response after downloading file\n");
+        purple_debug_warning(config::pluginId, "No response after downloading file\n");
     else if (downloadResponse->get_id() == td::td_api::file::ID) {
         const td::td_api::file &file = static_cast<const td::td_api::file &>(*downloadResponse);
         if (!file.local_)
-            purple_debug_misc(config::pluginId, "No local file info after downloading\n");
+            purple_debug_warning(config::pluginId, "No local file info after downloading\n");
         else if (!file.local_->is_downloading_completed_)
-            purple_debug_misc(config::pluginId, "File not completely downloaded\n");
+            purple_debug_warning(config::pluginId, "File not completely downloaded\n");
         else
             return file.local_->path_;
     } else
-        purple_debug_misc(config::pluginId, "Unexpected response to downloading file: id %d\n",
-                          (int)downloadResponse->get_id());
+        purple_debug_warning(config::pluginId, "Unexpected response to downloading file: id %d\n",
+                             (int)downloadResponse->get_id());
 
     return "";
 }

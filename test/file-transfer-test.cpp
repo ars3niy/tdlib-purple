@@ -223,15 +223,7 @@ TEST_F(FileTransferTest, PhotoWithoutCaption)
         make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
-
-    prpl.verifyEvents(
-        NewConversationEvent(PURPLE_CONV_TYPE_IM, account, purpleUserName(0)),
-        ConversationWriteEvent(
-            purpleUserName(0), purpleUserName(0),
-            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
-            PURPLE_MESSAGE_SYSTEM, date
-        )
-    );
+    prpl.verifyNoEvents();
 
     tgl.reply(make_object<ok>()); // reply to viewMessages
     tgl.reply(make_object<file>(
@@ -476,20 +468,19 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_StuckAtStart)
         make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
+    prpl.verifyNoEvents();
+
+    tgl.reply(make_object<ok>()); // reply to viewMessages
+    tgl.runTimeouts();
+    std::string tempFileName;
     prpl.verifyEvents(
+        XferAcceptedEvent(purpleUserName(0), &tempFileName),
         ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
             purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
             PURPLE_MESSAGE_SYSTEM, date
         )
-    );
-
-    tgl.reply(make_object<ok>()); // reply to viewMessages
-    tgl.runTimeouts();
-    std::string tempFileName;
-    prpl.verifyEvents(
-        XferAcceptedEvent(purpleUserName(0), &tempFileName)
     );
 
     tgl.update(make_object<updateFile>(make_object<file>(
@@ -568,14 +559,7 @@ TEST_F(FileTransferTest, Photo_DownloadProgress)
         make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
-    prpl.verifyEvents(
-        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(
-            purpleUserName(0), purpleUserName(0),
-            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
-            PURPLE_MESSAGE_SYSTEM, date
-        )
-    );
+    prpl.verifyNoEvents();
 
     tgl.reply(make_object<ok>()); // reply to viewMessages
 
@@ -589,7 +573,13 @@ TEST_F(FileTransferTest, Photo_DownloadProgress)
     std::string tempFileName;
     prpl.verifyEvents(
         XferAcceptedEvent(purpleUserName(0), &tempFileName),
-        XferStartEvent(&tempFileName)
+        XferStartEvent(&tempFileName),
+        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(
+            purpleUserName(0), purpleUserName(0),
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
     );
 
     tgl.update(make_object<updateFile>(make_object<file>(
@@ -659,20 +649,19 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_StuckAtStart_Cancel)
         make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
+    prpl.verifyNoEvents();
+
+    tgl.reply(make_object<ok>()); // reply to viewMessages
+    tgl.runTimeouts();
+    std::string tempFileName;
     prpl.verifyEvents(
+        XferAcceptedEvent(purpleUserName(0), &tempFileName),
         ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
         ConversationWriteEvent(
             purpleUserName(0), purpleUserName(0),
             userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
             PURPLE_MESSAGE_SYSTEM, date
         )
-    );
-
-    tgl.reply(make_object<ok>()); // reply to viewMessages
-    tgl.runTimeouts();
-    std::string tempFileName;
-    prpl.verifyEvents(
-        XferAcceptedEvent(purpleUserName(0), &tempFileName)
     );
 
     purple_xfer_cancel_local(prpl.getLastXfer());
@@ -720,14 +709,7 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_Cancel)
         make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
-    prpl.verifyEvents(
-        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(
-            purpleUserName(0), purpleUserName(0),
-            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
-            PURPLE_MESSAGE_SYSTEM, date
-        )
-    );
+    prpl.verifyNoEvents();
 
     tgl.reply(make_object<ok>()); // reply to viewMessages
     tgl.update(make_object<updateFile>(make_object<file>(
@@ -740,7 +722,13 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_Cancel)
     std::string tempFileName;
     prpl.verifyEvents(
         XferAcceptedEvent(purpleUserName(0), &tempFileName),
-        XferStartEvent(&tempFileName)
+        XferStartEvent(&tempFileName),
+        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(
+            purpleUserName(0), purpleUserName(0),
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
     );
 
     tgl.update(make_object<updateFile>(make_object<file>(
@@ -764,48 +752,6 @@ TEST_F(FileTransferTest, Photo_DownloadProgress_Cancel)
         make_object<localFile>("/path", true, true, false, false, 0, 6000, 6000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     )));
-}
-
-TEST_F(FileTransferTest, Photo_Download_LogoutBeforeProgress)
-{
-    const int32_t date   = 10001;
-    const int32_t fileId = 1234;
-    loginWithOneContact();
-
-    std::vector<object_ptr<photoSize>> sizes;
-    sizes.push_back(make_object<photoSize>(
-        "whatever",
-        make_object<file>(
-            fileId, 10000, 10000,
-            make_object<localFile>("", true, true, false, false, 0, 0, 0),
-            make_object<remoteFile>("beh", "bleh", false, true, 10000)
-        ),
-        640, 480
-    ));
-    tgl.update(make_object<updateNewMessage>(makeMessage(
-        1,
-        userIds[0],
-        chatIds[0],
-        false,
-        date,
-        make_object<messagePhoto>(
-            make_object<photo>(false, nullptr, std::move(sizes)),
-            make_object<formattedText>("photo", std::vector<object_ptr<textEntity>>()),
-            false
-        )
-    )));
-    tgl.verifyRequests({
-        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
-        make_object<downloadFile>(fileId, 1, 0, 0, true)
-    });
-    prpl.verifyEvents(
-        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
-        ConversationWriteEvent(
-            purpleUserName(0), purpleUserName(0),
-            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
-            PURPLE_MESSAGE_SYSTEM, date
-        )
-    );
 }
 
 TEST_F(FileTransferTest, SendFileToNonContact)
