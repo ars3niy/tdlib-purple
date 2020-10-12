@@ -25,6 +25,10 @@ void showDownloadedFileInline(ChatId chatId, TgMessageInfo &message,
                               const std::string &fileDescription,
                               td::td_api::object_ptr<td::td_api::file> thumbnail,
                               TdTransceiver &transceiver, TdAccountData &account);
+void showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage,
+                 TdTransceiver &transceiver, TdAccountData &account);
+void showMessages(std::vector<IncomingMessage>& messages, TdTransceiver &transceiver,
+                  TdAccountData &account);
 
 struct FileInfo {
     const td::td_api::file *file;
@@ -42,6 +46,8 @@ void makeFullMessage(const td::td_api::chat &chat, td::td_api::object_ptr<td::td
 bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &account);
 void fetchExtras(IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAccountData &account,
                  TdTransceiver::ResponseCb2 onFetchReply);
+void checkMessageReady(const IncomingMessage *message, TdTransceiver &transceiver,
+                       TdAccountData &account);
 
 #endif
 

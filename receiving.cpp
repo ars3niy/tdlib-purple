@@ -5,6 +5,7 @@
 #include "file-transfer.h"
 #include "sticker.h"
 #include "config.h"
+#include "call.h"
 
 std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,
                                  const char *noticeText, PurpleAccount *account)
@@ -351,6 +352,273 @@ void showDownloadedFileInline(ChatId chatId, TgMessageInfo &message,
     }
 }
 
+static void showTextMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
+                            const td::td_api::messageText &text, TdAccountData &account)
+{
+    if (text.text_) {
+        std::string displayText = getMessageText(*text.text_);
+        showMessageText(account, chat, message, displayText.c_str(), NULL);
+    }
+}
+
+struct InlineDownloadInfo {
+    int32_t         fileId;
+    ChatId          chatId;
+    TgMessageInfo   message;
+    std::string     fileDescription;
+    TdTransceiver  *transceiver;
+    TdAccountData  *account;
+};
+
+static void startInlineDownload(void *user_data)
+{
+    std::unique_ptr<InlineDownloadInfo> info(static_cast<InlineDownloadInfo *>(user_data));
+    downloadFileInline(info->fileId, info->chatId, info->message, info->fileDescription,
+                       nullptr, *info->transceiver, *info->account);
+}
+
+static void ignoreInlineDownload(InlineDownloadInfo *info)
+{
+    delete info;
+}
+
+static void requestInlineDownload(const char *sender, const td::td_api::file &file,
+                                  const std::string &fileDesc, const td::td_api::chat &chat,
+                                  TgMessageInfo &message, TdTransceiver &transceiver, TdAccountData &account)
+{
+    // TRANSLATOR: Download dialog, primary content, argument will be a username.
+    std::string question = formatMessage(_("Download file from {}?"),
+                                         getSenderDisplayName(chat, message, account.purpleAccount));
+    unsigned    size     = getFileSize(file);
+    // This dialog is used for files larger than the limit, so size should be non-zero
+    char *      sizeStr  = purple_str_size_to_units(size);
+    // TRANSLATOR: Download dialog, placeholder chat title, in the sentence "posted in a private chat".
+    std::string chatName = isPrivateChat(chat) ? _("a private chat") : chat.title_;
+    // TRANSLATOR: Download dialog, secondary content. Arguments will be file description (text), chat name (text), and a file size (text!)
+    std::string fileInfo = formatMessage(_("{0} posted in {1}, size: {2}"), {fileDesc,
+                                         chatName, std::string(sizeStr)});
+    g_free(sizeStr);
+
+    InlineDownloadInfo *info = new InlineDownloadInfo;
+    info->fileId = file.id_;
+    info->chatId = getId(chat);
+    info->message = std::move(message);
+    info->fileDescription = fileDesc;
+    info->transceiver = &transceiver;
+    info->account = &account;
+
+    // TRANSLATOR: Download dialog, title
+    purple_request_action(purple_account_get_connection(account.purpleAccount), _("Download"), question.c_str(),
+                          fileInfo.c_str(), 0, account.purpleAccount, NULL, NULL,
+                          // TRANSLATOR: Download dialog, alternative is "_No"
+                          info, 2, _("_Yes"), startInlineDownload,
+                          // TRANSLATOR: Download dialog, alternative is "_Yes"
+                          _("_No"), ignoreInlineDownload);
+}
+
+static void showFileInline(const td::td_api::chat &chat, TgMessageInfo &message,
+                           const td::td_api::file &file, const char *caption,
+                           const std::string &fileDesc,
+                           td::td_api::object_ptr<td::td_api::file> thumbnail,
+                           TdTransceiver &transceiver, TdAccountData &account)
+{
+    std::string notice;
+    bool        askDownload  = false;
+    bool        autoDownload = false;
+    unsigned    fileSize     = getFileSizeKb(file);
+
+    if (caption && (*caption == '\0'))
+        caption = NULL;
+
+    if (file.local_ && file.local_->is_downloading_completed_) {
+        autoDownload = true;
+        notice.clear();
+    } else if (isSizeWithinLimit(fileSize, getAutoDownloadLimitKb(account.purpleAccount))) {
+        if (!((message.type == TgMessageInfo::Type::Sticker) && !caption)) {
+            // TRANSLATOR: In-chat notification, appears after a colon (':'). Argument is a file *type*, not a filename.
+            notice = formatMessage(_("Downloading {}"), std::string(fileDesc));
+        }
+        autoDownload = true;
+    } else if (!ignoreBigDownloads(account.purpleAccount)) {
+        // TRANSLATOR: In-chat notification, appears after a colon (':'). Argument is a file *type*, not a filename.
+        notice = formatMessage(_("Requesting {} download"), std::string(fileDesc));
+        askDownload = true;
+    } else {
+        char *fileSizeStr = purple_str_size_to_units(fileSize); // File size above limit, so it's non-zero
+        // TRANSLATOR: In-chat notification, appears after a colon (':'). Arguments are a file *type*, not a filename; second argument is a file size with unit.
+        notice = formatMessage(_("Ignoring {0} download ({1})"), {std::string(fileDesc), std::string(fileSizeStr)});
+        g_free(fileSizeStr);
+    }
+
+    if (!notice.empty())
+        notice = makeNoticeWithSender(chat, message, notice.c_str(), account.purpleAccount);
+
+    // If notice is empty it means file is already downloaded.
+    // For photos caption will be shown after the image. For all other downloads caption will
+    // be ignored from now on, this is the only chance to show it.
+    if (!notice.empty() || (message.type != TgMessageInfo::Type::Photo))
+        showMessageText(account, chat, message, caption, !notice.empty() ? notice.c_str() : nullptr);
+
+    if (autoDownload || askDownload) {
+        if (file.local_ && file.local_->is_downloading_completed_)
+            showDownloadedFileInline(getId(chat), message, file.local_->path_, caption, fileDesc,
+                                      std::move(thumbnail), transceiver, account);
+        else if (autoDownload) {
+            purple_debug_misc(config::pluginId, "Downloading %s (file id %d)\n", fileDesc.c_str(),
+                              (int)file.id_);
+            downloadFileInline(file.id_, getId(chat), message, fileDesc, std::move(thumbnail),
+                               transceiver, account);
+        } else if (askDownload) {
+            std::string sender = getSenderDisplayName(chat, message, account.purpleAccount);
+            requestInlineDownload(sender.c_str(), file, fileDesc, chat, message, transceiver, account);
+        }
+    }
+
+}
+
+static void showPhotoMessage(const td::td_api::chat &chat, TgMessageInfo &message,
+                             const td::td_api::file *photoSize, const std::string &caption,
+                             TdTransceiver &transceiver, TdAccountData &account)
+{
+    const char *captionCstr = !caption.empty() ? caption.c_str() : nullptr;
+
+    if (photoSize) {
+        // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
+        showFileInline(chat, message, *photoSize, captionCstr, _("photo"), nullptr, transceiver, account);
+    } else {
+        // Unlikely message not worth translating
+        std::string notice = makeNoticeWithSender(chat, message, "Faulty image", account.purpleAccount);
+        showMessageText(account, chat, message, captionCstr, notice.c_str());
+    }
+}
+
+static void showFileMessage(const td::td_api::chat &chat, TgMessageInfo &message,
+                            const td::td_api::file* file,
+                            const std::string &caption,
+                            const std::string &fileDescription,
+                            const std::string &fileName,
+                            TdTransceiver &transceiver, TdAccountData &account)
+{
+    const char *captionStr = !caption.empty() ? caption.c_str() : NULL;
+    if (!file) {
+        // Unlikely message not worth translating
+        std::string notice = formatMessage("Faulty file: {}", fileDescription);
+        notice = makeNoticeWithSender(chat, message, notice.c_str(), account.purpleAccount);
+        showMessageText(account, chat, message, captionStr, notice.c_str());
+    } else {
+        const char *option = purple_account_get_string(account.purpleAccount, AccountOptions::DownloadBehaviour,
+                                                       AccountOptions::DownloadBehaviourDefault());
+        if ( !strcmp(option, AccountOptions::DownloadBehaviourHyperlink) || !chat.type_ ||
+             ((chat.type_->get_id() != td::td_api::chatTypePrivate::ID) &&
+              (chat.type_->get_id() != td::td_api::chatTypeSecret::ID)) )
+        {
+            showFileInline(chat, message, *file, captionStr, fileDescription, nullptr, transceiver, account);
+        } else
+            requestStandardDownload(getId(chat), message, fileName, *file, transceiver, account);
+    }
+}
+
+static void showStickerMessage(const td::td_api::chat &chat, TgMessageInfo &message,
+                               td::td_api::messageSticker &stickerContent, 
+                               TdTransceiver &transceiver, TdAccountData &account)
+{
+    if (!stickerContent.sticker_) return;
+    td::td_api::sticker &sticker = *stickerContent.sticker_;
+
+    if (sticker.sticker_) {
+        auto thumbnail = sticker.thumbnail_ ? std::move(sticker.thumbnail_->photo_) : nullptr;
+
+        // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
+        showFileInline(chat, message, *sticker.sticker_, NULL, _("sticker"), std::move(thumbnail),
+                       transceiver, account);
+    }
+}
+
+void showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage,
+                TdTransceiver &transceiver, TdAccountData &account)
+{
+    if (!fullMessage.message) return;
+    td::td_api::message &message = *fullMessage.message;
+
+    if (!message.content_)
+        return;
+    purple_debug_misc(config::pluginId, "Displaying message %" G_GINT64_FORMAT "\n", message.id_);
+
+    TgMessageInfo &messageInfo = fullMessage.messageInfo;
+    messageInfo.repliedMessage = std::move(fullMessage.repliedMessage);
+
+    if (message.ttl_ != 0) {
+        // TRANSLATOR: In-chat warning message
+        const char *text   = _("Received self-destructing message, not displayed due to lack of support");
+        std::string notice = makeNoticeWithSender(chat, messageInfo, text, account.purpleAccount);
+        showMessageText(account, chat, messageInfo, NULL, notice.c_str());
+        return;
+    }
+
+    FileInfo fileInfo;
+    getFileFromMessage(fullMessage, fileInfo);
+    if (fileInfo.secret) {
+        // TRANSLATOR: In-chat warning message
+        std::string notice = formatMessage("Ignoring secret file ({})", fileInfo.description);
+        notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), account.purpleAccount);
+        showMessageText(account, chat, messageInfo, !fileInfo.caption.empty() ? fileInfo.caption.c_str() : nullptr,
+                        notice.c_str());
+        return;
+    }
+
+    switch (message.content_->get_id()) {
+        case td::td_api::messageText::ID:
+            showTextMessage(chat, messageInfo, static_cast<const td::td_api::messageText &>(*message.content_),
+                            account);
+            break;
+        case td::td_api::messagePhoto::ID:
+            showPhotoMessage(chat, messageInfo, fileInfo.file, fileInfo.caption, transceiver, account);
+            break;
+        case td::td_api::messageDocument::ID:
+        case td::td_api::messageVideo::ID:
+        case td::td_api::messageAnimation::ID:
+        case td::td_api::messageAudio::ID:
+        case td::td_api::messageVoiceNote::ID:
+        case td::td_api::messageVideoNote::ID:
+            showFileMessage(chat, messageInfo, fileInfo.file, fileInfo.caption, fileInfo.description,
+                            fileInfo.name, transceiver, account);
+            break;
+        case td::td_api::messageSticker::ID:
+            showStickerMessage(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message.content_),
+                               transceiver, account);
+            break;
+        case td::td_api::messageChatChangeTitle::ID: {
+            const auto &titleChange = static_cast<const td::td_api::messageChatChangeTitle &>(*message.content_);
+            // TRANSLATOR: In-chat status update, arguments are chat names.
+            std::string notice = formatMessage(_("{0} changed group name to {1}"),
+                                               {getSenderDisplayName(chat, messageInfo, account.purpleAccount),
+                                                titleChange.title_});
+            showMessageText(account, chat, messageInfo, NULL, notice.c_str());
+            break;
+        }
+        case td::td_api::messageCall::ID:
+            showCallMessage(chat, messageInfo, static_cast<td::td_api::messageCall &>(*message.content_), account);
+            break;
+        default: {
+            // TRANSLATOR: In-chat error message, argument will be a Telegram type.
+            std::string notice = getUnsupportedMessageDescription(*message.content_);
+            notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), account.purpleAccount);
+            showMessageText(account, chat, messageInfo, NULL, notice.c_str());
+        }
+    }
+}
+
+void showMessages(std::vector<IncomingMessage>& messages, TdTransceiver &transceiver,
+                  TdAccountData &account)
+{
+    for (IncomingMessage &readyMessage: messages) {
+        if (!readyMessage.message) continue;
+        const td::td_api::chat *chat = account.getChat(getChatId(*readyMessage.message));
+        if (chat)
+            showMessage(*chat, readyMessage, transceiver, account);
+    }
+}
+
 const td::td_api::file *selectPhotoSize(PurpleAccount *account, const td::td_api::messagePhoto &photo)
 {
     unsigned                     sizeLimit        = getAutoDownloadLimitKb(account);
@@ -601,5 +869,19 @@ void fetchExtras(IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAcc
     if (fileInfo.file && message.content_ && chat && isInlineDownload(fullMessage, *message.content_, *chat) &&
         inlineDownloadNeedAutoDl(fullMessage, *fileInfo.file))
     {
+    }
+}
+
+void checkMessageReady(const IncomingMessage *message, TdTransceiver &transceiver,
+                       TdAccountData &account)
+{
+    if (!message || !message->message) return;
+
+    if (isMessageReady(*message, account)) {
+        std::vector<IncomingMessage> readyMessages;
+        account.pendingMessages.setMessageReady(getChatId(*message->message), getId(*message->message),
+                                               readyMessages);
+        message = nullptr;
+        showMessages(readyMessages, transceiver, account);
     }
 }

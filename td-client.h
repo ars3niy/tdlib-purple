@@ -89,19 +89,9 @@ private:
     void       onChatListReady();
     // Login sequence end
 
-    void       showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage);
-    void       showTextMessage(const td::td_api::chat &chat, const TgMessageInfo &message,const td::td_api::messageText &text);
-    void       showPhotoMessage(const td::td_api::chat &chat, TgMessageInfo &message,
-                                const td::td_api::file *photoSize, const std::string &caption);
-    void       showFileMessage(const td::td_api::chat &chat, TgMessageInfo &message,
-                               const td::td_api::file* file, const std::string &caption,
-                               const std::string &fileDescription, const std::string &fileName);
-    void       showStickerMessage(const td::td_api::chat &chat, TgMessageInfo &message, td::td_api::messageSticker &sticker);
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
     void       findMessageResponse(ChatId chatId, MessageId pendingMessageId,
                                    td::td_api::object_ptr<td::td_api::Object> object);
-    void       checkMessageReady(const IncomingMessage *message);
-    void       showMessages(std::vector<IncomingMessage> &messages);
 
     void       updateUserStatus(UserId userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void       updateUser(td::td_api::object_ptr<td::td_api::user> user);
@@ -137,14 +127,6 @@ private:
     void       setGroupDescriptionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       chatActionResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
 
-    void       showFileInline(const td::td_api::chat &chat, TgMessageInfo &message,
-                        const td::td_api::file &file, const char *caption, const std::string &fileDesc,
-                        td::td_api::object_ptr<td::td_api::file> thumbnail);
-    void       requestInlineDownload(const char *sender, const td::td_api::file &file,
-                                     const std::string &fileDesc, const td::td_api::chat &chat,
-                                     TgMessageInfo &message);
-    static void startInlineDownload(void *user_data);
-    void       inlineDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       showConvertedAnimation(AccountThread *arg);
     void       sendMessageCreatePrivateChatResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       uploadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);

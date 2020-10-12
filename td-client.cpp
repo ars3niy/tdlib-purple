@@ -31,7 +31,7 @@ PurpleTdClient::~PurpleTdClient()
 {
     std::vector<IncomingMessage> messages;
     m_data.pendingMessages.flush(messages);
-    showMessages(messages);
+    showMessages(messages, m_transceiver, m_data);
 }
 
 void PurpleTdClient::setLogLevel(int level)
@@ -868,182 +868,6 @@ void PurpleTdClient::onChatListReady()
     purple_blist_add_account(m_account);
 }
 
-void PurpleTdClient::showTextMessage(const td::td_api::chat &chat, const TgMessageInfo &message,
-                                     const td::td_api::messageText &text)
-{
-    if (text.text_) {
-        std::string displayText = getMessageText(*text.text_);
-        showMessageText(m_data, chat, message, displayText.c_str(), NULL);
-    }
-}
-
-void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo &message,
-                                    const td::td_api::file &file, const char *caption,
-                                    const std::string &fileDesc,
-                                    td::td_api::object_ptr<td::td_api::file> thumbnail)
-{
-    std::string notice;
-    bool        askDownload  = false;
-    bool        autoDownload = false;
-    unsigned    fileSize     = getFileSizeKb(file);
-
-    if (caption && (*caption == '\0'))
-        caption = NULL;
-
-    if (file.local_ && file.local_->is_downloading_completed_) {
-        autoDownload = true;
-        notice.clear();
-    } else if (isSizeWithinLimit(fileSize, getAutoDownloadLimitKb(m_account))) {
-        if (!((message.type == TgMessageInfo::Type::Sticker) && !caption)) {
-            // TRANSLATOR: In-chat notification, appears after a colon (':'). Argument is a file *type*, not a filename.
-            notice = formatMessage(_("Downloading {}"), std::string(fileDesc));
-        }
-        autoDownload = true;
-    } else if (!ignoreBigDownloads(m_account)) {
-        // TRANSLATOR: In-chat notification, appears after a colon (':'). Argument is a file *type*, not a filename.
-        notice = formatMessage(_("Requesting {} download"), std::string(fileDesc));
-        askDownload = true;
-    } else {
-        char *fileSizeStr = purple_str_size_to_units(fileSize); // File size above limit, so it's non-zero
-        // TRANSLATOR: In-chat notification, appears after a colon (':'). Arguments are a file *type*, not a filename; second argument is a file size with unit.
-        notice = formatMessage(_("Ignoring {0} download ({1})"), {std::string(fileDesc), std::string(fileSizeStr)});
-        g_free(fileSizeStr);
-    }
-
-    if (!notice.empty())
-        notice = makeNoticeWithSender(chat, message, notice.c_str(), m_account);
-
-    // If notice is empty it means file is already downloaded.
-    // For photos caption will be shown after the image. For all other downloads caption will
-    // be ignored from now on, this is the only chance to show it.
-    if (!notice.empty() || (message.type != TgMessageInfo::Type::Photo))
-        showMessageText(m_data, chat, message, caption, !notice.empty() ? notice.c_str() : nullptr);
-
-    if (autoDownload || askDownload) {
-        if (file.local_ && file.local_->is_downloading_completed_)
-            showDownloadedFileInline(getId(chat), message, file.local_->path_, caption, fileDesc,
-                                      std::move(thumbnail), m_transceiver, m_data);
-        else if (autoDownload) {
-            purple_debug_misc(config::pluginId, "Downloading %s (file id %d)\n", fileDesc.c_str(),
-                              (int)file.id_);
-            downloadFileInline(file.id_, getId(chat), message, fileDesc, std::move(thumbnail),
-                               m_transceiver, m_data);
-        } else if (askDownload) {
-            std::string sender = getSenderDisplayName(chat, message, m_account);
-            requestInlineDownload(sender.c_str(), file, fileDesc, chat, message);
-        }
-    }
-
-}
-
-void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, TgMessageInfo &message,
-                                      const td::td_api::file *photoSize, const std::string &caption)
-{
-    const char *captionCstr = !caption.empty() ? caption.c_str() : nullptr;
-
-    if (photoSize) {
-        // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
-        showFileInline(chat, message, *photoSize, captionCstr, _("photo"), nullptr);
-    } else {
-        // Unlikely message not worth translating
-        std::string notice = makeNoticeWithSender(chat, message, "Faulty image", m_account);
-        showMessageText(m_data, chat, message, captionCstr, notice.c_str());
-    }
-}
-
-struct InlineDownloadInfo {
-    int32_t         fileId;
-    ChatId          chatId;
-    TgMessageInfo   message;
-    std::string     fileDescription;
-    PurpleTdClient *tdClient;
-};
-
-void PurpleTdClient::startInlineDownload(void *user_data)
-{
-    std::unique_ptr<InlineDownloadInfo> info(static_cast<InlineDownloadInfo *>(user_data));
-    downloadFileInline(info->fileId, info->chatId, info->message, info->fileDescription,
-                       nullptr, info->tdClient->m_transceiver,
-                       info->tdClient->m_data);
-}
-
-static void ignoreInlineDownload(InlineDownloadInfo *info)
-{
-    delete info;
-}
-
-void PurpleTdClient::requestInlineDownload(const char *sender, const td::td_api::file &file,
-                                           const std::string &fileDesc, const td::td_api::chat &chat,
-                                           TgMessageInfo &message)
-{
-    // TRANSLATOR: Download dialog, primary content, argument will be a username.
-    std::string question = formatMessage(_("Download file from {}?"),
-                                         getSenderDisplayName(chat, message, m_account));
-    unsigned    size     = getFileSize(file);
-    // This dialog is used for files larger than the limit, so size should be non-zero
-    char *      sizeStr  = purple_str_size_to_units(size);
-    // TRANSLATOR: Download dialog, placeholder chat title, in the sentence "posted in a private chat".
-    std::string chatName = isPrivateChat(chat) ? _("a private chat") : chat.title_;
-    // TRANSLATOR: Download dialog, secondary content. Arguments will be file description (text), chat name (text), and a file size (text!)
-    std::string fileInfo = formatMessage(_("{0} posted in {1}, size: {2}"), {fileDesc,
-                                         chatName, std::string(sizeStr)});
-    g_free(sizeStr);
-
-    InlineDownloadInfo *info = new InlineDownloadInfo;
-    info->fileId = file.id_;
-    info->chatId = getId(chat);
-    info->message = std::move(message);
-    info->fileDescription = fileDesc;
-    info->tdClient = this;
-
-    // TRANSLATOR: Download dialog, title
-    purple_request_action(purple_account_get_connection(m_account), _("Download"), question.c_str(),
-                          fileInfo.c_str(), 0, m_account, NULL, NULL,
-                          // TRANSLATOR: Download dialog, alternative is "_No"
-                          info, 2, _("_Yes"), startInlineDownload,
-                          // TRANSLATOR: Download dialog, alternative is "_Yes"
-                          _("_No"), ignoreInlineDownload);
-}
-
-void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo &message,
-                                     const td::td_api::file* file,
-                                     const std::string &caption,
-                                     const std::string &fileDescription,
-                                     const std::string &fileName)
-{
-    const char *captionStr = !caption.empty() ? caption.c_str() : NULL;
-    if (!file) {
-        // Unlikely message not worth translating
-        std::string notice = formatMessage("Faulty file: {}", fileDescription);
-        notice = makeNoticeWithSender(chat, message, notice.c_str(), m_account);
-        showMessageText(m_data, chat, message, captionStr, notice.c_str());
-    } else {
-        const char *option = purple_account_get_string(m_account, AccountOptions::DownloadBehaviour,
-                                                       AccountOptions::DownloadBehaviourDefault());
-        if ( !strcmp(option, AccountOptions::DownloadBehaviourHyperlink) || !chat.type_ ||
-             ((chat.type_->get_id() != td::td_api::chatTypePrivate::ID) &&
-              (chat.type_->get_id() != td::td_api::chatTypeSecret::ID)) )
-        {
-            showFileInline(chat, message, *file, captionStr, fileDescription, nullptr);
-        } else
-            requestStandardDownload(getId(chat), message, fileName, *file, m_transceiver, m_data);
-    }
-}
-
-void PurpleTdClient::showStickerMessage(const td::td_api::chat &chat, TgMessageInfo &message,
-                                        td::td_api::messageSticker &stickerContent)
-{
-    if (!stickerContent.sticker_) return;
-    td::td_api::sticker &sticker = *stickerContent.sticker_;
-
-    if (sticker.sticker_) {
-        auto thumbnail = sticker.thumbnail_ ? std::move(sticker.thumbnail_->photo_) : nullptr;
-
-        // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
-        showFileInline(chat, message, *sticker.sticker_, NULL, _("sticker"), std::move(thumbnail));
-    }
-}
-
 void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
 {
     std::unique_ptr<AccountThread> baseThread(arg);
@@ -1083,77 +907,6 @@ void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
     }
 }
 
-void PurpleTdClient::showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage)
-{
-    if (!fullMessage.message) return;
-    td::td_api::message &message = *fullMessage.message;
-
-    if (!message.content_)
-        return;
-    purple_debug_misc(config::pluginId, "Displaying message %" G_GINT64_FORMAT "\n", message.id_);
-
-    TgMessageInfo &messageInfo = fullMessage.messageInfo;
-    messageInfo.repliedMessage = std::move(fullMessage.repliedMessage);
-
-    if (message.ttl_ != 0) {
-        // TRANSLATOR: In-chat warning message
-        const char *text   = _("Received self-destructing message, not displayed due to lack of support");
-        std::string notice = makeNoticeWithSender(chat, messageInfo, text, m_account);
-        showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
-        return;
-    }
-
-    FileInfo fileInfo;
-    getFileFromMessage(fullMessage, fileInfo);
-    if (fileInfo.secret) {
-        // TRANSLATOR: In-chat warning message
-        std::string notice = formatMessage("Ignoring secret file ({})", fileInfo.description);
-        notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), m_account);
-        showMessageText(m_data, chat, messageInfo, !fileInfo.caption.empty() ? fileInfo.caption.c_str() : nullptr,
-                        notice.c_str());
-        return;
-    }
-
-    switch (message.content_->get_id()) {
-        case td::td_api::messageText::ID:
-            showTextMessage(chat, messageInfo, static_cast<const td::td_api::messageText &>(*message.content_));
-            break;
-        case td::td_api::messagePhoto::ID:
-            showPhotoMessage(chat, messageInfo, fileInfo.file, fileInfo.caption);
-            break;
-        case td::td_api::messageDocument::ID:
-        case td::td_api::messageVideo::ID:
-        case td::td_api::messageAnimation::ID:
-        case td::td_api::messageAudio::ID:
-        case td::td_api::messageVoiceNote::ID:
-        case td::td_api::messageVideoNote::ID:
-            showFileMessage(chat, messageInfo, fileInfo.file, fileInfo.caption, fileInfo.description,
-                            fileInfo.name);
-            break;
-        case td::td_api::messageSticker::ID:
-            showStickerMessage(chat, messageInfo, static_cast<td::td_api::messageSticker &>(*message.content_));
-            break;
-        case td::td_api::messageChatChangeTitle::ID: {
-            const auto &titleChange = static_cast<const td::td_api::messageChatChangeTitle &>(*message.content_);
-            // TRANSLATOR: In-chat status update, arguments are chat names.
-            std::string notice = formatMessage(_("{0} changed group name to {1}"),
-                                               {getSenderDisplayName(chat, messageInfo, m_account),
-                                                titleChange.title_});
-            showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
-            break;
-        }
-        case td::td_api::messageCall::ID:
-            showCallMessage(chat, messageInfo, static_cast<td::td_api::messageCall &>(*message.content_), m_data);
-            break;
-        default: {
-            // TRANSLATOR: In-chat error message, argument will be a Telegram type.
-            std::string notice = getUnsupportedMessageDescription(*message.content_);
-            notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), m_account);
-            showMessageText(m_data, chat, messageInfo, NULL, notice.c_str());
-        }
-    }
-}
-
 void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
 {
     if (!message)
@@ -1179,7 +932,7 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     if (isMessageReady(fullMessage, m_data)) {
         IncomingMessage readyMessage = m_data.pendingMessages.addReadyMessage(std::move(fullMessage));
         if (readyMessage.message)
-            showMessage(*chat, readyMessage);
+            showMessage(*chat, readyMessage, m_transceiver, m_data);
     } else {
         MessageId messageId = getId(*fullMessage.message);
         fetchExtras(fullMessage, m_transceiver, m_data,
@@ -1188,19 +941,6 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
             }
         );
         m_data.pendingMessages.addPendingMessage(std::move(fullMessage));
-    }
-}
-
-void PurpleTdClient::checkMessageReady(const IncomingMessage *message)
-{
-    if (!message || !message->message) return;
-
-    if (isMessageReady(*message, m_data)) {
-        std::vector<IncomingMessage> readyMessages;
-        m_data.pendingMessages.setMessageReady(getChatId(*message->message), getId(*message->message),
-                                               readyMessages);
-        message = nullptr;
-        showMessages(readyMessages);
     }
 }
 
@@ -1218,17 +958,7 @@ void PurpleTdClient::findMessageResponse(ChatId chatId, MessageId pendingMessage
         pendingMessage->repliedMessageFailed = true;
     }
 
-    checkMessageReady(pendingMessage);
-}
-
-void PurpleTdClient::showMessages(std::vector<IncomingMessage>& messages)
-{
-    for (IncomingMessage &readyMessage: messages) {
-        if (!readyMessage.message) continue;
-        const td::td_api::chat *chat = m_data.getChat(getChatId(*readyMessage.message));
-        if (chat)
-            showMessage(*chat, readyMessage);
-    }
+    checkMessageReady(pendingMessage, m_transceiver, m_data);
 }
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
