@@ -139,11 +139,10 @@ private:
 
     void       showFileInline(const td::td_api::chat &chat, TgMessageInfo &message,
                         const td::td_api::file &file, const char *caption, const std::string &fileDesc,
-                        td::td_api::object_ptr<td::td_api::file> thumbnail,
-                        FileDownloadCb downloadCallback);
+                        td::td_api::object_ptr<td::td_api::file> thumbnail);
     void       requestInlineDownload(const char *sender, const td::td_api::file &file,
                                      const std::string &fileDesc, const td::td_api::chat &chat,
-                                     TgMessageInfo &message, FileDownloadCb callback);
+                                     TgMessageInfo &message);
     static void startInlineDownload(void *user_data);
     void       inlineDownloadResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object);
     void       showDownloadedImage(const td::td_api::chat &chat, TgMessageInfo &message,

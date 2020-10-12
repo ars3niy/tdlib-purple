@@ -878,8 +878,7 @@ void PurpleTdClient::showTextMessage(const td::td_api::chat &chat, const TgMessa
 void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo &message,
                                     const td::td_api::file &file, const char *caption,
                                     const std::string &fileDesc,
-                                    td::td_api::object_ptr<td::td_api::file> thumbnail,
-                                    FileDownloadCb downloadCallback)
+                                    td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
     std::string notice;
     bool        askDownload  = false;
@@ -919,16 +918,16 @@ void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo 
 
     if (autoDownload || askDownload) {
         if (file.local_ && file.local_->is_downloading_completed_)
-            (this->*downloadCallback)(getId(chat), message, file.local_->path_, caption, fileDesc,
+            showDownloadedFileInline(getId(chat), message, file.local_->path_, caption, fileDesc,
                                       std::move(thumbnail));
         else if (autoDownload) {
             purple_debug_misc(config::pluginId, "Downloading %s (file id %d)\n", fileDesc.c_str(),
                               (int)file.id_);
             downloadFileInline(file.id_, getId(chat), message, fileDesc, std::move(thumbnail),
-                               downloadCallback, this, m_transceiver, m_data);
+                               &PurpleTdClient::showDownloadedFileInline, this, m_transceiver, m_data);
         } else if (askDownload) {
             std::string sender = getSenderDisplayName(chat, message, m_account);
-            requestInlineDownload(sender.c_str(), file, fileDesc, chat, message, downloadCallback);
+            requestInlineDownload(sender.c_str(), file, fileDesc, chat, message);
         }
     }
 
@@ -941,7 +940,7 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, TgMessageInf
 
     if (photoSize) {
         // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
-        showFileInline(chat, message, *photoSize, captionCstr, _("photo"), nullptr, &PurpleTdClient::showDownloadedFileInline);
+        showFileInline(chat, message, *photoSize, captionCstr, _("photo"), nullptr);
     } else {
         // Unlikely message not worth translating
         std::string notice = makeNoticeWithSender(chat, message, "Faulty image", m_account);
@@ -955,14 +954,13 @@ struct InlineDownloadInfo {
     TgMessageInfo   message;
     std::string     fileDescription;
     PurpleTdClient *tdClient;
-    FileDownloadCb  callback;
 };
 
 void PurpleTdClient::startInlineDownload(void *user_data)
 {
     std::unique_ptr<InlineDownloadInfo> info(static_cast<InlineDownloadInfo *>(user_data));
     downloadFileInline(info->fileId, info->chatId, info->message, info->fileDescription,
-                       nullptr, info->callback, info->tdClient, info->tdClient->m_transceiver,
+                       nullptr, &PurpleTdClient::showDownloadedFileInline, info->tdClient, info->tdClient->m_transceiver,
                        info->tdClient->m_data);
 }
 
@@ -973,7 +971,7 @@ static void ignoreInlineDownload(InlineDownloadInfo *info)
 
 void PurpleTdClient::requestInlineDownload(const char *sender, const td::td_api::file &file,
                                            const std::string &fileDesc, const td::td_api::chat &chat,
-                                           TgMessageInfo &message, FileDownloadCb callback)
+                                           TgMessageInfo &message)
 {
     // TRANSLATOR: Download dialog, primary content, argument will be a username.
     std::string question = formatMessage(_("Download file from {}?"),
@@ -994,7 +992,6 @@ void PurpleTdClient::requestInlineDownload(const char *sender, const td::td_api:
     info->message = std::move(message);
     info->fileDescription = fileDesc;
     info->tdClient = this;
-    info->callback = callback;
 
     // TRANSLATOR: Download dialog, title
     purple_request_action(purple_account_get_connection(m_account), _("Download"), question.c_str(),
@@ -1052,8 +1049,7 @@ void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo
              ((chat.type_->get_id() != td::td_api::chatTypePrivate::ID) &&
               (chat.type_->get_id() != td::td_api::chatTypeSecret::ID)) )
         {
-            showFileInline(chat, message, *file, captionStr, fileDescription, nullptr,
-                           &PurpleTdClient::showDownloadedFileInline);
+            showFileInline(chat, message, *file, captionStr, fileDescription, nullptr);
         } else
             requestStandardDownload(getId(chat), message, fileName, *file, m_transceiver, m_data);
     }
@@ -1069,8 +1065,7 @@ void PurpleTdClient::showStickerMessage(const td::td_api::chat &chat, TgMessageI
         auto thumbnail = sticker.thumbnail_ ? std::move(sticker.thumbnail_->photo_) : nullptr;
 
         // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
-        showFileInline(chat, message, *sticker.sticker_, NULL, _("sticker"), std::move(thumbnail),
-                 &PurpleTdClient::showDownloadedFileInline);
+        showFileInline(chat, message, *sticker.sticker_, NULL, _("sticker"), std::move(thumbnail));
     }
 }
 
