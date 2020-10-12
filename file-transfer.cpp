@@ -148,6 +148,30 @@ static void cancelDownload(PurpleXfer *xfer)
     }
 }
 
+static void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData& account)
+{
+    PurpleXfer *download;
+    ChatId      chatId;
+
+    if (account.getFileTransfer(downloadReq.fileId, download, chatId)) {
+        std::unique_ptr<DownloadData> data(static_cast<DownloadData *>(download->data));
+        download->data = NULL;
+        purple_xfer_set_bytes_sent(download, downloadReq.fileSize);
+        purple_xfer_set_completed(download, TRUE);
+        purple_xfer_end(download);
+        account.removeFileTransfer(downloadReq.fileId);
+    }
+
+    if (downloadReq.tempFd >= 0) {
+        close(downloadReq.tempFd);
+        downloadReq.tempFd = -1;
+    }
+    if (!downloadReq.tempFileName.empty()) {
+        remove(downloadReq.tempFileName.c_str());
+        downloadReq.tempFileName.clear();
+    }
+}
+
 static void inlineDownloadResponse(uint64_t requestId,
                                    td::td_api::object_ptr<td::td_api::Object> object,
                                    TdTransceiver &transceiver, TdAccountData &account)
@@ -164,35 +188,7 @@ static void inlineDownloadResponse(uint64_t requestId,
     }
 }
 
-void downloadFileInline(int32_t fileId, ChatId chatId, TgMessageInfo &message,
-                        const std::string &fileDescription,
-                        td::td_api::object_ptr<td::td_api::file> thumbnail,
-                        TdTransceiver &transceiver, TdAccountData &account)
-{
-    td::td_api::object_ptr<td::td_api::downloadFile> downloadReq =
-        td::td_api::make_object<td::td_api::downloadFile>();
-    downloadReq->file_id_     = fileId;
-    downloadReq->priority_    = FILE_DOWNLOAD_PRIORITY;
-    downloadReq->offset_      = 0;
-    downloadReq->limit_       = 0;
-    downloadReq->synchronous_ = true;
-
-    uint64_t requestId = transceiver.sendQuery(
-        std::move(downloadReq),
-        [&transceiver, &account](uint64_t reqId, td::td_api::object_ptr<td::td_api::Object> object) {
-            inlineDownloadResponse(reqId, std::move(object), transceiver, account);
-        });
-    std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, chatId,
-                                               message, fileId, 0, fileDescription, thumbnail.release());
-
-    account.addPendingRequest<DownloadRequest>(requestId, std::move(request));
-    transceiver.setQueryTimer(requestId,
-                              [&transceiver, &account](uint64_t reqId, td::td_api::object_ptr<td::td_api::Object>) {
-                                  startInlineDownloadProgress(reqId, transceiver, account);
-                              }, 1, false);
-}
-
-void startInlineDownloadProgress(uint64_t requestId, TdTransceiver &transceiver, TdAccountData &account)
+static void startInlineDownloadProgress(uint64_t requestId, TdTransceiver &transceiver, TdAccountData &account)
 {
     DownloadRequest *pRequest = account.findPendingRequest<DownloadRequest>(requestId);
     if (!pRequest) return;
@@ -241,6 +237,34 @@ void startInlineDownloadProgress(uint64_t requestId, TdTransceiver &transceiver,
     g_free(tempFileName);
 }
 
+void downloadFileInline(int32_t fileId, ChatId chatId, TgMessageInfo &message,
+                        const std::string &fileDescription,
+                        td::td_api::object_ptr<td::td_api::file> thumbnail,
+                        TdTransceiver &transceiver, TdAccountData &account)
+{
+    td::td_api::object_ptr<td::td_api::downloadFile> downloadReq =
+        td::td_api::make_object<td::td_api::downloadFile>();
+    downloadReq->file_id_     = fileId;
+    downloadReq->priority_    = FILE_DOWNLOAD_PRIORITY;
+    downloadReq->offset_      = 0;
+    downloadReq->limit_       = 0;
+    downloadReq->synchronous_ = true;
+
+    uint64_t requestId = transceiver.sendQuery(
+        std::move(downloadReq),
+        [&transceiver, &account](uint64_t reqId, td::td_api::object_ptr<td::td_api::Object> object) {
+            inlineDownloadResponse(reqId, std::move(object), transceiver, account);
+        });
+    std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, chatId,
+                                               message, fileId, 0, fileDescription, thumbnail.release());
+
+    account.addPendingRequest<DownloadRequest>(requestId, std::move(request));
+    transceiver.setQueryTimer(requestId,
+                              [&transceiver, &account](uint64_t reqId, td::td_api::object_ptr<td::td_api::Object>) {
+                                  startInlineDownloadProgress(reqId, transceiver, account);
+                              }, 1, false);
+}
+
 static void updateDownloadProgress(const td::td_api::file &file, PurpleXfer *xfer, TdAccountData &account)
 {
     DownloadRequest *downloadReq = account.findDownloadRequest(file.id_);
@@ -285,30 +309,6 @@ void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &tra
     }
 
     updateDownloadProgress(file, xfer, account);
-}
-
-void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData& account)
-{
-    PurpleXfer *download;
-    ChatId      chatId;
-
-    if (account.getFileTransfer(downloadReq.fileId, download, chatId)) {
-        std::unique_ptr<DownloadData> data(static_cast<DownloadData *>(download->data));
-        download->data = NULL;
-        purple_xfer_set_bytes_sent(download, downloadReq.fileSize);
-        purple_xfer_set_completed(download, TRUE);
-        purple_xfer_end(download);
-        account.removeFileTransfer(downloadReq.fileId);
-    }
-
-    if (downloadReq.tempFd >= 0) {
-        close(downloadReq.tempFd);
-        downloadReq.tempFd = -1;
-    }
-    if (!downloadReq.tempFileName.empty()) {
-        remove(downloadReq.tempFileName.c_str());
-        downloadReq.tempFileName.clear();
-    }
 }
 
 std::string getDownloadPath(const td::td_api::Object *downloadResponse)

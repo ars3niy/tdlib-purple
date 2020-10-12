@@ -20,10 +20,8 @@ void downloadFileInline(int32_t fileId, ChatId chatId, TgMessageInfo &message,
                         const std::string &fileDescription,
                         td::td_api::object_ptr<td::td_api::file> thumbnail,
                         TdTransceiver &transceiver, TdAccountData &account);
-void startInlineDownloadProgress(uint64_t requestId, TdTransceiver &transceiver, TdAccountData &account);
 void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &transceiver,
                                 TdAccountData &account, TdTransceiver::ResponseCb sendMessageResponse);
-void finishInlineDownloadProgress(DownloadRequest &downloadReq, TdAccountData &account);
 
 void requestStandardDownload(ChatId chatId, const TgMessageInfo &message, const std::string &fileName,
                              const td::td_api::file &file, TdTransceiver &transceiver, TdAccountData &account);
