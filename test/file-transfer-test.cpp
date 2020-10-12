@@ -4,6 +4,46 @@
 
 class FileTransferTest: public CommTest {};
 
+TEST_F(FileTransferTest, Document_AlreadyDownloaded)
+{
+    const int64_t messageId = 1;
+    const int32_t date      = 10001;
+    const int32_t fileId    = 1234;
+    loginWithOneContact();
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messageDocument>(
+            make_object<document>(
+                "doc.file.name", "mime/type", nullptr, nullptr,
+                make_object<file>(
+                    fileId, 10000, 10000,
+                    make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+                    make_object<remoteFile>("beh", "bleh", false, true, 10000)
+                )
+            ),
+            make_object<formattedText>("caption", std::vector<object_ptr<textEntity>>())
+        )
+    )));
+    tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, messageId), true)
+    });
+    prpl.verifyEvents(
+        ServGotImEvent(connection, purpleUserName(0), "caption", PURPLE_MESSAGE_RECV, date),
+        ServGotImEvent(
+            connection,
+            purpleUserName(0),
+            "<a href=\"file:///path\">doc.file.name [mime/type]</a>",
+            PURPLE_MESSAGE_RECV,
+            date
+        )
+    );
+}
+
 TEST_F(FileTransferTest, BigPhoto_RequestDownload)
 {
     purple_account_set_string(account, "media-size-threshold", "0.5");

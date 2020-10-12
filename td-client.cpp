@@ -909,10 +909,13 @@ void PurpleTdClient::showFileInline(const td::td_api::chat &chat, TgMessageInfo 
         g_free(fileSizeStr);
     }
 
-    if (!notice.empty()) {
+    if (!notice.empty())
         notice = makeNoticeWithSender(chat, message, notice.c_str(), m_account);
-        showMessageText(m_data, chat, message, caption, notice.c_str());
-    }
+
+    // For photos caption will be shown after the image anyway. For all other downloads caption will
+    // be ignored from now on, this is the only chance to show it.
+    if (!notice.empty() || (message.type != TgMessageInfo::Type::Photo))
+        showMessageText(m_data, chat, message, caption, !notice.empty() ? notice.c_str() : nullptr);
 
     if (autoDownload || askDownload) {
         if (file.local_ && file.local_->is_downloading_completed_)

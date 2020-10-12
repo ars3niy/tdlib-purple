@@ -181,15 +181,15 @@ void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const
         flags = (PurpleMessageFlags) (flags | PURPLE_MESSAGE_REMOTE_SEND);
 
     std::string newText;
-    if (message.repliedMessageId.valid())
-        newText = quoteMessage(message.repliedMessage.get(), account);
-    if (!message.forwardedFrom.empty()) {
-        if (!newText.empty())
-            newText += "\n";
-        // TRANSLATOR: In-chat notification of forward. Argument will be a username. Please preserve the HTML.
-        newText += formatMessage(_("<b>Forwarded from {}:</b>"), message.forwardedFrom);
-    }
     if (text) {
+        if (message.repliedMessageId.valid())
+            newText = quoteMessage(message.repliedMessage.get(), account);
+        if (!message.forwardedFrom.empty()) {
+            if (!newText.empty())
+                newText += "\n";
+            // TRANSLATOR: In-chat notification of forward. Argument will be a username. Please preserve the HTML.
+            newText += formatMessage(_("<b>Forwarded from {}:</b>"), message.forwardedFrom);
+        }
         if (!newText.empty())
             newText += "\n";
         newText += text;
