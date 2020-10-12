@@ -938,7 +938,7 @@ void PurpleTdClient::showPhotoMessage(const td::td_api::chat &chat, TgMessageInf
 
     if (photoSize) {
         // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
-        showFileInline(chat, message, *photoSize, captionCstr, _("photo"), nullptr, &PurpleTdClient::showDownloadedImage);
+        showFileInline(chat, message, *photoSize, captionCstr, _("photo"), nullptr, &PurpleTdClient::showDownloadedFileInline);
     } else {
         // Unlikely message not worth translating
         std::string notice = makeNoticeWithSender(chat, message, "Faulty image", m_account);
@@ -1002,37 +1002,32 @@ void PurpleTdClient::requestInlineDownload(const char *sender, const td::td_api:
                           _("_No"), ignoreInlineDownload);
 }
 
-void PurpleTdClient::showDownloadedImage(ChatId chatId, TgMessageInfo &message,
-                                         const std::string &filePath, const char *caption,
-                                         const std::string &fileDesc,
-                                         td::td_api::object_ptr<td::td_api::file> thumbnail)
+void PurpleTdClient::showDownloadedImage(const td::td_api::chat &chat, TgMessageInfo &message,
+                                         const std::string &filePath, const char *caption)
 {
-    const td::td_api::chat *chat = m_data.getChat(chatId);
-    if (chat) {
-        std::string  text;
-        std::string  notice;
-        gchar       *data   = NULL;
-        size_t       len    = 0;
+    std::string  text;
+    std::string  notice;
+    gchar       *data   = NULL;
+    size_t       len    = 0;
 
-        if (g_file_get_contents (filePath.c_str(), &data, &len, NULL)) {
-            int id = purple_imgstore_add_with_id (data, len, NULL);
-            text = makeInlineImageText(id);
-        } else if (filePath.find('"') == std::string::npos)
-            text = "<img src=\"file://" + filePath + "\">";
-        else {
-            // Unlikely error, not worth translating
-            notice = makeNoticeWithSender(*chat, message, "Cannot show photo: file path contains quotes", m_account);
-        }
-
-        if (caption && *caption) {
-            if (!text.empty())
-                text += "\n";
-            text += caption;
-        }
-
-        showMessageText(m_data, *chat, message, text.empty() ? NULL : text.c_str(),
-                        notice.empty() ? NULL : notice.c_str(), PURPLE_MESSAGE_IMAGES);
+    if (g_file_get_contents (filePath.c_str(), &data, &len, NULL)) {
+        int id = purple_imgstore_add_with_id (data, len, NULL);
+        text = makeInlineImageText(id);
+    } else if (filePath.find('"') == std::string::npos)
+        text = "<img src=\"file://" + filePath + "\">";
+    else {
+        // Unlikely error, not worth translating
+        notice = makeNoticeWithSender(chat, message, "Cannot show photo: file path contains quotes", m_account);
     }
+
+    if (caption && *caption) {
+        if (!text.empty())
+            text += "\n";
+        text += caption;
+    }
+
+    showMessageText(m_data, chat, message, text.empty() ? NULL : text.c_str(),
+                    notice.empty() ? NULL : notice.c_str(), PURPLE_MESSAGE_IMAGES);
 }
 
 void PurpleTdClient::showFileMessage(const td::td_api::chat &chat, TgMessageInfo &message,
@@ -1072,7 +1067,7 @@ void PurpleTdClient::showStickerMessage(const td::td_api::chat &chat, TgMessageI
 
         // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
         showFileInline(chat, message, *sticker.sticker_, NULL, _("sticker"), std::move(thumbnail),
-                 &PurpleTdClient::showDownloadedSticker);
+                 &PurpleTdClient::showDownloadedFileInline);
     }
 }
 
@@ -1081,8 +1076,8 @@ static bool isTgs(const std::string &path)
     return (path.size() >= 4) && !strcmp(path.c_str() + path.size() - 4, ".tgs");
 }
 
-void PurpleTdClient::showDownloadedSticker(ChatId chatId, TgMessageInfo &message,
-                                           const std::string &filePath, const char *caption,
+void PurpleTdClient::showDownloadedSticker(const td::td_api::chat &chat, TgMessageInfo &message,
+                                           const std::string &filePath,
                                            const std::string &fileDescription,
                                            td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
@@ -1095,34 +1090,27 @@ void PurpleTdClient::showDownloadedSticker(ChatId chatId, TgMessageInfo &message
 #endif
     if (isTgs(filePath)) {
         if (convertAnimated) {
-            const td::td_api::chat *chat = m_data.getChat(chatId);
-            if (chat) {
-                // TRANSLATOR: In-chat status update
-                std::string notice = makeNoticeWithSender(*chat, message, _("Converting sticker"), m_account);
-                showMessageText(m_data, *chat, message, NULL, notice.c_str());
-            }
+            // TRANSLATOR: In-chat status update
+            std::string notice = makeNoticeWithSender(chat, message, _("Converting sticker"), m_account);
+            showMessageText(m_data, chat, message, NULL, notice.c_str());
             StickerConversionThread *thread;
             thread = new StickerConversionThread(m_account, &PurpleTdClient::showConvertedAnimation,
-                                                 filePath, chatId, std::move(message));
+                                                 filePath, getId(chat), std::move(message));
             thread->startThread();
         } else if (thumbnail) {
             // Avoid message like "Downloading sticker thumbnail...
             // Also ignore size limits, but only determined testers and crazy people would notice.
             if (thumbnail->local_ && thumbnail->local_->is_downloading_completed_)
-                showDownloadedSticker(chatId, message, thumbnail->local_->path_, caption,
-                                        fileDescription, nullptr);
+                showDownloadedSticker(chat, message, thumbnail->local_->path_,
+                                      fileDescription, nullptr);
             else
-                downloadFileInline(thumbnail->id_, chatId, message, fileDescription, nullptr,
-                                   &PurpleTdClient::showDownloadedSticker, this, m_transceiver, m_data);
+                downloadFileInline(thumbnail->id_, getId(chat), message, fileDescription, nullptr,
+                                   &PurpleTdClient::showDownloadedFileInline, this, m_transceiver, m_data);
         } else {
-            const td::td_api::chat *chat = m_data.getChat(chatId);
-            if (chat)
-                showGenericFileInline(*chat, message, filePath, fileDescription, m_data);
+            showGenericFileInline(chat, message, filePath, fileDescription, m_data);
         }
     } else {
-        const td::td_api::chat *chat = m_data.getChat(chatId);
-        if (chat)
-            showWebpSticker(*chat, message, filePath, fileDescription, m_data);
+        showWebpSticker(chat, message, filePath, fileDescription, m_data);
     }
 }
 
@@ -1171,8 +1159,19 @@ void PurpleTdClient::showDownloadedFileInline(ChatId chatId, TgMessageInfo &mess
                                         td::td_api::object_ptr<td::td_api::file> thumbnail)
 {
     const td::td_api::chat *chat = m_data.getChat(chatId);
-    if (chat)
+    if (!chat) return;
+
+    switch (message.type) {
+    case TgMessageInfo::Type::Photo:
+        showDownloadedImage(*chat, message, filePath, caption);
+        break;
+    case TgMessageInfo::Type::Sticker:
+        showDownloadedSticker(*chat, message, filePath, fileDescription, std::move(thumbnail));
+        break;
+    case TgMessageInfo::Type::Other:
         showGenericFileInline(*chat, message, filePath, fileDescription, m_data);
+        break;
+    }
 }
 
 void PurpleTdClient::showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage)

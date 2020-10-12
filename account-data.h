@@ -117,6 +117,7 @@ public:
 
 struct TgMessageInfo {
     enum class Type {
+        Photo,
         Sticker,
         Other
     };

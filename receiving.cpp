@@ -311,6 +311,7 @@ void makeFullMessage(const td::td_api::chat &chat, td::td_api::object_ptr<td::td
 
     if (message && message->content_) {
         if (message->content_->get_id() == td::td_api::messagePhoto::ID) {
+            messageInfo.type = TgMessageInfo::Type::Photo;
             const td::td_api::messagePhoto &photo = static_cast<const td::td_api::messagePhoto &>(*message->content_);
             const td::td_api::file *file = selectPhotoSize(account.purpleAccount, photo);
             if (file)
