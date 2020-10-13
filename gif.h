@@ -349,9 +349,8 @@ static int GifPickChangedPixels( const uint8_t* lastFrame, uint8_t* frame, int n
 
 // Creates a palette by placing all the image pixels in a k-d tree and then averaging the blocks at the bottom.
 // This is known as the "modified median split" technique
-static void GifMakePalette( const uint8_t* lastFrame, const uint8_t* nextFrame, uint32_t width, uint32_t height, int bitDepth, bool buildForDither, GifPalette* pPal )
+static void GifMakePalette( const uint8_t* lastFrame, const uint8_t* nextFrame, uint32_t width, uint32_t height, int bitDepth, bool transparent, bool buildForDither, GifPalette* pPal )
 {
-    (void)GifPickChangedPixels;
     pPal->bitDepth = bitDepth;
 
     // SplitPalette is destructive (it sorts the pixels by color) so
@@ -361,6 +360,8 @@ static void GifMakePalette( const uint8_t* lastFrame, const uint8_t* nextFrame, 
     memcpy(destroyableImage, nextFrame, imageSize);
 
     int numPixels = (int)(width * height);
+    if(lastFrame && !transparent)
+        numPixels = GifPickChangedPixels(lastFrame, destroyableImage, numPixels);
 
     const int lastElt = 1 << bitDepth;
     const int splitElt = lastElt/2;
@@ -487,16 +488,29 @@ static void GifDitherImage( const uint8_t* lastFrame, const uint8_t* nextFrame, 
 }
 
 // Picks palette colors for the image using simple thresholding, no dithering
-static void GifThresholdImage( const uint8_t* lastFrame, const uint8_t* nextFrame, uint8_t* outFrame, uint32_t width, uint32_t height, GifPalette* pPal )
+static void GifThresholdImage( const uint8_t* lastFrame, const uint8_t* nextFrame, uint8_t* outFrame, uint32_t width, uint32_t height, bool transparent, GifPalette* pPal )
 {
     uint32_t numPixels = width*height;
     for( uint32_t ii=0; ii<numPixels; ++ii )
     {
-        if (nextFrame[3] == 0)
+        if (transparent && (nextFrame[3] == 0))
         {
             outFrame[0] = nextFrame[0];
             outFrame[1] = nextFrame[1];
             outFrame[2] = nextFrame[2];
+            outFrame[3] = kGifTransIndex;
+        }
+        // For non-transparet background:
+        // if a previous color is available, and it matches the current color,
+        // set the pixel to transparent
+        else if(!transparent && lastFrame &&
+           lastFrame[0] == nextFrame[0] &&
+           lastFrame[1] == nextFrame[1] &&
+           lastFrame[2] == nextFrame[2])
+        {
+            outFrame[0] = lastFrame[0];
+            outFrame[1] = lastFrame[1];
+            outFrame[2] = lastFrame[2];
             outFrame[3] = kGifTransIndex;
         }
         else
@@ -600,13 +614,16 @@ static void GifWritePalette( const GifPalette* pPal, FILE* f )
 }
 
 // write the image header, LZW-compress and write out the image
-static void GifWriteLzwImage(FILE* f, uint8_t* image, uint32_t left, uint32_t top,  uint32_t width, uint32_t height, uint32_t delay, GifPalette* pPal)
+static void GifWriteLzwImage(FILE* f, uint8_t* image, uint32_t left, uint32_t top,  uint32_t width, uint32_t height, uint32_t delay, bool transparent, GifPalette* pPal)
 {
     // graphics control extension
     fputc(0x21, f);
     fputc(0xf9, f);
     fputc(0x04, f);
-    fputc((2 << 2) + 1, f); // restore to background colour, this frame has transparency
+    if (transparent)
+        fputc((2 << 2) + 1, f); // restore to background colour, this frame has transparency
+    else
+        fputc(0x05, f); // leave prev frame in place, this frame has transparency
     fputc(delay & 0xff, f);
     fputc((delay >> 8) & 0xff, f);
     fputc(kGifTransIndex, f); // transparent color index
@@ -784,7 +801,7 @@ static bool GifBegin( GifWriter* writer, int fd, uint32_t width, uint32_t height
 // The GIFWriter should have been created by GIFBegin.
 // AFAIK, it is legal to use different bit depths for different frames of an image -
 // this may be handy to save bits in animations that don't change much.
-static bool GifWriteFrame( GifWriter* writer, const uint8_t* image, uint32_t width, uint32_t height, uint32_t delay, int bitDepth = 8, bool dither = false )
+static bool GifWriteFrame( GifWriter* writer, const uint8_t* image, uint32_t width, uint32_t height, uint32_t delay, bool transparent, int bitDepth = 8, bool dither = false )
 {
     if(!writer->f) return false;
 
@@ -792,14 +809,14 @@ static bool GifWriteFrame( GifWriter* writer, const uint8_t* image, uint32_t wid
     writer->firstFrame = false;
 
     GifPalette pal;
-    GifMakePalette((dither? NULL : oldImage), image, width, height, bitDepth, dither, &pal);
+    GifMakePalette((dither? NULL : oldImage), image, width, height, bitDepth, transparent, dither, &pal);
 
     if(dither)
         GifDitherImage(oldImage, image, writer->oldImage.get(), width, height, &pal);
     else
-        GifThresholdImage(oldImage, image, writer->oldImage.get(), width, height, &pal);
+        GifThresholdImage(oldImage, image, writer->oldImage.get(), width, height, transparent, &pal);
 
-    GifWriteLzwImage(writer->f, writer->oldImage.get(), 0, 0, width, height, delay, &pal);
+    GifWriteLzwImage(writer->f, writer->oldImage.get(), 0, 0, width, height, delay, transparent, &pal);
 
     return true;
 }

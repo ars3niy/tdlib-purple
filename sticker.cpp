@@ -219,12 +219,13 @@ static bool gunzip(gchar *compressedData, gsize compressedSize, std::string &out
 class GifBuilder {
 public:
     explicit GifBuilder(int fd, const uint32_t width,
-                        const uint32_t height, const int bgColor=0xffffffff, const uint32_t delay = 2)
+                        const uint32_t height, const uint32_t bgColor=0xffffffff, const uint32_t delay = 2)
     {
         GifBegin(&handle, fd, width, height, delay);
         bgColorR = (uint8_t) ((bgColor & 0xff0000) >> 16);
         bgColorG = (uint8_t) ((bgColor & 0x00ff00) >> 8);
         bgColorB = (uint8_t) ((bgColor & 0x0000ff));
+        transparent = ((bgColor >> 24) < 0x80);
     }
     ~GifBuilder()
     {
@@ -237,7 +238,8 @@ public:
                       reinterpret_cast<uint8_t *>(s.buffer()),
                       s.width(),
                       s.height(),
-                      delay);
+                      delay,
+                      transparent);
     }
     void argbTorgba(rlottie::Surface &s)
     {
@@ -249,9 +251,22 @@ public:
            // compute only if alpha is non zero
            if (a) {
                unsigned char r = buffer[i+2];
+               unsigned char g = buffer[i+1];
                unsigned char b = buffer[i];
-               buffer[i] = r;
-               buffer[i+2] = b;
+
+               if (!transparent && (a != 255)) { //un premultiply
+                   unsigned char r2 = (unsigned char) ((float) bgColorR * ((float) (255 - a) / 255));
+                   unsigned char g2 = (unsigned char) ((float) bgColorG * ((float) (255 - a) / 255));
+                   unsigned char b2 = (unsigned char) ((float) bgColorB * ((float) (255 - a) / 255));
+                   buffer[i] = r + r2;
+                   buffer[i+1] = g + g2;
+                   buffer[i+2] = b + b2;
+
+               } else {
+                 // only swizzle r and b
+                 buffer[i] = r;
+                 buffer[i+2] = b;
+               }
            } else {
                buffer[i+2] = bgColorB;
                buffer[i+1] = bgColorG;
@@ -263,6 +278,7 @@ public:
 private:
     GifWriter      handle;
     uint8_t bgColorR, bgColorG, bgColorB;
+    bool    transparent;
 };
 
 void StickerConversionThread::run()
@@ -306,7 +322,7 @@ void StickerConversionThread::run()
     auto buffer = std::unique_ptr<uint32_t[]>(new uint32_t[w * h]);
     size_t frameCount = player->totalFrame();
 
-    GifBuilder builder(fd, w, h, 0);
+    GifBuilder builder(fd, w, h, UINT32_MAX);
     for (size_t i = 0; i < frameCount ; i++) {
         rlottie::Surface surface(buffer.get(), w, h, w * 4);
         player->renderSync(i, surface);
