@@ -721,7 +721,7 @@ static void GifWriteLzwImage(FILE* f, uint8_t* image, uint32_t left, uint32_t to
 struct GifWriter
 {
     FILE* f;
-    uint8_t* oldImage;
+    std::unique_ptr<uint8_t[]> oldImage;
     bool firstFrame;
 };
 
@@ -737,7 +737,7 @@ static bool GifBegin( GifWriter* writer, int fd, uint32_t width, uint32_t height
     writer->firstFrame = true;
 
     // allocate
-    writer->oldImage = (uint8_t*)GIF_MALLOC(width*height*4);
+    writer->oldImage = std::unique_ptr<uint8_t[]>(new uint8_t[width*height*4]);
 
     fputs("GIF89a", writer->f);
 
@@ -788,18 +788,18 @@ static bool GifWriteFrame( GifWriter* writer, const uint8_t* image, uint32_t wid
 {
     if(!writer->f) return false;
 
-    const uint8_t* oldImage = writer->firstFrame? NULL : writer->oldImage;
+    const uint8_t* oldImage = writer->firstFrame? NULL : writer->oldImage.get();
     writer->firstFrame = false;
 
     GifPalette pal;
     GifMakePalette((dither? NULL : oldImage), image, width, height, bitDepth, dither, &pal);
 
     if(dither)
-        GifDitherImage(oldImage, image, writer->oldImage, width, height, &pal);
+        GifDitherImage(oldImage, image, writer->oldImage.get(), width, height, &pal);
     else
-        GifThresholdImage(oldImage, image, writer->oldImage, width, height, &pal);
+        GifThresholdImage(oldImage, image, writer->oldImage.get(), width, height, &pal);
 
-    GifWriteLzwImage(writer->f, writer->oldImage, 0, 0, width, height, delay, &pal);
+    GifWriteLzwImage(writer->f, writer->oldImage.get(), 0, 0, width, height, delay, &pal);
 
     return true;
 }
@@ -813,10 +813,9 @@ static bool GifEnd( GifWriter* writer )
 
     fputc(0x3b, writer->f); // end of file
     fclose(writer->f);
-    GIF_FREE(writer->oldImage);
 
     writer->f = NULL;
-    writer->oldImage = NULL;
+    writer->oldImage.reset();
 
     return true;
 }
