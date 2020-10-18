@@ -15,17 +15,25 @@ private:
 
     static Callback g_callback;
     void callback(PurpleTdClient *tdClient) override;
+    TgMessageInfo m_message;
 public:
     const std::string inputFileName;
     const ChatId chatId;
-    const TgMessageInfo message;
     StickerConversionThread(PurpleAccount *purpleAccount, const std::string &filename,
                             ChatId chatId, TgMessageInfo &&message)
     : AccountThread(purpleAccount), inputFileName(filename), chatId(chatId),
-      message(std::move(message)) {}
+      m_message(std::move(message)) {}
+    StickerConversionThread(PurpleAccount *purpleAccount, const std::string &filename,
+                            ChatId chatId, const TgMessageInfo *message)
+    : AccountThread(purpleAccount), inputFileName(filename), chatId(chatId)
+    {
+        if (message)
+            m_message.assign(*message);
+    }
 
     const std::string &getOutputFileName() const { return m_outputFileName; }
     const std::string &getErrorMessage()   const { return m_errorMessage; }
+    const TgMessageInfo &message()         const { return m_message; }
 
     static void setCallback(Callback callback);
 };

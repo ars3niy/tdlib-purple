@@ -131,9 +131,9 @@ auto PendingMessageQueue::getChatQueue(ChatId chatId) -> std::vector<ChatQueue>:
     });
 }
 
-void PendingMessageQueue::addPendingMessage(IncomingMessage &&message)
+IncomingMessage &PendingMessageQueue::addPendingMessage(IncomingMessage &&message)
 {
-    if (!message.message) return;
+    if (!message.message) return message;
 
     ChatId     chatId  = getChatId(*message.message);
     auto       queueIt = getChatQueue(chatId);
@@ -153,6 +153,7 @@ void PendingMessageQueue::addPendingMessage(IncomingMessage &&message)
     queue->messages.emplace_back();
     queue->messages.back().ready = false;
     queue->messages.back().message = std::move(message);
+    return queue->messages.back().message;
 }
 
 void PendingMessageQueue::setMessageReady(ChatId chatId, MessageId messageId,

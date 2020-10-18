@@ -235,13 +235,16 @@ struct IncomingMessage {
     bool     repliedMessageFailed;
     bool     inlineDownloadComplete;
     bool     inlineDownloadTimeout;
+    bool     animatedStickerConverted;
+    bool     animatedStickerConvertSuccess;
+    int      animatedStickerImageId;
 };
 
 class PendingMessageQueue {
 public:
     using TdMessagePtr = td::td_api::object_ptr<td::td_api::message>;
 
-    void             addPendingMessage(IncomingMessage &&message);
+    IncomingMessage &addPendingMessage(IncomingMessage &&message);
     void             setMessageReady(ChatId chatId, MessageId messageId,
                                      std::vector<IncomingMessage> &readyMessages);
     IncomingMessage  addReadyMessage(IncomingMessage &&message);

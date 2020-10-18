@@ -22,7 +22,7 @@ PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBac
 :   m_transceiver(this, acct, &PurpleTdClient::processUpdate, testBackend),
     m_data(acct)
 {
-    StickerConversionThread::setCallback(&PurpleTdClient::showConvertedAnimation);
+    StickerConversionThread::setCallback(&PurpleTdClient::onAnimatedStickerConverted);
     m_account = acct;
     setPurpleConnectionInProgress();
 }
@@ -875,13 +875,14 @@ void PurpleTdClient::onChatListReady()
     purple_blist_add_account(m_account);
 }
 
-void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
+void PurpleTdClient::onAnimatedStickerConverted(AccountThread *arg)
 {
     std::unique_ptr<AccountThread> baseThread(arg);
     StickerConversionThread *thread = dynamic_cast<StickerConversionThread *>(arg);
     const td::td_api::chat  *chat   = thread ? m_data.getChat(thread->chatId) : nullptr;
     if (!chat || !thread)
         return;
+    IncomingMessage *pendingMessage = m_data.pendingMessages.findPendingMessage(getId(*chat), thread->message().id);
 
     std::string  errorMessage = thread->getErrorMessage();
     gchar       *imageData    =  NULL;
@@ -903,14 +904,28 @@ void PurpleTdClient::showConvertedAnimation(AccountThread *arg)
 
     if (success) {
         int id = purple_imgstore_add_with_id (imageData, imageSize, NULL);
-        std::string text = makeInlineImageText(id);
-        showMessageText(m_data, *chat, thread->message, text.c_str(), NULL, PURPLE_MESSAGE_IMAGES);
+        if (pendingMessage) {
+            pendingMessage->animatedStickerConverted = true;
+            pendingMessage->animatedStickerConvertSuccess = true;
+            pendingMessage->animatedStickerImageId = id;
+            checkMessageReady(pendingMessage, m_transceiver, m_data);
+            pendingMessage = nullptr;
+        } else {
+            std::string text = makeInlineImageText(id);
+            showMessageText(m_data, *chat, thread->message(), text.c_str(), NULL, PURPLE_MESSAGE_IMAGES);
+        }
     } else {
+        if (pendingMessage) {
+            pendingMessage->animatedStickerConverted = true;
+            pendingMessage->animatedStickerConvertSuccess = false;
+            checkMessageReady(pendingMessage, m_transceiver, m_data);
+            pendingMessage = nullptr;
+        }
         // TRANSLATOR: In-chat error message, arguments will be a file name and a proper reason
         errorMessage = formatMessage(_("Could not read sticker file {0}: {1}"),
                                         {thread->inputFileName, errorMessage});
-        errorMessage = makeNoticeWithSender(*chat, thread->message, errorMessage.c_str(), m_account);
-        showMessageText(m_data, *chat, thread->message, NULL, errorMessage.c_str());
+        errorMessage = makeNoticeWithSender(*chat, thread->message(), errorMessage.c_str(), m_account);
+        showMessageText(m_data, *chat, thread->message(), NULL, errorMessage.c_str());
     }
 }
 
@@ -942,12 +957,12 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
             showMessage(*chat, readyMessage, m_transceiver, m_data);
     } else {
         MessageId messageId = getId(*fullMessage.message);
-        fetchExtras(fullMessage, m_transceiver, m_data,
+        IncomingMessage &addedMessage = m_data.pendingMessages.addPendingMessage(std::move(fullMessage));
+        fetchExtras(addedMessage, m_transceiver, m_data,
             [this, chatId, messageId](uint64_t, td::td_api::object_ptr<td::td_api::Object> object) {
                 findMessageResponse(chatId, messageId, std::move(object));
             }
         );
-        m_data.pendingMessages.addPendingMessage(std::move(fullMessage));
     }
 }
 

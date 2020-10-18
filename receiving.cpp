@@ -468,7 +468,12 @@ static void showFileInline(const td::td_api::chat &chat, IncomingMessage &fullMe
                         !notice.empty() ? notice.c_str() : nullptr);
 
     if (autoDownload || askDownload) {
-        if (file.local_ && file.local_->is_downloading_completed_)
+        if (fullMessage.animatedStickerConverted) {
+            if (fullMessage.animatedStickerConvertSuccess) {
+                std::string text = makeInlineImageText(fullMessage.animatedStickerImageId);
+                showMessageText(account, chat, fullMessage.messageInfo, text.c_str(), NULL, PURPLE_MESSAGE_IMAGES);
+            }
+        } else if (file.local_ && file.local_->is_downloading_completed_)
             showDownloadedFileInline(getId(chat), fullMessage.messageInfo, file.local_->path_,
                                      caption, fileDesc, std::move(thumbnail), transceiver, account);
         else if (autoDownload && fullMessage.inlineDownloadComplete)
@@ -681,6 +686,9 @@ void makeFullMessage(const td::td_api::chat &chat, td::td_api::object_ptr<td::td
     fullMessage.repliedMessageFailed = false;
     fullMessage.inlineDownloadComplete = false;
     fullMessage.inlineDownloadTimeout = false;
+    fullMessage.animatedStickerConverted = false;
+    fullMessage.animatedStickerConvertSuccess = false;
+    fullMessage.animatedStickerImageId = 0;
 
     const char *option = purple_account_get_string(account.purpleAccount, AccountOptions::DownloadBehaviour,
                                                    AccountOptions::DownloadBehaviourDefault());
@@ -752,10 +760,21 @@ static bool isFileMessageReady(const IncomingMessage &fullMessage, ChatId chatId
 
     if (chat && isInlineDownload(fullMessage, content, *chat)) {
         // File will be shown inline
-        // Files above limit will either be ignored (in which case, message is ready)
-        // or requested (in which case, don't try do display in order)
-        return fullMessage.inlineDownloadComplete || fullMessage.inlineDownloadTimeout ||
-               !inlineDownloadNeedAutoDl(fullMessage, file);
+        // Animated stickers are not ready until converted
+        if (fullMessage.inlineDownloadComplete)
+            return !((content.get_id() == td::td_api::messageSticker::ID) &&
+                     isStickerAnimated(fullMessage.inlineDownloadedFilePath) &&
+                     shouldConvertAnimatedSticker(fullMessage.messageInfo, account.purpleAccount) &&
+                     !fullMessage.animatedStickerConverted);
+        else if (file.local_ && file.local_->is_downloading_completed_)
+            return !((content.get_id() == td::td_api::messageSticker::ID) &&
+                     isStickerAnimated(file.local_->path_) &&
+                     shouldConvertAnimatedSticker(fullMessage.messageInfo, account.purpleAccount) &&
+                     !fullMessage.animatedStickerConverted);
+        else
+            // Files above limit will either be ignored (in which case, message is ready)
+            // or requested (in which case, don't try do display in order)
+            return fullMessage.inlineDownloadTimeout || !inlineDownloadNeedAutoDl(fullMessage, file);
     } else
         // Standard libpurple transfer will be used, nothing to postpone
         return true;
@@ -892,14 +911,24 @@ void fetchExtras(IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAcc
 
     FileInfo fileInfo;
     getFileFromMessage(fullMessage, fileInfo);
-    if (fileInfo.file && message.content_ && chat && isInlineDownload(fullMessage, *message.content_, *chat) &&
-        inlineDownloadNeedAutoDl(fullMessage, *fileInfo.file))
-    {
-        // TgMessageInfo on fullMessage has replyMessage=NULL which will be copied onto DownloadRequest.
-        // If message leaves PendingMessageQueue while download is still active, there's probably
-        // a replyMessage on IncomingMessage by then, and it needs to be moved over to DownloadRequest.
-        downloadFileInline(fileInfo.file->id_, chatId, fullMessage.messageInfo, fileInfo.description,
-                           nullptr, transceiver, account);
+    if (fileInfo.file && message.content_ && chat && isInlineDownload(fullMessage, *message.content_, *chat)) {
+        if (fileInfo.file->local_ && fileInfo.file->local_->is_downloading_completed_ &&
+            (message.content_->get_id() == td::td_api::messageSticker::ID) &&
+            isStickerAnimated(fileInfo.file->local_->path_))
+        {
+            if (shouldConvertAnimatedSticker(fullMessage.messageInfo, account.purpleAccount)) {
+                StickerConversionThread *thread;
+                thread = new StickerConversionThread(account.purpleAccount, fileInfo.file->local_->path_,
+                                                     chatId, &fullMessage.messageInfo);
+                thread->startThread();
+            }
+        } else if (inlineDownloadNeedAutoDl(fullMessage, *fileInfo.file)) {
+            // TgMessageInfo on fullMessage has replyMessage=NULL which will be copied onto DownloadRequest.
+            // If message leaves PendingMessageQueue while download is still active, there's probably
+            // a replyMessage on IncomingMessage by then, and it needs to be moved over to DownloadRequest.
+            downloadFileInline(fileInfo.file->id_, chatId, fullMessage.messageInfo, fileInfo.description,
+                               nullptr, transceiver, account);
+        }
     }
 }
 

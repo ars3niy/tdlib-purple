@@ -3,6 +3,7 @@
 #include "client-utils.h"
 #include "format.h"
 #include "receiving.h"
+#include "sticker.h"
 #include <unistd.h>
 
 enum {
@@ -189,13 +190,19 @@ static void inlineDownloadResponse(uint64_t requestId,
 
             if (pendingMessage->message && pendingMessage->message->content_ &&
                 (pendingMessage->message->content_->get_id() == td::td_api::messageSticker::ID) &&
-                isStickerAnimated(path) &&
-                !shouldConvertAnimatedSticker(pendingMessage->messageInfo, account.purpleAccount))
+                isStickerAnimated(path))
             {
-                td::td_api::messageSticker &sticker = static_cast<td::td_api::messageSticker &>(
-                    *pendingMessage->message->content_);
-                if (sticker.sticker_ && sticker.sticker_->thumbnail_)
-                    replacementFile = sticker.sticker_->thumbnail_->photo_.get();
+                if (shouldConvertAnimatedSticker(pendingMessage->messageInfo, account.purpleAccount)) {
+                    StickerConversionThread *thread;
+                    thread = new StickerConversionThread(account.purpleAccount, path, getChatId(*pendingMessage->message),
+                                                         &pendingMessage->messageInfo);
+                    thread->startThread();
+                } else {
+                    td::td_api::messageSticker &sticker = static_cast<td::td_api::messageSticker &>(
+                        *pendingMessage->message->content_);
+                    if (sticker.sticker_ && sticker.sticker_->thumbnail_)
+                        replacementFile = sticker.sticker_->thumbnail_->photo_.get();
+                }
             }
 
             if (replacementFile)
