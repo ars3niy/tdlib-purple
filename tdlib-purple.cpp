@@ -951,6 +951,12 @@ static void tgprpl_init (PurplePlugin *plugin)
     // TRANSLATOR: Account settings, value for large file downloads
     addChoice(choices, _("Discard"), AccountOptions::BigDownloadHandlingDiscard);
 
+    // TRANSLATOR: Account settings, check box label
+    opt = purple_account_option_bool_new(_("Do not clean up inline downloads"),
+                                         AccountOptions::KeepInlineDownloads,
+                                         AccountOptions::KeepInlineDownloadsDefault);
+    prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
+
     // TRANSLATOR: Account settings, key (choice)
     opt = purple_account_option_list_new (_("Bigger inline file downloads"), AccountOptions::BigDownloadHandling, choices);
     prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);

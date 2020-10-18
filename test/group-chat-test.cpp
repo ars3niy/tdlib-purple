@@ -1284,7 +1284,7 @@ TEST_F(GroupChatTest, Roomlist)
             "",
             "",
             "",
-            false,
+            true,
             false
         ))
     });

@@ -385,8 +385,8 @@ void PurpleTdClient::sendTdlibParameters()
     purple_debug_misc(config::pluginId, "Account %s using database directory %s\n",
                       username, parameters->database_directory_.c_str());
     parameters->use_chat_info_database_ = true;
-    parameters->use_secret_chats_ = purple_account_get_bool(m_account, AccountOptions::EnableSecretChats,
-                                                            AccountOptions::EnableSecretChatsDefault);
+    parameters->use_secret_chats_ = (purple_account_get_bool(m_account, AccountOptions::EnableSecretChats,
+                                                             AccountOptions::EnableSecretChatsDefault) != FALSE);
     parameters->api_id_ = config::api_id;
     parameters->api_hash_ = config::api_hash;
     if (*config::stuff)
@@ -395,7 +395,8 @@ void PurpleTdClient::sendTdlibParameters()
     parameters->device_model_ = "Desktop";
     parameters->system_version_ = "Unknown";
     parameters->application_version_ = "1.0";
-    parameters->enable_storage_optimizer_ = true;
+    parameters->enable_storage_optimizer_ = (purple_account_get_bool(m_account, AccountOptions::KeepInlineDownloads,
+                                                                     AccountOptions::KeepInlineDownloadsDefault) == FALSE);
     m_transceiver.sendQuery(td::td_api::make_object<td::td_api::setTdlibParameters>(std::move(parameters)),
                             &PurpleTdClient::authResponse);
 }

@@ -39,6 +39,8 @@ namespace AccountOptions {
     constexpr const char *DownloadBehaviourHyperlink = "hyperlink";
     constexpr const char *DownloadBehaviourStandard  = "file-transfer";
     const char           *DownloadBehaviourDefault();
+    constexpr const char *KeepInlineDownloads        = "keep-inline-downloads";
+    constexpr gboolean    KeepInlineDownloadsDefault = FALSE;
 };
 
 namespace BuddyOptions {

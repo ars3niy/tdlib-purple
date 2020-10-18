@@ -85,6 +85,7 @@ static void compare(const setTdlibParameters &actual, const setTdlibParameters &
 {
     COMPARE(parameters_->database_directory_);
     COMPARE(parameters_->use_secret_chats_);
+    COMPARE(parameters_->enable_storage_optimizer_);
 }
 
 static void compare(const checkDatabaseEncryptionKey &actual, const checkDatabaseEncryptionKey &expected)

@@ -34,7 +34,7 @@ TEST_F(LoginTest, ConnectionReadyBeforeAuthReady)
             "",
             "",
             "",
-            false,
+            true,
             false
         ))
     });
@@ -105,7 +105,7 @@ TEST_F(LoginTest, RegisterNewAccount_WithAlias_ConnectionReadyBeforeAuthReady)
             "",
             "",
             "",
-            false,
+            true,
             false
         ))
     });
@@ -203,7 +203,7 @@ TEST_F(LoginTest, RegisterNewAccount_NoAlias)
             "",
             "",
             "",
-            false,
+            true,
             false
         ))
     });
@@ -286,7 +286,7 @@ TEST_F(LoginTest, TwoFactorAuthentication)
             "",
             "",
             "",
-            false,
+            true,
             false
         ))
     });
@@ -426,7 +426,7 @@ TEST_F(LoginTest, AddedProxyCofiguration)
             "",
             "",
             "",
-            false,
+            true,
             false
         ))
     });
@@ -479,7 +479,7 @@ TEST_F(LoginTest, ChangedProxyCofiguration)
             "",
             "",
             "",
-            false,
+            true,
             false
         ))
     });
@@ -522,7 +522,7 @@ TEST_F(LoginTest, RemovedProxyCofiguration)
             "",
             "",
             "",
-            false,
+            true,
             false
         ))
     });
@@ -563,7 +563,7 @@ TEST_F(LoginTest, getChatsSequence)
             "",
             "",
             "",
-            false,
+            true,
             false
         ))
     });
@@ -628,4 +628,38 @@ TEST_F(LoginTest, getChatsSequence)
         AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
         ShowAccountEvent(account)
     );
+}
+
+TEST_F(LoginTest, KeepInlineDownloads)
+{
+    purple_account_set_bool(account, "keep-inline-downloads", TRUE);
+    pluginInfo().login(account);
+    prpl.verifyEvents(
+        ConnectionSetStateEvent(connection, PURPLE_CONNECTING),
+        ConnectionUpdateProgressEvent(connection, 1, 2)
+    );
+
+    tgl.update(make_object<updateAuthorizationState>(make_object<authorizationStateWaitTdlibParameters>()));
+    tgl.verifyRequests({
+        make_object<disableProxy>(),
+        make_object<getProxies>(),
+        make_object<setTdlibParameters>(make_object<tdlibParameters>(
+            false,
+            std::string(purple_user_dir()) + G_DIR_SEPARATOR_S +
+            "tdlib" + G_DIR_SEPARATOR_S + "+" + selfPhoneNumber,
+            "",
+            false,
+            false,
+            false,
+            true, // use secret chats
+            0,
+            "",
+            "",
+            "",
+            "",
+            "",
+            false, // enable storage optimizer, false due to configuration
+            false
+        ))
+    });
 }

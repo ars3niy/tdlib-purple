@@ -78,7 +78,7 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
             "",
             "",
             "",
-            false,
+            true,
             false
         ))
     });

@@ -131,7 +131,7 @@ TEST_F(SecretChatTest, SecretChatsDisabled)
             "",
             "",
             "",
-            false,
+            true,
             false
         ))
     });
