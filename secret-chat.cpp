@@ -16,6 +16,7 @@ void updateKnownSecretChat(SecretChatId secretChatId, TdTransceiver &transceiver
     int state = (secretChat && secretChat->state_) ? secretChat->state_->get_id() :
                                                      td::td_api::secretChatStateClosed::ID;
     std::string purpleBuddyName = getSecretChatBuddyName(secretChatId);
+    // TRANSLATOR: Default buddy-alias for a new secret chat. Argument is the Telegram nick, I think.
     std::string alias = formatMessage(_("Secret chat: {}"), chat->title_);
 
     PurpleBuddy *buddy = purple_find_buddy(account.purpleAccount, purpleBuddyName.c_str());
@@ -45,10 +46,11 @@ void updateKnownSecretChat(SecretChatId secretChatId, TdTransceiver &transceiver
 
         // This should be a newly created secret chat, so if we requested it, open the conversation
         if (secretChat && secretChat->is_outbound_) {
-            if (state == td::td_api::secretChatStatePending::ID)
+            if (state == td::td_api::secretChatStatePending::ID) {
+                // TRANSLATOR: In-chat message to explain why the chat is not established yet.
                 showChatNotification(account, *chat, _("The secret chat will be available when activated by the peer"),
                                      PURPLE_MESSAGE_NO_LOG);
-            else
+            } else
                 // Shouldn't really be possible, but just in case
                 getImConversation(account.purpleAccount, purpleBuddyName.c_str());
         }
