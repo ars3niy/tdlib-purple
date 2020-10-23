@@ -243,6 +243,7 @@ static GList* tgprpl_blist_node_menu (PurpleBlistNode *node)
     {
         fprintf(stderr, "Creating secret chat menu for %s\n", purple_buddy_get_name(PURPLE_BUDDY(node)));
         PurpleMenuAction *action;
+        // TRANSLATOR: Buddy menu action item
         action = purple_menu_action_new(_("Start secret chat"),
                                         PURPLE_CALLBACK(createSecretChat),
                                         NULL, NULL);

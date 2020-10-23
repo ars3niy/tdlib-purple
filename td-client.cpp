@@ -2265,10 +2265,12 @@ void PurpleTdClient::createSecretChat(const char* buddyName)
         // Unlikely error messages not worth translating
         const char *reason = users.empty() ? "User not found" :
                                              "More than one user found with this name";
-        std::string message = formatMessage(_("Cannot kick user: {}"), std::string(reason));
+        std::string message = formatMessage("Cannot create secret chat: {}", std::string(reason));
         purple_notify_error(purple_account_get_connection(m_account),
+                            // TRANSLATOR: Failure notification, title
                             _("Failed to create secret chat"),
                             message.c_str(), NULL);
+
         return;
     }
 
