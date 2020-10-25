@@ -635,6 +635,9 @@ void showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage,
             showMessageText(account, chat, messageInfo, NULL, notice.c_str());
         }
     }
+
+    // Put it back - may be needed if long download is in progress
+    fullMessage.repliedMessage = std::move(messageInfo.repliedMessage);
 }
 
 void showMessages(std::vector<IncomingMessage>& messages, TdTransceiver &transceiver,
@@ -687,7 +690,7 @@ void makeFullMessage(const td::td_api::chat &chat, td::td_api::object_ptr<td::td
 
     fullMessage.repliedMessage = nullptr;
     fullMessage.selectedPhotoSizeId = 0;
-    fullMessage.repliedMessageFailed = false;
+    fullMessage.repliedMessageFetchDoneOrFailed = false;
     fullMessage.inlineDownloadComplete = false;
     fullMessage.inlineDownloadTimeout = false;
     fullMessage.animatedStickerConverted = false;
@@ -871,8 +874,7 @@ bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &acc
     const td::td_api::message &message = *fullMessage.message;
     ChatId chatId = getChatId(message);
 
-    if (getReplyMessageId(message).valid() && !fullMessage.repliedMessage &&
-        !fullMessage.repliedMessageFailed)
+    if (getReplyMessageId(message).valid() && !fullMessage.repliedMessageFetchDoneOrFailed)
     {
         return false;
     }
@@ -937,15 +939,15 @@ void fetchExtras(IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAcc
 }
 
 void checkMessageReady(const IncomingMessage *message, TdTransceiver &transceiver,
-                       TdAccountData &account)
+                       TdAccountData &account, std::vector<IncomingMessage> *rvReadyMessages)
 {
     if (!message || !message->message) return;
 
     if (isMessageReady(*message, account)) {
         std::vector<IncomingMessage> readyMessages;
         account.pendingMessages.setMessageReady(getChatId(*message->message), getId(*message->message),
-                                               readyMessages);
+                                               rvReadyMessages ? *rvReadyMessages : readyMessages);
         message = nullptr;
-        showMessages(readyMessages, transceiver, account);
+        showMessages(rvReadyMessages ? *rvReadyMessages : readyMessages, transceiver, account);
     }
 }

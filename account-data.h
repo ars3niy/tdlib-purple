@@ -232,7 +232,7 @@ struct IncomingMessage {
     int32_t  selectedPhotoSizeId;
     unsigned inlineFileSizeLimit;
     bool     standardDownloadConfigured;
-    bool     repliedMessageFailed;
+    bool     repliedMessageFetchDoneOrFailed;
     bool     inlineDownloadComplete;
     bool     inlineDownloadTimeout;
     bool     animatedStickerConverted;

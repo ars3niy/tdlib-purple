@@ -49,7 +49,7 @@ bool isMessageReady(const IncomingMessage &fullMessage, const TdAccountData &acc
 void fetchExtras(IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAccountData &account,
                  TdTransceiver::ResponseCb2 onFetchReply);
 void checkMessageReady(const IncomingMessage *message, TdTransceiver &transceiver,
-                       TdAccountData &account);
+                       TdAccountData &account, std::vector<IncomingMessage> *rvReadyMessages = nullptr);
 
 #endif
 

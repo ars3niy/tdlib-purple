@@ -279,13 +279,21 @@ static void handleLongInlineDownload(uint64_t requestId, TdTransceiver &transcei
 
         IncomingMessage *pendingMessage = account.pendingMessages.findPendingMessage(pRequest->chatId, pRequest->message.id);
         if (pendingMessage) {
+            pendingMessage->inlineDownloadTimeout = true;
+            std::vector<IncomingMessage> readyMessages;
+            checkMessageReady(pendingMessage, transceiver, account, &readyMessages);
+            pendingMessage = nullptr;
+
+            // Now after "Downloading..." notification has been displayed (which may have been
+            // accompanied by file caption, if any, in which case it needs reply source if it was a
+            // reply), we can move reply source from no-longer-pending IncomingMessage onto
+            // DownloadRequest, so that citation can be displayed again when displaying hyperlink.
             // If the message is a reply but fetching reply source hasn't produced a response yet
             // at this point, a successful such response may technically yet come in which case we
             // will lose the reply source. But this is extremely unlikely, and not even a problem.
-            // TODO: fail pRequest->message.repliedMessage = std::move(pendingMessage->repliedMessage);
-            pendingMessage->inlineDownloadTimeout = true;
-            checkMessageReady(pendingMessage, transceiver, account);
-            pendingMessage = nullptr;
+            for (IncomingMessage &pendingMessage: readyMessages)
+                if (pendingMessage.message && (getId(*pendingMessage.message) == pRequest->message.id))
+                    pRequest->message.repliedMessage = std::move(pendingMessage.repliedMessage);
         }
     }
 }

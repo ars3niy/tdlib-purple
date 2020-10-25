@@ -972,13 +972,12 @@ void PurpleTdClient::findMessageResponse(ChatId chatId, MessageId pendingMessage
     IncomingMessage *pendingMessage = m_data.pendingMessages.findPendingMessage(chatId, pendingMessageId);
     if (!pendingMessage) return;
 
+    pendingMessage->repliedMessageFetchDoneOrFailed = true;
     if (object && (object->get_id() == td::td_api::message::ID))
         pendingMessage->repliedMessage = td::move_tl_object_as<td::td_api::message>(object);
-    else {
+    else
         purple_debug_misc(config::pluginId, "Failed to fetch reply source for message %" G_GINT64_FORMAT "\n",
                           pendingMessageId.value());
-        pendingMessage->repliedMessageFailed = true;
-    }
 
     checkMessageReady(pendingMessage, m_transceiver, m_data);
 }
