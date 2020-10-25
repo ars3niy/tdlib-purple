@@ -427,7 +427,6 @@ static void requestInlineDownload(const char *sender, const td::td_api::file &fi
 static void showFileInline(const td::td_api::chat &chat, IncomingMessage &fullMessage,
                            const td::td_api::file &file, const char *caption,
                            const std::string &fileDesc,
-                           td::td_api::object_ptr<td::td_api::file> thumbnail,
                            TdTransceiver &transceiver, TdAccountData &account)
 {
     std::string notice;
@@ -479,10 +478,10 @@ static void showFileInline(const td::td_api::chat &chat, IncomingMessage &fullMe
             }
         } else if (file.local_ && file.local_->is_downloading_completed_)
             showDownloadedFileInline(getId(chat), fullMessage.messageInfo, file.local_->path_,
-                                     caption, fileDesc, std::move(thumbnail), transceiver, account);
+                                     caption, fileDesc, std::move(fullMessage.thumbnail), transceiver, account);
         else if (autoDownload && fullMessage.inlineDownloadComplete)
             showDownloadedFileInline(getId(chat), fullMessage.messageInfo, fullMessage.inlineDownloadedFilePath,
-                                     caption, fileDesc, std::move(thumbnail), transceiver, account);
+                                     caption, fileDesc, std::move(fullMessage.thumbnail), transceiver, account);
         else if (autoDownload) {
             // When download takes too long, message will leave PendingMessageQueue and be "shown".
             // However, nothing more should be done at that point except keep waiting for the download.
@@ -490,7 +489,7 @@ static void showFileInline(const td::td_api::chat &chat, IncomingMessage &fullMe
                 purple_debug_misc(config::pluginId, "Downloading %s (file id %d)\n", fileDesc.c_str(),
                                 (int)file.id_);
                 downloadFileInline(file.id_, getId(chat), fullMessage.messageInfo, fileDesc,
-                                std::move(thumbnail), transceiver, account);
+                                std::move(fullMessage.thumbnail), transceiver, account);
             }
         } else if (askDownload) {
             std::string sender = getSenderDisplayName(chat, fullMessage.messageInfo,
@@ -510,7 +509,7 @@ static void showPhotoMessage(const td::td_api::chat &chat, IncomingMessage &full
 
     if (photoSize) {
         // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
-        showFileInline(chat, fullMessage, *photoSize, captionCstr, _("photo"), nullptr,
+        showFileInline(chat, fullMessage, *photoSize, captionCstr, _("photo"),
                        transceiver, account);
     } else {
         // Unlikely message not worth translating
@@ -539,7 +538,7 @@ static void showFileMessage(const td::td_api::chat &chat, IncomingMessage &fullM
              ((chat.type_->get_id() != td::td_api::chatTypePrivate::ID) &&
               (chat.type_->get_id() != td::td_api::chatTypeSecret::ID)) )
         {
-            showFileInline(chat, fullMessage, *file, captionStr, fileDescription, nullptr,
+            showFileInline(chat, fullMessage, *file, captionStr, fileDescription,
                            transceiver, account);
         } else
             requestStandardDownload(getId(chat), fullMessage.messageInfo, fileName, *file,
@@ -554,13 +553,10 @@ static void showStickerMessage(const td::td_api::chat &chat, IncomingMessage &fu
     if (!stickerContent.sticker_) return;
     td::td_api::sticker &sticker = *stickerContent.sticker_;
 
-    if (sticker.sticker_) {
-        auto thumbnail = sticker.thumbnail_ ? std::move(sticker.thumbnail_->photo_) : nullptr;
-
+    if (sticker.sticker_)
         // TRANSLATOR: File-type, used to describe what is being downloaded, in sentences like "Downloading photo" or "Ignoring photo download".
-        showFileInline(chat, fullMessage, *sticker.sticker_, NULL, _("sticker"), std::move(thumbnail),
+        showFileInline(chat, fullMessage, *sticker.sticker_, NULL, _("sticker"),
                        transceiver, account);
-    }
 }
 
 void showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage,
@@ -721,8 +717,13 @@ void makeFullMessage(const td::td_api::chat &chat, td::td_api::object_ptr<td::td
             const td::td_api::file *file = selectPhotoSize(account.purpleAccount, photo);
             if (file)
                 fullMessage.selectedPhotoSizeId = file->id_;
-        } else if (message->content_->get_id() == td::td_api::messageSticker::ID)
+        } else if (message->content_->get_id() == td::td_api::messageSticker::ID) {
             messageInfo.type = TgMessageInfo::Type::Sticker;
+            td::td_api::messageSticker &sticker = static_cast<td::td_api::messageSticker &>(*message->content_);
+            if (sticker.sticker_ && sticker.sticker_->thumbnail_) {
+                fullMessage.thumbnail = std::move(sticker.sticker_->thumbnail_->photo_);
+            }
+        }
     }
 
     fullMessage.message = std::move(message);
@@ -928,10 +929,12 @@ void fetchExtras(IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAcc
                                                      chatId, &fullMessage.messageInfo);
                 thread->startThread();
             }
+            // TODO: if animated stickers are disabled, fetch thumbnail instead
         } else if (inlineDownloadNeedAutoDl(fullMessage, *fileInfo.file)) {
             // TgMessageInfo on fullMessage has replyMessage=NULL which will be copied onto DownloadRequest.
             // If message leaves PendingMessageQueue while download is still active, there's probably
             // a replyMessage on IncomingMessage by then, and it needs to be moved over to DownloadRequest.
+            // Thumbnail also needs moving onto DownloadRequest.
             downloadFileInline(fileInfo.file->id_, chatId, fullMessage.messageInfo, fileInfo.description,
                                nullptr, transceiver, account);
         }

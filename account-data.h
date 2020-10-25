@@ -223,6 +223,7 @@ public:
 struct IncomingMessage {
     td::td_api::object_ptr<td::td_api::message> message;
     td::td_api::object_ptr<td::td_api::message> repliedMessage;
+    td::td_api::object_ptr<td::td_api::file>    thumbnail;
     std::string inlineDownloadedFilePath;
 
     // This doesn't have to be a separate struct, it exists for historical reasons.

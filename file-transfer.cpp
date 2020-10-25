@@ -197,15 +197,12 @@ static void inlineDownloadResponse(uint64_t requestId,
                     thread = new StickerConversionThread(account.purpleAccount, path, getChatId(*pendingMessage->message),
                                                          &pendingMessage->messageInfo);
                     thread->startThread();
-                } else {
-                    td::td_api::messageSticker &sticker = static_cast<td::td_api::messageSticker &>(
-                        *pendingMessage->message->content_);
-                    if (sticker.sticker_ && sticker.sticker_->thumbnail_)
-                        replacementFile = sticker.sticker_->thumbnail_->photo_.get();
-                }
+                } else
+                    replacementFile = pendingMessage->thumbnail.get();
             }
 
             if (replacementFile)
+                // TODO: if thumbnail already downloaded, mark ready and don't download
                 downloadFileInline(replacementFile->id_, request->chatId, request->message,
                                    request->fileDescription, nullptr, transceiver, account);
             else {
@@ -292,8 +289,10 @@ static void handleLongInlineDownload(uint64_t requestId, TdTransceiver &transcei
             // at this point, a successful such response may technically yet come in which case we
             // will lose the reply source. But this is extremely unlikely, and not even a problem.
             for (IncomingMessage &pendingMessage: readyMessages)
-                if (pendingMessage.message && (getId(*pendingMessage.message) == pRequest->message.id))
+                if (pendingMessage.message && (getId(*pendingMessage.message) == pRequest->message.id)) {
                     pRequest->message.repliedMessage = std::move(pendingMessage.repliedMessage);
+                    pRequest->thumbnail = std::move(pendingMessage.thumbnail);
+                }
         }
     }
 }

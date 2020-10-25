@@ -429,7 +429,7 @@ TEST_F(FileTransferTest, DISABLED_AnimatedStickerDecode)
     );
 }
 
-TEST_F(FileTransferTest, Sticker_AnimatedDisabled)
+TEST_F(FileTransferTest, Sticker_AnimatedDisabled_AlreadyDownloaded)
 {
     const int32_t date      = 10001;
     const int32_t fileId[2] = {1234, 1235};
@@ -513,6 +513,171 @@ TEST_F(FileTransferTest, Sticker_AnimatedDisabled)
         PURPLE_MESSAGE_RECV,
         date
     ));
+}
+
+TEST_F(FileTransferTest, Sticker_AnimatedDisabled_ThumbnailAboveLimit)
+{
+    const int32_t date      = 10001;
+    const int32_t fileId    = 1234;
+    const int32_t thumbId   = 1236;
+    purple_account_set_bool(account, "animated-stickers", FALSE);
+    purple_account_set_string(account, "media-size-threshold", "0.1");
+    loginWithOneContact();
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messageSticker>(make_object<sticker>(
+            0, 320, 200, "", true, false, nullptr,
+            make_object<photoSize>(
+                "whatever",
+                make_object<file>(
+                    thumbId, 100000000, 100000000,
+                    make_object<localFile>("", true, true, false, false, 0, 0, 0),
+                    make_object<remoteFile>("beh", "bleh", false, true, 100000000)
+                ),
+                320, 200
+            ),
+            make_object<file>(
+                fileId, 10000, 10000,
+                make_object<localFile>("", true, true, false, false, 0, 0, 0),
+                make_object<remoteFile>("beh", "bleh", false, true, 10000)
+            )
+        ))
+    )));
+    tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
+        make_object<downloadFile>(fileId, 1, 0, 0, true)
+    });
+
+    tgl.reply(make_object<ok>()); // reply to viewMessages
+    prpl.verifyNoEvents();
+
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/sticker.tgs", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    prpl.verifyNoEvents();
+    tgl.verifyRequests({make_object<downloadFile>(thumbId, 1, 0, 0, true)});
+
+    tgl.reply(make_object<file>(
+        fileId, 100000000, 100000000,
+        make_object<localFile>("/thumb", true, true, false, true, 0, 100000000, 100000000),
+        make_object<remoteFile>("beh", "bleh", false, true, 100000000)
+    ));
+    prpl.verifyEvents(
+        ServGotImEvent(
+            connection, purpleUserName(0),
+            // Sticker replaced with thumbnail because it's .tgs
+            "<a href=\"file:///thumb\">sticker</a>",
+            PURPLE_MESSAGE_RECV, date
+        )
+    );
+}
+
+TEST_F(FileTransferTest, Sticker_AnimatedDisabled_LongDownloads_ThumbnailAboveLimit)
+{
+    const int32_t date      = 10001;
+    const int32_t fileId    = 1234;
+    const int32_t thumbId   = 1236;
+    purple_account_set_bool(account, "animated-stickers", FALSE);
+    purple_account_set_string(account, "media-size-threshold", "0.1");
+    loginWithOneContact();
+
+    // Now with thumbnail and main file, both already downloaded
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messageSticker>(make_object<sticker>(
+            0, 320, 200, "", true, false, nullptr,
+            make_object<photoSize>(
+                "whatever",
+                make_object<file>(
+                    thumbId, 100000000, 100000000,
+                    make_object<localFile>("", true, true, false, false, 0, 0, 0),
+                    make_object<remoteFile>("beh", "bleh", false, true, 100000000)
+                ),
+                320, 200
+            ),
+            make_object<file>(
+                fileId, 10000, 10000,
+                make_object<localFile>("", true, true, false, false, 0, 0, 0),
+                make_object<remoteFile>("beh", "bleh", false, true, 10000)
+            )
+        ))
+    )));
+    tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
+        make_object<downloadFile>(fileId, 1, 0, 0, true)
+    });
+    tgl.reply(make_object<ok>()); // reply to viewMessages
+    prpl.verifyNoEvents();
+
+    runTimeouts();
+    std::string tempFileName;
+    prpl.verifyEvents(
+        XferAcceptedEvent(purpleUserName(0), &tempFileName)
+    );
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/sticker.tgs", true, true, true, false, 0, 0, 2000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+    prpl.verifyEvents(
+        XferStartEvent(tempFileName),
+        XferProgressEvent(tempFileName, 2000)
+    );
+
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/sticker.tgs", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    prpl.verifyEvents(
+        XferCompletedEvent(tempFileName, TRUE, 10000),
+        XferEndEvent(tempFileName)
+    );
+    ASSERT_FALSE(g_file_test(tempFileName.c_str(), G_FILE_TEST_EXISTS));
+    tgl.verifyRequests({make_object<downloadFile>(thumbId, 1, 0, 0, true)});
+
+    runTimeouts();
+    prpl.verifyEvents(
+        XferAcceptedEvent(purpleUserName(0), &tempFileName)
+    );
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        thumbId, 100000000, 100000000,
+        make_object<localFile>("/thumb", true, true, true, false, 0, 0, 2000),
+        make_object<remoteFile>("beh", "bleh", false, true, 100000000)
+    )));
+    prpl.verifyEvents(
+        XferStartEvent(tempFileName),
+        XferProgressEvent(tempFileName, 2000)
+    );
+
+    tgl.reply(make_object<file>(
+        fileId, 100000000, 100000000,
+        make_object<localFile>("/thumb", true, true, false, true, 0, 100000000, 100000000),
+        make_object<remoteFile>("beh", "bleh", false, true, 100000000)
+    ));
+    prpl.verifyEvents(
+        XferCompletedEvent(tempFileName, TRUE, 100000000),
+        XferEndEvent(tempFileName),
+        ServGotImEvent(
+            connection, purpleUserName(0),
+            "<a href=\"file:///thumb\">sticker</a>",
+            PURPLE_MESSAGE_RECV, date
+        )
+    );
+    ASSERT_FALSE(g_file_test(tempFileName.c_str(), G_FILE_TEST_EXISTS));
 }
 
 TEST_F(FileTransferTest, Photo_DownloadProgress_StuckAtStart)
