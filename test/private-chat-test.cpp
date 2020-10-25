@@ -400,10 +400,9 @@ TEST_F(PrivateChatTest, Document)
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     ));
     prpl.verifyEvents(
-        ServGotImEvent(connection, purpleUserName(0), "document", PURPLE_MESSAGE_RECV, date),
         ServGotImEvent(
             connection, purpleUserName(0),
-            "<a href=\"file:///path\">doc.file.name [mime/type]</a>",
+            "<a href=\"file:///path\">doc.file.name [mime/type]</a>\ndocument",
             PURPLE_MESSAGE_RECV, date
         )
     );
@@ -452,11 +451,10 @@ TEST_F(PrivateChatTest, Video)
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     ));
     prpl.verifyEvents(
-        ServGotImEvent(connection, purpleUserName(0), "video", PURPLE_MESSAGE_RECV, date),
         ServGotImEvent(
             connection,
             purpleUserName(0),
-            "<a href=\"file:///path\">video.avi [video/whatever]</a>",
+            "<a href=\"file:///path\">video.avi [video/whatever]</a>\nvideo",
             PURPLE_MESSAGE_RECV,
             date
         )
@@ -506,11 +504,10 @@ TEST_F(PrivateChatTest, Audio)
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     ));
     prpl.verifyEvents(
-        ServGotImEvent(connection, purpleUserName(0), "audio", PURPLE_MESSAGE_RECV, date),
         ServGotImEvent(
             connection,
             purpleUserName(0),
-            "<a href=\"file:///path\">symphony.ogg [audio/whatever]</a>",
+            "<a href=\"file:///path\">symphony.ogg [audio/whatever]</a>\naudio",
             PURPLE_MESSAGE_RECV,
             date
         )

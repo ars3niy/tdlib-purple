@@ -312,7 +312,7 @@ static void showDownloadedSticker(const td::td_api::chat &chat, TgMessageInfo &m
                 downloadFileInline(thumbnail->id_, getId(chat), message, fileDescription, nullptr,
                                    transceiver, account);
         } else {
-            showGenericFileInline(chat, message, filePath, fileDescription, account);
+            showGenericFileInline(chat, message, filePath, NULL, fileDescription, account);
         }
     } else {
         showWebpSticker(chat, message, filePath, fileDescription, account);
@@ -320,15 +320,19 @@ static void showDownloadedSticker(const td::td_api::chat &chat, TgMessageInfo &m
 }
 
 void showGenericFileInline(const td::td_api::chat &chat, const TgMessageInfo &message,
-                           const std::string &filePath, const std::string &fileDescription,
-                           TdAccountData &account)
+                           const std::string &filePath, const char *caption,
+                           const std::string &fileDescription, TdAccountData &account)
 {
     if (filePath.find('"') != std::string::npos) {
         std::string notice = makeNoticeWithSender(chat, message, "Cannot show file: path contains quotes",
                                                     account.purpleAccount);
-        showMessageText(account, chat, message, NULL, notice.c_str());
+        showMessageText(account, chat, message, caption, notice.c_str());
     } else {
         std::string text = "<a href=\"file://" + filePath + "\">" + fileDescription + "</a>";
+        if (caption && *caption) {
+            text += "\n";
+            text += caption;
+        }
         showMessageText(account, chat, message, text.c_str(), NULL);
     }
 }
@@ -351,7 +355,7 @@ void showDownloadedFileInline(ChatId chatId, TgMessageInfo &message,
                               transceiver, account);
         break;
     case TgMessageInfo::Type::Other:
-        showGenericFileInline(*chat, message, filePath, fileDescription, account);
+        showGenericFileInline(*chat, message, filePath, caption, fileDescription, account);
         break;
     }
 }
@@ -438,6 +442,8 @@ static void showFileInline(const td::td_api::chat &chat, IncomingMessage &fullMe
         autoDownload = true;
         notice.clear();
     } else if (isSizeWithinLimit(fileSize, fullMessage.inlineFileSizeLimit)) {
+        // Sticker with a caption is not a thing but just in case it was: don't skip "Downloading..."
+        // notification for such hypothetical object because it will also include caption
         if ( !((fullMessage.messageInfo.type == TgMessageInfo::Type::Sticker) && !caption) &&
              !fullMessage.inlineDownloadComplete )
         {
@@ -456,16 +462,14 @@ static void showFileInline(const td::td_api::chat &chat, IncomingMessage &fullMe
         g_free(fileSizeStr);
     }
 
+    
     if (!notice.empty())
         notice = makeNoticeWithSender(chat, fullMessage.messageInfo, notice.c_str(),
                                       account.purpleAccount);
 
-    // If notice is empty it means file is already downloaded.
-    // For photos caption will be shown after the image. For all other downloads caption will
-    // be ignored from now on, this is the only chance to show it.
-    if (!notice.empty() || (fullMessage.messageInfo.type != TgMessageInfo::Type::Photo))
-        showMessageText(account, chat, fullMessage.messageInfo, caption,
-                        !notice.empty() ? notice.c_str() : nullptr);
+    // Notice means file isn't downloaded yet or is ignored. Either way, show caption as well.
+    if (!notice.empty())
+        showMessageText(account, chat, fullMessage.messageInfo, caption, notice.c_str());
 
     if (autoDownload || askDownload) {
         if (fullMessage.animatedStickerConverted) {

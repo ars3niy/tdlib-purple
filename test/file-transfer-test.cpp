@@ -33,11 +33,10 @@ TEST_F(FileTransferTest, Document_AlreadyDownloaded)
         make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, messageId), true)
     });
     prpl.verifyEvents(
-        ServGotImEvent(connection, purpleUserName(0), "caption", PURPLE_MESSAGE_RECV, date),
         ServGotImEvent(
             connection,
             purpleUserName(0),
-            "<a href=\"file:///path\">doc.file.name [mime/type]</a>",
+            "<a href=\"file:///path\">doc.file.name [mime/type]</a>\ncaption",
             PURPLE_MESSAGE_RECV,
             date
         )
