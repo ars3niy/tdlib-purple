@@ -19,7 +19,7 @@ the conversion can be disabled in account settings, or even at compile time (see
 
 Binary packages for Debian, Fedora, openSUSE and Ubuntu are available at https://download.opensuse.org/repositories/home:/ars3n1y/ .
 
-Adding Ubuntu repository:
+Adding Ubuntu repository (replace NN.NN with the actual version - see available versions at the link above):
 ```
 curl -fsSL https://download.opensuse.org/repositories/home:ars3n1y/xUbuntu_NN.NN/Release.key | sudo apt-key add -
 sudo apt-add-repository 'deb http://download.opensuse.org/repositories/home:/ars3n1y/xUbuntu_NN.NN/ /'
