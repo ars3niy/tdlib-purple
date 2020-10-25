@@ -186,9 +186,9 @@ object_ptr<updateUser> CommTest::standardUpdateUserNoPhone(unsigned index)
 object_ptr<updateNewChat> CommTest::standardPrivateChat(unsigned index, object_ptr<ChatList> chatList)
 {
     object_ptr<chat> chat = makeChat(
-        chatIds[0],
-        make_object<chatTypePrivate>(userIds[0]),
-        userFirstNames[0] + " " + userLastNames[0],
+        chatIds[index],
+        make_object<chatTypePrivate>(userIds[index]),
+        userFirstNames[index] + " " + userLastNames[index],
         nullptr, 0, 0, 0
     );
     chat->chat_list_ = std::move(chatList);

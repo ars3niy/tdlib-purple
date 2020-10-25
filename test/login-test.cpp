@@ -663,3 +663,49 @@ TEST_F(LoginTest, KeepInlineDownloads)
         ))
     });
 }
+
+TEST_F(LoginTest, IncomingGroupChatMessageAtLoginWhileChatListStillNull)
+{
+    const int32_t     groupId             = 700;
+    const int64_t     groupChatId         = 7000;
+    const std::string groupChatTitle      = "Title";
+    const std::string groupChatPurpleName = "chat" + std::to_string(groupChatId);
+    constexpr int64_t messageId    = 10000;
+    constexpr int32_t date         = 123456;
+    constexpr int     purpleChatId = 1;
+
+    GHashTable *components = g_hash_table_new_full (g_str_hash, g_str_equal, NULL, g_free);
+    g_hash_table_insert(components, (char *)"id", g_strdup((groupChatPurpleName).c_str()));
+    purple_blist_add_chat(purple_chat_new(account, groupChatTitle.c_str(), components), NULL, NULL);
+    prpl.discardEvents();
+
+    login(
+        {
+            standardUpdateUser(0),
+            make_object<updateBasicGroup>(make_object<basicGroup>(
+                groupId, 2, make_object<chatMemberStatusMember>(), true, 0
+            )),
+            make_object<updateNewChat>(makeChat(
+                groupChatId, make_object<chatTypeBasicGroup>(groupId), groupChatTitle, nullptr, 0, 0, 0
+            )),
+            make_object<updateNewMessage>(makeMessage(
+                messageId, userIds[0], groupChatId, false, date, makeTextMessage("text")
+            )),
+            makeUpdateChatListMain(groupChatId),
+        },
+        make_object<users>(), make_object<chats>(),
+        {
+            // Removal is unnecessary but nothing too bad is happening
+            std::make_unique<RemoveChatEvent>(groupChatPurpleName, ""),
+            std::make_unique<ServGotJoinedChatEvent>(connection, purpleChatId, groupChatPurpleName, groupChatPurpleName),
+            std::make_unique<ConvSetTitleEvent>(groupChatPurpleName, groupChatTitle),
+            std::make_unique<ServGotChatEvent>(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0],
+                             "text", PURPLE_MESSAGE_RECV, date),
+            std::make_unique<AddChatEvent>(groupChatPurpleName, groupChatTitle, account, nullptr, nullptr)
+        },
+        {
+            make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true),
+            make_object<getBasicGroupFullInfo>(groupId)
+        }
+    );
+}

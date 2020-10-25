@@ -201,14 +201,11 @@ void showMessageText(TdAccountData &account, const td::td_api::chat &chat, const
 
     const td::td_api::user *privateUser = account.getUserByPrivateChat(chat);
     if (privateUser) {
-        std::string userName;
+        std::string userName = getPurpleBuddyName(*privateUser);
 
-        // If the chat is in contact list telegram-wise, there should be a buddy for it.
-        // If not, libpurple won't be able to translate buddy name to alias, so use display name
-        // instead of idXXXXXXXXX
-        if (isChatInContactList(chat, privateUser))
-            userName = getPurpleBuddyName(*privateUser);
-        else
+        // If there is no buddy in the buddy list, libpurple won't be able to translate buddy name
+        // to alias, so use display name instead of idXXXXXXXXX
+        if (!purple_find_buddy(account.purpleAccount, userName.c_str()))
             userName = account.getDisplayName(*privateUser);
         showMessageTextIm(account, userName.c_str(), text, notification, message.timestamp, flags);
     }
