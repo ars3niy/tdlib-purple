@@ -220,3 +220,84 @@ TEST_P(MessageOrderTestLongDownloadInReply, LongDownloadInReply)
 }
 
 INSTANTIATE_TEST_CASE_P(bleh, MessageOrderTestLongDownloadInReply, ::testing::Values("", "caption"));
+
+TEST_F(MessageOrderTest, DownloadOrdering)
+{
+    const int64_t messageId[3] = {1, 2, 3};
+    const int32_t date[3]      = {10001, 10002, 10003};
+    const int32_t fileId[3]    = {1234, 0, 1235};
+    loginWithOneContact();
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId[0], userIds[0], chatIds[0], false, date[0],
+        make_object<messageDocument>(
+            make_object<document>(
+                "doc1.file.name", "mime/type", nullptr, nullptr,
+                make_object<file>(
+                    fileId[0], 10000, 10000,
+                    make_object<localFile>("", true, true, false, false, 0, 0, 0),
+                    make_object<remoteFile>("beh", "bleh", false, true, 10000)
+                )
+            ),
+            make_object<formattedText>("document1", std::vector<object_ptr<textEntity>>())
+        )
+    )));
+    uint64_t download1ReqId = tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, messageId[0]), true),
+        make_object<downloadFile>(fileId[0], 1, 0, 0, true)
+    }).at(1);
+    prpl.verifyNoEvents();
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId[1], userIds[0], chatIds[0], false, date[1], makeTextMessage("followUp")
+    )));
+    tgl.verifyRequest(viewMessages(chatIds[0], {messageId[1]}, true));
+    prpl.verifyNoEvents();
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId[2], userIds[0], chatIds[0], false, date[2],
+        make_object<messageDocument>(
+            make_object<document>(
+                "doc2.file.name", "mime/type", nullptr, nullptr,
+                make_object<file>(
+                    fileId[2], 10000, 10000,
+                    make_object<localFile>("", true, true, false, false, 0, 0, 0),
+                    make_object<remoteFile>("beh", "bleh", false, true, 10000)
+                )
+            ),
+            make_object<formattedText>("document1", std::vector<object_ptr<textEntity>>())
+        )
+    )));
+    uint64_t download2ReqId = tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, messageId[2]), true),
+        make_object<downloadFile>(fileId[2], 1, 0, 0, true)
+    }).at(1);
+    prpl.verifyNoEvents();
+
+    tgl.reply(download1ReqId, make_object<file>(
+        fileId[0], 10000, 10000,
+        make_object<localFile>("/path1", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    prpl.verifyEvents(
+        ServGotImEvent(
+            connection, purpleUserName(0),
+            "<a href=\"file:///path1\">doc1.file.name [mime/type]</a>\ndocument1",
+            PURPLE_MESSAGE_RECV, date[0]
+        ),
+        ServGotImEvent(connection, purpleUserName(0), "followUp", PURPLE_MESSAGE_RECV, date[1])
+    );
+
+    tgl.reply(download2ReqId, make_object<file>(
+        fileId[0], 10000, 10000,
+        make_object<localFile>("/path2", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    prpl.verifyEvents(
+        ServGotImEvent(
+            connection, purpleUserName(0),
+            "<a href=\"file:///path2\">doc2.file.name [mime/type]</a>\ndocument1",
+            PURPLE_MESSAGE_RECV, date[2]
+        )
+    );
+}

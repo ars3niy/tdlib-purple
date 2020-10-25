@@ -399,13 +399,11 @@ TEST_F(PrivateChatTest, Document)
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     ));
-    prpl.verifyEvents(
-        ServGotImEvent(
-            connection, purpleUserName(0),
-            "<a href=\"file:///path\">doc.file.name [mime/type]</a>\ndocument",
-            PURPLE_MESSAGE_RECV, date
-        )
-    );
+    prpl.verifyEvents(ServGotImEvent(
+        connection, purpleUserName(0),
+        "<a href=\"file:///path\">doc.file.name [mime/type]</a>\ndocument",
+        PURPLE_MESSAGE_RECV, date
+    ));
 }
 
 TEST_F(PrivateChatTest, Video)

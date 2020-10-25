@@ -775,6 +775,8 @@ TEST_F(FileTransferTest, Photo_DownloadProgress)
 {
     const int32_t date   = 10001;
     const int32_t fileId = 1234;
+    const int32_t date2  = 10002;
+    const int64_t messageId2 = 2;
     loginWithOneContact();
 
     std::vector<object_ptr<photoSize>> sizes;
@@ -799,13 +801,11 @@ TEST_F(FileTransferTest, Photo_DownloadProgress)
             false
         )
     )));
-    tgl.verifyRequests({
+    uint64_t downloadReqId = tgl.verifyRequests({
         make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
-    });
+    }).at(1);
     prpl.verifyNoEvents();
-
-    tgl.reply(make_object<ok>()); // reply to viewMessages
 
     tgl.update(make_object<updateFile>(make_object<file>(
         fileId, 10000, 10000,
@@ -826,17 +826,21 @@ TEST_F(FileTransferTest, Photo_DownloadProgress)
         )
     );
 
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId2, userIds[0], chatIds[0], false, date2, makeTextMessage("followUp")
+    )));
+    tgl.verifyRequest(viewMessages(chatIds[0], {messageId2}, true));
+    prpl.verifyEvents(ServGotImEvent(connection, purpleUserName(0), "followUp", PURPLE_MESSAGE_RECV, date2));
+
     tgl.update(make_object<updateFile>(make_object<file>(
         fileId, 10000, 10000,
         make_object<localFile>("/path", true, true, true, false, 0, 0, 5000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
     )));
 
-    prpl.verifyEvents(
-        XferProgressEvent(tempFileName, 5000)
-    );
+    prpl.verifyEvents(XferProgressEvent(tempFileName, 5000));
 
-    tgl.reply(make_object<file>(
+    tgl.reply(downloadReqId, make_object<file>(
         fileId, 10000, 10000,
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
