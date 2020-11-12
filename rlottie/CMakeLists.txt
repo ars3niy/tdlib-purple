@@ -56,7 +56,6 @@ target_compile_options(rlottie
                         -fno-asynchronous-unwind-tables
                         -fno-rtti
                         -Wall
-                        -Werror
                         -Wextra
                         -Wnon-virtual-dtor
                         -Woverloaded-virtual
