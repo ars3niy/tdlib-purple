@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 # versions before 3.2 don't pass CMAKE_EXE_LINKER_FLAGS when using try_compile
 
-set(VERSION 0.7.2)
+set(VERSION 0.7.3)
 project(tdlib-purple VERSION ${VERSION} LANGUAGES CXX)
 
 find_package(Td REQUIRED)
