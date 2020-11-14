@@ -4,6 +4,7 @@
 #include "format.h"
 #include "receiving.h"
 #include "sticker.h"
+#include "purple-info.h"
 #include <unistd.h>
 
 enum {
@@ -272,10 +273,17 @@ static void handleLongInlineDownload(uint64_t requestId, TdTransceiver &transcei
 {
     DownloadRequest *pRequest = account.findPendingRequest<DownloadRequest>(requestId);
     if (pRequest) {
-        startInlineDownloadProgress(*pRequest, transceiver, account);
+        const char *option = purple_account_get_string(account.purpleAccount, AccountOptions::DownloadBehaviour,
+                                                       AccountOptions::DownloadBehaviourDefault());
+        if (!strcmp(option, AccountOptions::DownloadBehaviourHyperlink))
+            // We didn't want inline downloads, but got one anyway because it's image or sticker.
+            // At least don't get the fake file transfer going, because that tends to get bitlbee
+            // and spectrum in trouble.
+            startInlineDownloadProgress(*pRequest, transceiver, account);
 
         IncomingMessage *pendingMessage = account.pendingMessages.findPendingMessage(pRequest->chatId, pRequest->message.id);
         if (pendingMessage) {
+
             pendingMessage->inlineDownloadTimeout = true;
             std::vector<IncomingMessage> readyMessages;
             checkMessageReady(pendingMessage, transceiver, account, &readyMessages);

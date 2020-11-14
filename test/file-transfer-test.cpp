@@ -1294,3 +1294,73 @@ TEST_F(FileTransferTest, ReceiveDocument_StandardTransfer_Progress)
     remove(tdlibFileName);
     g_free(tdlibFileName);
 }
+
+TEST_F(FileTransferTest, Photo_LongDownload_StartandDownloadsConfigured)
+{
+    purple_account_set_string(account, "download-behaviour", "file-transfer");
+    const int32_t date   = 10001;
+    const int32_t fileId = 1234;
+    loginWithOneContact();
+
+    std::vector<object_ptr<photoSize>> sizes;
+    sizes.push_back(make_object<photoSize>(
+        "whatever",
+        make_object<file>(
+            fileId, 10000, 10000,
+            make_object<localFile>("", true, true, false, false, 0, 0, 0),
+            make_object<remoteFile>("beh", "bleh", false, true, 10000)
+        ),
+        640, 480
+    ));
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messagePhoto>(
+            make_object<photo>(false, nullptr, std::move(sizes)),
+            make_object<formattedText>("photo", std::vector<object_ptr<textEntity>>()),
+            false
+        )
+    )));
+    uint64_t downloadReqId = tgl.verifyRequests({
+        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
+        make_object<downloadFile>(fileId, 1, 0, 0, true)
+    }).at(1);
+    prpl.verifyNoEvents();
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, true, false, 0, 0, 2000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+
+    tgl.runTimeouts();
+    prpl.verifyEvents(
+        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(
+            purpleUserName(0), purpleUserName(0),
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
+    );
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, true, false, 0, 0, 5000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+    tgl.reply(downloadReqId, make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    ));
+    prpl.verifyEvents(ServGotImEvent(
+        connection,
+        purpleUserName(0),
+        "<img src=\"file:///path\">",
+        (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES),
+        date
+    ));
+}

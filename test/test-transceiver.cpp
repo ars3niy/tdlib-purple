@@ -73,6 +73,7 @@ void TestTransceiver::cancelTimer(guint id)
 
 void TestTransceiver::runTimeouts()
 {
+    std::cout << "Waiting for all timeouts\n";
     for (const TimerInfo &timer: m_timers)
         while (timer.function(timer.data)) ;
 
