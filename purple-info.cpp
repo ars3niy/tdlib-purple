@@ -2,7 +2,7 @@
 #include "config.h"
 #include "format.h"
 #include <algorithm>
-#include <math.h>
+#include <cmath>
 
 static char chatNameComponent[] = "id";
 static char joinStringKey[]     = "link";
@@ -116,7 +116,7 @@ unsigned getAutoDownloadLimitKb(PurpleAccount *account)
         purple_account_set_string(account, AccountOptions::AutoDownloadLimit,
                                   AccountOptions::AutoDownloadLimitDefault);
         dlLimit = atof(AccountOptions::AutoDownloadLimitDefault);
-    } else if (!isfinite(dlLimit) || (dlLimit >= UINT_MAX/1024-1)) {
+    } else if (!std::isfinite(dlLimit) || (dlLimit >= UINT_MAX/1024-1)) {
         purple_account_set_string(account, AccountOptions::AutoDownloadLimit, "0");
         dlLimit = 0;
     }
