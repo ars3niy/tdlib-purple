@@ -74,6 +74,22 @@ std::string getUnsupportedMessageDescription(const td::td_api::MessageContent &c
     return formatMessage(_("Unsupported message type {}"), messageTypeToString(content));
 }
 
+std::string getDisplayedError(const td::td_api::object_ptr<td::td_api::Object> &object)
+{
+    if (!object) {
+        // Dead code at the time of writing this - NULL response can happen if sendQueryWithTimeout
+        // was used, but it isn't used in a way that can lead to this message
+        return "No response received";
+    }
+    else if (object->get_id() == td::td_api::error::ID) {
+        const td::td_api::error &error = static_cast<const td::td_api::error &>(*object);
+        return formatMessage(errorCodeMessage(), {std::to_string(error.code_), error.message_});
+    } else {
+        // Should not be possible
+        return "Unexpected response";
+    }
+}
+
 std::string proxyTypeToString(PurpleProxyType proxyType)
 {
     switch (proxyType) {

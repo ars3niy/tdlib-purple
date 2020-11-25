@@ -25,7 +25,7 @@ void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &tra
 
 void requestStandardDownload(ChatId chatId, const TgMessageInfo &message, const std::string &fileName,
                              const td::td_api::file &file, TdTransceiver &transceiver, TdAccountData &account);
-std::string getDownloadPath(const td::td_api::Object *downloadResponse);
+std::string getDownloadPath(const td::td_api::object_ptr<td::td_api::Object> &downloadResponse);
 
 unsigned getFileSize(const td::td_api::file &file);
 unsigned getFileSizeKb(const td::td_api::file &file);

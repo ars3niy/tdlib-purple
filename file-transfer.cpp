@@ -181,7 +181,7 @@ static void inlineDownloadResponse(uint64_t requestId,
     std::unique_ptr<DownloadRequest> request = account.getPendingRequest<DownloadRequest>(requestId);
 
     if (request) {
-        std::string path = getDownloadPath(object.get());
+        std::string path = getDownloadPath(object);
         finishInlineDownloadProgress(*request, account);
         IncomingMessage *pendingMessage = account.pendingMessages.findPendingMessage(request->chatId, request->message.id);
 
@@ -379,11 +379,9 @@ void updateFileTransferProgress(const td::td_api::file &file, TdTransceiver &tra
     updateDownloadProgress(file, xfer, account);
 }
 
-std::string getDownloadPath(const td::td_api::Object *downloadResponse)
+std::string getDownloadPath(const td::td_api::object_ptr<td::td_api::Object> &downloadResponse)
 {
-    if (!downloadResponse)
-        purple_debug_warning(config::pluginId, "No response after downloading file\n");
-    else if (downloadResponse->get_id() == td::td_api::file::ID) {
+    if (downloadResponse && (downloadResponse->get_id() == td::td_api::file::ID)) {
         const td::td_api::file &file = static_cast<const td::td_api::file &>(*downloadResponse);
         if (!file.local_)
             purple_debug_warning(config::pluginId, "No local file info after downloading\n");
@@ -392,8 +390,8 @@ std::string getDownloadPath(const td::td_api::Object *downloadResponse)
         else
             return file.local_->path_;
     } else
-        purple_debug_warning(config::pluginId, "Unexpected response to downloading file: id %d\n",
-                             (int)downloadResponse->get_id());
+        purple_debug_warning(config::pluginId, "Error downloading file: %s\n",
+                             getDisplayedError(downloadResponse));
 
     return "";
 }
@@ -458,7 +456,7 @@ static void standardDownloadResponse(TdAccountData *account, uint64_t requestId,
                                      td::td_api::object_ptr<td::td_api::Object> object)
 {
     std::unique_ptr<DownloadRequest> request = account->getPendingRequest<DownloadRequest>(requestId);
-    std::string                      path    = getDownloadPath(object.get());
+    std::string                      path    = getDownloadPath(object);
     if (!request) return;
 
     PurpleXfer *download;

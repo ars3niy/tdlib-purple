@@ -310,22 +310,6 @@ bool PurpleTdClient::addProxy()
     return true;
 }
 
-static std::string getDisplayedError(const td::td_api::object_ptr<td::td_api::Object> &object)
-{
-    if (!object) {
-        // Dead code at the time of writing this - NULL response can happen if sendQueryWithTimeout
-        // was used, but it isn't used in a way that can lead to this message
-        return "No response received";
-    }
-    else if (object->get_id() == td::td_api::error::ID) {
-        const td::td_api::error &error = static_cast<const td::td_api::error &>(*object);
-        return formatMessage(errorCodeMessage(), {std::to_string(error.code_), error.message_});
-    } else {
-        // Should not be possible
-        return "Unexpected response";
-    }
-}
-
 void PurpleTdClient::addProxyResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     if (object && (object->get_id() == td::td_api::proxy::ID)) {
