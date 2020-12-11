@@ -1,3 +1,5 @@
 build/
-.travis_cache/
+/.ga_cache/
+/td_repo/
+/td_destdir/
 *.kdev4
