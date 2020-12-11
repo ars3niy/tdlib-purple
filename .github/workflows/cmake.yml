@@ -1,0 +1,133 @@
+name: Build and test
+
+on: [push, pull_request]
+
+# Don't mix these up!
+# runner.workspace = /home/runner/work/serenity
+# github.workspace = /home/runner/work/serenity/serenity
+
+env:
+  # Must be updated manually. Increment 'TD_MARK' to invalidate the cache.
+  # Must not contain spaces, minuses, or any special characters.
+  TD_TAG: "v1.6.0"
+  TD_MARK: "m1"
+
+jobs:
+  build_and_test_linux:
+    runs-on: ubuntu-20.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # TODO: Try building with the voip library
+          # That currently fails because Ubuntu and Debian only have a "libtgvoip-dev" package, which includes
+          # headers and a "libtgvoip.a" file, but no "libtgvoip.so" file. There is no (non-ancient) "libtgvoip"
+          # package with a ".so" in it. This seems to be intentional, since different versions of tgvoip aren't
+          # compatible with each other. So we can't do the "normal" thing and link against the shared library.
+          # So we have to go with static libraries. However, on Ubuntu Focal (the distro we use for this job)
+          # has a static library which was built *without* "-fPIC", so when linking we run into this error:
+          #     /usr/bin/ld: /usr/lib/gcc/x86_64-linux-gnu/10/../../../x86_64-linux-gnu/libtgvoip.a(VoIPController.o):
+          #     relocation R_X86_64_PC32 against symbol `_ZTVSt9basic_iosIcSt11char_traitsIcEE@@GLIBCXX_3.4' can not
+          #     be used when making a shared object; recompile with -fPIC
+          # Sigh. I give up. I don't know how to build it on Ubuntu.
+          #- { CMAKE_FLAGS: "                                                            ", INSTALL_LOTTIE: "n" }
+          ##- { CMAKE_FLAGS: "           -DNoWebp=1                                       ", INSTALL_LOTTIE: "n" }
+          ##- { CMAKE_FLAGS: "                      -DNoTranslations=1                    ", INSTALL_LOTTIE: "n" }
+          #- { CMAKE_FLAGS: "           -DNoWebp=1 -DNoTranslations=1                    ", INSTALL_LOTTIE: "n" }
+          ##- { CMAKE_FLAGS: "                                         -DNoLottie=1       ", INSTALL_LOTTIE: "n" }
+          #- { CMAKE_FLAGS: "           -DNoWebp=1                    -DNoLottie=1       ", INSTALL_LOTTIE: "n" }
+          #- { CMAKE_FLAGS: "                      -DNoTranslations=1 -DNoLottie=1       ", INSTALL_LOTTIE: "n" }
+          ##- { CMAKE_FLAGS: "           -DNoWebp=1 -DNoTranslations=1 -DNoLottie=1       ", INSTALL_LOTTIE: "n" }
+          ##- { CMAKE_FLAGS: "                                         -DNoBundledLottie=1", INSTALL_LOTTIE: "y" }
+          #- { CMAKE_FLAGS: "           -DNoWebp=1                    -DNoBundledLottie=1", INSTALL_LOTTIE: "y" }
+          #- { CMAKE_FLAGS: "                      -DNoTranslations=1 -DNoBundledLottie=1", INSTALL_LOTTIE: "y" }
+          ##- { CMAKE_FLAGS: "           -DNoWebp=1 -DNoTranslations=1 -DNoBundledLottie=1", INSTALL_LOTTIE: "y" }
+
+          # Try to be nice to the builder by excluding some configs.
+          - { CMAKE_FLAGS: "-DNoVoip=1                                                  ", INSTALL_LOTTIE: "n" }
+          - { CMAKE_FLAGS: "-DNoVoip=1 -DNoWebp=1                                       ", INSTALL_LOTTIE: "n" }
+          - { CMAKE_FLAGS: "-DNoVoip=1            -DNoTranslations=1                    ", INSTALL_LOTTIE: "n" }
+          #- { CMAKE_FLAGS: "-DNoVoip=1 -DNoWebp=1 -DNoTranslations=1                    ", INSTALL_LOTTIE: "n" }
+          - { CMAKE_FLAGS: "-DNoVoip=1                               -DNoLottie=1       ", INSTALL_LOTTIE: "n" }
+          #- { CMAKE_FLAGS: "-DNoVoip=1 -DNoWebp=1                    -DNoLottie=1       ", INSTALL_LOTTIE: "n" }
+          #- { CMAKE_FLAGS: "-DNoVoip=1            -DNoTranslations=1 -DNoLottie=1       ", INSTALL_LOTTIE: "n" }
+          #- { CMAKE_FLAGS: "-DNoVoip=1 -DNoWebp=1 -DNoTranslations=1 -DNoLottie=1       ", INSTALL_LOTTIE: "n" }
+          - { CMAKE_FLAGS: "-DNoVoip=1                               -DNoBundledLottie=1", INSTALL_LOTTIE: "y" }
+          #- { CMAKE_FLAGS: "-DNoVoip=1 -DNoWebp=1                    -DNoBundledLottie=1", INSTALL_LOTTIE: "y" }
+          #- { CMAKE_FLAGS: "-DNoVoip=1            -DNoTranslations=1 -DNoBundledLottie=1", INSTALL_LOTTIE: "y" }
+          - { CMAKE_FLAGS: "-DNoVoip=1 -DNoWebp=1 -DNoTranslations=1 -DNoBundledLottie=1", INSTALL_LOTTIE: "y" }
+
+    steps:
+
+    # === BASIC SETUP ===
+
+    - uses: actions/checkout@v2
+    - name: Dump config
+      run: echo "install-local" ${{matrix.INSTALL_LOCAL_LOTTIE}} "cmakeflags" ${{matrix.CMAKE_FLAGS}} "end"
+    - name: Purge interfering packages
+      # Remove GCC 9 (installed by default)
+      run: sudo apt-get purge -y gcc-9 g++-9 libstdc++-9-dev
+    - name: Install dependencies
+      # These packages are already part of the ubuntu-20.04 image:
+      # cmake gcc-10 g++-10
+      # These aren't:
+      run: sudo apt-get install gettext gperf libgtest-dev libopus-dev libpurple-dev libstdc++-10-dev libwebp-dev libwebrtc-audio-processing-dev lzop ninja-build
+      # TODO: Add libtgvoip-dev here? ↑
+    - name: Use GCC 10 instead
+      run: sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 60 --slave /usr/bin/g++ g++ /usr/bin/g++-10
+    - name: Check versions
+      run: set +e; g++ --version; g++-10 --version; ninja --version; gettext --version
+    - name: Install lottie from package manager
+      if: matrix.INSTALL_LOTTIE == 'y' && !cancelled()
+      run: sudo apt-get install -y -qq librlottie-dev
+
+    # === PREPARE FOR BUILDING ===
+
+    - name: Lint translations
+      env:
+        LINTACCEL_IGNORE_MISSING: y
+      run: ${{ github.workspace }}/po/lint_accelerators.py
+    - name: tdlib cache
+      uses: actions/cache@v2
+      with:
+        path: ${{ github.workspace }}/.ga_cache/td_destdir_${{env.TD_TAG}}_${{env.TD_MARK}}.tar*
+        key: ${{ runner.os }}-td-${{env.TD_TAG}}-${{env.TD_MARK}}
+    - name: Restore or create tdlib cache
+      run: ${{ github.workspace }}/ga_build_td.sh ${{env.TD_TAG}} ${{env.TD_MARK}}
+    - name: Create build environment
+      working-directory: ${{ github.workspace }}
+      run: |
+        mkdir -p build
+        cd build
+        # libpurple uses the deprecated glib-type `GParameter` and the deprecated glib-macro `G_CONST_RETURN`, which
+        # spams the console with useless warnings that we can do nothing about.
+        cmake .. -GNinja -DCMAKE_CXX_FLAGS=-DGLIB_DISABLE_DEPRECATION_WARNINGS -DTd_DIR=td_destdir/usr/local/lib/cmake/Td ${{ matrix.CMAKE_FLAGS }} ..
+        # TODO: Add this here? ↑
+        # -Dtgvoip_LIBRARIES='tgvoip;opus;webrtc_audio_processing' -Dtgvoip_INCLUDE_DIRS=/usr/include/libtgvoip/
+    - name: Initialize CodeQL Static Analysis for C++
+      uses: github/codeql-action/init@v1
+      with:
+        languages: cpp
+        config-file: ./.github/codeql/config.yml
+
+    # === BUILD EVERYTHING ===
+
+    - name: Build tdlib-purple
+      working-directory: ${{ github.workspace }}/build
+      run: ninja
+    - name: Build tests
+      working-directory: ${{ github.workspace }}/build
+      run: ninja tests
+
+    # === TEST AND LINT ===
+
+    - name: Run tests
+      working-directory: ${{ github.workspace }}/build
+      run: ninja run-tests
+    - name: Install it
+      # I.e., test the installation routines for executability
+      working-directory: ${{ github.workspace }}/build
+      run: DESTDIR=tdprpl_destdir ninja install
+    - name: Perform post build CodeQL Analysis
+      uses: github/codeql-action/analyze@v1
