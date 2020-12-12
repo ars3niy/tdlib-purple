@@ -6,6 +6,7 @@
 #include <td/telegram/td_api.h>
 
 #include <map>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <purple.h>
