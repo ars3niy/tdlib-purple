@@ -69,7 +69,7 @@ UserId getUserIdByPrivateChat(const td::td_api::chat &chat)
 
 bool isChatInContactList(const td::td_api::chat &chat, const td::td_api::user *privateChatUser)
 {
-    return (chat.chat_list_ != nullptr) || (privateChatUser && privateChatUser->is_contact_);
+    return !chat.positions_.empty() || (privateChatUser && privateChatUser->is_contact_);
 }
 
 BasicGroupId getBasicGroupId(const td::td_api::chat &chat)
@@ -124,7 +124,7 @@ static std::string makeDisplayName(const td::td_api::user &user)
     return result;
 }
 
-auto PendingMessageQueue::getChatQueue(ChatId chatId) -> std::vector<ChatQueue>::iterator 
+auto PendingMessageQueue::getChatQueue(ChatId chatId) -> std::vector<ChatQueue>::iterator
 {
     return std::find_if(m_queues.begin(), m_queues.end(), [chatId](const ChatQueue &queue) {
         return (queue.chatId == chatId);
@@ -374,13 +374,6 @@ void TdAccountData::addChat(TdChatPtr chat)
     }
 }
 
-void TdAccountData::updateChatChatList(ChatId chatId, td::td_api::object_ptr<td::td_api::ChatList> list)
-{
-    auto it = m_chatInfo.find(chatId);
-    if (it != m_chatInfo.end())
-        it->second.chat->chat_list_ = std::move(list);
-}
-
 void TdAccountData::updateChatTitle(ChatId chatId, const std::string &title)
 {
     auto it = m_chatInfo.find(chatId);
@@ -396,13 +389,6 @@ void TdAccountData::updateSmallChatPhoto(ChatId chatId, td::td_api::object_ptr<t
         if (chat.photo_)
             chat.photo_->small_ = std::move(photo);
     }
-}
-
-void TdAccountData::updateChatOrder(ChatId chatId, int64_t order)
-{
-    auto it = m_chatInfo.find(chatId);
-    if (it != m_chatInfo.end())
-        it->second.chat->order_ = order;
 }
 
 void TdAccountData::setContacts(const td::td_api::users &users)
@@ -649,13 +635,16 @@ void TdAccountData::getSmallestOrderChat(const td::td_api::ChatList &list, ChatI
 {
     int64_t minOrder = INT64_MAX;
     ChatId  id       = ChatId::invalid;
+
     for (const ChatMap::value_type &entry: m_chatInfo) {
-        int64_t order = entry.second.chat->order_;
-        if (entry.second.chat->chat_list_ && (entry.second.chat->chat_list_->get_id() == list.get_id()) &&
-            (order < minOrder))
-        {
-            minOrder = order;
-            id = entry.first;
+        for (auto &position: entry.second.chat->positions_) {
+            auto order = position->order_;
+            if (position->list_ && (position->list_->get_id() == list.get_id()) &&
+                (order < minOrder))
+            {
+                minOrder = order;
+                id = entry.first;
+            }
         }
     }
 

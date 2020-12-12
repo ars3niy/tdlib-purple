@@ -147,21 +147,6 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         break;
     }
 
-    case td::td_api::updateChatChatList::ID: {
-        auto &chatListUpdate = static_cast<td::td_api::updateChatChatList &>(update);
-        purple_debug_misc(config::pluginId, "Incoming update: update chat list for chat %" G_GINT64_FORMAT "\n",
-                          chatListUpdate.chat_id_);
-        m_data.updateChatChatList(getChatId(chatListUpdate), std::move(chatListUpdate.chat_list_));
-        updateChat(m_data.getChat(getChatId(chatListUpdate)));
-        break;
-    }
-
-    case td::td_api::updateChatOrder::ID: {
-        auto &chatOrderUpdate = static_cast<td::td_api::updateChatOrder&>(update);
-        m_data.updateChatOrder(getChatId(chatOrderUpdate), chatOrderUpdate.order_);
-        break;
-    };
-
     case td::td_api::updateChatTitle::ID: {
         auto &chatTitleUpdate = static_cast<td::td_api::updateChatTitle &>(update);
         purple_debug_misc(config::pluginId, "Incoming update: update chat title for chat %" G_GINT64_FORMAT "\n",

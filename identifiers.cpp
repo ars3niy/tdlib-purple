@@ -117,16 +117,6 @@ SecretChatId stringToSecretChatId(const char *s)
     return SecretChatId::invalid;
 }
 
-ChatId getChatId(const td::td_api::updateChatChatList &update)
-{
-    return ChatId(update.chat_id_);
-}
-
-ChatId getChatId(const td::td_api::updateChatOrder &update)
-{
-    return ChatId(update.chat_id_);
-}
-
 ChatId getChatId(const td::td_api::updateChatTitle &update)
 {
     return ChatId(update.chat_id_);

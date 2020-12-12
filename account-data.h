@@ -298,10 +298,8 @@ public:
     void updateSupergroupMembers(SupergroupId groupId, TdChatMembersPtr members);
 
     void addChat(TdChatPtr chat); // Updates existing chat if any
-    void updateChatChatList(ChatId chatId, td::td_api::object_ptr<td::td_api::ChatList> list);
     void updateChatTitle(ChatId chatId, const std::string &title);
     void updateSmallChatPhoto(ChatId chatId, td::td_api::object_ptr<td::td_api::file> photo);
-    void updateChatOrder(ChatId chatId, int64_t order);
     void setContacts(const td::td_api::users &users);
     void getContactsWithNoChat(std::vector<UserId> &userIds);
     void getChats(std::vector<const td::td_api::chat *> &chats) const;
