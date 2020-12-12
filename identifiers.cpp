@@ -55,7 +55,16 @@ UserId getUserId(const td::td_api::call &call)
 
 UserId getSenderUserId(const td::td_api::message &message)
 {
-    return UserId(message.sender_user_id_);
+    const td::td_api::MessageSender &sender = *message.sender_;
+    switch (sender.get_id()) {
+    case td::td_api::messageSenderUser::ID:
+        return UserId(static_cast<const td::td_api::messageSenderUser &>(sender).user_id_);
+    case td::td_api::messageSenderChat::ID:
+        // TODO: Can this ever happen?
+        return UserId::invalid;
+    default:
+        return UserId::invalid;
+    }
 }
 
 UserId getSenderUserId(const td::td_api::messageForwardOriginUser &forwardOrigin)
