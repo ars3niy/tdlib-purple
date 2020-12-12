@@ -12,7 +12,6 @@ import os
 
 CONFLICT_PAIRS = [
     ('_OK', '_Cancel'),
-    ('_Accept', '_Cancel'),
     ('_Yes', '_No'),
 ]
 

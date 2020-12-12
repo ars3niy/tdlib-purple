@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: tdlib-purple\n"
 "Report-Msgid-Bugs-To: https://github.com/ars3niy/tdlib-purple/issues/new\n"
-"POT-Creation-Date: 2020-09-02 22:09+0200\n"
+"POT-Creation-Date: 2020-10-23 13:13+0200\n"
 "PO-Revision-Date: 2020-05-15 01:36+0000\n"
 "Last-Translator: Piotr Drąg <piotrdrag@gmail.com>, 2020\n"
 "Language-Team: Polish (https://www.transifex.com/tdlib-purple-developers/teams/110016/pl/)\n"
@@ -25,12 +25,12 @@ msgstr ""
 #. TRANSLATOR: Dialog title of an error message.
 #. TRANSLATOR: Dialog title, asking about an incoming telephone call
 #. (OK/Cancel)
-#: ../call.cpp:28 ../call.cpp:217
+#: ../call.cpp:29 ../call.cpp:213
 msgid "Voice call"
 msgstr "Rozmowa głosowa"
 
 #. TRANSLATOR: Dialog content of an error message.
-#: ../call.cpp:30
+#: ../call.cpp:31
 msgid "Cannot start new call, already in another call"
 msgstr "Nie można rozpocząć nowej rozmowy, trwa inna rozmowa"
 
@@ -38,27 +38,27 @@ msgstr "Nie można rozpocząć nowej rozmowy, trwa inna rozmowa"
 #. when the call
 #. was initiated
 #. TRANSLATOR: In-chat status message
-#: ../call.cpp:140
+#: ../call.cpp:136
 msgid "Call active"
 msgstr "Rozmowa jest aktywna"
 
 #. TRANSLATOR: In-chat status message. Please keep '/hangup' verbatim!
-#: ../call.cpp:142
+#: ../call.cpp:138
 msgid "Call active, type /hangup to terminate"
 msgstr "Rozmowa jest aktywna, wpisanie /hangup ją zakończy"
 
 #. TRANSLATOR: In-chat error message, argument is text
-#: ../call.cpp:171
+#: ../call.cpp:167
 msgid "Call failed: {}"
 msgstr "Rozmowa się nie powiodła: {}"
 
 #. TRANSLATOR: In-chat error message
-#: ../call.cpp:195
+#: ../call.cpp:191
 msgid "Received incoming call, but calls are not supported"
 msgstr "Odebrano rozmowę przychodzącą, ale rozmowy nie są obsługiwane"
 
 #. TRANSLATOR: Dialog content, user will have the options "_OK" and "_Cancel".
-#: ../call.cpp:209
+#: ../call.cpp:205
 msgid "{} wishes to start a call with you."
 msgstr "{} chce rozpocząć rozmowę."
 
@@ -76,16 +76,14 @@ msgstr "{} chce rozpocząć rozmowę."
 #. marks accelerator keys, they must be different!
 #. TRANSLATOR: 2FA settings, alternative is "_Cancel". The underscore marks
 #. accelerator keys, they must be different!
-#: ../call.cpp:221 ../td-client.cpp:447 ../td-client.cpp:511
-#: ../td-client.cpp:542 ../td-client.cpp:2393 ../tdlib-purple.cpp:453
-#: ../tdlib-purple.cpp:992
+#: ../call.cpp:217 ../td-client.cpp:462 ../td-client.cpp:526
+#: ../td-client.cpp:557 ../td-client.cpp:2032 ../tdlib-purple.cpp:479
+#: ../tdlib-purple.cpp:1016
 msgid "_OK"
 msgstr "_OK"
 
 #. TRANSLATOR: Dialog option, regarding a phone call; the alternative is
 #. "_OK". The underscore marks accelerator keys, they must be different!
-#. TRANSLATOR: Dialog option, regarding a secret chat; the alternative is
-#. "_Accept"
 #. TRANSLATOR: Authentication dialog, alternative is "_OK". The underscore
 #. marks accelerator keys, they must be different!
 #. TRANSLATOR: 2FA dialog, alternative is "_OK". The underscore marks
@@ -98,187 +96,101 @@ msgstr "_OK"
 #. marks accelerator keys, they must be different!
 #. TRANSLATOR: 2FA settings, alternative is "_OK". The underscore marks
 #. accelerator keys, they must be different!
-#: ../call.cpp:223 ../client-utils.cpp:1080 ../td-client.cpp:449
-#: ../td-client.cpp:513 ../td-client.cpp:544 ../td-client.cpp:2395
-#: ../tdlib-purple.cpp:455 ../tdlib-purple.cpp:994
+#: ../call.cpp:219 ../td-client.cpp:464 ../td-client.cpp:528
+#: ../td-client.cpp:559 ../td-client.cpp:2034 ../tdlib-purple.cpp:481
+#: ../tdlib-purple.cpp:1018
 msgid "_Cancel"
 msgstr "_Anuluj"
 
 #. TRANSLATOR: In-chat error message
-#: ../call.cpp:228
+#: ../call.cpp:224
 msgid "Received incoming call while already in another call"
 msgstr "Odebrano rozmowę przychodzącą w czasie trwania innej rozmowy"
 
 #. TRANSLATOR: In-chat status message. Please keep '/hangup' verbatim!
-#: ../call.cpp:239
+#: ../call.cpp:235
 msgid "Call pending, type /hangup to terminate"
 msgstr "Rozmowa jest oczekująca, wpisanie /hangup ją zakończy"
 
 #. TRANSLATOR: In-line reason for an ended call; appears after a colon (':')
-#: ../call.cpp:281
+#: ../call.cpp:277
 msgid "call missed"
 msgstr "przegapiono rozmowę"
 
 #. TRANSLATOR: In-line reason for an ended call; appears after a colon (':')
-#: ../call.cpp:285
+#: ../call.cpp:281
 msgid "declined by peer"
 msgstr "odrzucona przez partnera"
 
 #. TRANSLATOR: In-line reason for an ended call; appears after a colon (':')
-#: ../call.cpp:289
+#: ../call.cpp:285
 msgid "users disconnected"
 msgstr "użytkownik się rozłączył"
 
 #. TRANSLATOR: In-line reason for an ended call; appears after a colon (':')
-#: ../call.cpp:293
+#: ../call.cpp:289
 msgid "hung up"
 msgstr "rozłączono"
 
 #. TRANSLATOR: In-line reason for an ended call; appears after a colon (':')
-#: ../call.cpp:298
+#: ../call.cpp:294
 msgid "reason unknown"
 msgstr "nieznany powód"
 
 #. TRANSLATOR: In-chat message, arguments will be a duration and a few words
 #. (like "hung up")
-#: ../call.cpp:302
+#: ../call.cpp:298
 msgid "Call ended ({0}): {1}"
 msgstr "Zakończono rozmowę ({0}): {1}"
 
 #. TRANSLATOR: In-line error message, appears after a colon (':'), arguments
 #. will be a number and some error text from Telegram
-#: ../client-utils.cpp:18
+#: ../client-utils.cpp:19
 msgid "code {0} ({1})"
 msgstr "kod {0} ({1})"
 
 #. TRANSLSATOR: In-line placeholder when an unsupported message is being
 #. replied to.
-#: ../client-utils.cpp:73
+#: ../client-utils.cpp:74
 msgid "Unsupported message type {}"
 msgstr "Nieobsługiwany typ wiadomości {}"
 
 #. TRANSLATOR: In-chat status update
-#: ../client-utils.cpp:255
+#: ../client-utils.cpp:262
 msgid "Future messages in this conversation will be shown in a different tab"
 msgstr "Przyszłe wiadomości w tej rozmowie będą wyświetlane w innej karcie"
 
-#. message == NULL means it could not be fetched, or took too long to fetch
-#. TRANSLATOR: In-line placeholder if the original author of a quote is
-#. unknown. Is at the beginning of the line if and only if you make it so, see
-#. "<b>&bt {} wrote:"...
-#: ../client-utils.cpp:479
-msgid "Unknown user"
-msgstr "Nieznany użytkownik"
-
-#. TRANSLATOR: In-chat placeholder when something unknown is being replied to.
-#: ../client-utils.cpp:485
-msgid "[message unavailable]"
-msgstr "[wiadomość jest niedostępna]"
-
-#. TRANSLATOR: In-line placeholder when a photo is being replied to.
-#: ../client-utils.cpp:498
-msgid "[photo]"
-msgstr "[zdjęcie]"
-
-#. TRANSLATOR: In-line placeholder when a file is being replied to. Arguments
-#. will be the file name and MIME type (e.g. "application/gzip")
-#: ../client-utils.cpp:507
-msgid "[file: {0} ({1})]"
-msgstr "[plik: {0} ({1})]"
-
-#. TRANSLATOR: In-line placeholder when a video is being replied to. Argument
-#. will be the file name.
-#: ../client-utils.cpp:521
-msgid "[video: {}]"
-msgstr "[film: {}]"
-
-#. TRANSLATOR: In-line placeholder when a sticker is being replied to.
-#: ../client-utils.cpp:532
-msgid "[sticker]"
-msgstr "[naklejka]"
-
-#. TRANSLATOR: In-chat notification of a reply. Arguments will be username and
-#. the original text or description thereof. Please preserve the HTML.
-#: ../client-utils.cpp:543
-msgid ""
-"<b>&gt; {0} wrote:</b>\n"
-"&gt; {1}"
-msgstr ""
-"<b>&gt; Użytkownik {0} napisał:</b>\n"
-"&gt; {1}"
-
-#. TRANSLATOR: In-chat notification of forward. Argument will be a username.
-#. Please preserve the HTML.
-#: ../client-utils.cpp:561
-msgid "<b>Forwarded from {}:</b>"
-msgstr "<b>Przekazano od użytkownika {}:</b>"
-
 #. TRANSLATOR: The "sender" of a message that was posted to a channel. Will be
 #. used like a username.
-#: ../client-utils.cpp:615
+#: ../client-utils.cpp:427
 msgid "Channel post"
 msgstr "Wpis kanału"
 
 #. TRANSLATOR: In-chat error message, argument will be text.
 #. TRANSLATOR: In-chat error message, argument will be a user-sent message
-#: ../client-utils.cpp:994 ../td-client.cpp:1444
+#: ../client-utils.cpp:794 ../td-client.cpp:1044
 msgid "Failed to send message: {}"
 msgstr "Wysłanie wiadomości się nie powiodło: {}"
 
-#. TRANSLATOR: Dialog content, argument will be a username
-#: ../client-utils.cpp:1059
-msgid "Rejected secret chat with {}"
-msgstr "Odrzucono tajną rozmowę z użytkownikiem {}"
-
-#. TRANSLATOR: Dialog title
-#: ../client-utils.cpp:1062 ../client-utils.cpp:1071
-msgid "Secret chat"
-msgstr "Tajna rozmowa"
-
-#. TRANSLATOR: Dialog content, argument will be a username, options will be
-#. "_Accept" and "_Cancel".
-#: ../client-utils.cpp:1067
-msgid "Accept secret chat with {} on this device?"
-msgstr "Odebrać tajną rozmowę z użytkownikiem {} na tym urządzeniu?"
-
-#. TRANSLATOR: Dialog secondary content. Options will be "_Accept" and
-#. "_Cancel".
-#: ../client-utils.cpp:1073
-msgid ""
-"Secret chats can only have one end point. If you accept a secret chat on "
-"this device, its messages will not be available anywhere else. If you "
-"decline, you can still accept the chat on other devices."
-msgstr ""
-"Tajne rozmowy mogą mieć tylko jeden punkt wyjściowy. Jeśli tajna rozmowa "
-"zostanie odebrana na tym urządzeniu, to jej wiadomości nie będą dostępne "
-"nigdzie indziej. Jeśli zostanie odrzucona, to nadal można ją odebrać na "
-"innych urządzeniach."
-
-#. TRANSLATOR: Dialog option, regarding a secret chat; the alternative is
-#. "_Cancel"
-#: ../client-utils.cpp:1078
-msgid "_Accept"
-msgstr "_Odbierz"
-
 #. TRANSLATOR: In-line document type. Argument will be a mime type.
-#: ../file-transfer.cpp:459
+#: ../file-transfer.cpp:562
 msgid "voice note [{}]"
 msgstr "notatka głosowa [{}]"
 
 #. TRANSLATOR: In-line document type. Argument will be a duration.
-#: ../file-transfer.cpp:468
+#: ../file-transfer.cpp:571
 msgid "video note [{}]"
 msgstr "notatka wideo [{}]"
 
 #. TRANSLATOR: Filename. Keep it short, and as few special characters as
 #. possible.
-#: ../file-transfer.cpp:476 ../file-transfer.cpp:478
+#: ../file-transfer.cpp:579 ../file-transfer.cpp:581
 msgid "voiceNote"
 msgstr "NotatkaGłosowa"
 
 #. TRANSLATOR: Filename. Keep it short, and as few special characters as
 #. possible.
-#: ../file-transfer.cpp:484
+#: ../file-transfer.cpp:587
 msgid "videoNote"
 msgstr "NotatkaWideo"
 
@@ -309,187 +221,92 @@ msgid "Group to create: 1=small 2=big 3=channel"
 msgstr "Grupa do utworzenia: 1 = mała, 2 = duża, 3 = kanał"
 
 #. TRANSLATOR: Buddy-window error message, argument will be a "number".
-#: ../purple-info.cpp:116
+#: ../purple-info.cpp:113
 msgid "Invalid auto-download limit '{}', resetting to default"
 msgstr ""
 "Nieprawidłowe ograniczenie automatycznego pobierania „{}”, przywracanie "
 "domyślnego"
 
 #. TRANSLATOR: Title of a buddy-window error message
-#: ../purple-info.cpp:118
+#: ../purple-info.cpp:115
 msgid "Download limit"
 msgstr "Ograniczenie pobierania"
 
-#. TRANSLATOR: Buddy-window error message, argument will be some kind of
-#. proxy-identifier.
-#: ../td-client.cpp:280
-msgid "Proxy type {} is not supported"
-msgstr "Typ pośrednika {} jest nieobsługiwany"
+#. message == NULL means it could not be fetched, or took too long to fetch
+#. TRANSLATOR: In-line placeholder if the original author of a quote is
+#. unknown. Is at the beginning of the line if and only if you make it so, see
+#. "<b>&bt {} wrote:"...
+#: ../receiving.cpp:110
+msgid "Unknown user"
+msgstr "Nieznany użytkownik"
 
-#. TRANSLATOR: Buddy-window error message
-#: ../td-client.cpp:324
-msgid "Could not set proxy: {}"
-msgstr "Nie można ustawić pośrednika: {}"
+#. TRANSLATOR: In-chat placeholder when something unknown is being replied to.
+#: ../receiving.cpp:116
+msgid "[message unavailable]"
+msgstr "[wiadomość jest niedostępna]"
 
-#. TRANSLATOR: Buddy-window error message
-#: ../td-client.cpp:337
-msgid "Could not get proxies: {}"
-msgstr "Nie można uzyskać pośredników: {}"
+#. TRANSLATOR: In-line placeholder when a photo is being replied to.
+#: ../receiving.cpp:129
+msgid "[photo]"
+msgstr "[zdjęcie]"
 
-#. TRANSLATOR: Authentication dialog, secondary content. Appears after a colon
-#. (':'). Argument is a number.
-#: ../td-client.cpp:401
-msgid "Telegram message (length: {})"
-msgstr "Wiadomość Telegram (długość: {})"
+#. TRANSLATOR: In-line placeholder when a file is being replied to. Arguments
+#. will be the file name and MIME type (e.g. "application/gzip")
+#: ../receiving.cpp:138
+msgid "[file: {0} ({1})]"
+msgstr "[plik: {0} ({1})]"
 
-#. TRANSLATOR: Authentication dialog, secondary content. Appears after a colon
-#. (':'). Argument is a number.
-#: ../td-client.cpp:405
-msgid "SMS (length: {})"
-msgstr "Wiadomość SMS (długość: {})"
+#. TRANSLATOR: In-line placeholder when a video is being replied to. Argument
+#. will be the file name.
+#: ../receiving.cpp:152
+msgid "[video: {}]"
+msgstr "[film: {}]"
 
-#. TRANSLATOR: Authentication dialog, secondary content. Appears after a colon
-#. (':'). Argument is a number.
-#: ../td-client.cpp:409
-msgid "Phone call (length: {})"
-msgstr "Rozmowa telefoniczna (długość: {})"
+#. TRANSLATOR: In-line placeholder when a sticker is being replied to.
+#: ../receiving.cpp:163
+msgid "[sticker]"
+msgstr "[naklejka]"
 
-#. TRANSLATOR: Authentication dialog, secondary content. Official name "flash
-#. call". Appears after a colon (':'). Argument is some text-string-ish.
-#: ../td-client.cpp:413
-msgid "Poor man's phone call (pattern: {})"
-msgstr "Słaba rozmowa telefoniczna (wzór: {})"
+#. TRANSLATOR: In-chat notification of a reply. Arguments will be username and
+#. the original text or description thereof. Please preserve the HTML.
+#: ../receiving.cpp:174
+msgid ""
+"<b>&gt; {0} wrote:</b>\n"
+"&gt; {1}"
+msgstr ""
+"<b>&gt; Użytkownik {0} napisał:</b>\n"
+"&gt; {1}"
 
-#. TRANSLATOR: Authentication dialog, primary content. Will be followed by
-#. instructions and an input box.
-#: ../td-client.cpp:424
-msgid "Enter authentication code"
-msgstr "Proszę podać kod uwierzytelnienia"
+#. TRANSLATOR: In-chat notification of forward. Argument will be a username.
+#. Please preserve the HTML.
+#: ../receiving.cpp:193
+msgid "<b>Forwarded from {}:</b>"
+msgstr "<b>Przekazano od użytkownika {}:</b>"
 
-#. TRANSLATOR: Authentication dialog, secondary content. Argument will be a
-#. term.
-#: ../td-client.cpp:429
-msgid "Code sent via: {}"
-msgstr "Kod wysłano przez: {}"
-
-#. TRANSLATOR: Authentication dialog, secondary content. Argument will be a
-#. term.
-#: ../td-client.cpp:433
-msgid "Next code will be: {}"
-msgstr "Następny kod: {}"
-
-#. TRANSLATOR: Authentication dialog, title.
-#: ../td-client.cpp:439
-msgid "Login code"
-msgstr "Kod logowania"
-
-#. TRANSLATOR: Connection failure, error message (title; empty content)
-#: ../td-client.cpp:469
-msgid "Authentication code required"
-msgstr "Wymagany jest kod uwierzytelnienia"
-
-#. TRANSLATOR: Connection failure, error message title (title; empty content)
-#: ../td-client.cpp:484
-msgid "Password required"
-msgstr "Wymagane jest hasło"
-
-#. TRANSLATOR: 2FA dialog, secondary content, appears in new line. Argument is
-#. an arbitrary string from Telegram.
-#: ../td-client.cpp:492
-msgid "Hint: {}"
-msgstr "Wskazówka: {}"
-
-#. TRANSLATOR: 2FA dialog, secondary content, appears in new line. Argument is
-#. an e-mail address.
-#: ../td-client.cpp:498
-msgid "Recovery e-mail may have been sent to {}"
-msgstr "Wiadomość odzyskiwania mogła zostać wysłana na adres {}"
-
-#. TRANSLATOR: 2FA dialog, title
-#: ../td-client.cpp:502
-msgid "Password"
-msgstr "Hasło"
-
-#. TRANSLATOR: 2FA dialog, primary content
-#: ../td-client.cpp:504
-msgid "Enter password for two-factor authentication"
-msgstr "Proszę podać hasło dla uwierzytelnienia dwuskładnikowego"
-
-#. TRANSLATOR: Registration dialog, title
-#: ../td-client.cpp:533
-msgid "Registration"
-msgstr "Rejestracja"
-
-#. TRANSLATOR: Registration dialog, content
-#: ../td-client.cpp:535
-msgid "New account is being created. Please enter your display name."
-msgstr "Tworzone jest nowe konto. Proszę podać wyświetlaną nazwę użytkownika."
-
-#. TRANSLATOR: Connection error message after failed registration.
-#: ../td-client.cpp:566 ../td-client.cpp:576
-msgid "Display name is required for registration"
-msgstr "Do rejestracji wymagana jest wyświetlana nazwa"
-
-#. TRANSLATOR: Connection error message, argument is text (a proper reason)
-#: ../td-client.cpp:593
-msgid "Error applying database encryption key: {}"
-msgstr "Błąd podczas zastosowywania klucza szyfrowania bazy danych: {}"
-
-#. TRANSLATOR: Connection error message, argument is text (a proper reason)
-#: ../td-client.cpp:597
-msgid "Authentication error: {}"
-msgstr "Błąd uwierzytelnienia: {}"
-
-#. TRANSLATOR: In-chat notification, appears after a colon (':'). Argument is
-#. a file *type*, not a filename.
-#: ../td-client.cpp:922
-msgid "Downloading {}"
-msgstr "Pobieranie: {}"
-
-#. TRANSLATOR: In-chat notification, appears after a colon (':'). Argument is
-#. a file *type*, not a filename.
-#: ../td-client.cpp:927
-msgid "Requesting {} download"
-msgstr "Żądanie pobrania: {}"
-
-#. File size above limit, so it's non-zero
-#. TRANSLATOR: In-chat notification, appears after a colon (':'). Arguments
-#. are a file *type*, not a filename; second argument is a file size with
-#. unit.
-#: ../td-client.cpp:932
-msgid "Ignoring {0} download ({1})"
-msgstr "Ignorowanie pobierania: {0} ({1})"
-
-#. TRANSLATOR: In-chat warning message
-#: ../td-client.cpp:969
-msgid "Ignoring secret photo"
-msgstr "Ignorowanie tajnego zdjęcia"
-
-#. TRANSLATOR: File-type, used to describe what is being downloaded, in
-#. sentences like "Downloading photo" or "Ignoring photo download".
-#: ../td-client.cpp:977
-msgid "photo"
-msgstr "zdjęcie"
+#. TRANSLATOR: In-chat status update
+#: ../receiving.cpp:298
+msgid "Converting sticker"
+msgstr "Konwertowanie naklejki"
 
 #. TRANSLATOR: Download dialog, primary content, argument will be a username.
-#: ../td-client.cpp:1028
+#: ../receiving.cpp:394
 msgid "Download file from {}?"
 msgstr "Pobrać plik od użytkownika {}?"
 
 #. TRANSLATOR: Download dialog, placeholder chat title, in the sentence
 #. "posted in a private chat".
-#: ../td-client.cpp:1034
+#: ../receiving.cpp:400
 msgid "a private chat"
 msgstr "prywatna rozmowa"
 
 #. TRANSLATOR: Download dialog, secondary content. Arguments will be file
 #. description (text), chat name (text), and a file size (text!)
-#: ../td-client.cpp:1036
+#: ../receiving.cpp:402
 msgid "{0} posted in {1}, size: {2}"
 msgstr "Opublikowano „{0}” w rozmowie „{1}”, rozmiar: {2}"
 
 #. TRANSLATOR: Download dialog, title
-#: ../td-client.cpp:1049
+#: ../receiving.cpp:415
 msgid "Download"
 msgstr "Pobieranie"
 
@@ -497,8 +314,8 @@ msgstr "Pobieranie"
 #. TRANSLATOR: Owning group deletion dialog, alternative is "_No"
 #. TRANSLATOR: Group leave dialog, alternative is "_No"
 #. TRANSLATOR: Group deletion dialog, alternative is "_No"
-#: ../td-client.cpp:1052 ../tdlib-purple.cpp:138 ../tdlib-purple.cpp:148
-#: ../tdlib-purple.cpp:180
+#: ../receiving.cpp:418 ../tdlib-purple.cpp:141 ../tdlib-purple.cpp:151
+#: ../tdlib-purple.cpp:183
 msgid "_Yes"
 msgstr "_Tak"
 
@@ -506,30 +323,48 @@ msgstr "_Tak"
 #. TRANSLATOR: Owning group deletion dialog, alternative is "_Yes"
 #. TRANSLATOR: Group leave dialog, alternative is "_Yes"
 #. TRANSLATOR: Group deletion dialog, alternative is "_Yes"
-#: ../td-client.cpp:1054 ../tdlib-purple.cpp:140 ../tdlib-purple.cpp:150
-#: ../tdlib-purple.cpp:182
+#: ../receiving.cpp:420 ../tdlib-purple.cpp:143 ../tdlib-purple.cpp:153
+#: ../tdlib-purple.cpp:185
 msgid "_No"
 msgstr "_Nie"
 
+#. TRANSLATOR: In-chat notification, appears after a colon (':'). Argument is
+#. a file *type*, not a filename.
+#: ../receiving.cpp:445
+msgid "Downloading {}"
+msgstr "Pobieranie: {}"
+
+#. TRANSLATOR: In-chat notification, appears after a colon (':'). Argument is
+#. a file *type*, not a filename.
+#: ../receiving.cpp:450
+msgid "Requesting {} download"
+msgstr "Żądanie pobrania: {}"
+
+#. File size above limit, so it's non-zero
+#. TRANSLATOR: In-chat notification, appears after a colon (':'). Arguments
+#. are a file *type*, not a filename; second argument is a file size with
+#. unit.
+#: ../receiving.cpp:455
+msgid "Ignoring {0} download ({1})"
+msgstr "Ignorowanie pobierania: {0} ({1})"
+
 #. TRANSLATOR: File-type, used to describe what is being downloaded, in
 #. sentences like "Downloading photo" or "Ignoring photo download".
-#: ../td-client.cpp:1145
+#: ../receiving.cpp:509 ../receiving.cpp:799
+msgid "photo"
+msgstr "zdjęcie"
+
+#. TRANSLATOR: File-type, used to describe what is being downloaded, in
+#. sentences like "Downloading photo" or "Ignoring photo download".
+#. will not be needed - inline download only
+#. TRANSLATOR: File-type, used to describe what is being downloaded, in
+#. sentences like "Downloading photo" or "Ignoring photo download".
+#: ../receiving.cpp:557 ../receiving.cpp:858
 msgid "sticker"
 msgstr "naklejka"
 
-#. TRANSLATOR: In-chat status update
-#: ../td-client.cpp:1172
-msgid "Converting sticker"
-msgstr "Konwertowanie naklejki"
-
-#. TRANSLATOR: In-chat error message, arguments will be a file name and a
-#. proper reason
-#: ../td-client.cpp:1232
-msgid "Could not read sticker file {0}: {1}"
-msgstr "Nie można odczytać pliku naklejki {0}: {1}"
-
 #. TRANSLATOR: In-chat warning message
-#: ../td-client.cpp:1270
+#: ../receiving.cpp:577
 msgid ""
 "Received self-destructing message, not displayed due to lack of support"
 msgstr ""
@@ -537,112 +372,249 @@ msgstr ""
 "powodu braku obsługi"
 
 #. TRANSLATOR: In-chat status update, arguments are chat names.
-#: ../td-client.cpp:1332
+#: ../receiving.cpp:618
 msgid "{0} changed group name to {1}"
 msgstr "Nazwa grupy „{0}” została zmieniona na „{1}”"
 
+#. TRANSLATOR: Default buddy-alias for a new secret chat. Argument is the
+#. Telegram nick, I think.
+#: ../secret-chat.cpp:20
+msgid "Secret chat: {}"
+msgstr ""
+
+#. TRANSLATOR: In-chat message to explain why the chat is not established yet.
+#: ../secret-chat.cpp:51
+msgid "The secret chat will be available when activated by the peer"
+msgstr ""
+
+#. TRANSLATOR: Buddy-window error message, argument will be some kind of
+#. proxy-identifier.
+#: ../td-client.cpp:293
+msgid "Proxy type {} is not supported"
+msgstr "Typ pośrednika {} jest nieobsługiwany"
+
+#. TRANSLATOR: Buddy-window error message
+#: ../td-client.cpp:337
+msgid "Could not set proxy: {}"
+msgstr "Nie można ustawić pośrednika: {}"
+
+#. TRANSLATOR: Buddy-window error message
+#: ../td-client.cpp:350
+msgid "Could not get proxies: {}"
+msgstr "Nie można uzyskać pośredników: {}"
+
+#. TRANSLATOR: Authentication dialog, secondary content. Appears after a colon
+#. (':'). Argument is a number.
+#: ../td-client.cpp:416
+msgid "Telegram message (length: {})"
+msgstr "Wiadomość Telegram (długość: {})"
+
+#. TRANSLATOR: Authentication dialog, secondary content. Appears after a colon
+#. (':'). Argument is a number.
+#: ../td-client.cpp:420
+msgid "SMS (length: {})"
+msgstr "Wiadomość SMS (długość: {})"
+
+#. TRANSLATOR: Authentication dialog, secondary content. Appears after a colon
+#. (':'). Argument is a number.
+#: ../td-client.cpp:424
+msgid "Phone call (length: {})"
+msgstr "Rozmowa telefoniczna (długość: {})"
+
+#. TRANSLATOR: Authentication dialog, secondary content. Official name "flash
+#. call". Appears after a colon (':'). Argument is some text-string-ish.
+#: ../td-client.cpp:428
+msgid "Poor man's phone call (pattern: {})"
+msgstr "Słaba rozmowa telefoniczna (wzór: {})"
+
+#. TRANSLATOR: Authentication dialog, primary content. Will be followed by
+#. instructions and an input box.
+#: ../td-client.cpp:439
+msgid "Enter authentication code"
+msgstr "Proszę podać kod uwierzytelnienia"
+
+#. TRANSLATOR: Authentication dialog, secondary content. Argument will be a
+#. term.
+#: ../td-client.cpp:444
+msgid "Code sent via: {}"
+msgstr "Kod wysłano przez: {}"
+
+#. TRANSLATOR: Authentication dialog, secondary content. Argument will be a
+#. term.
+#: ../td-client.cpp:448
+msgid "Next code will be: {}"
+msgstr "Następny kod: {}"
+
+#. TRANSLATOR: Authentication dialog, title.
+#: ../td-client.cpp:454
+msgid "Login code"
+msgstr "Kod logowania"
+
+#. TRANSLATOR: Connection failure, error message (title; empty content)
+#: ../td-client.cpp:484
+msgid "Authentication code required"
+msgstr "Wymagany jest kod uwierzytelnienia"
+
+#. TRANSLATOR: Connection failure, error message title (title; empty content)
+#: ../td-client.cpp:499
+msgid "Password required"
+msgstr "Wymagane jest hasło"
+
+#. TRANSLATOR: 2FA dialog, secondary content, appears in new line. Argument is
+#. an arbitrary string from Telegram.
+#: ../td-client.cpp:507
+msgid "Hint: {}"
+msgstr "Wskazówka: {}"
+
+#. TRANSLATOR: 2FA dialog, secondary content, appears in new line. Argument is
+#. an e-mail address.
+#: ../td-client.cpp:513
+msgid "Recovery e-mail may have been sent to {}"
+msgstr "Wiadomość odzyskiwania mogła zostać wysłana na adres {}"
+
+#. TRANSLATOR: 2FA dialog, title
+#: ../td-client.cpp:517
+msgid "Password"
+msgstr "Hasło"
+
+#. TRANSLATOR: 2FA dialog, primary content
+#: ../td-client.cpp:519
+msgid "Enter password for two-factor authentication"
+msgstr "Proszę podać hasło dla uwierzytelnienia dwuskładnikowego"
+
+#. TRANSLATOR: Registration dialog, title
+#: ../td-client.cpp:548
+msgid "Registration"
+msgstr "Rejestracja"
+
+#. TRANSLATOR: Registration dialog, content
+#: ../td-client.cpp:550
+msgid "New account is being created. Please enter your display name."
+msgstr "Tworzone jest nowe konto. Proszę podać wyświetlaną nazwę użytkownika."
+
+#. TRANSLATOR: Connection error message after failed registration.
+#: ../td-client.cpp:581 ../td-client.cpp:591
+msgid "Display name is required for registration"
+msgstr "Do rejestracji wymagana jest wyświetlana nazwa"
+
+#. TRANSLATOR: Connection error message, argument is text (a proper reason)
+#: ../td-client.cpp:608
+msgid "Error applying database encryption key: {}"
+msgstr "Błąd podczas zastosowywania klucza szyfrowania bazy danych: {}"
+
+#. TRANSLATOR: Connection error message, argument is text (a proper reason)
+#: ../td-client.cpp:612
+msgid "Authentication error: {}"
+msgstr "Błąd uwierzytelnienia: {}"
+
+#. TRANSLATOR: In-chat error message, arguments will be a file name and a
+#. proper reason
+#: ../td-client.cpp:925
+msgid "Could not read sticker file {0}: {1}"
+msgstr "Nie można odczytać pliku naklejki {0}: {1}"
+
 #. TRANSLATOR: Error dialog, content
-#: ../td-client.cpp:1724
+#: ../td-client.cpp:1339
 msgid "Failed to add contact: {}"
 msgstr "Dodanie kontaktu się nie powiodło: {}"
 
 #. TRANSLATOR: Error dialog, title
-#: ../td-client.cpp:1726
+#: ../td-client.cpp:1341
 msgid "Failed to add contact"
 msgstr "Dodanie kontaktu się nie powiodło"
 
 #. TRANSLATOR: Buddy-window error message, title (no content), argument will
 #. be a phone number.
-#: ../td-client.cpp:1833
+#: ../td-client.cpp:1448
 msgid "No user found with phone number '{}'"
 msgstr "Nie odnaleziono użytkownika o numerze telefonu „{}”"
 
 #. TRANSLATOR: Error dialog, content
-#: ../td-client.cpp:2007
+#: ../td-client.cpp:1646
 msgid "Failed to join chat: {}"
 msgstr "Dołączenie do rozmowy się nie powiodło: {}"
 
 #. TRANSLATOR: Error dialog, title
 #. TRANSLATOR: Join error dialog, title
-#: ../td-client.cpp:2009 ../td-client.cpp:2034 ../td-client.cpp:2041
-#: ../tdlib-purple.cpp:484 ../tdlib-purple.cpp:503
+#: ../td-client.cpp:1648 ../td-client.cpp:1673 ../td-client.cpp:1680
+#: ../tdlib-purple.cpp:510 ../tdlib-purple.cpp:529
 msgid "Failed to join chat"
 msgstr "Dołączenie do rozmowy się nie powiodło"
 
 #. TRANSLATOR: Error dialog, content
-#: ../td-client.cpp:2036
+#: ../td-client.cpp:1675
 msgid "The name belongs to a user, not a group"
 msgstr "Nazwa należy do użytkownika, nie grupy"
 
 #. TRANSLATOR: Error dialog, content, argument is a reason (text)
-#: ../td-client.cpp:2039
+#: ../td-client.cpp:1678
 msgid "Could not find group: {}"
 msgstr "Nie można odnaleźć grupy: {}"
 
 #. TRANSLATOR: Error dialog, secondary content
-#: ../td-client.cpp:2057
+#: ../td-client.cpp:1696
 msgid "Cannot create basic group without additional members"
 msgstr "Nie można utworzyć podstawowej grupy bez dodatkowych członków"
 
-#: ../td-client.cpp:2063
+#: ../td-client.cpp:1702
 msgid "No known user with id {}"
 msgstr "Nie ma znanego użytkownika o identyfikatorze {}"
 
 #. TRANSLATOR: Error dialog, secondary content, argument is a username
-#: ../td-client.cpp:2072
+#: ../td-client.cpp:1711
 msgid "No known user by the name '{}'"
 msgstr "Nie ma znanego użytkownika o nazwie {}"
 
 #. TRANSLATOR: Error dialog, title
-#: ../td-client.cpp:2086
+#: ../td-client.cpp:1725
 msgid "Failed to create group"
 msgstr "Utworzenie grupy się nie powiodło"
 
 #. TRANSLATOR: Error dialog, primary content
-#: ../td-client.cpp:2088
+#: ../td-client.cpp:1727
 msgid "Invalid group members"
 msgstr "Nieprawidłowi członkowie grupy"
 
 #. TRANSLATOR: Error dialog, title
-#: ../td-client.cpp:2151
+#: ../td-client.cpp:1790
 msgid "Failed to delete group or channel"
 msgstr "Usunięcie grupy lub kanału się nie powiodło"
 
 #. TRANSLATOR: Error dialog, title
-#: ../td-client.cpp:2178
+#: ../td-client.cpp:1817
 msgid "Failed to set group description"
 msgstr "Ustawienie opisu grupy się nie powiodło"
 
 #. TRANSLATOR: In-chat error message, appears after a colon (':')
 #. TRANSLATOR: Buddy infobox, error
-#: ../td-client.cpp:2197 ../td-client.cpp:2272 ../tdlib-purple.cpp:295
+#: ../td-client.cpp:1836 ../td-client.cpp:1911 ../tdlib-purple.cpp:321
 msgid "User not found"
 msgstr "Nie odnaleziono użytkownika"
 
 #. TRANSLATOR: In-chat error message, argument is a reason (text)
-#: ../td-client.cpp:2201 ../td-client.cpp:2238
+#: ../td-client.cpp:1840 ../td-client.cpp:1877
 msgid "Cannot kick user: {}"
 msgstr "Nie można wyrzucić użytkownika: {}"
 
 #. TRANSLATOR: In-chat error message, argument is a reason (text)
-#: ../td-client.cpp:2242 ../td-client.cpp:2276
+#: ../td-client.cpp:1881 ../td-client.cpp:1915
 msgid "Cannot add user to group: {}"
 msgstr "Nie można dodać użytkownika do grupy: {}"
 
 #. TRANSLATOR: In-chat error message, argument is a reason (text)
-#: ../td-client.cpp:2246
+#: ../td-client.cpp:1885
 msgid "Cannot generate invite link: {}"
 msgstr "Nie można utworzyć odnośnika zaproszenia: {}"
 
 #. "description" is hard-coded in bitlbee as possible field for chat topic
 #. TRANSLATOR: Groupchat infobox key
-#: ../td-client.cpp:2334
+#: ../td-client.cpp:1973
 msgid "Description"
 msgstr "Opis"
 
 #. TRANSLATOR: 2FA setup confirmation dialog, secondary content, argument is
 #. an e-mail description (address and code length)
-#: ../td-client.cpp:2382
+#: ../td-client.cpp:2021
 msgid ""
 "Password will be changed after new e-mail is confirmed\n"
 "{}"
@@ -654,66 +626,71 @@ msgstr ""
 #. TRANSLATOR: 2FA success notification, title
 #. TRANSLATOR: 2FA failure notification, title
 #. TRANSLATOR: 2FA settings, title
-#: ../td-client.cpp:2385 ../td-client.cpp:2405 ../td-client.cpp:2431
-#: ../td-client.cpp:2454 ../td-client.cpp:2458 ../tdlib-purple.cpp:990
+#: ../td-client.cpp:2024 ../td-client.cpp:2044 ../td-client.cpp:2070
+#: ../td-client.cpp:2093 ../td-client.cpp:2097 ../tdlib-purple.cpp:1014
 msgid "Two-factor authentication"
 msgstr "Uwierzytelnianie dwuskładnikowe"
 
 #. TRANSLATOR: 2FA setup confirmation dialog, primary content
-#: ../td-client.cpp:2387
+#: ../td-client.cpp:2026
 msgid "Enter verification code received in the e-mail"
 msgstr "Proszę podać kod weryfikacji otrzymany w wiadomości e-mail"
 
 #. TRANSLATOR: 2FA success notification, primary content
-#: ../td-client.cpp:2407
+#: ../td-client.cpp:2046
 msgid "Password set"
 msgstr "Ustawiono hasło"
 
 #. TRANSLATOR: 2FA success notification, primary content
-#: ../td-client.cpp:2409
+#: ../td-client.cpp:2048
 msgid "Password cleared"
 msgstr "Wyczyszczono hasło"
 
 #. TRANSLATOR: 2FA success notification, secondary content
-#: ../td-client.cpp:2411
+#: ../td-client.cpp:2050
 msgid "Recovery e-mail is configured"
 msgstr "Adres e-mail odzyskiwania jest skonfigurowany"
 
 #. TRANSLATOR: 2FA success notification, secondary content
-#: ../td-client.cpp:2413
+#: ../td-client.cpp:2052
 msgid "No recovery e-mail configured"
 msgstr "Nie skonfigurowano adresu e-mail odzyskiwania"
 
 #. TRANSLATOR: 2FA setup confirmation dialog, e-mail description
-#: ../td-client.cpp:2422
+#: ../td-client.cpp:2061
 msgid "Code sent to {0} (length: {1})"
 msgstr "Kod wysłano na adres {0} (długość: {1})"
 
 #. TRANSLATOR: 2FA failure notification, primary content
-#: ../td-client.cpp:2433
+#: ../td-client.cpp:2072
 msgid "Failed to set password"
 msgstr "Ustawienie hasła się nie powiodło"
 
 #. TRANSLATOR: 2FA failure notification, content
-#: ../td-client.cpp:2460
+#: ../td-client.cpp:2099
 msgid "Looks like the code was wrong"
 msgstr "Wygląda na to, że kod był błędny"
 
 #. TRANSLATOR: In-chat error message
-#: ../td-client.cpp:2540
+#: ../td-client.cpp:2184
 msgid "Unable to send message: The message is too large."
 msgstr "Nie można wysłać wiadomości: wiadomość jest za duża."
 
 #. TRANSLATOR: In-chat error message
-#: ../td-client.cpp:2543
+#: ../td-client.cpp:2187
 msgid "Unable to send message."
 msgstr "Nie można wysłać wiadomości."
 
 #. TRANSLATOR: In-chat(?) error message, argument is an error description
 #. (text)
-#: ../td-client.cpp:2547
+#: ../td-client.cpp:2191
 msgid "Failed to open chat: {}"
 msgstr "Otwarcie rozmowy się nie powiodło: {}"
+
+#. TRANSLATOR: Failure notification, title
+#: ../td-client.cpp:2271
+msgid "Failed to create secret chat"
+msgstr ""
 
 #. TRANSLATOR: Buddy infobox, value for "last online"
 #: ../tdlib-purple.cpp:35
@@ -736,97 +713,102 @@ msgid "last month"
 msgstr "ostatni miesiąc"
 
 #. TRANSLATOR: Buddy infobox, key
-#: ../tdlib-purple.cpp:67 ../tdlib-purple.cpp:318
+#: ../tdlib-purple.cpp:67 ../tdlib-purple.cpp:344
 msgid "Last online"
 msgstr "Ostatnia aktywność"
 
 #. TRANSLATOR: Owning group deletion dialog, title
 #. TRANSLATOR: Group leave dialog, title
-#: ../tdlib-purple.cpp:131 ../tdlib-purple.cpp:143
+#: ../tdlib-purple.cpp:134 ../tdlib-purple.cpp:146
 msgid "Leaving group"
 msgstr "Opuszczanie grupy"
 
 #. TRANSLATOR: Owning group deletion dialog, primary content
-#: ../tdlib-purple.cpp:133
+#: ../tdlib-purple.cpp:136
 msgid "Confirm deleting group"
 msgstr "Proszę potwierdzić usunięcie grupy"
 
 #. TRANSLATOR: Owning group deletion dialog, secondary content
-#: ../tdlib-purple.cpp:135
+#: ../tdlib-purple.cpp:138
 msgid "Leaving basic group you created will delete the group. Continue?"
 msgstr ""
 "Opuszczenie podstawowej grupy, którą utworzono, spowoduje jej usunięcie. "
 "Kontynuować?"
 
 #. TRANSLATOR: Group leave dialog, content
-#: ../tdlib-purple.cpp:145
+#: ../tdlib-purple.cpp:148
 msgid "Leave the group?"
 msgstr "Opuścić grupę?"
 
 #. TRANSLATOR: Group deletion error dialog, title
-#: ../tdlib-purple.cpp:168
+#: ../tdlib-purple.cpp:171
 msgid "Cannot delete group"
 msgstr "Nie można usunąć grupy"
 
 #. TRANSLATOR: Group deletion error dialog, content
-#: ../tdlib-purple.cpp:170
+#: ../tdlib-purple.cpp:173
 msgid "Cannot delete basic group created by someone else"
 msgstr "Nie można usunąć podstawowej grupy utworzonej przez kogoś innego"
 
 #. TRANSLATOR: Group deletion confirmation dialog, title
-#: ../tdlib-purple.cpp:175
+#: ../tdlib-purple.cpp:178
 msgid "Deleting group"
 msgstr "Usuwanie grupy"
 
 #. TRANSLATOR: Group deletion confirmation dialog, content
-#: ../tdlib-purple.cpp:177
+#: ../tdlib-purple.cpp:180
 msgid "Delete the group?"
 msgstr "Usunąć grupę?"
 
 #. TRANSLATOR: Group menu action item
-#: ../tdlib-purple.cpp:210
+#: ../tdlib-purple.cpp:225
 msgid "Leave group"
 msgstr "Opuść grupę"
 
 #. TRANSLATOR: Group menu action item
-#: ../tdlib-purple.cpp:216
+#: ../tdlib-purple.cpp:231
 msgid "Delete group"
 msgstr "Usuń grupę"
 
 #. TRANSLATOR: Group menu action item
-#: ../tdlib-purple.cpp:222
+#: ../tdlib-purple.cpp:237
 msgid "Show invite link"
 msgstr "Wyświetl odnośnik zaproszenia"
 
+#. TRANSLATOR: Buddy menu action item
+#: ../tdlib-purple.cpp:247
+msgid "Start secret chat"
+msgstr ""
+
 #. TRANSLATOR: Buddy infobox, key
-#: ../tdlib-purple.cpp:303
+#: ../tdlib-purple.cpp:329
 msgid "First name"
 msgstr "Imię"
 
 #. TRANSLATOR: Buddy infobox, key
-#: ../tdlib-purple.cpp:305
+#: ../tdlib-purple.cpp:331
 msgid "Last name"
 msgstr "Nazwisko"
 
 #. TRANSLATOR: Buddy infobox, key
 #. TRANSLATOR: Group creation dialog, label
-#: ../tdlib-purple.cpp:308 ../tdlib-purple.cpp:432 ../tdlib-purple.cpp:436
-#: ../tdlib-purple.cpp:440
+#: ../tdlib-purple.cpp:334 ../tdlib-purple.cpp:458 ../tdlib-purple.cpp:462
+#: ../tdlib-purple.cpp:466
 msgid "Username"
 msgstr "Nazwa użytkownika"
 
 #. TRANSLATOR: Buddy infobox, key
-#: ../tdlib-purple.cpp:312
+#: ../tdlib-purple.cpp:338
 msgid "Phone number"
 msgstr "Numer telefonu"
 
 #. TRANSLATOR: Buddy infobox, key
-#: ../tdlib-purple.cpp:323
+#: ../tdlib-purple.cpp:349
 msgid "Internal id"
 msgstr "Wewnętrzny identyfikator"
 
 #. TRANSLATOR: Group creation dialog, secondary content
-#: ../tdlib-purple.cpp:429
+#: ../tdlib-purple.cpp:455
 msgid ""
 "Invite at least one additional user by specifying their full name "
 "(autocompletion available)."
@@ -835,19 +817,19 @@ msgstr ""
 "jego pełnej nazwy (dostępne jest automatyczne uzupełnianie)."
 
 #. TRANSLATOR: Group creation dialog, title
-#: ../tdlib-purple.cpp:449
+#: ../tdlib-purple.cpp:475
 msgid "Create group chat"
 msgstr "Utworzenie rozmowy grupowej"
 
 #. TRANSLATOR: Group creation dialog, primary content
-#: ../tdlib-purple.cpp:451
+#: ../tdlib-purple.cpp:477
 msgid "Invite users"
 msgstr "Proszę zaprosić użytkowników"
 
 #. TRANSLATOR: Join error dialog, secondary content. all five arguments are
 #. URLs. "name" should be part of the URL, and indicate that it can be a name
 #. in your language.
-#: ../tdlib-purple.cpp:480
+#: ../tdlib-purple.cpp:506
 msgid ""
 "Invite link must start with {0}, {1} or {2}. Public group link must be "
 "{3}name or {4}name."
@@ -856,38 +838,38 @@ msgstr ""
 "publicznej grupy musi być {3}nazwa lub {4}nazwa."
 
 #. TRANSLATOR: Join error dialog, primary content
-#: ../tdlib-purple.cpp:486
+#: ../tdlib-purple.cpp:512
 msgid "Must be invite link, public group link or group name"
 msgstr ""
 "Musi być odnośnikiem zaproszenia, odnośnikiem publicznej grupy lub nazwą "
 "grupy"
 
 #. TRANSLATOR: Join error dialog, primary content
-#: ../tdlib-purple.cpp:505
+#: ../tdlib-purple.cpp:531
 msgid "Please enter group name and valid type"
 msgstr "Proszę podać nazwę grupy i prawidłowy typ"
 
 #. TRANSLATOR: Account creation, telephone hint. Keep it short!
-#: ../tdlib-purple.cpp:664
+#: ../tdlib-purple.cpp:690
 msgid "phone no. (+ country prefix)"
 msgstr "numer telefonu (+ przedrostek kraju)"
 
 #. TRANSLATOR: Command description, the initial "kick <user>" must remain
 #. verbatim!
-#: ../tdlib-purple.cpp:823
+#: ../tdlib-purple.cpp:849
 msgid "kick <user>: Kick a user from the room using name or internal id"
 msgstr ""
 "kick <user>: wyrzuca użytkownika z pokoju za pomocą nazwy lub wewnętrznego "
 "identyfikatora"
 
 #. TRANSLATOR: Command description, the initial "hangup" must remain verbatim!
-#: ../tdlib-purple.cpp:829
+#: ../tdlib-purple.cpp:855
 msgid "hangup: Terminate any active call (with any user)"
 msgstr "hangup: kończy każdą aktywną rozmowę (z każdym użytkownikiem)"
 
 #. TRANSLATOR: Tdlib crash dialog, secondary content. Argument is a filesystem
 #. path. Please keep the space after it!
-#: ../tdlib-purple.cpp:849
+#: ../tdlib-purple.cpp:875
 msgid ""
 "The error may be caused by corrupt account data. If this is the case, it "
 "could be fixed by removing account data under {} . You will be required to "
@@ -898,106 +880,100 @@ msgstr ""
 "zalogować na konto."
 
 #. TRANSLATOR: Tdlib crash dialog, title
-#: ../tdlib-purple.cpp:859
+#: ../tdlib-purple.cpp:885
 msgid "Fatal error encountered in telegram plugin"
 msgstr "Błąd krytyczny we wtyczce protokołu Telegram"
 
 #. TRANSLATOR: Account settings, value for file downloads (hyperlink link
 #. file:///tmp/asdf)
-#: ../tdlib-purple.cpp:902 ../tdlib-purple.cpp:907
+#: ../tdlib-purple.cpp:928 ../tdlib-purple.cpp:933
 msgid "Inline (hyperlinks in chat)"
 msgstr "W rozmowie (odnośniki w rozmowie)"
 
 #. TRANSLATOR: Account settings, value for file downloads (file transfer
 #. dialog)
-#: ../tdlib-purple.cpp:904 ../tdlib-purple.cpp:906
+#: ../tdlib-purple.cpp:930 ../tdlib-purple.cpp:932
 msgid "Standard file transfers"
 msgstr "Standardowe przesyłanie plików"
 
 #. TRANSLATOR: Account settings, key (choice)
-#: ../tdlib-purple.cpp:911
+#: ../tdlib-purple.cpp:937
 msgid "File downloads"
 msgstr "Pobieranie plików"
 
 #. TRANSLATOR: Account settings, key (choice)
-#: ../tdlib-purple.cpp:916
+#: ../tdlib-purple.cpp:942
 msgid "Inline auto-download size limit, MB (0 for unlimited)"
 msgstr ""
 "Ograniczenie rozmiaru automatycznego pobierania w rozmowie w megabajtach (0 "
 "oznacza brak ograniczenia)"
 
 #. TRANSLATOR: Account settings, value for large file downloads
-#. TRANSLATOR: Account settings, value for 'Accept secret chats'
-#: ../tdlib-purple.cpp:925 ../tdlib-purple.cpp:937
+#: ../tdlib-purple.cpp:951
 msgid "Ask"
 msgstr "Pytanie"
 
 #. TRANSLATOR: Account settings, value for large file downloads
-#: ../tdlib-purple.cpp:927
+#: ../tdlib-purple.cpp:953
 msgid "Discard"
 msgstr "Odrzucanie"
 
+#. TRANSLATOR: Account settings, check box label
+#: ../tdlib-purple.cpp:956
+msgid "Do not clean up inline downloads"
+msgstr ""
+
 #. TRANSLATOR: Account settings, key (choice)
-#: ../tdlib-purple.cpp:930
+#: ../tdlib-purple.cpp:962
 msgid "Bigger inline file downloads"
 msgstr "Większe pobierania plików w rozmowie"
 
-#. TRANSLATOR: Account settings, value for 'Accept secret chats'
-#: ../tdlib-purple.cpp:939
-msgid "Always"
-msgstr "Zawsze"
-
-#. TRANSLATOR: Account settings, value for 'Accept secret chats'
-#: ../tdlib-purple.cpp:941
-msgid "Never"
-msgstr "Nigdy"
-
-#. TRANSLATOR: Account settings, key (choice)
-#: ../tdlib-purple.cpp:944
-msgid "Accept secret chats"
-msgstr "Odbieranie tajnych rozmów"
+#. TRANSLATOR: Account settings, key (boolean)
+#: ../tdlib-purple.cpp:966
+msgid "Enable secret chats (takes effect at reconnect)"
+msgstr ""
 
 #. TRANSLATOR: Account settings, key (boolean)
-#: ../tdlib-purple.cpp:949
+#: ../tdlib-purple.cpp:973
 msgid "Show animated stickers"
 msgstr "Animowane naklejki"
 
 #. TRANSLATOR: 2FA settings, key
-#: ../tdlib-purple.cpp:963
+#: ../tdlib-purple.cpp:987
 msgid "Current password"
 msgstr "Obecne hasło"
 
 #. TRANSLATOR: 2FA settings, key
-#: ../tdlib-purple.cpp:968
+#: ../tdlib-purple.cpp:992
 msgid "New password"
 msgstr "Nowe hasło"
 
 #. TRANSLATOR: 2FA settings, key
-#: ../tdlib-purple.cpp:973
+#: ../tdlib-purple.cpp:997
 msgid "Repeat password"
 msgstr "Proszę powtórzyć hasło"
 
 #. TRANSLATOR: 2FA settings, key
-#: ../tdlib-purple.cpp:978
+#: ../tdlib-purple.cpp:1002
 msgid "Password hint"
 msgstr "Wskazówka hasła"
 
 #. TRANSLATOR: 2FA settings, key
-#: ../tdlib-purple.cpp:982
+#: ../tdlib-purple.cpp:1006
 msgid "Recovery e-mail"
 msgstr "Adres e-mail odzyskiwania"
 
 #. TRANSLATOR: 2FA settings, primary content (after mistype)
-#: ../tdlib-purple.cpp:1003
+#: ../tdlib-purple.cpp:1027
 msgid "Please enter same password twice"
 msgstr "Proszę podać to samo hasło dwa razy"
 
 #. TRANSLATOR: 2FA settings, primary content
-#: ../tdlib-purple.cpp:1034
+#: ../tdlib-purple.cpp:1058
 msgid "Enter new password and recovery e-mail address"
 msgstr "Proszę podać nowe hasło i adres e-mail odzyskiwania"
 
 #. TRANSLATOR: 2FA settings, title
-#: ../tdlib-purple.cpp:1043
+#: ../tdlib-purple.cpp:1067
 msgid "Configure two-factor authentication..."
 msgstr "Konfiguracja uwierzytelnienia dwuskładnikowego"
