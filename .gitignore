@@ -1,5 +1,16 @@
+# Build by-products
 build/
 /.ga_cache/
 /td_repo/
 /td_destdir/
+
+# KDevelop files
 *.kdev4
+# QtCreator files
+tdlib-purple.cflags
+tdlib-purple.config
+tdlib-purple.creator
+tdlib-purple.creator.user
+tdlib-purple.cxxflags
+tdlib-purple.files
+tdlib-purple.includes
