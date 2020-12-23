@@ -7,6 +7,9 @@ language: cpp
 compiler:
   - gcc
   - clang
+arch:
+  - amd64
+  - ppc64le
 env:
 # Try to be nice to the builder
   - CMAKE_FLAGS="                                                 " INSTALL_LOCAL_LOTTIE=n
@@ -49,6 +52,19 @@ matrix:
 #    - compiler: clang
 #      env: CMAKE_FLAGS="-DNoWebp=1 -DNoTranslations=1 -DNoBundledLottie=1" INSTALL_LOCAL_LOTTIE=y
 
+# exclude power jobs
+    - compiler: clang
+      arch: ppc64le # Exclude all clang jobs for ppc64le
+    - compiler: gcc
+      arch: ppc64le
+      env: CMAKE_FLAGS="-DNoWebp=1                                       " INSTALL_LOCAL_LOTTIE=n
+    - compiler: gcc
+      arch: ppc64le
+      env: CMAKE_FLAGS="                              -DNoLottie=1       " INSTALL_LOCAL_LOTTIE=n
+    - compiler: gcc
+      arch: ppc64le
+      env: CMAKE_FLAGS="-DNoWebp=1 -DNoTranslations=1 -DNoBundledLottie=1" INSTALL_LOCAL_LOTTIE=y
+
 cache:
   directories:
   - .travis_cache/
@@ -66,6 +82,8 @@ before_install:
   #     https://travis-ci.com/github/BenWiederhake/tdlib-purple/builds/174539831#L907
   - sudo apt-get install -y -qq php
   - if [ "x${INSTALL_LOCAL_LOTTIE}" = "xy" ] ; then sudo apt-get install -y -qq librlottie-dev ; fi
+  # ppc64le travis doesn't have gettext. installing it here.
+  - if [ "$TRAVIS_CPU_ARCH" = "ppc64le" ]; then sudo apt-get install -y -qq gettext ; fi
 
 script:
   - LINTACCEL_IGNORE_MISSING=y ./po/lint_accelerators.py
