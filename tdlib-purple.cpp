@@ -974,6 +974,13 @@ static void tgprpl_init (PurplePlugin *plugin)
                                          AccountOptions::AnimatedStickersDefault);
     prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
 #endif
+
+    if (canDisableReadReceipts()) {
+        opt = purple_account_option_bool_new ("Send read receipts",
+                                              AccountOptions::EnableSecretChats,
+                                              AccountOptions::EnableSecretChatsDefault);
+        prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
+    }
 }
 
 static void setTwoFactorAuth(RequestData *data, PurpleRequestFields* fields);

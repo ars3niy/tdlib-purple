@@ -41,6 +41,8 @@ namespace AccountOptions {
     const char           *DownloadBehaviourDefault();
     constexpr const char *KeepInlineDownloads        = "keep-inline-downloads";
     constexpr gboolean    KeepInlineDownloadsDefault = FALSE;
+    constexpr const char *ReadReceipts               = "read-receipts";
+    constexpr gboolean    ReadReceiptsDefault        = TRUE;
 };
 
 namespace BuddyOptions {
@@ -52,5 +54,7 @@ bool     isSizeWithinLimit(unsigned size, unsigned limit);
 bool     ignoreBigDownloads(PurpleAccount *account);
 PurpleTdClient *getTdClient(PurpleAccount *account);
 const char *getUiName();
+bool        canDisableReadReceipts();
+bool        isReadReceiptsEnabled(PurpleAccount *account);
 
 #endif

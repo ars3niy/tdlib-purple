@@ -2,7 +2,10 @@
 #include "libpurple-mock.h"
 #include <fmt/format.h>
 
-class PrivateChatTest: public CommTest {};
+class PrivateChatTest: public CommTest {
+protected:
+    void testReadReceipt(bool shouldSend);
+};
 
 TEST_F(PrivateChatTest, AddContactByPhone)
 {
@@ -1165,4 +1168,37 @@ TEST_F(PrivateChatTest, RemoteSend)
             date
         )
     );
+}
+
+void PrivateChatTest::testReadReceipt(bool shouldSend)
+{
+    const int64_t messageId = 1;
+    const int32_t date      = 10001;
+
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        messageId, userIds[0], chatIds[0], false, date,
+        makeTextMessage("text")
+    )));
+    prpl.verifyEvents(ServGotImEvent(
+        connection, purpleUserName(0), "text", PURPLE_MESSAGE_RECV, date
+    ));
+
+    if (shouldSend)
+        tgl.verifyRequest(viewMessages(chatIds[0], {messageId}, true));
+    else
+        tgl.verifyNoRequests();
+}
+
+TEST_F(PrivateChatTest, DisablingReadReceipts)
+{
+    loginWithOneContact();
+
+    setUiName("BitlBee");
+    testReadReceipt(true);
+    purple_account_set_bool(account, "read-receipts", FALSE);
+    testReadReceipt(false);
+    setUiName("Spectrum");
+    testReadReceipt(false);
+    setUiName("pidgin");
+    testReadReceipt(true);
 }

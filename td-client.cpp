@@ -926,11 +926,13 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
         return;
     }
 
-    td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
-    viewMessagesReq->chat_id_ = chatId.value();
-    viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
-    viewMessagesReq->message_ids_.push_back(message->id_);
-    m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
+    if (isReadReceiptsEnabled(m_account)) {
+        td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
+        viewMessagesReq->chat_id_ = chatId.value();
+        viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
+        viewMessagesReq->message_ids_.push_back(message->id_);
+        m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
+    }
 
     IncomingMessage fullMessage;
     makeFullMessage(*chat, std::move(message), fullMessage, m_data);

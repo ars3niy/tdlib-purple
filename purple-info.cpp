@@ -159,3 +159,18 @@ const char *AccountOptions::DownloadBehaviourDefault()
     else
         return AccountOptions::DownloadBehaviourStandard;
 }
+
+bool canDisableReadReceipts()
+{
+    const char *uiName = getUiName();
+    return (!strcasecmp(uiName, "bitlbee") || !strcasecmp(uiName, "spectrum"));
+}
+
+bool isReadReceiptsEnabled(PurpleAccount *account)
+{
+    if (canDisableReadReceipts())
+        return (purple_account_get_bool(account, AccountOptions::ReadReceipts,
+                                        AccountOptions::ReadReceiptsDefault) != FALSE);
+    else
+        return true;
+}
