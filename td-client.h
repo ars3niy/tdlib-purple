@@ -23,6 +23,7 @@ public:
     static std::string getBaseDatabasePath();
     int  sendMessage(const char *buddyName, const char *message);
     void sendTyping(const char *buddyName, bool isTyping);
+    void sendReadReceipts();
 
     void addContact(const std::string &purpleName, const std::string &alias, const std::string &groupName);
     void renameContact(const char *buddyName, const char *newAlias);

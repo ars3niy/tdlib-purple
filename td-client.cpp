@@ -913,6 +913,30 @@ void PurpleTdClient::onAnimatedStickerConverted(AccountThread *arg)
     }
 }
 
+void PurpleTdClient::sendReadReceipts()
+{
+    std::vector<ReadReceipt> receipts;
+    m_data.extractPendingReadReceipts(receipts);
+
+    std::sort(receipts.begin(), receipts.end(),
+              [](const ReadReceipt &r1, const ReadReceipt &r2) {
+                  return (r1.chatId.value() < r2.chatId.value());
+              });
+
+    unsigned i = 0;
+    while (i < receipts.size()) {
+        ChatId chatId = receipts[i].chatId;
+        td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
+        viewMessagesReq->chat_id_ = chatId.value();
+        viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
+        while ((i < receipts.size()) && (receipts[i].chatId == chatId)) {
+            viewMessagesReq->message_ids_.push_back(receipts[i].messageId.value());
+            i++;
+        }
+        m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
+    }
+}
+
 void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
 {
     if (!message)
@@ -927,11 +951,8 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     }
 
     if (isReadReceiptsEnabled(m_account)) {
-        td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
-        viewMessagesReq->chat_id_ = chatId.value();
-        viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
-        viewMessagesReq->message_ids_.push_back(message->id_);
-        m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
+        m_data.addPendingReadReceipt(chatId, getId(*message));
+        sendReadReceipts();
     }
 
     IncomingMessage fullMessage;

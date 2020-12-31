@@ -875,3 +875,13 @@ void TdAccountData::removeActiveCall()
     m_callData.reset();
     m_callId = 0;
 }
+
+void TdAccountData::addPendingReadReceipt(ChatId chatId, MessageId messageId)
+{
+    m_pendingReadReceipts.push_back(ReadReceipt{chatId, messageId});
+}
+
+void TdAccountData::extractPendingReadReceipts(std::vector<ReadReceipt>& receipts)
+{
+    receipts = std::move(m_pendingReadReceipts);
+}

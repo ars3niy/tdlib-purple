@@ -265,6 +265,11 @@ private:
     std::vector<ChatQueue>::iterator getChatQueue(ChatId chatId);
 };
 
+struct ReadReceipt {
+    ChatId    chatId;
+    MessageId messageId;
+};
+
 class TdAccountData {
 public:
     using TdUserPtr           = td::td_api::object_ptr<td::td_api::user>;
@@ -381,6 +386,9 @@ public:
     void                       removeActiveCall();
 
     PendingMessageQueue        pendingMessages;
+
+    void                       addPendingReadReceipt(ChatId chatId, MessageId messageId);
+    void                       extractPendingReadReceipts(std::vector<ReadReceipt> &receipts);
 private:
     TdAccountData(const TdAccountData &other) = delete;
     TdAccountData &operator=(const TdAccountData &other) = delete;
@@ -454,6 +462,9 @@ private:
 
     std::unique_ptr<PendingRequest> getPendingRequestImpl(uint64_t requestId);
     PendingRequest *                findPendingRequestImpl(uint64_t requestId);
+
+    // Read receipts not sent immediately due to away status
+    std::vector<ReadReceipt>        m_pendingReadReceipts;
 };
 
 #endif
