@@ -102,7 +102,7 @@ jobs:
         cd build
         # libpurple uses the deprecated glib-type `GParameter` and the deprecated glib-macro `G_CONST_RETURN`, which
         # spams the console with useless warnings that we can do nothing about.
-        cmake .. -GNinja -DCMAKE_CXX_FLAGS=-DGLIB_DISABLE_DEPRECATION_WARNINGS -DTd_DIR=td_destdir/usr/local/lib/cmake/Td ${{ matrix.CMAKE_FLAGS }} ..
+        cmake .. -GNinja -DCMAKE_CXX_FLAGS="-DGLIB_DISABLE_DEPRECATION_WARNINGS -Werror -Wall -Wextra -Wformat=2 -Wformat-signedness -Wno-unused-parameter" -DTd_DIR=td_destdir/usr/local/lib/cmake/Td ${{ matrix.CMAKE_FLAGS }} ..
         # TODO: Add this here? ↑
         # -Dtgvoip_LIBRARIES='tgvoip;opus;webrtc_audio_processing' -Dtgvoip_INCLUDE_DIRS=/usr/include/libtgvoip/
     - name: Initialize CodeQL Static Analysis for C++
