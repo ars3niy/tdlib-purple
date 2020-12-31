@@ -389,9 +389,10 @@ std::string getDownloadPath(const td::td_api::object_ptr<td::td_api::Object> &do
             purple_debug_warning(config::pluginId, "File not completely downloaded\n");
         else
             return file.local_->path_;
-    } else
-        purple_debug_warning(config::pluginId, "Error downloading file: %s\n",
-                             getDisplayedError(downloadResponse));
+    } else {
+        std::string message = getDisplayedError(downloadResponse);
+        purple_debug_warning(config::pluginId, "Error downloading file: %s\n", message.c_str());
+    }
 
     return "";
 }

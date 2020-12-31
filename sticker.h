@@ -21,8 +21,8 @@ public:
     const ChatId chatId;
     StickerConversionThread(PurpleAccount *purpleAccount, const std::string &filename,
                             ChatId chatId, TgMessageInfo &&message)
-    : AccountThread(purpleAccount), inputFileName(filename), chatId(chatId),
-      m_message(std::move(message)) {}
+    : AccountThread(purpleAccount), m_message(std::move(message)), inputFileName(filename),
+        chatId(chatId) {}
     StickerConversionThread(PurpleAccount *purpleAccount, const std::string &filename,
                             ChatId chatId, const TgMessageInfo *message)
     : AccountThread(purpleAccount), inputFileName(filename), chatId(chatId)
