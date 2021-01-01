@@ -1018,8 +1018,8 @@ static void tgprpl_init (PurplePlugin *plugin)
 
     if (canDisableReadReceipts()) {
         opt = purple_account_option_bool_new ("Send read receipts",
-                                              AccountOptions::EnableSecretChats,
-                                              AccountOptions::EnableSecretChatsDefault);
+                                              AccountOptions::ReadReceipts,
+                                              AccountOptions::ReadReceiptsDefault);
         prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
     }
 }
