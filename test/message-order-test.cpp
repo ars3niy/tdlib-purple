@@ -18,19 +18,17 @@ TEST_F(MessageOrderTest, ReplyOrdering)
     message->reply_to_message_id_ = srcMsgId;
 
     tgl.update(make_object<updateNewMessage>(std::move(message)));
-    std::vector<uint64_t> requestIds = tgl.verifyRequests({
-        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, msgIds[0]), true),
-        make_object<getMessage>(chatIds[0], srcMsgId)
-    });
+    uint64_t getMessageReqId = tgl.verifyRequest(
+        getMessage(chatIds[0], srcMsgId)
+    );
     prpl.verifyNoEvents();
 
     tgl.update(make_object<updateNewMessage>(makeMessage(
         msgIds[1], userIds[0], chatIds[0], false, dates[1], makeTextMessage("followUp")
     )));
-    tgl.verifyRequest(viewMessages(chatIds[0], {msgIds[1]}, true));
     prpl.verifyNoEvents();
 
-    tgl.reply(requestIds.at(1), makeMessage(srcMsgId, userIds[0], chatIds[0], false, srcDate, makeTextMessage("original")));
+    tgl.reply(getMessageReqId, makeMessage(srcMsgId, userIds[0], chatIds[0], false, srcDate, makeTextMessage("original")));
     prpl.verifyEvents(
         ServGotImEvent(
             connection, purpleUserName(0),
@@ -39,6 +37,7 @@ TEST_F(MessageOrderTest, ReplyOrdering)
         ),
         ServGotImEvent(connection, purpleUserName(0), "followUp", PURPLE_MESSAGE_RECV, dates[1])
     );
+    tgl.verifyRequest(viewMessages(chatIds[0], {msgIds[0], msgIds[1]}, true));
 }
 
 TEST_F(MessageOrderTest, Reply_FlushAtLogout)
@@ -54,18 +53,12 @@ TEST_F(MessageOrderTest, Reply_FlushAtLogout)
     message->reply_to_message_id_ = srcMsgId;
 
     tgl.update(make_object<updateNewMessage>(std::move(message)));
-    tgl.verifyRequests({
-        make_object<viewMessages>( chatIds[0], std::vector<int64_t>(1, msgIds[0]), true),
-        make_object<getMessage>(chatIds[0], srcMsgId)
-    });
+    tgl.verifyRequest(getMessage(chatIds[0], srcMsgId));
     prpl.verifyNoEvents();
-
-    tgl.reply(make_object<ok>()); // reply to viewMessages
 
     tgl.update(make_object<updateNewMessage>(makeMessage(
         msgIds[1], userIds[0], chatIds[0], false, dates[1], makeTextMessage("followUp")
     )));
-    tgl.verifyRequest(viewMessages(chatIds[0], {msgIds[1]}, true));
     prpl.verifyNoEvents();
 
     pluginInfo().close(connection);
@@ -77,6 +70,7 @@ TEST_F(MessageOrderTest, Reply_FlushAtLogout)
         ),
         ServGotImEvent(connection, purpleUserName(0), "followUp", PURPLE_MESSAGE_RECV, dates[1])
     );
+    tgl.verifyRequest(viewMessages(chatIds[0], {msgIds[0], msgIds[1]}, true));
 }
 
 TEST_F(MessageOrderTest, Photo_Download_FlushAtLogout)
@@ -107,10 +101,7 @@ TEST_F(MessageOrderTest, Photo_Download_FlushAtLogout)
             false
         )
     )));
-    tgl.verifyRequests({
-        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
-        make_object<downloadFile>(fileId, 1, 0, 0, true)
-    });
+    tgl.verifyRequest(downloadFile(fileId, 1, 0, 0, true));
     prpl.verifyNoEvents();
 
     pluginInfo().close(connection);
@@ -122,6 +113,7 @@ TEST_F(MessageOrderTest, Photo_Download_FlushAtLogout)
             PURPLE_MESSAGE_SYSTEM, date
         )
     );
+    tgl.verifyRequest(viewMessages(chatIds[0], {1}, true));
 }
 
 class MessageOrderTestLongDownloadInReply: public MessageOrderTest,
@@ -154,15 +146,15 @@ TEST_P(MessageOrderTestLongDownloadInReply, LongDownloadInReply)
     message->reply_to_message_id_ = srcMsgId;
 
     tgl.update(make_object<updateNewMessage>(std::move(message)));
-    tgl.verifyRequests({
-        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, msgId), true),
+    auto requestIds = tgl.verifyRequests({
         make_object<getMessage>(chatIds[0], srcMsgId),
         make_object<downloadFile>(fileId, 1, 0, 0, true)
     });
+    uint64_t getMessageReqId = requestIds.at(0);
+    uint64_t downloadReqId = requestIds.at(1);
     prpl.verifyNoEvents();
 
-    tgl.reply(make_object<ok>()); // reply to viewMessages
-    tgl.reply(makeMessage(srcMsgId, userIds[0], chatIds[0], false, srcDate, makeTextMessage("1<2")));
+    tgl.reply(getMessageReqId, makeMessage(srcMsgId, userIds[0], chatIds[0], false, srcDate, makeTextMessage("1<2")));
 
     runTimeouts();
     std::string tempFileName;
@@ -190,6 +182,7 @@ TEST_P(MessageOrderTestLongDownloadInReply, LongDownloadInReply)
                 PURPLE_MESSAGE_SYSTEM, date
             )
         );
+    tgl.verifyRequest(viewMessages(chatIds[0], {msgId}, true));
 
     tgl.update(make_object<updateFile>(make_object<file>(
         fileId, 10000, 10000,
@@ -201,7 +194,7 @@ TEST_P(MessageOrderTestLongDownloadInReply, LongDownloadInReply)
         XferProgressEvent(tempFileName, 2000)
     );
 
-    tgl.reply(make_object<file>(
+    tgl.reply(downloadReqId, make_object<file>(
         fileId, 10000, 10000,
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
         make_object<remoteFile>("beh", "bleh", false, true, 10000)
@@ -242,16 +235,14 @@ TEST_F(MessageOrderTest, DownloadOrdering)
             make_object<formattedText>("document1", std::vector<object_ptr<textEntity>>())
         )
     )));
-    uint64_t download1ReqId = tgl.verifyRequests({
-        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, messageId[0]), true),
-        make_object<downloadFile>(fileId[0], 1, 0, 0, true)
-    }).at(1);
+    uint64_t download1ReqId = tgl.verifyRequest(
+        downloadFile(fileId[0], 1, 0, 0, true)
+    );
     prpl.verifyNoEvents();
 
     tgl.update(make_object<updateNewMessage>(makeMessage(
         messageId[1], userIds[0], chatIds[0], false, date[1], makeTextMessage("followUp")
     )));
-    tgl.verifyRequest(viewMessages(chatIds[0], {messageId[1]}, true));
     prpl.verifyNoEvents();
 
     tgl.update(make_object<updateNewMessage>(makeMessage(
@@ -268,10 +259,9 @@ TEST_F(MessageOrderTest, DownloadOrdering)
             make_object<formattedText>("document1", std::vector<object_ptr<textEntity>>())
         )
     )));
-    uint64_t download2ReqId = tgl.verifyRequests({
-        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, messageId[2]), true),
-        make_object<downloadFile>(fileId[2], 1, 0, 0, true)
-    }).at(1);
+    uint64_t download2ReqId = tgl.verifyRequest(
+        downloadFile(fileId[2], 1, 0, 0, true)
+    );
     prpl.verifyNoEvents();
 
     tgl.reply(download1ReqId, make_object<file>(
@@ -287,6 +277,8 @@ TEST_F(MessageOrderTest, DownloadOrdering)
         ),
         ServGotImEvent(connection, purpleUserName(0), "followUp", PURPLE_MESSAGE_RECV, date[1])
     );
+    // TODO: third read receipt is technically premature but who cares
+    tgl.verifyRequest(viewMessages(chatIds[0], {messageId[0], messageId[1], messageId[2]}, true));
 
     tgl.reply(download2ReqId, make_object<file>(
         fileId[0], 10000, 10000,

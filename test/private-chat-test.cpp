@@ -386,17 +386,9 @@ TEST_F(PrivateChatTest, Document)
             make_object<formattedText>("document", std::vector<object_ptr<textEntity>>())
         )
     )));
-    tgl.verifyRequests({
-        make_object<viewMessages>(
-            chatIds[0],
-            std::vector<int64_t>(1, messageId),
-            true
-        ),
-        make_object<downloadFile>(fileId, 1, 0, 0, true)
-    });
+    tgl.verifyRequest(downloadFile(fileId, 1, 0, 0, true));
     prpl.verifyNoEvents();
 
-    tgl.reply(make_object<ok>());
     tgl.reply(make_object<file>(
         fileId, 10000, 10000,
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
@@ -407,6 +399,7 @@ TEST_F(PrivateChatTest, Document)
         "<a href=\"file:///path\">doc.file.name [mime/type]</a>\ndocument",
         PURPLE_MESSAGE_RECV, date
     ));
+    tgl.verifyRequest(viewMessages(chatIds[0], {messageId}, true));
 }
 
 TEST_F(PrivateChatTest, Video)
@@ -435,17 +428,9 @@ TEST_F(PrivateChatTest, Video)
             false
         )
     )));
-    tgl.verifyRequests({
-        make_object<viewMessages>(
-            chatIds[0],
-            std::vector<int64_t>(1, messageId),
-            true
-        ),
-        make_object<downloadFile>(fileId, 1, 0, 0, true)
-    });
+    tgl.verifyRequest(downloadFile(fileId, 1, 0, 0, true));
     prpl.verifyNoEvents();
 
-    tgl.reply(make_object<ok>());
     tgl.reply(make_object<file>(
         fileId, 10000, 10000,
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
@@ -460,6 +445,7 @@ TEST_F(PrivateChatTest, Video)
             date
         )
     );
+    tgl.verifyRequest(viewMessages(chatIds[0], {messageId}, true));
 }
 
 TEST_F(PrivateChatTest, Audio)
@@ -488,17 +474,9 @@ TEST_F(PrivateChatTest, Audio)
             make_object<formattedText>("audio", std::vector<object_ptr<textEntity>>())
         )
     )));
-    tgl.verifyRequests({
-        make_object<viewMessages>(
-            chatIds[0],
-            std::vector<int64_t>(1, messageId),
-            true
-        ),
-        make_object<downloadFile>(fileId, 1, 0, 0, true)
-    });
+    tgl.verifyRequest(downloadFile(fileId, 1, 0, 0, true));
     prpl.verifyNoEvents();
 
-    tgl.reply(make_object<ok>());
     tgl.reply(make_object<file>(
         fileId, 10000, 10000,
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
@@ -513,6 +491,7 @@ TEST_F(PrivateChatTest, Audio)
             date
         )
     );
+    tgl.verifyRequest(viewMessages(chatIds[0], {messageId}, true));
 }
 
 TEST_F(PrivateChatTest, OtherMessage)
@@ -572,13 +551,8 @@ TEST_F(PrivateChatTest, Photo)
             false
         )
     )));
-    tgl.verifyRequests({
-        make_object<viewMessages>(chatIds[0], std::vector<int64_t>(1, 1), true),
-        make_object<downloadFile>(fileId, 1, 0, 0, true)
-    });
+    tgl.verifyRequest(downloadFile(fileId, 1, 0, 0, true));
     prpl.verifyNoEvents();
-
-    tgl.reply(make_object<ok>()); // reply to viewMessages
 
     tgl.update(make_object<updateFile>(make_object<file>(
         fileId, 10000, 10000,
@@ -604,6 +578,7 @@ TEST_F(PrivateChatTest, Photo)
         "photo",
         (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES), date
     ));
+    tgl.verifyRequest(viewMessages(chatIds[0], {1}, true));
 
     tgl.update(make_object<updateFile>(make_object<file>(
         fileId, 10000, 10000,
@@ -827,19 +802,9 @@ TEST_F(PrivateChatTest, ReplyToOldMessage)
     message->reply_to_message_id_ = srcMsgId;
 
     tgl.update(make_object<updateNewMessage>(std::move(message)));
-    tgl.verifyRequests({
-        make_object<viewMessages>(
-            chatIds[0],
-            std::vector<int64_t>(1, msgId),
-            true
-        ),
-        make_object<getMessage>(
-            chatIds[0], srcMsgId
-        )
-    });
+    tgl.verifyRequest(getMessage(chatIds[0], srcMsgId));
     prpl.verifyNoEvents();
 
-    tgl.reply(make_object<ok>()); // reply to viewMessages
     tgl.reply(makeMessage(
         srcMsgId,
         userIds[0],
@@ -857,6 +822,7 @@ TEST_F(PrivateChatTest, ReplyToOldMessage)
             date
         )
     );
+    tgl.verifyRequest(viewMessages(chatIds[0], {msgId}, true));
 }
 
 TEST_F(PrivateChatTest, ReplyToOldMessage_FetchTimeout)
@@ -878,16 +844,9 @@ TEST_F(PrivateChatTest, ReplyToOldMessage_FetchTimeout)
     message->reply_to_message_id_ = srcMsgId;
 
     tgl.update(make_object<updateNewMessage>(std::move(message)));
-    tgl.verifyRequests({
-        make_object<viewMessages>(
-            chatIds[0],
-            std::vector<int64_t>(1, msgId),
-            true
-        ),
-        make_object<getMessage>(
-            chatIds[0], srcMsgId
-        )
-    });
+    uint64_t getMessageReqId = tgl.verifyRequest(
+        getMessage(chatIds[0], srcMsgId)
+    );
     prpl.verifyNoEvents();
 
     runTimeouts();
@@ -900,13 +859,10 @@ TEST_F(PrivateChatTest, ReplyToOldMessage_FetchTimeout)
             date
         )
     );
+    tgl.verifyRequest(viewMessages(chatIds[0], {msgId}, true));
 
-    tgl.reply(makeMessage(
-        srcMsgId,
-        userIds[0],
-        chatIds[0],
-        false,
-        srcDate,
+    tgl.reply(getMessageReqId, makeMessage(
+        srcMsgId, userIds[0], chatIds[0], false, srcDate,
         makeTextMessage("1<2")
     ));
     prpl.verifyNoEvents();

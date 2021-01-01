@@ -104,6 +104,9 @@ void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const
                              getNotificationFlags(flags), timestamp);
     }
 
+    // TODO: sending all pending read receipts for the chat is technically not quite right,
+    // because maybe a message is being shown while others are waiting for some asynchronous
+    // response before they can be displayed. But who cares.
     if (conv != NULL)
         sendConversationReadReceipts(account, conv);
 }
@@ -137,6 +140,9 @@ static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &
             purple_conv_chat_write(conv, " ", notification, getNotificationFlags(flags), message.timestamp);
     }
 
+    // TODO: sending all pending read receipts for the chat is technically not quite right,
+    // because maybe a message is being shown while others are waiting for some asynchronous
+    // response before they can be displayed. But who cares.
     PurpleConversation *baseConv = conv ? purple_conv_chat_get_conversation(conv) : NULL;
     if (baseConv != NULL)
         sendConversationReadReceipts(account, baseConv);

@@ -511,6 +511,16 @@ void purple_conversation_destroy(PurpleConversation *conv)
     delete conv;
 }
 
+PurpleConversationType purple_conversation_get_type(const PurpleConversation *conv)
+{
+    return conv->type;
+}
+
+const char *purple_conversation_get_name(const PurpleConversation *conv)
+{
+    return conv->name;
+}
+
 PurpleConvIm *purple_conversation_get_im_data(const PurpleConversation *conv)
 {
     if (conv->type == PURPLE_CONV_TYPE_IM)

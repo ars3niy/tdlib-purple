@@ -103,11 +103,7 @@ TEST_F(GroupChatTest, BasicGroupReceiveTextAndReply)
     tgl.update(make_object<updateNewMessage>(
         makeMessage(messageId[0], userIds[0], groupChatId, false, date[0], makeTextMessage("Hello"))
     ));
-    tgl.verifyRequest(viewMessages(
-        groupChatId,
-        {messageId[0]},
-        true
-    ));
+    tgl.verifyRequest(viewMessages(groupChatId, {messageId[0]}, true));
     prpl.verifyEvents(
         ServGotJoinedChatEvent(connection, purpleChatId, groupChatPurpleName, groupChatTitle),
         ServGotChatEvent(connection, purpleChatId, userFirstNames[0] + " " + userLastNames[0],
@@ -118,23 +114,16 @@ TEST_F(GroupChatTest, BasicGroupReceiveTextAndReply)
                                             makeTextMessage("Reply"));
     reply->reply_to_message_id_ = messageId[0];
     tgl.update(make_object<updateNewMessage>(std::move(reply)));
-    tgl.verifyRequests({
-        make_object<viewMessages>(
-            groupChatId,
-            std::vector<int64_t>(1, messageId[1]),
-            true
-        ),
-        make_object<getMessage>(groupChatId, messageId[0])
-    });
+    tgl.verifyRequest(getMessage(groupChatId, messageId[0]));
     prpl.verifyNoEvents();
 
-    tgl.reply(make_object<ok>());
     tgl.reply(makeMessage(messageId[0], userIds[0], groupChatId, false, date[0], makeTextMessage("Hello")));
     prpl.verifyEvents(ConversationWriteEvent(
         groupChatPurpleName, selfFirstName + " " + selfLastName,
         fmt::format(replyPattern, userFirstNames[0] + " " + userLastNames[0], "Hello", "Reply"),
         PURPLE_MESSAGE_SEND, date[1]
     ));
+    tgl.verifyRequest(viewMessages(groupChatId, {messageId[1]}, true));
 }
 
 TEST_F(GroupChatTest, BasicGroupReceivePhoto)
@@ -154,13 +143,9 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
             false
         )
     )));
-    tgl.verifyRequests({
-        make_object<viewMessages>(groupChatId, std::vector<int64_t>(1, messageId), true),
-        make_object<downloadFile>(fileId, 1, 0, 0, true)
-    });
+    tgl.verifyRequest(downloadFile(fileId, 1, 0, 0, true));
     prpl.verifyNoEvents();
 
-    tgl.reply(make_object<ok>());
     tgl.reply(make_object<file>(
         fileId, 10000, 10000,
         make_object<localFile>("/path", true, true, false, true, 0, 10000, 10000),
@@ -175,6 +160,7 @@ TEST_F(GroupChatTest, BasicGroupReceivePhoto)
             (PurpleMessageFlags)(PURPLE_MESSAGE_RECV | PURPLE_MESSAGE_IMAGES), date
         )
     );
+    tgl.verifyRequest(viewMessages(groupChatId, {messageId}, true));
 }
 
 TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList_RemoveGroupMemberFromBuddies)
@@ -982,7 +968,10 @@ TEST_F(GroupChatTest, GroupChatWithDeletedUser_WriteToNonContact)
         echoDate[0],
         makeTextMessage("message")
     )));
-    tgl.verifyRequest(viewMessages(chatIds[0], {echoMessageId[0]}, true));
+
+    // No read receipt yet because PurpleConversation cannot be tied to user id: it uses display name
+    // for conversation name. Rare quirks like this one don't matter.
+
     prpl.verifyEvents(
         NewConversationEvent(
             PURPLE_CONV_TYPE_IM, account,
@@ -1053,7 +1042,9 @@ TEST_F(GroupChatTest, GroupChatWithDeletedUser_WriteToNonContact)
         echoDate[1],
         makeTextMessage("message2")
     )));
-    tgl.verifyRequest(viewMessages(chatIds[0], {echoMessageId[1]}, true));
+
+    // Both read receipts now - whatever.
+    tgl.verifyRequest(viewMessages(chatIds[0], {echoMessageId[0], echoMessageId[1]}, true));
     prpl.verifyEvents(
         NewConversationEvent(
             PURPLE_CONV_TYPE_IM, account,
