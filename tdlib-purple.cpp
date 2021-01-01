@@ -303,6 +303,11 @@ conversation_updated_cb(PurpleConversation *conv, PurpleConvUpdateType type)
     if (!strcmp(purple_account_get_protocol_id(account), config::pluginId) &&
         (type == PURPLE_CONV_UPDATE_UNSEEN))
     {
+        // With pidgin, when this callback is triggered by conversation window coming into window
+        // manager focus, purple_conversation_has_focus will still return false if called right now,
+        // so postpone the rest by half a second to get a better value when
+        // purple_conversation_has_focus is called down the line to determine if the read receipts
+        // should actually be sent.
         PurpleConversationInfo *arg = new PurpleConversationInfo;
         arg->accountName = purple_account_get_username(account);
         arg->convName = purple_conversation_get_name(conv);
