@@ -1,7 +1,7 @@
 #!/bin/sh
 
 set -ex
-cd "$(dirname $0)"
+cd "$(dirname $0)/.."
 
 # == CONFIGURATION ==
 if [ "$#" != "2" ] ; then
