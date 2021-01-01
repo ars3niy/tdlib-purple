@@ -94,7 +94,7 @@ jobs:
         path: ${{ github.workspace }}/.ga_cache/td_destdir_${{env.TD_TAG}}_${{env.TD_MARK}}.tar*
         key: ${{ runner.os }}-td-${{env.TD_TAG}}-${{env.TD_MARK}}
     - name: Restore or create tdlib cache
-      run: ${{ github.workspace }}/ga_build_td.sh ${{env.TD_TAG}} ${{env.TD_MARK}}
+      run: ${{ github.workspace }}/.github/ga_build_td.sh ${{env.TD_TAG}} ${{env.TD_MARK}}
     - name: Create build environment
       working-directory: ${{ github.workspace }}
       run: |
