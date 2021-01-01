@@ -5,6 +5,11 @@
 #include <purple.h>
 #include <td/telegram/td_api.h>
 
+#if !GLIB_CHECK_VERSION(2,32,0)
+#define G_SOURCE_REMOVE         FALSE
+#define G_SOURCE_CONTINUE       TRUE
+#endif
+
 static constexpr int
     GROUP_TYPE_BASIC   = 1,
     GROUP_TYPE_SUPER   = 2,
