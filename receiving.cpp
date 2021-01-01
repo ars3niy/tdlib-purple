@@ -38,6 +38,12 @@ static PurpleMessageFlags getNotificationFlags(PurpleMessageFlags extraFlags)
     return (PurpleMessageFlags)flags;
 }
 
+void sendConversationReadReceipts(TdAccountData &account, PurpleConversation *conv)
+{
+    if (!conversationHasFocus(conv))
+        return;
+}
+
 void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const char *text,
                        const char *notification, time_t timestamp, PurpleMessageFlags flags)
 {
@@ -54,6 +60,7 @@ void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const
         } else {
             serv_got_im(purple_account_get_connection(account.purpleAccount), purpleUserName, text,
                         flags, timestamp);
+            conv = getImConversation(account.purpleAccount, purpleUserName);
         }
     }
 
@@ -63,6 +70,9 @@ void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const
         purple_conv_im_write(purple_conversation_get_im_data(conv), purpleUserName, notification,
                              getNotificationFlags(flags), timestamp);
     }
+
+    if (conv != NULL)
+        sendConversationReadReceipts(account, conv);
 }
 
 static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &chat,
@@ -93,6 +103,10 @@ static void showMessageTextChat(TdAccountData &account, const td::td_api::chat &
             // notification messages.
             purple_conv_chat_write(conv, " ", notification, getNotificationFlags(flags), message.timestamp);
     }
+
+    PurpleConversation *baseConv = conv ? purple_conv_chat_get_conversation(conv) : NULL;
+    if (baseConv != NULL)
+        sendConversationReadReceipts(account, baseConv);
 }
 
 static std::string quoteMessage(const td::td_api::message *message, TdAccountData &account)

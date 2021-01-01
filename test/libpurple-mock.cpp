@@ -466,6 +466,7 @@ static PurpleConversation *purple_conversation_new_impl(PurpleConversationType t
     conv->account = account;
     conv->name = strdup(name);
     conv->title = NULL;
+    conv->ui_ops = NULL;
     if (conv->type == PURPLE_CONV_TYPE_IM) {
         conv->u.im = new PurpleConvIm;
         conv->u.im->conv = conv;
@@ -1492,6 +1493,29 @@ void setUiName(const char *name)
 
     static char nameKey[] = "name";
     g_hash_table_insert(uiInfo, nameKey, const_cast<char *>(name));
+
+}
+
+void *purple_conversations_get_handle()
+{
+    return NULL;
+}
+
+PurpleConversationUiOps *purple_conversation_get_ui_ops(const PurpleConversation *conv)
+{
+    return conv->ui_ops;
+}
+
+gboolean purple_conversation_has_focus(PurpleConversation *conv)
+{
+    // A bit like real libpurple
+    return (conv->ui_ops != NULL);
+}
+
+gulong purple_signal_connect(void *instance, const char *signal,
+	void *handle, PurpleCallback func, void *data)
+{
+    return 0;
 }
 
 };

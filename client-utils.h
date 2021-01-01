@@ -21,6 +21,8 @@ PurpleConversation *getImConversation(PurpleAccount *account, const char *userna
 PurpleConvChat *    getChatConversation(TdAccountData &account, const td::td_api::chat &chat,
                                         int chatPurpleId);
 PurpleConvChat *    findChatConversation(PurpleAccount *account, const td::td_api::chat &chat);
+bool                conversationHasFocus(PurpleConversation *conv);
+
 void                updatePrivateChat(TdAccountData &account, const td::td_api::chat *chat, const td::td_api::user &user);
 void                updateBasicGroupChat(TdAccountData &account, BasicGroupId groupId);
 void                updateSupergroupChat(TdAccountData &account, SupergroupId groupId);

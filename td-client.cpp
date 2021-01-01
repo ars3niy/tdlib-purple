@@ -913,8 +913,14 @@ void PurpleTdClient::onAnimatedStickerConverted(AccountThread *arg)
     }
 }
 
-void PurpleTdClient::sendReadReceipts()
+void PurpleTdClient::sendReadReceipts(PurpleConversation *conversation)
 {
+    if (conversation != NULL) {
+        sendConversationReadReceipts(m_data, conversation);
+        return;
+    }
+
+    // temporary
     std::vector<ReadReceipt> receipts;
     m_data.extractPendingReadReceipts(receipts);
 
@@ -952,7 +958,7 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
 
     if (isReadReceiptsEnabled(m_account)) {
         m_data.addPendingReadReceipt(chatId, getId(*message));
-        sendReadReceipts();
+        sendReadReceipts(NULL);
     }
 
     IncomingMessage fullMessage;

@@ -276,6 +276,27 @@ void tgprpl_set_single_thread()
     AccountThread::setSingleThread();
 }
 
+static gboolean sendConversationReadReceipts(void *arg)
+{
+    PurpleConversation *conv = static_cast<PurpleConversation *>(arg);
+    PurpleTdClient *tdClient = getTdClient(purple_conversation_get_account(conv));
+
+    tdClient->sendReadReceipts(conv);
+
+    return G_SOURCE_REMOVE;
+}
+
+static void
+conversation_updated_cb(PurpleConversation *conv, PurpleConvUpdateType type)
+{
+    PurpleAccount *account = purple_conversation_get_account(conv);
+    if (!strcmp(purple_account_get_protocol_id(account), config::pluginId) &&
+        (type == PURPLE_CONV_UPDATE_UNSEEN))
+    {
+        g_timeout_add(500, sendConversationReadReceipts, conv);
+    }
+}
+
 static void tgprpl_login (PurpleAccount *acct)
 {
     purple_debug_misc(config::pluginId, "version %s\n", config::versionString);
@@ -285,6 +306,9 @@ static void tgprpl_login (PurpleAccount *acct)
     purple_connection_set_protocol_data (gc, tdClient);
     // this would enable formatting buttons in pidgin
     // gc->flags = static_cast<PurpleConnectionFlags>(gc->flags | PURPLE_CONNECTION_HTML);
+
+    purple_signal_connect(purple_conversations_get_handle(), "conversation-updated",
+                          acct, PURPLE_CALLBACK(conversation_updated_cb), NULL);
 }
 
 static void tgprpl_close (PurpleConnection *gc)

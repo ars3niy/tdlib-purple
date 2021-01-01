@@ -244,6 +244,18 @@ PurpleConvChat *findChatConversation(PurpleAccount *account, const td::td_api::c
     return NULL;
 }
 
+bool conversationHasFocus(PurpleConversation *conv)
+{
+    PurpleConversationUiOps *ops = purple_conversation_get_ui_ops(conv);
+
+    // purple_conversation_has_focus return false if this callback is not set, as is the case with
+    // bitlbee, but we want to default to sending read receipts
+    if ((ops == NULL) || (ops->has_focus == NULL))
+        return true;
+    else
+        return purple_conversation_has_focus(conv);
+}
+
 void updatePrivateChat(TdAccountData &account, const td::td_api::chat *chat, const td::td_api::user &user)
 {
     std::string purpleUserName = getPurpleBuddyName(user);
