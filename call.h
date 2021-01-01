@@ -1,7 +1,6 @@
 #ifndef _CALL_H
 #define _CALL_H
 
-#include "transceiver.h"
 #include "account-data.h"
 
 bool initiateCall(int32_t userId, TdAccountData &account, TdTransceiver &transceiver);

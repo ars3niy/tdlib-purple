@@ -2,7 +2,6 @@
 #define _RECEIVING_H
 
 #include "account-data.h"
-#include "transceiver.h"
 #include <purple.h>
 
 std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,

@@ -2,7 +2,6 @@
 #define _CLIENT_UTILS_H
 
 #include "account-data.h"
-#include "transceiver.h"
 #include <purple.h>
 #include <thread>
 

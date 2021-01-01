@@ -2,7 +2,6 @@
 #define _FILE_TRANSFER_H
 
 #include "account-data.h"
-#include "transceiver.h"
 
 enum {
     FILE_DOWNLOAD_PRIORITY       = 1,

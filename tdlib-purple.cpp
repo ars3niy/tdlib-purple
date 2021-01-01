@@ -276,12 +276,22 @@ void tgprpl_set_single_thread()
     AccountThread::setSingleThread();
 }
 
+struct PurpleConversationInfo {
+    std::string accountName;
+    std::string convName;
+    PurpleConversationType type;
+};
+
 static gboolean sendConversationReadReceipts(void *arg)
 {
-    PurpleConversation *conv = static_cast<PurpleConversation *>(arg);
-    PurpleTdClient *tdClient = getTdClient(purple_conversation_get_account(conv));
+    std::unique_ptr<PurpleConversationInfo> info(static_cast<PurpleConversationInfo *>(arg));
+    PurpleAccount *account = purple_accounts_find(info->accountName.c_str(), config::pluginId);
+    PurpleConversation *conv = NULL;
+    if (account != NULL)
+        conv = purple_find_conversation_with_account(info->type, info->convName.c_str(), account);
 
-    tdClient->sendReadReceipts(conv);
+    if (conv != NULL)
+        getTdClient(account)->sendReadReceipts(conv);
 
     return G_SOURCE_REMOVE;
 }
@@ -293,7 +303,11 @@ conversation_updated_cb(PurpleConversation *conv, PurpleConvUpdateType type)
     if (!strcmp(purple_account_get_protocol_id(account), config::pluginId) &&
         (type == PURPLE_CONV_UPDATE_UNSEEN))
     {
-        g_timeout_add(500, sendConversationReadReceipts, conv);
+        PurpleConversationInfo *arg = new PurpleConversationInfo;
+        arg->accountName = purple_account_get_username(account);
+        arg->convName = purple_conversation_get_name(conv);
+        arg->type = purple_conversation_get_type(conv);
+        g_timeout_add(500, sendConversationReadReceipts, arg);
     }
 }
 

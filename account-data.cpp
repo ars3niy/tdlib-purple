@@ -878,10 +878,27 @@ void TdAccountData::removeActiveCall()
 
 void TdAccountData::addPendingReadReceipt(ChatId chatId, MessageId messageId)
 {
-    m_pendingReadReceipts.push_back(ReadReceipt{chatId, messageId});
+    auto pChatReceipts = std::find_if(m_pendingReadReceipts.begin(), m_pendingReadReceipts.end(),
+                                      [chatId](const std::vector<ReadReceipt> &receipts) {
+                                          return (!receipts.empty() && (receipts[0].chatId == chatId));
+                                      });
+    if (pChatReceipts != m_pendingReadReceipts.end())
+        pChatReceipts->push_back(ReadReceipt{chatId, messageId});
+    else {
+        m_pendingReadReceipts.emplace_back();
+        m_pendingReadReceipts.back().push_back(ReadReceipt{chatId, messageId});
+    }
 }
 
-void TdAccountData::extractPendingReadReceipts(std::vector<ReadReceipt>& receipts)
+void TdAccountData::extractPendingReadReceipts(ChatId chatId, std::vector<ReadReceipt>& receipts)
 {
-    receipts = std::move(m_pendingReadReceipts);
+    auto pChatReceipts = std::find_if(m_pendingReadReceipts.begin(), m_pendingReadReceipts.end(),
+                                      [chatId](const std::vector<ReadReceipt> &receipts) {
+                                          return (!receipts.empty() && (receipts[0].chatId == chatId));
+                                      });
+    if (pChatReceipts != m_pendingReadReceipts.end()) {
+        receipts = std::move(*pChatReceipts);
+        m_pendingReadReceipts.erase(pChatReceipts);
+    } else
+        receipts.clear();
 }

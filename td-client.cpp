@@ -20,7 +20,7 @@ enum {
 
 PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBackend)
 :   m_transceiver(this, acct, &PurpleTdClient::processUpdate, testBackend),
-    m_data(acct)
+    m_data(acct, m_transceiver)
 {
     StickerConversionThread::setCallback(&PurpleTdClient::onAnimatedStickerConverted);
     m_account = acct;
@@ -919,28 +919,6 @@ void PurpleTdClient::sendReadReceipts(PurpleConversation *conversation)
         sendConversationReadReceipts(m_data, conversation);
         return;
     }
-
-    // temporary
-    std::vector<ReadReceipt> receipts;
-    m_data.extractPendingReadReceipts(receipts);
-
-    std::sort(receipts.begin(), receipts.end(),
-              [](const ReadReceipt &r1, const ReadReceipt &r2) {
-                  return (r1.chatId.value() < r2.chatId.value());
-              });
-
-    unsigned i = 0;
-    while (i < receipts.size()) {
-        ChatId chatId = receipts[i].chatId;
-        td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
-        viewMessagesReq->chat_id_ = chatId.value();
-        viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
-        while ((i < receipts.size()) && (receipts[i].chatId == chatId)) {
-            viewMessagesReq->message_ids_.push_back(receipts[i].messageId.value());
-            i++;
-        }
-        m_transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
-    }
 }
 
 void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message)
@@ -956,10 +934,8 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
         return;
     }
 
-    if (isReadReceiptsEnabled(m_account)) {
+    if (isReadReceiptsEnabled(m_account))
         m_data.addPendingReadReceipt(chatId, getId(*message));
-        sendReadReceipts(NULL);
-    }
 
     IncomingMessage fullMessage;
     makeFullMessage(*chat, std::move(message), fullMessage, m_data);

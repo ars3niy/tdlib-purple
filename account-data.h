@@ -3,6 +3,7 @@
 
 #include "buildopt.h"
 #include "identifiers.h"
+#include "transceiver.h"
 #include <td/telegram/td_api.h>
 
 #include <map>
@@ -286,8 +287,10 @@ public:
         unsigned maxMessageLength = 0;
     } options;
 
-    PurpleAccount *const purpleAccount;
-    TdAccountData(PurpleAccount *purpleAccount) : purpleAccount(purpleAccount) {}
+    PurpleAccount *const  purpleAccount;
+    TdTransceiver        &transceiver;
+    TdAccountData(PurpleAccount *purpleAccount, TdTransceiver &transceiver)
+    : purpleAccount(purpleAccount), transceiver(transceiver) {}
 
     void updateUser(TdUserPtr user);
     void setUserStatus(UserId UserId, td::td_api::object_ptr<td::td_api::UserStatus> status);
@@ -388,7 +391,7 @@ public:
     PendingMessageQueue        pendingMessages;
 
     void                       addPendingReadReceipt(ChatId chatId, MessageId messageId);
-    void                       extractPendingReadReceipts(std::vector<ReadReceipt> &receipts);
+    void                       extractPendingReadReceipts(ChatId chatId, std::vector<ReadReceipt> &receipts);
 private:
     TdAccountData(const TdAccountData &other) = delete;
     TdAccountData &operator=(const TdAccountData &other) = delete;
@@ -463,8 +466,8 @@ private:
     std::unique_ptr<PendingRequest> getPendingRequestImpl(uint64_t requestId);
     PendingRequest *                findPendingRequestImpl(uint64_t requestId);
 
-    // Read receipts not sent immediately due to away status
-    std::vector<ReadReceipt>        m_pendingReadReceipts;
+    // Read receipts not sent immediately due to away status (grouped per chat)
+    std::vector<std::vector<ReadReceipt>> m_pendingReadReceipts;
 };
 
 #endif

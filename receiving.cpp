@@ -42,6 +42,39 @@ void sendConversationReadReceipts(TdAccountData &account, PurpleConversation *co
 {
     if (!conversationHasFocus(conv))
         return;
+    ChatId chatId;
+    PurpleConversationType convType = purple_conversation_get_type(conv);
+    const char            *convName = purple_conversation_get_name(conv);
+
+    if (convType == PURPLE_CONV_TYPE_IM) {
+        UserId       privateChatUserId = purpleBuddyNameToUserId(convName);
+        SecretChatId secretChatId      = purpleBuddyNameToSecretChatId(convName);
+        const td::td_api::chat *tdlibChat = nullptr;
+
+        if (privateChatUserId.valid())
+            tdlibChat = account.getPrivateChatByUserId(privateChatUserId);
+        else if (secretChatId.valid())
+            tdlibChat = account.getChatBySecretChat(secretChatId);
+
+        if (tdlibChat)
+            chatId = getId(*tdlibChat);
+    } else if (convType == PURPLE_CONV_TYPE_CHAT)
+        chatId = getTdlibChatId(convName);
+
+    std::vector<ReadReceipt> receipts;
+    account.extractPendingReadReceipts(chatId, receipts);
+
+    if (!receipts.empty()) {
+        purple_debug_misc(config::pluginId, "Sending %zu read receipts for chat %" G_GINT64_FORMAT "\n",
+                          receipts.size(), chatId.value());
+        td::td_api::object_ptr<td::td_api::viewMessages> viewMessagesReq = td::td_api::make_object<td::td_api::viewMessages>();
+        viewMessagesReq->chat_id_ = chatId.value();
+        viewMessagesReq->force_read_ = true; // no idea what "closed chats" are at this point
+        viewMessagesReq->message_ids_.resize(receipts.size());
+        for (size_t i = 0; i < receipts.size(); i++)
+            viewMessagesReq->message_ids_[i] = receipts[i].messageId.value();
+        account.transceiver.sendQuery(std::move(viewMessagesReq), nullptr);
+    }
 }
 
 void showMessageTextIm(TdAccountData &account, const char *purpleUserName, const char *text,

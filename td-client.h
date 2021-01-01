@@ -2,7 +2,6 @@
 #define _TD_CLIENT_H
 
 #include "account-data.h"
-#include "transceiver.h"
 #include "client-utils.h"
 #include <td/telegram/Log.h>
 #include <purple.h>
