@@ -1,7 +1,6 @@
 #include "sticker.h"
 #include "buildopt.h"
 #include "config.h"
-#include "gif.h"
 #include "format.h"
 #include "receiving.h"
 
@@ -11,6 +10,7 @@
 #endif
 
 #ifndef NoLottie
+#include "gif.h"
 #include <zlib.h>
 #include <rlottie.h>
 #endif
