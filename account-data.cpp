@@ -156,41 +156,46 @@ IncomingMessage &PendingMessageQueue::addPendingMessage(IncomingMessage &&messag
     return queue->messages.back().message;
 }
 
+void PendingMessageQueue::extractReadyMessages(
+    std::vector<ChatQueue>::iterator pQueue,
+    std::vector<IncomingMessage> &readyMessages)
+{
+    std::vector<Message>::iterator pReady;
+    for (pReady = pQueue->messages.begin(); pReady != pQueue->messages.end(); ++pReady) {
+        if (!pReady->ready) break;
+        purple_debug_misc(config::pluginId,"MessageQueue: chat %" G_GINT64_FORMAT ": "
+                            "showing message %" G_GINT64_FORMAT "\n",
+                            pQueue->chatId.value(), getId(*pReady->message.message).value());
+        readyMessages.push_back(std::move(pReady->message));
+    }
+
+    pQueue->messages.erase(pQueue->messages.begin(), pReady);
+    if (pQueue->messages.empty()) {
+        m_queues.erase(pQueue);
+        pQueue = m_queues.end();
+    }
+}
+
 void PendingMessageQueue::setMessageReady(ChatId chatId, MessageId messageId,
                                           std::vector<IncomingMessage> &readyMessages)
 {
     readyMessages.clear();
 
-    auto queueIt = getChatQueue(chatId);
-    if (queueIt == m_queues.end()) return;
-    ChatQueue *queue = &*queueIt;
+    auto pQueue = getChatQueue(chatId);
+    if (pQueue == m_queues.end()) return;
 
     purple_debug_misc(config::pluginId,"MessageQueue: chat %" G_GINT64_FORMAT ": "
                       "message %" G_GINT64_FORMAT " now ready\n",
                       chatId.value(), messageId.value());
 
-    auto it = std::find_if(queue->messages.begin(), queue->messages.end(), [messageId](const Message &m) {
+    auto it = std::find_if(pQueue->messages.begin(), pQueue->messages.end(), [messageId](const Message &m) {
         return (getId(*m.message.message) == messageId);
     });
-    if (it == queue->messages.end()) return;
+    if (it == pQueue->messages.end()) return;
 
     it->ready = true;
-    if (it == queue->messages.begin()) {
-        std::vector<Message>::iterator pReady;
-        for (pReady = it; pReady != queue->messages.end(); ++pReady) {
-            if (!pReady->ready) break;
-            purple_debug_misc(config::pluginId,"MessageQueue: chat %" G_GINT64_FORMAT ": "
-                              "showing message %" G_GINT64_FORMAT "\n",
-                              chatId.value(), getId(*pReady->message.message).value());
-            readyMessages.push_back(std::move(pReady->message));
-        }
-
-        queue->messages.erase(queue->messages.begin(), pReady);
-        if (queue->messages.empty()) {
-            queue = nullptr;
-            m_queues.erase(queueIt);
-        }
-    }
+    if (pQueue->ready && (it == pQueue->messages.begin()))
+        extractReadyMessages(pQueue, readyMessages);
 }
 
 IncomingMessage PendingMessageQueue::addReadyMessage(IncomingMessage &&message)
@@ -233,6 +238,28 @@ void PendingMessageQueue::flush(std::vector<IncomingMessage> &messages)
         for (Message &message: queue.messages)
             messages.push_back(std::move(message.message));
     m_queues.clear();
+}
+
+void PendingMessageQueue::setChatNotReady(ChatId chatId)
+{
+    auto pQueue = getChatQueue(chatId);
+    if (pQueue != m_queues.end())
+        pQueue->ready = false;
+    else {
+        m_queues.emplace_back();
+        m_queues.back().chatId = chatId;
+        m_queues.back().ready = false;
+    }
+}
+
+void PendingMessageQueue::setChatReady(ChatId chatId, std::vector<IncomingMessage>& readyMessages)
+{
+    readyMessages.clear();
+    auto pQueue = getChatQueue(chatId);
+    if (pQueue == m_queues.end()) return;
+
+    pQueue->ready = true;
+    extractReadyMessages(pQueue, readyMessages);
 }
 
 void TdAccountData::updateUser(TdUserPtr userPtr)

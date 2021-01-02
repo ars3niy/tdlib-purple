@@ -252,6 +252,8 @@ public:
     IncomingMessage  addReadyMessage(IncomingMessage &&message);
     IncomingMessage *findPendingMessage(ChatId chatId, MessageId messageId);
     void             flush(std::vector<IncomingMessage> &messages);
+    void             setChatNotReady(ChatId chatId);
+    void             setChatReady(ChatId chatId, std::vector<IncomingMessage> &readyMessages);
 private:
     struct Message {
         IncomingMessage message;
@@ -259,11 +261,14 @@ private:
     };
     struct ChatQueue {
         ChatId               chatId;
+        bool                 ready = true;
         std::vector<Message> messages;
     };
     std::vector<ChatQueue> m_queues;
 
     std::vector<ChatQueue>::iterator getChatQueue(ChatId chatId);
+    void extractReadyMessages(std::vector<ChatQueue>::iterator pQueue,
+                              std::vector<IncomingMessage> &readyMessages);
 };
 
 struct ReadReceipt {
