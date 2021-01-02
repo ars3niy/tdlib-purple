@@ -262,6 +262,15 @@ void PendingMessageQueue::setChatReady(ChatId chatId, std::vector<IncomingMessag
     extractReadyMessages(pQueue, readyMessages);
 }
 
+bool PendingMessageQueue::isChatReady(ChatId chatId)
+{
+    auto pQueue = getChatQueue(chatId);
+    if (pQueue != m_queues.end())
+        return pQueue->ready;
+    else
+        return true;
+}
+
 void TdAccountData::updateUser(TdUserPtr userPtr)
 {
     const td::td_api::user *user = userPtr.get();

@@ -29,8 +29,7 @@ bool isStickerAnimated(const std::string &filePath);
 bool shouldConvertAnimatedSticker(const TgMessageInfo &message, const PurpleAccount *purpleAccount);
 void showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage,
                  TdTransceiver &transceiver, TdAccountData &account);
-void showMessages(std::vector<IncomingMessage>& messages, TdTransceiver &transceiver,
-                  TdAccountData &account);
+void showMessages(std::vector<IncomingMessage>& messages, TdAccountData &account);
 
 struct FileInfo {
     const td::td_api::file *file;
@@ -50,6 +49,8 @@ void fetchExtras(IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAcc
                  TdTransceiver::ResponseCb2 onFetchReply);
 void checkMessageReady(const IncomingMessage *message, TdTransceiver &transceiver,
                        TdAccountData &account, std::vector<IncomingMessage> *rvReadyMessages = nullptr);
+
+void fetchHistory(TdAccountData &account, ChatId chatId, MessageId lastReceivedMessage);
 
 #endif
 

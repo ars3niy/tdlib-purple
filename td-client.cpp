@@ -37,7 +37,7 @@ PurpleTdClient::~PurpleTdClient()
     for (IncomingMessage &fullMessage: messages)
         fullMessage.inlineDownloadTimeout = true;
 
-    showMessages(messages, m_transceiver, m_data);
+    showMessages(messages, m_data);
 }
 
 void PurpleTdClient::setLogLevel(int level)
@@ -173,11 +173,14 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
 
     case td::td_api::updateChatLastMessage::ID: {
         auto &lastMessage = static_cast<td::td_api::updateChatLastMessage &>(update);
-        m_data.updateChatOrder(getChatId(lastMessage), lastMessage.order_);
+        ChatId chatId = getChatId(lastMessage);
+        m_data.updateChatOrder(chatId, lastMessage.order_);
         if (lastMessage.last_message_)
             saveChatLastMessage(m_data, getChatId(lastMessage), getId(*lastMessage.last_message_));
         else {
-            // TODO: mind the gap
+            MessageId lastMessageId = getChatLastMessage(m_data, chatId);
+            if (lastMessageId.valid())
+                fetchHistory(m_data, chatId, lastMessageId);
         }
         break;
     }

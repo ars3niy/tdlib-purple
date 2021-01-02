@@ -254,6 +254,7 @@ public:
     void             flush(std::vector<IncomingMessage> &messages);
     void             setChatNotReady(ChatId chatId);
     void             setChatReady(ChatId chatId, std::vector<IncomingMessage> &readyMessages);
+    bool             isChatReady(ChatId chatId);
 private:
     struct Message {
         IncomingMessage message;
