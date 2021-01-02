@@ -422,6 +422,11 @@ void updateSupergroupChat(TdAccountData &account, SupergroupId groupId)
         updateGroupChat(account, *chat, group->status_, "supergroup", groupId.value());
 }
 
+static std::string lastMessageSetting(ChatId chatId)
+{
+    return "last-message-chat" + std::to_string(chatId.value());
+}
+
 void removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat)
 {
     std::string  chatName   = getPurpleChatName(chat);
@@ -429,6 +434,29 @@ void removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat)
 
     if (purpleChat)
         purple_blist_remove_chat(purpleChat);
+    std::string setting = lastMessageSetting(getId(chat));
+    purple_account_remove_setting(purpleAccount, setting.c_str());
+}
+
+void removePrivateChat(TdAccountData &account, const td::td_api::chat &chat)
+{
+    std::string setting = lastMessageSetting(getId(chat));
+    purple_account_remove_setting(account.purpleAccount, setting.c_str());
+}
+
+void saveChatLastMessage(TdAccountData &account, ChatId chatId, MessageId messageId)
+{
+    std::string setting = lastMessageSetting(chatId);
+    std::string value = std::to_string(messageId.value());
+    purple_account_set_string(account.purpleAccount, setting.c_str(), value.c_str());
+}
+
+MessageId getChatLastMessage(TdAccountData &account, ChatId chatId)
+{
+    std::string setting = lastMessageSetting(chatId);
+    const char *value = purple_account_get_string(account.purpleAccount, setting.c_str(), NULL);
+
+    return value ? MessageId::fromString(value) : MessageId();
 }
 
 std::string makeBasicDisplayName(const td::td_api::user &user)

@@ -171,6 +171,17 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         break;
     }
 
+    case td::td_api::updateChatLastMessage::ID: {
+        auto &lastMessage = static_cast<td::td_api::updateChatLastMessage &>(update);
+        m_data.updateChatOrder(getChatId(lastMessage), lastMessage.order_);
+        if (lastMessage.last_message_)
+            saveChatLastMessage(m_data, getChatId(lastMessage), getId(*lastMessage.last_message_));
+        else {
+            // TODO: mind the gap
+        }
+        break;
+    }
+
     case td::td_api::updateOption::ID: {
         const td::td_api::updateOption &option = static_cast<const td::td_api::updateOption &>(update);
         updateOption(option, m_data);
@@ -1229,9 +1240,12 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
 
 void PurpleTdClient::updateUserInfo(const td::td_api::user &user, const td::td_api::chat *privateChat)
 {
-    if (privateChat && isChatInContactList(*privateChat, &user)) {
-        downloadProfilePhoto(user);
-        updatePrivateChat(m_data, privateChat, user);
+    if (privateChat) {
+        if (isChatInContactList(*privateChat, &user)) {
+            downloadProfilePhoto(user);
+            updatePrivateChat(m_data, privateChat, user);
+        } else
+            removePrivateChat(m_data, *privateChat);
     }
 
     // User could have renamed, or they may have become, or ceased being, libpurple buddy.

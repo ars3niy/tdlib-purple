@@ -60,6 +60,7 @@ DEFINE_ID_CLASS(ChatId, int64_t)
     friend ChatId getChatId(const td::td_api::messageForwardOriginChannel &forwardOrigin);
     friend ChatId getChatId(const td::td_api::message &message);
     friend ChatId getChatId(const td::td_api::updateUserChatAction &update);
+    friend ChatId getChatId(const td::td_api::updateChatLastMessage &update);
     friend ChatId stringToChatId(const char *s);
 };
 
@@ -84,6 +85,8 @@ DEFINE_ID_CLASS(SecretChatId, int32_t)
 DEFINE_ID_CLASS(MessageId, int64_t)
     friend MessageId getId(const td::td_api::message &message);
     friend MessageId getReplyMessageId(const td::td_api::message &message);
+
+    static MessageId fromString(const char *value);
 };
 
 #undef DEFINE_ID_CLASS
@@ -113,6 +116,7 @@ ChatId       getChatId(const td::td_api::updateChatTitle &update);
 ChatId       getChatId(const td::td_api::messageForwardOriginChannel &forwardOrigin);
 ChatId       getChatId(const td::td_api::message &message);
 ChatId       getChatId(const td::td_api::updateUserChatAction &update);
+ChatId       getChatId(const td::td_api::updateChatLastMessage &update);
 ChatId       stringToChatId(const char *s);
 
 BasicGroupId getBasicGroupId(const td::td_api::updateBasicGroupFullInfo &update);

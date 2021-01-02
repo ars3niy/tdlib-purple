@@ -147,6 +147,11 @@ ChatId getChatId(const td::td_api::updateUserChatAction &update)
     return ChatId(update.chat_id_);
 }
 
+ChatId getChatId(const td::td_api::updateChatLastMessage &update)
+{
+    return ChatId(update.chat_id_);
+}
+
 ChatId stringToChatId(const char* s)
 {
     int64_t id;
@@ -183,4 +188,13 @@ SecretChatId getSecretChatId(const td::td_api::chatTypeSecret &chatType)
 MessageId getReplyMessageId(const td::td_api::message &message)
 {
     return MessageId(message.reply_to_message_id_);
+}
+
+MessageId MessageId::fromString(const char* value)
+{
+    IdType result;
+    if (sscanf(value, "%" G_GINT64_FORMAT, &result) == 1)
+        return MessageId(result);
+    else
+        return MessageId::invalid;
 }

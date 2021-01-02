@@ -26,6 +26,9 @@ void                updatePrivateChat(TdAccountData &account, const td::td_api::
 void                updateBasicGroupChat(TdAccountData &account, BasicGroupId groupId);
 void                updateSupergroupChat(TdAccountData &account, SupergroupId groupId);
 void                removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat);
+void                removePrivateChat(TdAccountData &account, const td::td_api::chat &chat);
+void                saveChatLastMessage(TdAccountData &account, ChatId chatId, MessageId messageId);
+MessageId           getChatLastMessage(TdAccountData &account, ChatId chatId);
 std::string         makeBasicDisplayName(const td::td_api::user &user);
 std::string         getIncomingGroupchatSenderPurpleName(const td::td_api::chat &chat, const td::td_api::message &message,
                                                          const TdAccountData &account);

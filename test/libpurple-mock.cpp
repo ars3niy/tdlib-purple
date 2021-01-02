@@ -1464,6 +1464,17 @@ void purple_account_set_bool(PurpleAccount *account, const char *name,
     purple_account_set_string(account, name, value ? "true" : "");
 }
 
+void purple_account_remove_setting(PurpleAccount *account, const char *setting)
+{
+    auto it = std::find_if(g_accounts.begin(), g_accounts.end(),
+                           [account](const AccountInfo &info) { return (info.account == account); });
+    EXPECT_FALSE(it == g_accounts.end()) << "Unknown account";
+
+    if (it != g_accounts.end()) {
+        it->stringsOptions.erase(setting);
+    }
+}
+
 char *purple_str_size_to_units(size_t size)
 {
     return g_strdup("purple_str_size_to_units");
