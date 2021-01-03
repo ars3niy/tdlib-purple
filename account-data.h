@@ -9,6 +9,7 @@
 #include <map>
 #include <mutex>
 #include <set>
+#include <list>
 #include <purple.h>
 
 #ifndef NoVoip
@@ -252,10 +253,10 @@ public:
     static constexpr MessageAction Prepend = MessageAction::Prepend;
     using TdMessagePtr = td::td_api::object_ptr<td::td_api::message>;
 
-    IncomingMessage &addPendingMessage(IncomingMessage &&message, MessageAction action = Append);
+    IncomingMessage &addPendingMessage(IncomingMessage &&message, MessageAction action);
     void             setMessageReady(ChatId chatId, MessageId messageId,
                                      std::vector<IncomingMessage> &readyMessages);
-    IncomingMessage  addReadyMessage(IncomingMessage &&message, MessageAction action = Append);
+    IncomingMessage  addReadyMessage(IncomingMessage &&message, MessageAction action);
     IncomingMessage *findPendingMessage(ChatId chatId, MessageId messageId);
     void             flush(std::vector<IncomingMessage> &messages);
     void             setChatNotReady(ChatId chatId);
