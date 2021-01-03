@@ -17,6 +17,7 @@ void CommTest::SetUp()
     connection = new PurpleConnection;
     connection->state = PURPLE_DISCONNECTED;
     connection->account = account;
+    purple_connection_set_protocol_data(connection, NULL);
     account->gc = connection;
     prpl.discardEvents();
     setUiName("Pidgin");

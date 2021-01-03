@@ -8,6 +8,10 @@
 #include "call.h"
 #include <algorithm>
 
+enum {
+    HISTORY_MESSAGES_ABSOLUTE_LIMIT = 10000
+};
+
 std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,
                                  const char *noticeText, PurpleAccount *account)
 {
@@ -1057,35 +1061,43 @@ static void fetchHistoryResponse(TdAccountData &account, ChatId chatId, MessageI
                                  td::td_api::object_ptr<td::td_api::Object> response)
 {
     MessageId requestMoreFrom = MessageId::invalid;
+    const td::td_api::chat *chat = account.getChat(chatId);
 
     if (response && (response->get_id() == td::td_api::messages::ID)) {
         td::td_api::messages &messages = static_cast<td::td_api::messages &>(*response);
-        if (!messages.messages_.empty()) {
-            const td::td_api::chat *chat = account.getChat(chatId);
-            auto stop = messages.messages_.begin();
-            MessageId lastMessageId = MessageId::invalid;
-            for (; stop != messages.messages_.end(); ++stop) {
-                td::td_api::object_ptr<td::td_api::message> message = std::move(*stop);
-                if (!message ||
-                    (lastReceivedMessage.valid() && (getId(*message) == lastReceivedMessage)) ||
-                    (!lastReceivedMessage.valid() && (messagesFetched == 100)))
-                {
-                    break;
-                }
-                messagesFetched++;
-                lastMessageId = getId(*message);
-                if (chat)
-                    handleIncomingMessage(account, *chat, std::move(message), PendingMessageQueue::Prepend);
+        purple_debug_misc(config::pluginId, "Fetched %zu messages for chat %" G_GINT64_FORMAT "\n",
+                          messages.messages_.size(), chatId.value());
+        auto stop = messages.messages_.begin();
+        MessageId lastMessageId = MessageId::invalid;
+        for (; stop != messages.messages_.end(); ++stop) {
+            td::td_api::object_ptr<td::td_api::message> message = std::move(*stop);
+            if (!message) {
+                purple_debug_warning(config::pluginId, "Erroneous message in history, stopping\n");
+                break;
             }
-
-            if (stop == messages.messages_.end())
-                requestMoreFrom = lastMessageId;
+            if (lastReceivedMessage.valid() && (getId(*message) == lastReceivedMessage)) {
+                purple_debug_misc(config::pluginId, "Found message %" G_GINT64_FORMAT ", stopping\n",
+                                  lastReceivedMessage.value());
+                break;
+            }
+            if ((!lastReceivedMessage.valid() && (messagesFetched == 100)) ||
+                (messagesFetched == HISTORY_MESSAGES_ABSOLUTE_LIMIT))
+            {
+                purple_debug_misc(config::pluginId, "Reached history limit, stopping\n");
+                break;
+            }
+            messagesFetched++;
+            lastMessageId = getId(*message);
+            if (chat)
+                handleIncomingMessage(account, *chat, std::move(message), PendingMessageQueue::Prepend);
         }
+
+        if (stop == messages.messages_.end())
+            requestMoreFrom = lastMessageId;
     } else {
         std::string message = formatMessage(_("Failed to fetch earlier messages: {}"),
                                             getDisplayedError(response));
         purple_debug_warning(config::pluginId, "%s\n", message.c_str());
-        const td::td_api::chat *chat = account.getChat(chatId);
         if (chat)
             showChatNotification(account, *chat, message.c_str(), PURPLE_MESSAGE_ERROR);
     }
@@ -1093,6 +1105,8 @@ static void fetchHistoryResponse(TdAccountData &account, ChatId chatId, MessageI
     if (requestMoreFrom.valid())
         fetchHistoryRequest(account, chatId, messagesFetched, requestMoreFrom, lastReceivedMessage);
     else {
+        purple_debug_misc(config::pluginId, "Done fetching history for chat %" G_GINT64_FORMAT "\n",
+                          chatId.value());
         std::vector<IncomingMessage> readyMessages;
         account.pendingMessages.setChatReady(chatId, readyMessages);
         showMessages(readyMessages, account);
@@ -1108,6 +1122,8 @@ static void fetchHistoryRequest(TdAccountData &account, ChatId chatId, unsigned 
     request->limit_ = 30;
     request->offset_ = 0;
     request->only_local_ = false;
+    purple_debug_misc(config::pluginId, "Requesting history for chat %" G_GINT64_FORMAT
+                      " starting from %" G_GINT64_FORMAT "\n", chatId.value(), fetchBackFrom.value());
     account.transceiver.sendQuery(std::move(request),
         [&account, chatId, messagesFetched, lastReceivedMessage](uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> response) {
             fetchHistoryResponse(account, chatId, lastReceivedMessage, messagesFetched, std::move(response));

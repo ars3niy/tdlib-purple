@@ -434,14 +434,18 @@ void removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat)
 
     if (purpleChat)
         purple_blist_remove_chat(purpleChat);
-    std::string setting = lastMessageSetting(getId(chat));
-    purple_account_remove_setting(purpleAccount, setting.c_str());
+    // TODO: uncomment when updateNewChat(chat_list=NULL) + updateChatChatList(non-NULL) at login
+    // no longer removes chat
+    //std::string setting = lastMessageSetting(getId(chat));
+    //purple_account_remove_setting(purpleAccount, setting.c_str());
 }
 
 void removePrivateChat(TdAccountData &account, const td::td_api::chat &chat)
 {
-    std::string setting = lastMessageSetting(getId(chat));
-    purple_account_remove_setting(account.purpleAccount, setting.c_str());
+    // TODO: uncomment when updateNewChat(chat_list=NULL) + updateChatChatList(non-NULL) at login
+    // no longer removes chat
+    //std::string setting = lastMessageSetting(getId(chat));
+    //purple_account_remove_setting(account.purpleAccount, setting.c_str());
 }
 
 void saveChatLastMessage(TdAccountData &account, ChatId chatId, MessageId messageId)

@@ -176,11 +176,15 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         ChatId chatId = getChatId(lastMessage);
         m_data.updateChatOrder(chatId, lastMessage.order_);
         if (lastMessage.last_message_)
-            saveChatLastMessage(m_data, getChatId(lastMessage), getId(*lastMessage.last_message_));
+            saveChatLastMessage(m_data, chatId, getId(*lastMessage.last_message_));
         else {
             MessageId lastMessageId = getChatLastMessage(m_data, chatId);
-            if (lastMessageId.valid())
-                {}//fetchHistory(m_data, chatId, lastMessageId);
+            if (lastMessageId.valid()) {
+                purple_debug_misc(config::pluginId, "Skipped messages detected for chat %" G_GINT64_FORMAT
+                                  ", fetching history until %" G_GINT64_FORMAT "\n",
+                                  chatId.value(), lastMessageId.value());
+                fetchHistory(m_data, chatId, lastMessageId);
+            }
         }
         break;
     }

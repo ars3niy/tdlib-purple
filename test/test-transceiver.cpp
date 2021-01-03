@@ -457,6 +457,15 @@ static void compare(const createNewSecretChat &actual, const createNewSecretChat
     COMPARE(user_id_);
 }
 
+static void compare(const getChatHistory &actual, const getChatHistory &expected)
+{
+    COMPARE(chat_id_);
+    COMPARE(from_message_id_);
+    COMPARE(offset_);
+    COMPARE(limit_);
+    COMPARE(only_local_);
+}
+
 static void compareRequests(const Function &actual, const Function &expected,
                             std::vector<std::string> &m_inputPhotoPaths)
 {
@@ -508,6 +517,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(searchPublicChat)
         C(joinChat)
         C(createNewSecretChat)
+        C(getChatHistory)
         default: ASSERT_TRUE(false) << "Unsupported request " << requestToString(actual);
     }
 }
