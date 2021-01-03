@@ -1056,7 +1056,7 @@ void handleIncomingMessage(TdAccountData &account, const td::td_api::chat &chat,
 static void fetchHistoryRequest(TdAccountData &account, ChatId chatId, unsigned messagesFetched,
                                 MessageId fetchBackFrom, MessageId lastReceivedMessage);
 
-static void fetchHistoryResponse(TdAccountData &account, ChatId chatId, MessageId lastReceivedMessage,
+static void fetchHistoryResponse(TdAccountData &account, ChatId chatId, MessageId stopAt,
                                  unsigned messagesFetched,
                                  td::td_api::object_ptr<td::td_api::Object> response)
 {
@@ -1075,12 +1075,12 @@ static void fetchHistoryResponse(TdAccountData &account, ChatId chatId, MessageI
                 purple_debug_warning(config::pluginId, "Erroneous message in history, stopping\n");
                 break;
             }
-            if (lastReceivedMessage.valid() && (getId(*message) == lastReceivedMessage)) {
+            if (stopAt.valid() && (getId(*message) == stopAt)) {
                 purple_debug_misc(config::pluginId, "Found message %" G_GINT64_FORMAT ", stopping\n",
-                                  lastReceivedMessage.value());
+                                  stopAt.value());
                 break;
             }
-            if ((!lastReceivedMessage.valid() && (messagesFetched == 100)) ||
+            if ((!stopAt.valid() && (messagesFetched == 100)) ||
                 (messagesFetched == HISTORY_MESSAGES_ABSOLUTE_LIMIT))
             {
                 purple_debug_misc(config::pluginId, "Reached history limit, stopping\n");
@@ -1103,7 +1103,7 @@ static void fetchHistoryResponse(TdAccountData &account, ChatId chatId, MessageI
     }
 
     if (requestMoreFrom.valid())
-        fetchHistoryRequest(account, chatId, messagesFetched, requestMoreFrom, lastReceivedMessage);
+        fetchHistoryRequest(account, chatId, messagesFetched, requestMoreFrom, stopAt);
     else {
         purple_debug_misc(config::pluginId, "Done fetching history for chat %" G_GINT64_FORMAT "\n",
                           chatId.value());
@@ -1114,7 +1114,7 @@ static void fetchHistoryResponse(TdAccountData &account, ChatId chatId, MessageI
 }
 
 static void fetchHistoryRequest(TdAccountData &account, ChatId chatId, unsigned messagesFetched,
-                                MessageId fetchBackFrom, MessageId lastReceivedMessage)
+                                MessageId fetchBackFrom, MessageId stopAt)
 {
     auto request = td::td_api::make_object<td::td_api::getChatHistory>();
     request->chat_id_ = chatId.value();
@@ -1125,16 +1125,16 @@ static void fetchHistoryRequest(TdAccountData &account, ChatId chatId, unsigned 
     purple_debug_misc(config::pluginId, "Requesting history for chat %" G_GINT64_FORMAT
                       " starting from %" G_GINT64_FORMAT "\n", chatId.value(), fetchBackFrom.value());
     account.transceiver.sendQuery(std::move(request),
-        [&account, chatId, messagesFetched, lastReceivedMessage](uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> response) {
-            fetchHistoryResponse(account, chatId, lastReceivedMessage, messagesFetched, std::move(response));
+        [&account, chatId, messagesFetched, stopAt](uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> response) {
+            fetchHistoryResponse(account, chatId, stopAt, messagesFetched, std::move(response));
         });
 }
 
-void fetchHistory(TdAccountData &account, ChatId chatId, MessageId lastReceivedMessage)
+void fetchHistory(TdAccountData &account, ChatId chatId, MessageId fetchFrom, MessageId stopAt)
 {
     if (!account.pendingMessages.isChatReady(chatId))
         return;
 
     account.pendingMessages.setChatNotReady(chatId);
-    fetchHistoryRequest(account, chatId, 0, MessageId::invalid, lastReceivedMessage);
+    fetchHistoryRequest(account, chatId, 0, fetchFrom, stopAt);
 }

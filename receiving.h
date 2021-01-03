@@ -53,7 +53,7 @@ void checkMessageReady(const IncomingMessage *message, TdTransceiver &transceive
 void handleIncomingMessage(TdAccountData &account, const td::td_api::chat &chat,
                            td::td_api::object_ptr<td::td_api::message> message,
                            PendingMessageQueue::MessageAction action);
-void fetchHistory(TdAccountData &account, ChatId chatId, MessageId lastReceivedMessage);
+void fetchHistory(TdAccountData &account, ChatId chatId, MessageId fetchFrom, MessageId stopAt);
 
 #endif
 

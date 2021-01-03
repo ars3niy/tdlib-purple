@@ -173,19 +173,7 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
 
     case td::td_api::updateChatLastMessage::ID: {
         auto &lastMessage = static_cast<td::td_api::updateChatLastMessage &>(update);
-        ChatId chatId = getChatId(lastMessage);
-        m_data.updateChatOrder(chatId, lastMessage.order_);
-        if (lastMessage.last_message_)
-            saveChatLastMessage(m_data, chatId, getId(*lastMessage.last_message_));
-        else {
-            MessageId lastMessageId = getChatLastMessage(m_data, chatId);
-            if (lastMessageId.valid()) {
-                purple_debug_misc(config::pluginId, "Skipped messages detected for chat %" G_GINT64_FORMAT
-                                  ", fetching history until %" G_GINT64_FORMAT "\n",
-                                  chatId.value(), lastMessageId.value());
-                fetchHistory(m_data, chatId, lastMessageId);
-            }
-        }
+        updateChatLastMessage(lastMessage);
         break;
     }
 
@@ -943,8 +931,20 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
 {
     if (!message)
         return;
-
     ChatId chatId = getChatId(*message);
+
+    auto pGap = std::find_if(m_chatGaps.begin(), m_chatGaps.end(),
+                             [chatId](const ChatGap &gap) { return (gap.chatId == chatId); });
+    if (pGap != m_chatGaps.end()) {
+        MessageId lastMessageId = pGap->lastMessage;
+        m_chatGaps.erase(pGap);
+        purple_debug_misc(config::pluginId,
+            "Fetching skipped messages for chat %" G_GINT64_FORMAT
+            " between %" G_GINT64_FORMAT " and %" G_GINT64_FORMAT "\n",
+            chatId.value(), lastMessageId.value(), getId(*message).value());
+        fetchHistory(m_data, chatId, getId(*message), lastMessageId);
+    }
+
     const td::td_api::chat *chat = m_data.getChat(chatId);
     if (!chat) {
         purple_debug_warning(config::pluginId, "Received message with unknown chat id %" G_GINT64_FORMAT "\n",
@@ -953,6 +953,31 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     }
 
     handleIncomingMessage(m_data, *chat, std::move(message), PendingMessageQueue::Append);
+}
+
+void PurpleTdClient::updateChatLastMessage(const td::td_api::updateChatLastMessage &lastMessage)
+{
+    ChatId chatId = getChatId(lastMessage);
+    m_data.updateChatOrder(chatId, lastMessage.order_);
+    if (lastMessage.last_message_)
+        saveChatLastMessage(m_data, chatId, getId(*lastMessage.last_message_));
+    else {
+        MessageId lastMessageId = getChatLastMessage(m_data, chatId);
+        if (lastMessageId.valid()) {
+            purple_debug_misc(config::pluginId,
+                "Skipped messages detected for chat %" G_GINT64_FORMAT
+                ", last seen message %" G_GINT64_FORMAT "\n",
+                chatId.value(), lastMessageId.value());
+            if (std::find_if(m_chatGaps.begin(), m_chatGaps.end(),
+                             [chatId](const ChatGap &gap) {
+                                 return (gap.chatId == chatId);
+                             }) == m_chatGaps.end()) {
+                m_chatGaps.emplace_back();
+                m_chatGaps.back().chatId = chatId;
+                m_chatGaps.back().lastMessage = lastMessageId;
+            }
+        }
+    }
 }
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)

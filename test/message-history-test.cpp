@@ -24,11 +24,11 @@ TEST_F(MessageHistoryTest, TdlibSkipMessages)
     tgl.update(make_object<updateChatLastMessage>(
         groupChatId, nullptr, 0
     ));
-    tgl.verifyRequest(getChatHistory(groupChatId, 0, 0, 30, false));
 
     tgl.update(make_object<updateNewMessage>(
         makeMessage(6, userIds[0], groupChatId, false, 6, makeTextMessage("6"))
     ));
+    tgl.verifyRequest(getChatHistory(groupChatId, 6, 0, 30, false));
     tgl.update(make_object<updateChatLastMessage>(
         groupChatId,
         makeMessage(6, userIds[0], groupChatId, false, 6, makeTextMessage("6")),
@@ -72,7 +72,20 @@ TEST_F(MessageHistoryTest, TdlibSkipMessages)
     );
     tgl.verifyRequest(viewMessages(groupChatId, {6, 7, 5, 4, 3, 2}, true));
 
-    ASSERT_EQ(std::string("7"), std::string(purple_account_get_string(
+    tgl.update(make_object<updateNewMessage>(
+        makeMessage(8, userIds[0], groupChatId, false, 8, makeTextMessage("8"))
+    ));
+    tgl.update(make_object<updateChatLastMessage>(
+        groupChatId,
+        makeMessage(8, userIds[0], groupChatId, false, 8, makeTextMessage("8")),
+        0
+    ));
+    prpl.verifyEvents(
+        ServGotChatEvent(connection, purpleChatId, userNameInChat, "8", PURPLE_MESSAGE_RECV, 8)
+    );
+    tgl.verifyRequest(viewMessages(groupChatId, {8}, true));
+
+    ASSERT_EQ(std::string("8"), std::string(purple_account_get_string(
         account, ("last-message-chat" + std::to_string(groupChatId)).c_str(), "")));
 }
 
@@ -85,11 +98,11 @@ TEST_F(MessageHistoryTest, TdlibSkipMessages_FlushAtLogout)
     tgl.update(make_object<updateChatLastMessage>(
         groupChatId, nullptr, 0
     ));
-    tgl.verifyRequest(getChatHistory(groupChatId, 0, 0, 30, false));
 
     tgl.update(make_object<updateNewMessage>(
         makeMessage(6, userIds[0], groupChatId, false, 6, makeTextMessage("6"))
     ));
+    tgl.verifyRequest(getChatHistory(groupChatId, 6, 0, 30, false));
     tgl.update(make_object<updateChatLastMessage>(
         groupChatId,
         makeMessage(6, userIds[0], groupChatId, false, 6, makeTextMessage("6")),
