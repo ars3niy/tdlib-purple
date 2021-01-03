@@ -6,6 +6,7 @@
 #include "sticker.h"
 #include "config.h"
 #include "call.h"
+#include <algorithm>
 
 std::string makeNoticeWithSender(const td::td_api::chat &chat, const TgMessageInfo &message,
                                  const char *noticeText, PurpleAccount *account)
@@ -1004,10 +1005,57 @@ void checkMessageReady(const IncomingMessage *message, TdTransceiver &transceive
     }
 }
 
-static void fetchHistoryRequest(TdAccountData &account, ChatId chatId,
+static void findMessageResponse(TdAccountData &account, ChatId chatId, MessageId pendingMessageId,
+                                td::td_api::object_ptr<td::td_api::Object> object)
+{
+    IncomingMessage *pendingMessage = account.pendingMessages.findPendingMessage(chatId, pendingMessageId);
+    if (!pendingMessage) return;
+
+    pendingMessage->repliedMessageFetchDoneOrFailed = true;
+    if (object && (object->get_id() == td::td_api::message::ID))
+        pendingMessage->repliedMessage = td::move_tl_object_as<td::td_api::message>(object);
+    else
+        purple_debug_misc(config::pluginId, "Failed to fetch reply source for message %" G_GINT64_FORMAT "\n",
+                          pendingMessageId.value());
+
+    checkMessageReady(pendingMessage, account.transceiver, account);
+}
+
+
+
+void handleIncomingMessage(TdAccountData &account, const td::td_api::chat &chat,
+    td::td_api::object_ptr<td::td_api::message> message,
+    PendingMessageQueue::MessageAction action)
+{
+    if (!message) return;
+    ChatId chatId = getId(chat);
+
+    if (isReadReceiptsEnabled(account.purpleAccount))
+        account.addPendingReadReceipt(chatId, getId(*message));
+
+    IncomingMessage fullMessage;
+    makeFullMessage(chat, std::move(message), fullMessage, account);
+
+    if (isMessageReady(fullMessage, account)) {
+        IncomingMessage readyMessage = account.pendingMessages.addReadyMessage(std::move(fullMessage));
+        if (readyMessage.message)
+            showMessage(chat, readyMessage, account.transceiver, account);
+    } else {
+        MessageId messageId = getId(*fullMessage.message);
+        IncomingMessage &addedMessage = account.pendingMessages.addPendingMessage(std::move(fullMessage));
+        fetchExtras(addedMessage, account.transceiver, account,
+            [&account, chatId, messageId](uint64_t, td::td_api::object_ptr<td::td_api::Object> object) {
+                findMessageResponse(account, chatId, messageId, std::move(object));
+            }
+        );
+    }
+}
+
+static void fetchHistoryRequest(TdAccountData &account, ChatId chatId, unsigned messagesFetched,
                                 MessageId fetchBackFrom, MessageId lastReceivedMessage);
 
 static void fetchHistoryResponse(TdAccountData &account, ChatId chatId, MessageId lastReceivedMessage,
+                                 unsigned messagesFetched,
                                  td::td_api::object_ptr<td::td_api::Object> response)
 {
     MessageId requestMoreFrom = MessageId::invalid;
@@ -1015,7 +1063,25 @@ static void fetchHistoryResponse(TdAccountData &account, ChatId chatId, MessageI
     if (response && (response->get_id() == td::td_api::messages::ID)) {
         td::td_api::messages &messages = static_cast<td::td_api::messages &>(*response);
         if (!messages.messages_.empty()) {
-            // TODO
+            const td::td_api::chat *chat = account.getChat(chatId);
+            auto stop = messages.messages_.begin();
+            MessageId lastMessageId = MessageId::invalid;
+            for (; stop != messages.messages_.end(); ++stop) {
+                td::td_api::message *message = stop->get();
+                if (!message ||
+                    (lastReceivedMessage.valid() && (getId(*message) == lastReceivedMessage)) ||
+                    (!lastReceivedMessage.valid() && (messagesFetched == 100)))
+                {
+                    break;
+                }
+                messagesFetched++;
+                lastMessageId = getId(*message);
+                if (chat)
+                    handleIncomingMessage(account, *chat, std::move(*stop), PendingMessageQueue::Prepend);
+            }
+
+            if (stop == messages.messages_.end())
+                requestMoreFrom = lastMessageId;
         }
     } else {
         std::string message = formatMessage(_("Failed to fetch earlier messages: {}"),
@@ -1027,7 +1093,7 @@ static void fetchHistoryResponse(TdAccountData &account, ChatId chatId, MessageI
     }
 
     if (requestMoreFrom.valid())
-        fetchHistoryRequest(account, chatId, requestMoreFrom, lastReceivedMessage);
+        fetchHistoryRequest(account, chatId, messagesFetched, requestMoreFrom, lastReceivedMessage);
     else {
         std::vector<IncomingMessage> readyMessages;
         account.pendingMessages.setChatReady(chatId, readyMessages);
@@ -1035,7 +1101,7 @@ static void fetchHistoryResponse(TdAccountData &account, ChatId chatId, MessageI
     }
 }
 
-static void fetchHistoryRequest(TdAccountData &account, ChatId chatId,
+static void fetchHistoryRequest(TdAccountData &account, ChatId chatId, unsigned messagesFetched,
                                 MessageId fetchBackFrom, MessageId lastReceivedMessage)
 {
     auto request = td::td_api::make_object<td::td_api::getChatHistory>();
@@ -1045,8 +1111,8 @@ static void fetchHistoryRequest(TdAccountData &account, ChatId chatId,
     request->offset_ = 0;
     request->only_local_ = false;
     account.transceiver.sendQuery(std::move(request),
-        [&account, chatId, lastReceivedMessage](uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> response) {
-            fetchHistoryResponse(account, chatId, lastReceivedMessage, std::move(response));
+        [&account, chatId, messagesFetched, lastReceivedMessage](uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> response) {
+            fetchHistoryResponse(account, chatId, lastReceivedMessage, messagesFetched, std::move(response));
         });
 }
 
@@ -1056,5 +1122,5 @@ void fetchHistory(TdAccountData &account, ChatId chatId, MessageId lastReceivedM
         return;
 
     account.pendingMessages.setChatNotReady(chatId);
-    fetchHistoryRequest(account, chatId, MessageId::invalid, lastReceivedMessage);
+    fetchHistoryRequest(account, chatId, 0, MessageId::invalid, lastReceivedMessage);
 }

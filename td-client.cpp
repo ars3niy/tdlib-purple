@@ -180,7 +180,7 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         else {
             MessageId lastMessageId = getChatLastMessage(m_data, chatId);
             if (lastMessageId.valid())
-                fetchHistory(m_data, chatId, lastMessageId);
+                {}//fetchHistory(m_data, chatId, lastMessageId);
         }
         break;
     }
@@ -948,41 +948,7 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
         return;
     }
 
-    if (isReadReceiptsEnabled(m_account))
-        m_data.addPendingReadReceipt(chatId, getId(*message));
-
-    IncomingMessage fullMessage;
-    makeFullMessage(*chat, std::move(message), fullMessage, m_data);
-
-    if (isMessageReady(fullMessage, m_data)) {
-        IncomingMessage readyMessage = m_data.pendingMessages.addReadyMessage(std::move(fullMessage));
-        if (readyMessage.message)
-            showMessage(*chat, readyMessage, m_transceiver, m_data);
-    } else {
-        MessageId messageId = getId(*fullMessage.message);
-        IncomingMessage &addedMessage = m_data.pendingMessages.addPendingMessage(std::move(fullMessage));
-        fetchExtras(addedMessage, m_transceiver, m_data,
-            [this, chatId, messageId](uint64_t, td::td_api::object_ptr<td::td_api::Object> object) {
-                findMessageResponse(chatId, messageId, std::move(object));
-            }
-        );
-    }
-}
-
-void PurpleTdClient::findMessageResponse(ChatId chatId, MessageId pendingMessageId,
-                                         td::td_api::object_ptr<td::td_api::Object> object)
-{
-    IncomingMessage *pendingMessage = m_data.pendingMessages.findPendingMessage(chatId, pendingMessageId);
-    if (!pendingMessage) return;
-
-    pendingMessage->repliedMessageFetchDoneOrFailed = true;
-    if (object && (object->get_id() == td::td_api::message::ID))
-        pendingMessage->repliedMessage = td::move_tl_object_as<td::td_api::message>(object);
-    else
-        purple_debug_misc(config::pluginId, "Failed to fetch reply source for message %" G_GINT64_FORMAT "\n",
-                          pendingMessageId.value());
-
-    checkMessageReady(pendingMessage, m_transceiver, m_data);
+    handleIncomingMessage(m_data, *chat, std::move(message), PendingMessageQueue::Append);
 }
 
 int PurpleTdClient::sendMessage(const char *buddyName, const char *message)

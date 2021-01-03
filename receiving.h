@@ -50,6 +50,9 @@ void fetchExtras(IncomingMessage &fullMessage, TdTransceiver &transceiver, TdAcc
 void checkMessageReady(const IncomingMessage *message, TdTransceiver &transceiver,
                        TdAccountData &account, std::vector<IncomingMessage> *rvReadyMessages = nullptr);
 
+void handleIncomingMessage(TdAccountData &account, const td::td_api::chat &chat,
+                           td::td_api::object_ptr<td::td_api::message> message,
+                           PendingMessageQueue::MessageAction action);
 void fetchHistory(TdAccountData &account, ChatId chatId, MessageId lastReceivedMessage);
 
 #endif

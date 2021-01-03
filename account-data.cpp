@@ -131,7 +131,19 @@ auto PendingMessageQueue::getChatQueue(ChatId chatId) -> std::vector<ChatQueue>:
     });
 }
 
-IncomingMessage &PendingMessageQueue::addPendingMessage(IncomingMessage &&message)
+PendingMessageQueue::Message &PendingMessageQueue::addMessage(ChatQueue &queue, MessageAction action)
+{
+    if (action == MessageAction::Append) {
+        queue.messages.emplace_back();
+        return queue.messages.back();
+    } else {
+        queue.messages.emplace_front();
+        return queue.messages.front();
+    }
+}
+
+IncomingMessage &PendingMessageQueue::addPendingMessage(IncomingMessage &&message,
+    MessageAction action)
 {
     if (!message.message) return message;
 
@@ -150,17 +162,17 @@ IncomingMessage &PendingMessageQueue::addPendingMessage(IncomingMessage &&messag
         queue = &m_queues.back();
     }
 
-    queue->messages.emplace_back();
-    queue->messages.back().ready = false;
-    queue->messages.back().message = std::move(message);
-    return queue->messages.back().message;
+    Message &newEntry = addMessage(*queue, action);
+    newEntry.ready = false;
+    newEntry.message = std::move(message);
+    return newEntry.message;
 }
 
 void PendingMessageQueue::extractReadyMessages(
     std::vector<ChatQueue>::iterator pQueue,
     std::vector<IncomingMessage> &readyMessages)
 {
-    std::vector<Message>::iterator pReady;
+    std::list<Message>::iterator pReady;
     for (pReady = pQueue->messages.begin(); pReady != pQueue->messages.end(); ++pReady) {
         if (!pReady->ready) break;
         purple_debug_misc(config::pluginId,"MessageQueue: chat %" G_GINT64_FORMAT ": "
@@ -198,7 +210,8 @@ void PendingMessageQueue::setMessageReady(ChatId chatId, MessageId messageId,
         extractReadyMessages(pQueue, readyMessages);
 }
 
-IncomingMessage PendingMessageQueue::addReadyMessage(IncomingMessage &&message)
+IncomingMessage PendingMessageQueue::addReadyMessage(IncomingMessage &&message,
+    MessageAction action)
 {
     if (!message.message) return IncomingMessage();
 
@@ -211,10 +224,9 @@ IncomingMessage PendingMessageQueue::addReadyMessage(IncomingMessage &&message)
                       "adding pending message %" G_GINT64_FORMAT " (ready)\n",
                       chatId.value(), message.message->id_);
 
-    ChatQueue *queue = &*queueIt;
-    queue->messages.emplace_back();
-    queue->messages.back().ready = true;
-    queue->messages.back().message = std::move(message);
+    Message &newEntry = addMessage(*queueIt, action);
+    newEntry.ready = true;
+    newEntry.message = std::move(message);
 
     return IncomingMessage();
 }

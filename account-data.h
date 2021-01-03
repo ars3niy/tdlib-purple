@@ -244,12 +244,18 @@ struct IncomingMessage {
 
 class PendingMessageQueue {
 public:
+    enum class MessageAction {
+        Append,
+        Prepend
+    };
+    static constexpr MessageAction Append = MessageAction::Append;
+    static constexpr MessageAction Prepend = MessageAction::Prepend;
     using TdMessagePtr = td::td_api::object_ptr<td::td_api::message>;
 
-    IncomingMessage &addPendingMessage(IncomingMessage &&message);
+    IncomingMessage &addPendingMessage(IncomingMessage &&message, MessageAction action = Append);
     void             setMessageReady(ChatId chatId, MessageId messageId,
                                      std::vector<IncomingMessage> &readyMessages);
-    IncomingMessage  addReadyMessage(IncomingMessage &&message);
+    IncomingMessage  addReadyMessage(IncomingMessage &&message, MessageAction action = Append);
     IncomingMessage *findPendingMessage(ChatId chatId, MessageId messageId);
     void             flush(std::vector<IncomingMessage> &messages);
     void             setChatNotReady(ChatId chatId);
@@ -261,13 +267,14 @@ private:
         bool            ready;
     };
     struct ChatQueue {
-        ChatId               chatId;
-        bool                 ready = true;
-        std::vector<Message> messages;
+        ChatId             chatId;
+        bool               ready = true;
+        std::list<Message> messages;
     };
     std::vector<ChatQueue> m_queues;
 
     std::vector<ChatQueue>::iterator getChatQueue(ChatId chatId);
+    Message &addMessage(ChatQueue &queue, MessageAction action);
     void extractReadyMessages(std::vector<ChatQueue>::iterator pQueue,
                               std::vector<IncomingMessage> &readyMessages);
 };
