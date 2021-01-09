@@ -1387,3 +1387,83 @@ TEST_F(FileTransferTest, ActiveUploadAtLogout_AfterUploadResponse)
     pluginInfo().close(connection);
     prpl.verifyEvents(XferLocalCancelEvent(PATH));
 }
+
+TEST_F(FileTransferTest, ActiveUploadAtLogout_SendFileToNonContact_LogoutBeforeChatResponse)
+{
+    const char *const PATH   = "/path";
+    setFakeFileSize(PATH, 10000);
+
+    login();
+
+    // Normaly users without chats have to be group chat members, but for the test it doesn't matter
+    tgl.update(standardUpdateUser(0));
+
+    // Send ﬁle successfully
+    pluginInfo().send_file(
+        connection,
+        (userFirstNames[0] + " " + userLastNames[0]).c_str(),
+        PATH
+    );
+    prpl.verifyEvents(
+        XferAcceptedEvent(userFirstNames[0] + " " + userLastNames[0], PATH)
+    );
+    tgl.verifyRequest(createPrivateChat(userIds[0], false));
+
+    pluginInfo().close(connection);
+    prpl.verifyEvents(XferLocalCancelEvent(PATH));
+}
+
+TEST_F(FileTransferTest, ActiveDownloadAtLogout_StuckAtStart)
+{
+    const int32_t date   = 10001;
+    const int32_t fileId = 1234;
+    loginWithOneContact();
+
+    std::vector<object_ptr<photoSize>> sizes;
+    sizes.push_back(make_object<photoSize>(
+        "whatever",
+        make_object<file>(
+            fileId, 10000, 10000,
+            make_object<localFile>("", true, true, false, false, 0, 0, 0),
+            make_object<remoteFile>("beh", "bleh", false, true, 10000)
+        ),
+        640, 480
+    ));
+    tgl.update(make_object<updateNewMessage>(makeMessage(
+        1,
+        userIds[0],
+        chatIds[0],
+        false,
+        date,
+        make_object<messagePhoto>(
+            make_object<photo>(false, nullptr, std::move(sizes)),
+            make_object<formattedText>("photo", std::vector<object_ptr<textEntity>>()),
+            false
+        )
+    )));
+    tgl.verifyRequest(downloadFile(fileId, 1, 0, 0, true));
+    prpl.verifyNoEvents();
+
+    tgl.update(make_object<updateFile>(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>("/path", true, true, true, false, 0, 0, 2000),
+        make_object<remoteFile>("beh", "bleh", false, true, 10000)
+    )));
+
+    tgl.runTimeouts();
+    std::string tempFileName;
+    prpl.verifyEvents(
+        XferAcceptedEvent(purpleUserName(0), &tempFileName),
+        XferStartEvent(&tempFileName),
+        ServGotImEvent(connection, purpleUserName(0), "photo", PURPLE_MESSAGE_RECV, date),
+        ConversationWriteEvent(
+            purpleUserName(0), purpleUserName(0),
+            userFirstNames[0] + " " + userLastNames[0] + ": Downloading photo",
+            PURPLE_MESSAGE_SYSTEM, date
+        )
+    );
+    tgl.verifyRequest(viewMessages(chatIds[0], {1}, true));
+
+    pluginInfo().close(connection);
+    prpl.verifyEvents(XferLocalCancelEvent(tempFileName));
+}

@@ -32,7 +32,9 @@ PurpleTdClient::~PurpleTdClient()
     std::vector<PurpleXfer *> transfers;
     m_data.removeAllFileTransfers(transfers);
     for (PurpleXfer *xfer: transfers) {
-        purple_xfer_unref(xfer);
+        // We keep uploads ref'd but not downloads
+        if (purple_xfer_get_type(xfer) == PURPLE_XFER_SEND)
+            purple_xfer_unref(xfer);
         purple_xfer_cancel_local(xfer);
     }
     m_data.extractFileTransferRequests(transfers);
