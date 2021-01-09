@@ -37,6 +37,15 @@ public:
     PurpleXfer *getLastXfer() { return lastXfer; }
     void addCommand(const char *command, PurpleCmdFunc handler, void *data);
     void runCommand(const char *command, PurpleConversation *conv, std::vector<std::string> arguments);
+
+    ~PurpleEventReceiver() {
+        // facilitate non-still-reachable memory leaks in valgrind
+        inputUserData = NULL;
+        inputOkCb = NULL;
+        inputCancelCb = NULL;
+        lastXfer = NULL;
+        actionUserData = NULL;
+    }
 private:
     void verifyEvent(const PurpleEvent &event);
     void verifyEvents()
