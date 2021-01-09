@@ -785,6 +785,27 @@ DownloadRequest* TdAccountData::findDownloadRequest(int32_t fileId)
     return nullptr;
 }
 
+void TdAccountData::extractFileTransferRequests(std::vector<PurpleXfer *> &transfers)
+{
+    transfers.clear();
+
+    for (unsigned i = 0; i < m_requests.size(); ) {
+        UploadRequest *uploadReq = dynamic_cast<UploadRequest *>(m_requests[i].get());
+        NewPrivateChatForMessage *newChatReq = dynamic_cast<NewPrivateChatForMessage *>(m_requests[i].get());
+        PurpleXfer *xfer = NULL;
+        if (uploadReq)
+            xfer = uploadReq->xfer;
+        else if (newChatReq)
+            xfer = newChatReq->fileUpload;
+
+        if (xfer) {
+            transfers.push_back(xfer);
+            m_requests.erase(m_requests.begin() + i);
+        } else
+            i++;
+    }
+}
+
 void TdAccountData::addTempFileUpload(int64_t messageId, const std::string &path)
 {
     m_sentMessages.emplace_back();
@@ -851,6 +872,14 @@ void TdAccountData::removeFileTransfer(int32_t fileId)
                            [fileId](const FileTransferInfo &upload) { return (upload.fileId == fileId); });
     if (it != m_fileTransfers.end())
         m_fileTransfers.erase(it);
+}
+
+void TdAccountData::removeAllFileTransfers(std::vector<PurpleXfer *>& transfers)
+{
+    transfers.resize(m_fileTransfers.size());
+    for (size_t i = 0; i < m_fileTransfers.size(); i++)
+        transfers[i] = m_fileTransfers[i].xfer;
+    m_fileTransfers.clear();
 }
 
 void TdAccountData::addSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat)

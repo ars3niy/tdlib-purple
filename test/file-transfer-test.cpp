@@ -1341,3 +1341,49 @@ TEST_F(FileTransferTest, Photo_LongDownload_StartandDownloadsConfigured)
         date
     ));
 }
+
+TEST_F(FileTransferTest, ActiveUploadAtLogout_BeforeUploadResponse)
+{
+    const char *const PATH = "/path";
+    loginWithOneContact();
+
+    setFakeFileSize(PATH, 9000);
+    pluginInfo().send_file(connection, purpleUserName(0).c_str(), PATH);
+    prpl.verifyEvents(XferAcceptedEvent(purpleUserName(0), PATH));
+    tgl.verifyRequest(uploadFile(
+        make_object<inputFileLocal>(PATH),
+        make_object<fileTypeDocument>(),
+        1
+    ));
+
+    pluginInfo().close(connection);
+    prpl.verifyEvents(XferLocalCancelEvent(PATH));
+}
+
+TEST_F(FileTransferTest, ActiveUploadAtLogout_AfterUploadResponse)
+{
+    const char *const PATH = "/path";
+    const int32_t     fileId = 1234;
+    loginWithOneContact();
+
+    setFakeFileSize(PATH, 9000);
+    pluginInfo().send_file(connection, purpleUserName(0).c_str(), PATH);
+    prpl.verifyEvents(XferAcceptedEvent(purpleUserName(0), PATH));
+    tgl.verifyRequest(uploadFile(
+        make_object<inputFileLocal>(PATH),
+        make_object<fileTypeDocument>(),
+        1
+    ));
+
+    tgl.reply(make_object<file>(
+        fileId, 10000, 10000,
+        make_object<localFile>(PATH, false, false, false, true, 0, 10000, 10000),
+        make_object<remoteFile>("", "", true, false, 0)
+    ));
+    prpl.verifyEvents(
+        XferStartEvent(PATH),
+        XferProgressEvent(PATH, 0)
+    );
+    pluginInfo().close(connection);
+    prpl.verifyEvents(XferLocalCancelEvent(PATH));
+}

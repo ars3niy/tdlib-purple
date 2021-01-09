@@ -29,6 +29,18 @@ PurpleTdClient::PurpleTdClient(PurpleAccount *acct, ITransceiverBackend *testBac
 
 PurpleTdClient::~PurpleTdClient()
 {
+    std::vector<PurpleXfer *> transfers;
+    m_data.removeAllFileTransfers(transfers);
+    for (PurpleXfer *xfer: transfers) {
+        purple_xfer_unref(xfer);
+        purple_xfer_cancel_local(xfer);
+    }
+    m_data.extractFileTransferRequests(transfers);
+    for (PurpleXfer *xfer: transfers) {
+        purple_xfer_unref(xfer);
+        purple_xfer_cancel_local(xfer);
+    }
+
     std::vector<IncomingMessage> messages;
     m_data.pendingMessages.flush(messages);
 

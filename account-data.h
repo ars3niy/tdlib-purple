@@ -382,11 +382,13 @@ public:
     void                       addTempFileUpload(int64_t messageId, const std::string &path);
     std::string                extractTempFileUpload(int64_t messageId);
     DownloadRequest *          findDownloadRequest(int32_t fileId);
+    void                       extractFileTransferRequests(std::vector<PurpleXfer *> &transfers);
 
     void                       addFileTransfer(int32_t fileId, PurpleXfer *xfer, ChatId chatId);
     bool                       getFileTransfer(int32_t fileId, PurpleXfer *&xfer, ChatId &chatId);
     bool                       getFileIdForTransfer(PurpleXfer *xfer, int &fileId);
     void                       removeFileTransfer(int32_t fileId);
+    void                       removeAllFileTransfers(std::vector<PurpleXfer *> &transfers);
 
     void                       addSecretChat(td::td_api::object_ptr<td::td_api::secretChat> secretChat);
     const td::td_api::secretChat *getSecretChat(SecretChatId id);
