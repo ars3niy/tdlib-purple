@@ -821,16 +821,6 @@ void TdAccountData::addFileTransfer(int32_t fileId, PurpleXfer *xfer, ChatId cha
     }
 }
 
-void TdAccountData::addPurpleFileTransfer(int32_t fileId, PurpleXfer *xfer)
-{
-    auto it = std::find_if(m_fileTransfers.begin(), m_fileTransfers.end(),
-                           [fileId](const FileTransferInfo &upload) {
-                               return (upload.fileId == fileId);
-                           });
-    if (it != m_fileTransfers.end())
-        it->xfer = xfer;
-}
-
 bool TdAccountData::getFileTransfer(int32_t fileId, PurpleXfer *&xfer, ChatId &chatId)
 {
     auto it = std::find_if(m_fileTransfers.begin(), m_fileTransfers.end(),

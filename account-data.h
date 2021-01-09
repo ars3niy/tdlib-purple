@@ -384,7 +384,6 @@ public:
     DownloadRequest *          findDownloadRequest(int32_t fileId);
 
     void                       addFileTransfer(int32_t fileId, PurpleXfer *xfer, ChatId chatId);
-    void                       addPurpleFileTransfer(int32_t fileId, PurpleXfer *xfer);
     bool                       getFileTransfer(int32_t fileId, PurpleXfer *&xfer, ChatId &chatId);
     bool                       getFileIdForTransfer(PurpleXfer *xfer, int &fileId);
     void                       removeFileTransfer(int32_t fileId);
