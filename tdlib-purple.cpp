@@ -287,11 +287,14 @@ static gboolean sendConversationReadReceipts(void *arg)
     std::unique_ptr<PurpleConversationInfo> info(static_cast<PurpleConversationInfo *>(arg));
     PurpleAccount *account = purple_accounts_find(info->accountName.c_str(), config::pluginId);
     PurpleConversation *conv = NULL;
-    if (account != NULL)
+    PurpleTdClient *tdClient = NULL;
+    if (account != NULL) {
+        tdClient = getTdClient(account);
         conv = purple_find_conversation_with_account(info->type, info->convName.c_str(), account);
+    }
 
-    if (conv != NULL)
-        getTdClient(account)->sendReadReceipts(conv);
+    if (conv && tdClient)
+        tdClient->sendReadReceipts(conv);
 
     return G_SOURCE_REMOVE;
 }
