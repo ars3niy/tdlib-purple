@@ -22,6 +22,7 @@
 #include <array>
 #include <cstdlib>
 #include <vector>
+#include <limits>
 #include "vdebug.h"
 #include "vglobal.h"
 
