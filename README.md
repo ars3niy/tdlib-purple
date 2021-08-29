@@ -42,7 +42,12 @@ The debug log contains a lot of private information such as names and phone numb
 
 ## Building
 
-TDLib should be prebuilt and installed somewhere (requires C++14):
+Compatible version of TDLib should be prebuilt and installed somewhere (requires C++14). Version requirement can be found in CMakeLists.txt:
+```
+grep -o "tdlib version.*" CMakeLists.txt
+```
+
+TDLib can be built like this:
 ```
 cd <path to TDLib sources>
 mkdir build
@@ -51,7 +56,8 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 make install DESTDIR=/path/to/tdlib
 ```
-Also see [building](https://github.com/tdlib/td#building) for additional details on TDLib building.
+
+See also [building](https://github.com/tdlib/td#building).
 
 libtgvoip is required for voice calls.
 
