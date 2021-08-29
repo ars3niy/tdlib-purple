@@ -7,6 +7,7 @@ project(tdlib-purple VERSION ${VERSION} LANGUAGES CXX)
 find_package(Td REQUIRED)
 math(EXPR TDLIB_VERSION_NUMBER "10000*${Td_VERSION_MAJOR} + 100*${Td_VERSION_MINOR} + ${Td_VERSION_PATCH}")
 if (${TDLIB_VERSION_NUMBER} LESS 10709)
+    # Error message must begin with "tdlib version" for a grep command from readme
     message(FATAL_ERROR "tdlib version 1.7.9 or newer is required")
 endif (${TDLIB_VERSION_NUMBER} LESS 10709)
 
