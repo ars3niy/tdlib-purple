@@ -42,9 +42,10 @@ The debug log contains a lot of private information such as names and phone numb
 
 ## Building
 
-TDLib should be prebuilt and installed somewhere (requires C++14):
+TDLib should be prebuilt and installed somewhere (requires C++14). Note that tdlib-purple is incompatible with td newer than 1.6.5, so build it like this:
 ```
 cd <path to TDLib sources>
+git checkout 5989a3939b8767a02b9c55dfe845db2297e02414
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
