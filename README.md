@@ -42,7 +42,7 @@ The debug log contains a lot of private information such as names and phone numb
 
 ## Building
 
-TDLib should be prebuilt and installed somewhere (requires C++14):
+TDLib (< 1.6.5) should be prebuilt and installed somewhere (requires C++14):
 ```
 cd <path to TDLib sources>
 mkdir build
