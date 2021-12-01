@@ -7,12 +7,12 @@
 
 template<typename IntType>
 class Identifier {
-public:
-    explicit Identifier(IntType value) : m_value(value) {}
-    bool    valid() const { return (m_value != 0); }
-    IntType value() const { return m_value; }
 protected:
     using IdType = IntType;
+    explicit Identifier(IntType value) : m_value(value) {}
+public:
+    bool    valid() const { return (m_value != 0); }
+    IntType value() const { return m_value; }
 private:
     IntType m_value;
     
