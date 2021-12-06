@@ -1784,7 +1784,7 @@ void PurpleTdClient::leaveGroup(const std::string &purpleChatName, bool deleteSu
 
     SupergroupId supergroupId = getSupergroupId(*chat);
     if (deleteSupergroup && supergroupId.valid()) {
-        m_transceiver.sendQuery(td::td_api::make_object<td::td_api::deleteSupergroup>(supergroupId.value()),
+        m_transceiver.sendQuery(td::td_api::make_object<td::td_api::deleteChat>(supergroupId.value()),
                                 &PurpleTdClient::deleteSupergroupResponse);
     } else {
         m_transceiver.sendQuery(td::td_api::make_object<td::td_api::leaveChat>(chatId.value()), nullptr);

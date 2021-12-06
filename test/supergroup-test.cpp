@@ -318,7 +318,7 @@ TEST_F(SupergroupTest, DeleteSupergroup_Fail)
     nodeMenuAction(&chat->node, actions, "Delete group");
     prpl.verifyEvents(RequestActionEvent(connection, account, NULL, NULL, 2));
     prpl.requestedAction("_Yes");
-    tgl.verifyRequest(deleteSupergroup(groupId));
+    tgl.verifyRequest(deleteChat(groupId));
     tgl.reply(make_object<error>(100, "error"));
 
     g_list_free_full(actions, (GDestroyNotify)purple_menu_action_free);

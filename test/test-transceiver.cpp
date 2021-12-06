@@ -371,9 +371,9 @@ static void compare(const leaveChat &actual, const leaveChat &expected)
     COMPARE(chat_id_);
 }
 
-static void compare(const deleteSupergroup &actual, const deleteSupergroup &expected)
+static void compare(const deleteChat &actual, const deleteChat &expected)
 {
-    COMPARE(supergroup_id_);
+    COMPARE(chat_id_);
 }
 
 static void compare(const checkAuthenticationPassword &actual, const checkAuthenticationPassword &expected)
@@ -504,7 +504,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(deleteChatHistory)
         C(removeContacts)
         C(leaveChat)
-        C(deleteSupergroup)
+        C(deleteChat)
         C(checkAuthenticationPassword)
         C(uploadFile)
         C(closeSecretChat)
