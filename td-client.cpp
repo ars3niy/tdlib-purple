@@ -1959,17 +1959,20 @@ void PurpleTdClient::showInviteLink(const std::string& purpleChatName)
 
     if (basicGroupId.valid()) {
         fullInfoKnown = (basicGroupInfo != nullptr);
-        if (basicGroupInfo) inviteLink = basicGroupInfo->invite_link_;
+        if (basicGroupInfo && basicGroupInfo->invite_link_ && isInviteLinkActive(*basicGroupInfo->invite_link_))
+            inviteLink = basicGroupInfo->invite_link_->invite_link_;
     }
     if (supergroupId.valid()) {
         fullInfoKnown = (supergroupInfo != nullptr);
-        if (supergroupInfo) inviteLink = supergroupInfo->invite_link_;
+        if (supergroupInfo && supergroupInfo->invite_link_ && isInviteLinkActive(*supergroupInfo->invite_link_))
+            inviteLink = supergroupInfo->invite_link_->invite_link_;
     }
 
     if (!inviteLink.empty())
         showChatNotification(m_data, *chat, inviteLink.c_str());
     else if (fullInfoKnown) {
-        auto linkRequest = td::td_api::make_object<td::td_api::generateChatInviteLink>(chat->id_);
+        auto linkRequest = td::td_api::make_object<td::td_api::createChatInviteLink>();
+        linkRequest->chat_id_ = chat->id_;
         uint64_t requestId = m_transceiver.sendQuery(std::move(linkRequest), &PurpleTdClient::chatActionResponse);
         m_data.addPendingRequest<ChatActionRequest>(requestId, ChatActionRequest::Type::GenerateInviteLink, getId(*chat));
     } else

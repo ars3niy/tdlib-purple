@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <algorithm>
 #include <functional>
+#include <ctime>
 
 enum {
     MAX_MESSAGE_PARTS = 10,
@@ -418,6 +419,13 @@ void updateSupergroupChat(TdAccountData &account, SupergroupId groupId)
         purpleDebug("Chat for supergroup {} does not exist yet\n", groupId.value());
     else
         updateGroupChat(account, *chat, group->status_, "supergroup", std::to_string(groupId.value()));
+}
+
+bool isInviteLinkActive(const td::td_api::chatInviteLink &linkInfo)
+{
+    return !linkInfo.is_revoked_ &&
+        ((linkInfo.member_limit_ == 0) || (linkInfo.member_count_ < linkInfo.member_limit_)) &&
+        ((linkInfo.expire_date_ == 0) || (std::time(NULL) < static_cast<time_t>(linkInfo.expire_date_)));
 }
 
 static std::string lastMessageSetting(ChatId chatId)

@@ -426,7 +426,7 @@ static void compare(const addChatMember &actual, const addChatMember &expected)
     COMPARE(forward_limit_);
 }
 
-static void compare(const generateChatInviteLink &actual, const generateChatInviteLink &expected)
+static void compare(const createChatInviteLink &actual, const createChatInviteLink &expected)
 {
     COMPARE(chat_id_);
 }
@@ -512,7 +512,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(cancelDownloadFile)
         C(setChatMemberStatus)
         C(addChatMember)
-        C(generateChatInviteLink)
+        C(createChatInviteLink)
         C(getSupergroupMembers)
         C(searchPublicChat)
         C(joinChat)
@@ -719,6 +719,20 @@ object_ptr<chatMember> makeChatMember(int32_t userId, int32_t inviteUserId, time
 {
     return make_object<chatMember>(make_object<messageSenderUser>(userId),
                                    inviteUserId, joinTime, std::move(memberStatus));
+}
+
+object_ptr<createChatInviteLink> makeInviteLinkRequest(int64_t chatId)
+{
+    auto result = make_object<createChatInviteLink>();
+    result->chat_id_ = chatId;
+    return result;
+}
+
+object_ptr<chatInviteLink> makeChatInviteLink(const std::string &link)
+{
+    auto result = make_object<chatInviteLink>();
+    result->invite_link_ = link;
+    return result;
 }
 
 }

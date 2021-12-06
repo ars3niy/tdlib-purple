@@ -1206,7 +1206,7 @@ TEST_F(GroupChatTest, GetInviteLink)
     GList *actions = pluginInfo().blist_node_menu(&chat->node);
 
     nodeMenuAction(&chat->node, actions, "Show invite link");
-    tgl.verifyRequest(generateChatInviteLink(groupChatId));
+    tgl.verifyRequest(makeInviteLinkRequest(groupChatId));
 
     tgl.reply(make_object<error>(100, "error"));
     prpl.verifyEvents(
@@ -1221,7 +1221,7 @@ TEST_F(GroupChatTest, GetInviteLink)
     );
 
     nodeMenuAction(&chat->node, actions, "Show invite link");
-    tgl.verifyRequest(generateChatInviteLink(groupChatId));
+    tgl.verifyRequest(makeInviteLinkRequest(groupChatId));
     tgl.update(make_object<updateBasicGroupFullInfo>(
         groupChatId,
         make_object<basicGroupFullInfo>(

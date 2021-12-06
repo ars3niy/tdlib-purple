@@ -75,6 +75,8 @@ object_ptr<photo> makePhotoUploading(int32_t fileId, unsigned size, unsigned upl
                                      unsigned width, unsigned height);
 object_ptr<chatMember> makeChatMember(int32_t userId, int32_t inviteUserId, time_t joinTime,
                                       object_ptr<ChatMemberStatus> &&memberStatus, const void *);
+object_ptr<createChatInviteLink> makeInviteLinkRequest(int64_t chatId);
+object_ptr<chatInviteLink> makeChatInviteLink(const std::string &link);
 }
 }
 

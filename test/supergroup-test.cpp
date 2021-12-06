@@ -393,7 +393,7 @@ TEST_F(SupergroupTest, GetInviteLink)
     GList *actions = pluginInfo().blist_node_menu(&chat->node);
 
     nodeMenuAction(&chat->node, actions, "Show invite link");
-    tgl.verifyRequest(generateChatInviteLink(groupChatId));
+    tgl.verifyRequest(makeInviteLinkRequest(groupChatId));
 
     tgl.reply(make_object<error>(100, "error"));
     prpl.verifyEvents(
@@ -408,9 +408,9 @@ TEST_F(SupergroupTest, GetInviteLink)
     );
 
     nodeMenuAction(&chat->node, actions, "Show invite link");
-    tgl.verifyRequest(generateChatInviteLink(groupChatId));
+    tgl.verifyRequest(makeInviteLinkRequest(groupChatId));
     auto fullInfo = make_object<supergroupFullInfo>();
-    fullInfo->invite_link_ = "http://invite";
+    fullInfo->invite_link_ = makeChatInviteLink("http://invite");
     tgl.update(make_object<updateSupergroupFullInfo>(
         groupChatId,
         std::move(fullInfo)

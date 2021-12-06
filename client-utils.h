@@ -25,6 +25,7 @@ bool                conversationHasFocus(PurpleConversation *conv);
 void                updatePrivateChat(TdAccountData &account, const td::td_api::chat *chat, const td::td_api::user &user);
 void                updateBasicGroupChat(TdAccountData &account, BasicGroupId groupId);
 void                updateSupergroupChat(TdAccountData &account, SupergroupId groupId);
+bool                isInviteLinkActive(const td::td_api::chatInviteLink &linkInfo);
 void                removeGroupChat(PurpleAccount *purpleAccount, const td::td_api::chat &chat);
 void                removePrivateChat(TdAccountData &account, const td::td_api::chat &chat);
 void                saveChatLastMessage(TdAccountData &account, ChatId chatId, MessageId messageId);
