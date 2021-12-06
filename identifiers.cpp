@@ -59,7 +59,10 @@ UserId getUserId(const td::td_api::call &call)
 
 UserId getSenderUserId(const td::td_api::message &message)
 {
-    return UserId(message.sender_user_id_);
+    if (message.sender_ && (message.sender_->get_id() == td::td_api::messageSenderUser::ID))
+        return UserId(static_cast<const td::td_api::messageSenderUser &>(*message.sender_).user_id_);
+    else
+        return UserId::invalid;
 }
 
 UserId getSenderUserId(const td::td_api::messageForwardOriginUser &forwardOrigin)
