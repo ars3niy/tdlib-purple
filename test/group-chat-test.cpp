@@ -180,21 +180,21 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList_Rem
     prpl.discardEvents();
 
     std::vector<object_ptr<chatMember>> members;
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         userIds[0],
         userIds[1],
         0,
         make_object<chatMemberStatusMember>(),
         nullptr
     ));
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         userIds[1],
         userIds[1],
         0,
         make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         selfId,
         userIds[1],
         0,
@@ -307,21 +307,21 @@ TEST_F(GroupChatTest, SendMessageWithMemberList)
     constexpr int     purpleChatId = 1;
 
     std::vector<object_ptr<chatMember>> members;
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         userIds[0],
         userIds[1],
         0,
         make_object<chatMemberStatusMember>(),
         nullptr
     ));
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         userIds[1],
         userIds[1],
         0,
         make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         selfId,
         userIds[1],
         0,
@@ -485,21 +485,21 @@ TEST_F(GroupChatTest, JoinBasicGroupByInviteLink)
     tgl.update(standardUpdateUser(0));
     tgl.update(standardUpdateUser(1));
     std::vector<object_ptr<chatMember>> members;
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         userIds[0],
         userIds[1],
         0,
         make_object<chatMemberStatusMember>(),
         nullptr
     ));
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         userIds[1],
         userIds[1],
         0,
         make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         selfId,
         userIds[1],
         0,
@@ -736,21 +736,21 @@ TEST_F(GroupChatTest, UsersWithSameName)
     constexpr int     purpleChatId = 1;
 
     std::vector<object_ptr<chatMember>> members;
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         userIds[0],
         userIds[1],
         0,
         make_object<chatMemberStatusMember>(),
         nullptr
     ));
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         userIds[1],
         userIds[1],
         0,
         make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         selfId,
         userIds[1],
         0,
@@ -835,21 +835,21 @@ TEST_F(GroupChatTest, GroupChatWithDeletedUser_WriteToNonContact)
     deletedUser->type_ = make_object<userTypeDeleted>();
 
     std::vector<object_ptr<chatMember>> members;
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         userIds[0],
         userIds[0],
         0,
         make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         userIds[1], // Deleted user
         userIds[0],
         0,
         make_object<chatMemberStatusMember>(),
         nullptr
     ));
-    members.push_back(make_object<chatMember>(
+    members.push_back(makeChatMember(
         selfId,
         userIds[0],
         0,
@@ -1574,3 +1574,5 @@ TEST_F(GroupChatTest, RejoinAtStartupBeforeUpdateNewChat_ChatListNullFirst)
     );
     tgl.verifyRequest(getBasicGroupFullInfo(groupId));
 }
+
+Test non-user member

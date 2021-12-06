@@ -714,5 +714,12 @@ object_ptr<photo> makePhotoUploading(int32_t fileId, unsigned size, unsigned upl
     return make_object<photo>(false, nullptr, std::move(sizes));
 }
 
+object_ptr<chatMember> makeChatMember(int32_t userId, int32_t inviteUserId, time_t joinTime,
+                                      object_ptr<ChatMemberStatus> &&memberStatus, const void *)
+{
+    return make_object<chatMember>(make_object<messageSenderUser>(userId),
+                                   inviteUserId, joinTime, std::move(memberStatus));
+}
+
 }
 }

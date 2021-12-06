@@ -32,6 +32,7 @@ BasicGroupId getBasicGroupId(const td::td_api::chat &chat);
 SupergroupId getSupergroupId(const td::td_api::chat &chat);
 SecretChatId getSecretChatId(const td::td_api::chat &chat);
 bool        isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &status);
+bool        isSameUser(const td::td_api::MessageSender &member1, const td::td_api::MessageSender &member2);
 
 enum {
     CHAT_HISTORY_REQUEST_LIMIT  = 50,

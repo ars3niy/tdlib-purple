@@ -111,6 +111,19 @@ bool isGroupMember(const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &s
         return true;
 }
 
+bool isSameUser(const td::td_api::MessageSender &member1, const td::td_api::MessageSender &member2)
+{
+    if ((member1.get_id() == td::td_api::messageSenderUser::ID) &&
+        (member2.get_id() == td::td_api::messageSenderUser::ID))
+    {
+        const td::td_api::messageSenderUser &user1 = static_cast<const td::td_api::messageSenderUser &>(member1);
+        const td::td_api::messageSenderUser &user2 = static_cast<const td::td_api::messageSenderUser &>(member2);
+        return (user1.user_id_ == user2.user_id_);
+    }
+
+    return false;
+}
+
 static std::string makeDisplayName(const td::td_api::user &user)
 {
     std::string result = makeBasicDisplayName(user);

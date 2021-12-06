@@ -794,15 +794,16 @@ void PurpleTdClient::supergroupAdministratorsResponse(uint64_t requestId, td::td
         if (object && (object->get_id() == td::td_api::chatMembers::ID)) {
             td::td_api::object_ptr<td::td_api::chatMembers> newMembers =
                 td::move_tl_object_as<td::td_api::chatMembers>(object);
-            for (auto &pMember: newMembers->members_) {
-                if (! pMember) continue;
-                int32_t userId = pMember->user_id_;
+            for (auto &pNewMember: newMembers->members_) {
+                if (! pNewMember || !pNewMember->member_id_) continue;
+                const td::td_api::MessageSender *pNewMemberInfo = pNewMember->member_id_.get();
                 if (std::find_if(members->members_.begin(), members->members_.end(),
-                              [userId](const td::td_api::object_ptr<td::td_api::chatMember> &pMember) {
-                                  return (pMember && (pMember->user_id_ == userId));
+                              [pNewMemberInfo](const td::td_api::object_ptr<td::td_api::chatMember> &pExistingMember) {
+                                  return pExistingMember && pExistingMember->member_id_ &&
+                                         isSameUser(*pExistingMember->member_id_, *pNewMemberInfo);
                               }) == members->members_.end())
                 {
-                    members->members_.push_back(std::move(pMember));
+                    members->members_.push_back(std::move(pNewMember));
                 }
             }
         }

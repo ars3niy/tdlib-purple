@@ -81,14 +81,14 @@ TEST_F(SupergroupTest, AddSupergroupChatAtLogin_WithMemberList_OpenChatAfterFull
     fullInfo->description_ = "Description";
 
     auto members = make_object<chatMembers>();
-    members->members_.push_back(make_object<chatMember>(
+    members->members_.push_back(makeChatMember(
         userIds[1],
         userIds[1],
         0,
         make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
-    members->members_.push_back(make_object<chatMember>(
+    members->members_.push_back(makeChatMember(
         selfId,
         userIds[1],
         0,
@@ -98,14 +98,14 @@ TEST_F(SupergroupTest, AddSupergroupChatAtLogin_WithMemberList_OpenChatAfterFull
     members->members_.push_back(nullptr);
 
     auto admins = make_object<chatMembers>();
-    admins->members_.push_back(make_object<chatMember>(
+    admins->members_.push_back(makeChatMember(
         userIds[0],
         userIds[1],
         0,
         make_object<chatMemberStatusAdministrator>(),
         nullptr
     ));
-    admins->members_.push_back(make_object<chatMember>(
+    admins->members_.push_back(makeChatMember(
         userIds[1],
         userIds[1],
         0,
@@ -203,14 +203,14 @@ TEST_F(SupergroupTest, ExistingSupergroupReceiveMessageAtLogin_WithMemberList_Op
     fullInfo->description_ = "Description";
 
     auto members = make_object<chatMembers>();
-    members->members_.push_back(make_object<chatMember>(
+    members->members_.push_back(makeChatMember(
         userIds[1],
         userIds[1],
         0,
         make_object<chatMemberStatusCreator>("", true),
         nullptr
     ));
-    members->members_.push_back(make_object<chatMember>(
+    members->members_.push_back(makeChatMember(
         selfId,
         userIds[1],
         0,
@@ -220,14 +220,14 @@ TEST_F(SupergroupTest, ExistingSupergroupReceiveMessageAtLogin_WithMemberList_Op
     members->members_.push_back(nullptr);
 
     auto admins = make_object<chatMembers>();
-    admins->members_.push_back(make_object<chatMember>(
+    admins->members_.push_back(makeChatMember(
         userIds[0],
         userIds[1],
         0,
         make_object<chatMemberStatusAdministrator>(),
         nullptr
     ));
-    admins->members_.push_back(make_object<chatMember>(
+    admins->members_.push_back(makeChatMember(
         userIds[1],
         userIds[1],
         0,
@@ -634,3 +634,5 @@ TEST_F(SupergroupTest, ReceiveChannelPost)
     );
 
 }
+
+Test non-user member

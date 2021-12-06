@@ -45,7 +45,11 @@ UserId getUserId(const td::td_api::chatTypePrivate &privType)
 
 UserId getUserId(const td::td_api::chatMember &member)
 {
-    return UserId(member.user_id_);
+    if (member.member_id_ && (member.member_id_->get_id() == td::td_api::messageSenderUser::ID)) {
+        const td::td_api::messageSenderUser &userInfo = static_cast<const td::td_api::messageSenderUser &>(*member.member_id_);
+        return UserId(userInfo.user_id_);
+    }
+    return UserId::invalid;
 }
 
 UserId getUserId(const td::td_api::call &call)

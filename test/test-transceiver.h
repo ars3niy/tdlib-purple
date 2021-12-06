@@ -73,6 +73,8 @@ object_ptr<photo> makePhotoLocal(int32_t fileId, unsigned size, const std::strin
                                  unsigned width, unsigned height);
 object_ptr<photo> makePhotoUploading(int32_t fileId, unsigned size, unsigned uploaded, const std::string &path,
                                      unsigned width, unsigned height);
+object_ptr<chatMember> makeChatMember(int32_t userId, int32_t inviteUserId, time_t joinTime,
+                                      object_ptr<ChatMemberStatus> &&memberStatus, const void *);
 }
 }
 
