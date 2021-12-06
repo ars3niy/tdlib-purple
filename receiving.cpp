@@ -775,7 +775,7 @@ void makeFullMessage(const td::td_api::chat &chat, td::td_api::object_ptr<td::td
             messageInfo.type = TgMessageInfo::Type::Sticker;
             td::td_api::messageSticker &sticker = static_cast<td::td_api::messageSticker &>(*message->content_);
             if (sticker.sticker_ && sticker.sticker_->thumbnail_) {
-                fullMessage.thumbnail = std::move(sticker.sticker_->thumbnail_->photo_);
+                fullMessage.thumbnail = std::move(sticker.sticker_->thumbnail_->file_);
             }
         }
     }

@@ -477,14 +477,14 @@ TEST_F(FileTransferTest, Sticker_AnimatedDisabled_AlreadyDownloaded)
         date,
         make_object<messageSticker>(make_object<sticker>(
             0, 320, 200, "", true, false, nullptr,
-            make_object<photoSize>(
-                "whatever",
+            make_object<thumbnail>(
+                make_object<thumbnailFormatJpeg>(),
+                320, 200,
                 make_object<file>(
                     thumbId, 10000, 10000,
                     make_object<localFile>("/thumb", true, true, false, true, 0, 10000, 10000),
                     make_object<remoteFile>("beh", "bleh", false, true, 10000)
-                ),
-                320, 200
+                )
             ),
             make_object<file>(
                 fileId[1], 10000, 10000,
@@ -522,14 +522,14 @@ TEST_F(FileTransferTest, Sticker_AnimatedDisabled_ThumbnailAboveLimit)
         date,
         make_object<messageSticker>(make_object<sticker>(
             0, 320, 200, "", true, false, nullptr,
-            make_object<photoSize>(
-                "whatever",
+            make_object<thumbnail>(
+                make_object<thumbnailFormatJpeg>(),
+                320, 200,
                 make_object<file>(
                     thumbId, 100000000, 100000000,
                     make_object<localFile>("", true, true, false, false, 0, 0, 0),
                     make_object<remoteFile>("beh", "bleh", false, true, 100000000)
-                ),
-                320, 200
+                )
             ),
             make_object<file>(
                 fileId, 10000, 10000,
@@ -583,14 +583,14 @@ TEST_F(FileTransferTest, Sticker_AnimatedDisabled_LongDownloads_ThumbnailAboveLi
         date,
         make_object<messageSticker>(make_object<sticker>(
             0, 320, 200, "", true, false, nullptr,
-            make_object<photoSize>(
-                "whatever",
+            make_object<thumbnail>(
+                make_object<thumbnailFormatJpeg>(),
+                320, 200,
                 make_object<file>(
                     thumbId, 100000000, 100000000,
                     make_object<localFile>("", true, true, false, false, 0, 0, 0),
                     make_object<remoteFile>("beh", "bleh", false, true, 100000000)
-                ),
-                320, 200
+                )
             ),
             make_object<file>(
                 fileId, 10000, 10000,
