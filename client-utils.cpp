@@ -331,19 +331,17 @@ void updatePrivateChat(TdAccountData &account, const td::td_api::chat *chat, con
 
 static void updateGroupChat(TdAccountData &account, const td::td_api::chat &chat,
                             const td::td_api::object_ptr<td::td_api::ChatMemberStatus> &groupStatus,
-                            const char *groupType, int32_t groupId)
+                            const char *groupType, const std::string &groupId)
 {
     if (!isGroupMember(groupStatus)) {
-        purple_debug_misc(config::pluginId, "Skipping %s %d because we are not a member\n",
-                          groupType, groupId);
+        purpleDebug("Skipping {} {} because we are not a member", {std::string(groupType), groupId});
         return;
     }
 
     std::string  chatName   = getPurpleChatName(chat);
     PurpleChat  *purpleChat = purple_blist_find_chat(account.purpleAccount, chatName.c_str());
     if (!purpleChat) {
-        purple_debug_misc(config::pluginId, "Adding new chat for %s %d (%s)\n",
-                          groupType, groupId, chat.title_.c_str());
+        purpleDebug("Adding new chat for {} {} ({})", {std::string(groupType), groupId, chat.title_});
         purpleChat = purple_chat_new(account.purpleAccount, chat.title_.c_str(), getChatComponents(chat));
         purple_blist_add_chat(purpleChat, NULL, NULL);
     } else {
@@ -402,11 +400,11 @@ void updateBasicGroupChat(TdAccountData &account, BasicGroupId groupId)
     const td::td_api::chat       *chat  = account.getBasicGroupChatByGroup(groupId);
 
     if (!group)
-        purple_debug_misc(config::pluginId, "Basic group %d does not exist yet\n", groupId.value());
+        purpleDebug("Basic group {} does not exist yet\n", groupId.value());
     else if (!chat)
-        purple_debug_misc(config::pluginId, "Chat for basic group %d does not exist yet\n", groupId.value());
+        purpleDebug("Chat for basic group {} does not exist yet\n", groupId.value());
     else
-        updateGroupChat(account, *chat, group->status_, "basic group", groupId.value());
+        updateGroupChat(account, *chat, group->status_, "basic group", std::to_string(groupId.value()));
 }
 
 void updateSupergroupChat(TdAccountData &account, SupergroupId groupId)
@@ -415,11 +413,11 @@ void updateSupergroupChat(TdAccountData &account, SupergroupId groupId)
     const td::td_api::chat       *chat  = account.getSupergroupChatByGroup(groupId);
 
     if (!group)
-        purple_debug_misc(config::pluginId, "Supergroup %d does not exist yet\n", groupId.value());
+        purpleDebug("Supergroup {} does not exist yet\n", groupId.value());
     else if (!chat)
-        purple_debug_misc(config::pluginId, "Chat for supergroup %d does not exist yet\n", groupId.value());
+        purpleDebug("Chat for supergroup {} does not exist yet\n", groupId.value());
     else
-        updateGroupChat(account, *chat, group->status_, "supergroup", groupId.value());
+        updateGroupChat(account, *chat, group->status_, "supergroup", std::to_string(groupId.value()));
 }
 
 static std::string lastMessageSetting(ChatId chatId)

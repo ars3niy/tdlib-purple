@@ -218,10 +218,11 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
     case td::td_api::updateCall::ID: {
         auto &callUpdate = static_cast<const td::td_api::updateCall &>(update);
         if (callUpdate.call_) {
-            purple_debug_misc(config::pluginId, "Call update: id %d, outgoing=%d, user id %d, state %d\n",
-                            callUpdate.call_->id_, callUpdate.call_->user_id_,
-                            (int)callUpdate.call_->is_outgoing_,
-                            callUpdate.call_->state_ ? callUpdate.call_->state_->get_id() : 0);
+            purpleDebug("Call update: id {}, outgoing={}, user id {}, state {}", {
+                        std::to_string(callUpdate.call_->id_),
+                        std::to_string(callUpdate.call_->user_id_),
+                        std::to_string((int)callUpdate.call_->is_outgoing_),
+                        std::to_string(callUpdate.call_->state_ ? callUpdate.call_->state_->get_id() : 0)});
             updateCall(*callUpdate.call_, m_data, m_transceiver);
         }
         break;
@@ -696,7 +697,7 @@ void PurpleTdClient::requestMissingPrivateChats()
     } else {
         UserId userId = m_usersForNewPrivateChats.back();
         m_usersForNewPrivateChats.pop_back();
-        purple_debug_misc(config::pluginId, "Requesting private chat for user id %d\n", userId.value());
+        purpleDebug("Requesting private chat for user id {}", userId.value());
         td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
             td::td_api::make_object<td::td_api::createPrivateChat>(userId.value(), false);
         m_transceiver.sendQuery(std::move(createChat), &PurpleTdClient::loginCreatePrivateChatResponse);
@@ -1031,7 +1032,7 @@ int PurpleTdClient::sendMessage(const char *buddyName, const char *message)
         // Message shall not be echoed: tdlib will shortly present it as a new message and it will be displayed then
         return 0;
     } else if (privateUser) {
-        purple_debug_misc(config::pluginId, "Requesting private chat for user id %d\n", privateUser->id_);
+        purpleDebug("Requesting private chat for user id {}", privateUser->id_);
         td::td_api::object_ptr<td::td_api::createPrivateChat> createChat =
             td::td_api::make_object<td::td_api::createPrivateChat>(privateUser->id_, false);
         uint64_t requestId = m_transceiver.sendQuery(std::move(createChat), &PurpleTdClient::sendMessageCreatePrivateChatResponse);
@@ -1102,9 +1103,6 @@ void PurpleTdClient::updateUser(td::td_api::object_ptr<td::td_api::user> userInf
     }
 
     UserId userId = getId(*userInfo);
-    purple_debug_misc(config::pluginId, "Update user: %d '%s' '%s'\n", userId.value(),
-                      userInfo->first_name_.c_str(), userInfo->last_name_.c_str());
-
     m_data.updateUser(std::move(userInfo));
 
     // For chats, find_chat doesn't work if account is not yet connected, so just in case, don't
@@ -1175,7 +1173,6 @@ void PurpleTdClient::updateGroup(td::td_api::object_ptr<td::td_api::basicGroup> 
         purple_debug_warning(config::pluginId, "updateBasicGroup with null group\n");
         return;
     }
-    purple_debug_misc(config::pluginId, "updateBasicGroup id=%d\n", group->id_);
 
     BasicGroupId id = getId(*group);
     m_data.updateBasicGroup(std::move(group));
@@ -1193,7 +1190,6 @@ void PurpleTdClient::updateSupergroup(td::td_api::object_ptr<td::td_api::supergr
         purple_debug_warning(config::pluginId, "updateSupergroup with null group\n");
         return;
     }
-    purple_debug_misc(config::pluginId, "updateSupergroup id=%d\n", group->id_);
 
     SupergroupId id = getId(*group);
     m_data.updateSupergroup(std::move(group));
@@ -1213,8 +1209,10 @@ void PurpleTdClient::updateChat(const td::td_api::chat *chat)
     BasicGroupId            basicGroupId    = getBasicGroupId(*chat);
     SupergroupId            supergroupId    = getSupergroupId(*chat);
     SecretChatId            secretChatId    = getSecretChatId(*chat);
-    purple_debug_misc(config::pluginId, "Update chat: %" G_GINT64_FORMAT " private user=%d basic group=%d supergroup=%d\n",
-                      chat->id_, privateChatUser ? privateChatUser->id_ : 0, basicGroupId.value(), supergroupId.value());
+    purpleDebug("Update chat: {} private user={} basic group={} supergroup={}", {
+        std::to_string(chat->id_), std::to_string(privateChatUser ? privateChatUser->id_ : 0),
+        std::to_string(basicGroupId.value()), std::to_string(supergroupId.value())
+    });
 
     // For secret chats, chat photo is same as user profile photo, so hopefully already downloaded.
     // But if not (such as when creating secret chat while downloading new photo for the user),
@@ -1314,21 +1312,23 @@ void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction
         return;
     }
 
-    if (chatUserId != getUserId(updateChatAction))
-        purple_debug_warning(config::pluginId, "Got user action for private chat %" G_GINT64_FORMAT " (with user %d) for another user %d\n",
-                                updateChatAction.chat_id_, chatUserId.value(), updateChatAction.user_id_);
-    else if (updateChatAction.action_) {
+    if (chatUserId != getUserId(updateChatAction)) {
+        purpleDebug("Got user action for private chat {} (with user {}) for another user {}", {
+            std::to_string(updateChatAction.chat_id_), std::to_string(chatUserId.value()),
+            std::to_string(updateChatAction.user_id_)
+        });
+    } else if (updateChatAction.action_) {
         if (updateChatAction.action_->get_id() == td::td_api::chatActionCancel::ID) {
-            purple_debug_misc(config::pluginId, "User (id %d) stopped chat action\n",
-                                updateChatAction.user_id_);
+            purpleDebug("User (id {}) stopped chat action", updateChatAction.user_id_);
             showUserChatAction(getUserId(updateChatAction), false);
         } else if (updateChatAction.action_->get_id() == td::td_api::chatActionStartPlayingGame::ID) {
-            purple_debug_misc(config::pluginId, "User (id %d): treating chatActionStartPlayingGame as cancel\n",
-                                updateChatAction.user_id_);
+            purpleDebug("User (id %d): treating chatActionStartPlayingGame as cancel",
+                        updateChatAction.user_id_);
             showUserChatAction(getUserId(updateChatAction), false);
         } else {
-            purple_debug_misc(config::pluginId, "User (id %d) started chat action (id %d)\n",
-                                updateChatAction.user_id_, updateChatAction.action_->get_id());
+            purpleDebug("User (id {}) started chat action (id {})", {
+                std::to_string(updateChatAction.user_id_), std::to_string(updateChatAction.action_->get_id())
+            });
             showUserChatAction(getUserId(updateChatAction), true);
         }
     }
@@ -1430,7 +1430,7 @@ void PurpleTdClient::addBuddySearchChatResponse(uint64_t requestId, td::td_api::
 void PurpleTdClient::addContactById(UserId userId, const std::string &phoneNumber, const std::string &alias,
                                     const std::string &groupName)
 {
-    purple_debug_misc(config::pluginId, "Adding contact: id=%d alias=%s\n", userId.value(), alias.c_str());
+    purpleDebug("Adding contact: id={} alias={}", {std::to_string(userId.value()), alias});
     std::string firstName, lastName;
     getNamesFromAlias(alias.c_str(), firstName, lastName);
 

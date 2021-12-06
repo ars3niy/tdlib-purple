@@ -25,3 +25,9 @@ std::string formatDuration(int32_t seconds)
     // TRANSLATOR: Time format. For HH:MM:SS use "{:02}:{:02}:{:02}" without the quotes.
     return fmt::format(_("{:02}:{:02}:{:02}"), hours, minutes, seconds);
 }
+
+void purpleDebug(const char *fmt, std::initializer_list<std::string> args)
+{
+    std::string message = formatMessage(fmt, args);
+    purple_debug_misc(config::pluginId, "%s\n", message.c_str());
+}

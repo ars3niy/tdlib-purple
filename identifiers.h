@@ -37,7 +37,7 @@ public: \
     bool operator<(const classname &other) const  { return (value() < other.value()); } \
     static const classname invalid;
 
-DEFINE_ID_CLASS(UserId, int32_t)
+DEFINE_ID_CLASS(UserId, int64_t)
     friend UserId getId(const td::td_api::user &user);
     friend UserId getUserId(const td::td_api::chatTypePrivate &privType);
     friend UserId getUserId(const td::td_api::chatMember &member);
@@ -64,13 +64,13 @@ DEFINE_ID_CLASS(ChatId, int64_t)
     friend ChatId stringToChatId(const char *s);
 };
 
-DEFINE_ID_CLASS(BasicGroupId, int32_t)
+DEFINE_ID_CLASS(BasicGroupId, int64_t)
     friend BasicGroupId getId(const td::td_api::basicGroup &group);
     friend BasicGroupId getBasicGroupId(const td::td_api::updateBasicGroupFullInfo &update);
     friend BasicGroupId getBasicGroupId(const td::td_api::chatTypeBasicGroup &update);
 };
 
-DEFINE_ID_CLASS(SupergroupId, int32_t)
+DEFINE_ID_CLASS(SupergroupId, int64_t)
     friend SupergroupId getId(const td::td_api::supergroup &group);
     friend SupergroupId getSupergroupId(const td::td_api::updateSupergroupFullInfo &update);
     friend SupergroupId getSupergroupId(const td::td_api::chatTypeSupergroup &update);

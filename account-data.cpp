@@ -1,6 +1,7 @@
 #include "account-data.h"
 #include "client-utils.h"
 #include "config.h"
+#include "format.h"
 #include <purple.h>
 #include <algorithm>
 
@@ -419,8 +420,9 @@ void TdAccountData::addChat(TdChatPtr chat)
         auto pContact = std::find(m_contactUserIdsNoChat.begin(), m_contactUserIdsNoChat.end(),
                                   getUserId(privType));
         if (pContact != m_contactUserIdsNoChat.end()) {
-            purple_debug_misc(config::pluginId, "Private chat (id %" G_GINT64_FORMAT ") now known for user %d\n",
-                              chat->id_, privType.user_id_);
+            purpleDebug("Private chat (id {}) now known for user {}", {
+                std::to_string(chat->id_), std::to_string(privType.user_id_)
+            });
             m_contactUserIdsNoChat.erase(pContact);
         }
     }
@@ -471,7 +473,7 @@ void TdAccountData::setContacts(const td::td_api::users &users)
     for (unsigned i = 0; i < users.user_ids_.size(); i++) {
         UserId userId = getUserId(users, i);
         if (getPrivateChatByUserId(userId) == nullptr) {
-            purple_debug_misc(config::pluginId, "Private chat not yet known for user %d\n", userId.value());
+            purpleDebug("Private chat not yet known for user {}", userId.value());
             m_contactUserIdsNoChat.push_back(userId);
         }
     }
