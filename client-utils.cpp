@@ -864,6 +864,12 @@ void notifySendFailed(const td::td_api::updateMessageSendFailed &sendFailed, TdA
     }
 }
 
+template<typename T>
+T zeroIfNegative(T value)
+{
+    return (value >= 0) ? value : 0;
+}
+
 void updateOption(const td::td_api::updateOption &option, TdAccountData &account)
 {
     if ((option.name_ == "version") && option.value_ &&
@@ -874,11 +880,11 @@ void updateOption(const td::td_api::updateOption &option, TdAccountData &account
     } else if ((option.name_ == "message_caption_length_max") && option.value_ &&
         (option.value_->get_id() == td::td_api::optionValueInteger::ID))
     {
-        account.options.maxCaptionLength = std::max(0, static_cast<const td::td_api::optionValueInteger &>(*option.value_).value_);
+        account.options.maxCaptionLength = zeroIfNegative(static_cast<const td::td_api::optionValueInteger &>(*option.value_).value_);
     } else if ((option.name_ == "message_text_length_max") && option.value_ &&
         (option.value_->get_id() == td::td_api::optionValueInteger::ID))
     {
-        account.options.maxMessageLength = std::max(0, static_cast<const td::td_api::optionValueInteger &>(*option.value_).value_);
+        account.options.maxMessageLength = zeroIfNegative(static_cast<const td::td_api::optionValueInteger &>(*option.value_).value_);
     } else
         purple_debug_misc(config::pluginId, "Option update %s\n", option.name_.c_str());
 }
