@@ -70,7 +70,7 @@ UserId getUserIdByPrivateChat(const td::td_api::chat &chat)
 
 bool isChatInContactList(const td::td_api::chat &chat, const td::td_api::user *privateChatUser)
 {
-    return (chat.chat_list_ != nullptr) || (privateChatUser && privateChatUser->is_contact_);
+    return !chat.positions_.empty() || (privateChatUser && privateChatUser->is_contact_);
 }
 
 BasicGroupId getBasicGroupId(const td::td_api::chat &chat)
@@ -437,11 +437,28 @@ void TdAccountData::addChat(TdChatPtr chat)
     }
 }
 
-void TdAccountData::updateChatChatList(ChatId chatId, td::td_api::object_ptr<td::td_api::ChatList> list)
+void TdAccountData::updateChatPosition(ChatId chatId, td::td_api::object_ptr<td::td_api::chatPosition> &&position)
 {
     auto it = m_chatInfo.find(chatId);
-    if (it != m_chatInfo.end())
-        it->second.chat->chat_list_ = std::move(list);
+    if (position && position->list_ && (it != m_chatInfo.end())) {
+        auto listId = position->list_->get_id();
+        td::td_api::chat &chat = *it->second.chat;
+        if (position->order_ == 0)
+            chat.positions_.erase(
+                std::remove_if(chat.positions_.begin(), chat.positions_.end(),
+                               [listId](const td::td_api::object_ptr<td::td_api::chatPosition> &chatPos) {
+                                   return chatPos && (chatPos->list_->get_id() == listId);
+                               }),
+                chat.positions_.end());
+        else {
+            auto pPosition = std::find_if(chat.positions_.begin(), chat.positions_.end(),
+                                          [listId](const td::td_api::object_ptr<td::td_api::chatPosition> &chatPos) {
+                                              return chatPos && (chatPos->list_->get_id() == listId);
+                                          });
+            if (pPosition != chat.positions_.end())
+                *pPosition = std::move(position);
+        }
+    }
 }
 
 void TdAccountData::updateChatTitle(ChatId chatId, const std::string &title)
@@ -459,13 +476,6 @@ void TdAccountData::updateSmallChatPhoto(ChatId chatId, td::td_api::object_ptr<t
         if (chat.photo_)
             chat.photo_->small_ = std::move(photo);
     }
-}
-
-void TdAccountData::updateChatOrder(ChatId chatId, int64_t order)
-{
-    auto it = m_chatInfo.find(chatId);
-    if (it != m_chatInfo.end())
-        it->second.chat->order_ = order;
 }
 
 void TdAccountData::setContacts(const td::td_api::users &users)
@@ -706,24 +716,6 @@ void TdAccountData::getChats(std::vector<const td::td_api::chat *> &chats) const
 void TdAccountData::deleteChat(ChatId id)
 {
     m_chatInfo.erase(id);
-}
-
-void TdAccountData::getSmallestOrderChat(const td::td_api::ChatList &list, ChatId &chatId, int64_t &order)
-{
-    int64_t minOrder = INT64_MAX;
-    ChatId  id       = ChatId::invalid;
-    for (const ChatMap::value_type &entry: m_chatInfo) {
-        int64_t order = entry.second.chat->order_;
-        if (entry.second.chat->chat_list_ && (entry.second.chat->chat_list_->get_id() == list.get_id()) &&
-            (order < minOrder))
-        {
-            minOrder = order;
-            id = entry.first;
-        }
-    }
-
-    chatId = id;
-    order  = minOrder;
 }
 
 void TdAccountData::addExpectedChat(ChatId id)

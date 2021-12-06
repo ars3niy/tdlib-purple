@@ -90,7 +90,7 @@ private:
     // Login sequence end
 
     void       onIncomingMessage(td::td_api::object_ptr<td::td_api::message> message);
-    void       updateChatLastMessage(const td::td_api::updateChatLastMessage &lastMessage);
+    void       updateChatLastMessage(td::td_api::updateChatLastMessage &lastMessage);
 
     void       updateUserStatus(UserId userId, td::td_api::object_ptr<td::td_api::UserStatus> status);
     void       updateUser(td::td_api::object_ptr<td::td_api::user> user);
@@ -145,7 +145,6 @@ private:
     std::vector<UserId>   m_usersForNewPrivateChats;
     bool                  m_chatListReady = false;
     bool                  m_isProxyAdded = false;
-    int64_t               m_lastChatOrderOffset = 0;
     std::vector<PurpleRoomlist *>               m_pendingRoomLists;
     td::td_api::object_ptr<td::td_api::proxy>   m_addedProxy;
     td::td_api::object_ptr<td::td_api::proxies> m_proxies;

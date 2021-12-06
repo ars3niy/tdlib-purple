@@ -161,20 +161,15 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         break;
     }
 
-    case td::td_api::updateChatChatList::ID: {
-        auto &chatListUpdate = static_cast<td::td_api::updateChatChatList &>(update);
-        purple_debug_misc(config::pluginId, "Incoming update: update chat list for chat %" G_GINT64_FORMAT "\n",
-                          chatListUpdate.chat_id_);
-        m_data.updateChatChatList(getChatId(chatListUpdate), std::move(chatListUpdate.chat_list_));
-        updateChat(m_data.getChat(getChatId(chatListUpdate)));
+    case td::td_api::updateChatPosition::ID: {
+        auto &chatPositionUpdate = static_cast<td::td_api::updateChatPosition &>(update);
+        purple_debug_misc(config::pluginId, "Incoming update: update chat position for chat %" G_GINT64_FORMAT "\n",
+                          chatPositionUpdate.chat_id_);
+        if (chatPositionUpdate.position_)
+            m_data.updateChatPosition(getChatId(chatPositionUpdate), std::move(chatPositionUpdate.position_));
+        updateChat(m_data.getChat(getChatId(chatPositionUpdate)));
         break;
     }
-
-    case td::td_api::updateChatOrder::ID: {
-        auto &chatOrderUpdate = static_cast<td::td_api::updateChatOrder&>(update);
-        m_data.updateChatOrder(getChatId(chatOrderUpdate), chatOrderUpdate.order_);
-        break;
-    };
 
     case td::td_api::updateChatTitle::ID: {
         auto &chatTitleUpdate = static_cast<td::td_api::updateChatTitle &>(update);
@@ -649,12 +644,9 @@ void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_
     purple_debug_misc(config::pluginId, "getContacts response to request %" G_GUINT64_FORMAT "\n", requestId);
     if (object && (object->get_id() == td::td_api::users::ID)) {
         m_data.setContacts(*td::move_tl_object_as<td::td_api::users>(object));
-        auto getChatsRequest = td::td_api::make_object<td::td_api::getChats>();
+        auto getChatsRequest = td::td_api::make_object<td::td_api::loadChats>();
         getChatsRequest->chat_list_ = td::td_api::make_object<td::td_api::chatListMain>();
-        getChatsRequest->offset_order_ = INT64_MAX;
-        getChatsRequest->offset_chat_id_ = 0;
         getChatsRequest->limit_ = 200;
-        m_lastChatOrderOffset = INT64_MAX;
         m_transceiver.sendQuery(std::move(getChatsRequest), &PurpleTdClient::getChatsResponse);
     } else
         notifyAuthError(object);
@@ -663,30 +655,17 @@ void PurpleTdClient::getContactsResponse(uint64_t requestId, td::td_api::object_
 void PurpleTdClient::getChatsResponse(uint64_t requestId, td::td_api::object_ptr<td::td_api::Object> object)
 {
     purple_debug_misc(config::pluginId, "getChats response to request %" G_GUINT64_FORMAT "\n", requestId);
-    if (object && (object->get_id() == td::td_api::chats::ID)) {
-        td::td_api::object_ptr<td::td_api::chats> chats = td::move_tl_object_as<td::td_api::chats>(object);
-        if (chats->chat_ids_.empty()) {
+    if (object && (object->get_id() == td::td_api::ok::ID)) {
+        auto getChatsRequest = td::td_api::make_object<td::td_api::loadChats>();
+        getChatsRequest->chat_list_ = td::td_api::make_object<td::td_api::chatListMain>();
+        getChatsRequest->limit_ = 200;
+        m_transceiver.sendQuery(std::move(getChatsRequest), &PurpleTdClient::getChatsResponse);
+    } else {
+        std::string message = getDisplayedError(object);
+        purple_debug_misc(config::pluginId, "Got no more chats: %s\n", message.c_str());
             m_data.getContactsWithNoChat(m_usersForNewPrivateChats);
             requestMissingPrivateChats();
-        } else {
-            auto getChatsRequest = td::td_api::make_object<td::td_api::getChats>();
-            getChatsRequest->chat_list_ = td::td_api::make_object<td::td_api::chatListMain>();
-            ChatId chatId;
-            int64_t chatOrder;
-            m_data.getSmallestOrderChat(*getChatsRequest->chat_list_, chatId, chatOrder);
-            if (chatOrder < m_lastChatOrderOffset) {
-                getChatsRequest->offset_order_ = chatOrder;
-                getChatsRequest->offset_chat_id_ = chatId.value();
-                getChatsRequest->limit_ = 200;
-                m_lastChatOrderOffset = chatOrder;
-                m_transceiver.sendQuery(std::move(getChatsRequest), &PurpleTdClient::getChatsResponse);
-            } else {
-                m_data.getContactsWithNoChat(m_usersForNewPrivateChats);
-                requestMissingPrivateChats();
-            }
-        }
-    } else
-        notifyAuthError(object);
+    }
 }
 
 void PurpleTdClient::requestMissingPrivateChats()
@@ -972,10 +951,11 @@ void PurpleTdClient::onIncomingMessage(td::td_api::object_ptr<td::td_api::messag
     handleIncomingMessage(m_data, *chat, std::move(message), PendingMessageQueue::Append);
 }
 
-void PurpleTdClient::updateChatLastMessage(const td::td_api::updateChatLastMessage &lastMessage)
+void PurpleTdClient::updateChatLastMessage(td::td_api::updateChatLastMessage &lastMessage)
 {
     ChatId chatId = getChatId(lastMessage);
-    m_data.updateChatOrder(chatId, lastMessage.order_);
+    for (auto &chatPosition: lastMessage.positions_)
+        m_data.updateChatPosition(chatId, std::move(chatPosition));
     if (lastMessage.last_message_)
         saveChatLastMessage(m_data, chatId, getId(*lastMessage.last_message_));
     else {
