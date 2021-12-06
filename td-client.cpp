@@ -1860,7 +1860,7 @@ void PurpleTdClient::kickUserFromChat(PurpleConversation *conv, const char *name
 
     auto setStatusRequest = td::td_api::make_object<td::td_api::setChatMemberStatus>();
     setStatusRequest->chat_id_ = chat->id_;
-    setStatusRequest->user_id_ = users[0]->id_;
+    setStatusRequest->member_id_ = td::td_api::make_object<td::td_api::messageSenderUser>(users[0]->id_);
     setStatusRequest->status_ = td::td_api::make_object<td::td_api::chatMemberStatusLeft>();
 
     uint64_t requestId = m_transceiver.sendQuery(std::move(setStatusRequest), &PurpleTdClient::chatActionResponse);

@@ -1095,7 +1095,7 @@ TEST_F(GroupChatTest, Kick)
 
     prpl.runCommand("kick", conv, {purpleUserName(0)});
     tgl.verifyRequest(setChatMemberStatus(
-        groupChatId, userIds[0],
+        groupChatId, make_object<messageSenderUser>(userIds[0]),
         make_object<chatMemberStatusLeft>()
     ));
     tgl.reply(make_object<error>(100, "error"));
@@ -1107,7 +1107,7 @@ TEST_F(GroupChatTest, Kick)
 
     prpl.runCommand("kick", conv, {userFirstNames[0] + " " + userLastNames[0]});
     tgl.verifyRequest(setChatMemberStatus(
-        groupChatId, userIds[0],
+        groupChatId, make_object<messageSenderUser>(userIds[0]),
         make_object<chatMemberStatusLeft>()
     ));
     tgl.reply(make_object<ok>());

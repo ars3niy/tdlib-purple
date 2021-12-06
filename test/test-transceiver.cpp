@@ -409,10 +409,21 @@ static void compare(const cancelDownloadFile &actual, const cancelDownloadFile &
     COMPARE(only_if_pending_);
 }
 
+static void compare(const messageSenderUser &actual, const messageSenderUser &expected)
+{
+    COMPARE(user_id_);
+}
+
 static void compare(const setChatMemberStatus &actual, const setChatMemberStatus &expected)
 {
     COMPARE(chat_id_);
-    COMPARE(user_id_);
+    COMPARE(member_id_->get_id());
+    switch (actual.member_id_->get_id()) {
+        case messageSenderUser::ID:
+            compare(static_cast<const messageSenderUser &>(*actual.member_id_),
+                    static_cast<const messageSenderUser &>(*expected.member_id_));
+            break;
+    }
     COMPARE(status_ != nullptr);
     if (actual.status_) {
         COMPARE(status_->get_id());
