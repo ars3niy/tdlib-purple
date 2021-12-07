@@ -1026,6 +1026,14 @@ static void tgprpl_init (PurplePlugin *plugin)
                                               AccountOptions::ReadReceiptsDefault);
         prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
     }
+
+    opt = purple_account_option_string_new (_("API ID"),
+                                            AccountOptions::ApiId, "");
+    prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
+
+    opt = purple_account_option_string_new (_("API hash"),
+                                            AccountOptions::ApiHash, "");
+    prpl_info.protocol_options = g_list_append (prpl_info.protocol_options, opt);
 }
 
 static void setTwoFactorAuth(RequestData *data, PurpleRequestFields* fields);

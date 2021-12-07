@@ -10,8 +10,8 @@ char pluginDesc[]    = "Telegram Protocol Plugin using tdlib";
 char pluginAuthor[]  = "Arseniy Lartsev";
 char projectUrl[]    = "https://github.com/ars3niy/tdlib-purple";
 
-int         api_id   = ${API_ID};
-const char *api_hash ="${API_HASH}";
+const char *api_id   = "${API_ID}";
+const char *api_hash = "${API_HASH}";
 
 const char *stuff = "${STUFF}";
 const char *configSubdir = "tdlib";

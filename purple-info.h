@@ -48,6 +48,8 @@ namespace AccountOptions {
     constexpr gboolean    KeepInlineDownloadsDefault = FALSE;
     constexpr const char *ReadReceipts               = "read-receipts";
     constexpr gboolean    ReadReceiptsDefault        = TRUE;
+    constexpr const char *ApiId                      = "api-id";
+    constexpr const char *ApiHash                    = "api-hash";
 };
 
 namespace BuddyOptions {
