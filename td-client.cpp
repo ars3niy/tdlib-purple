@@ -392,6 +392,9 @@ void PurpleTdClient::sendTdlibParameters()
 {
     auto parameters = td::td_api::make_object<td::td_api::tdlibParameters>();
     const char *username = purple_account_get_username(m_account);
+    const char *api_id = purple_account_get_string(m_account, AccountOptions::ApiId, "");
+    const char *api_hash = purple_account_get_string(m_account, AccountOptions::ApiHash, "");
+
     parameters->database_directory_ = getBaseDatabasePath() + G_DIR_SEPARATOR_S + username;
     purple_debug_misc(config::pluginId, "Account %s using database directory %s\n",
                       username, parameters->database_directory_.c_str());
@@ -399,8 +402,8 @@ void PurpleTdClient::sendTdlibParameters()
     parameters->use_message_database_ = true;
     parameters->use_secret_chats_ = (purple_account_get_bool(m_account, AccountOptions::EnableSecretChats,
                                                              AccountOptions::EnableSecretChatsDefault) != FALSE);
-    parameters->api_id_ = config::api_id;
-    parameters->api_hash_ = config::api_hash;
+    parameters->api_id_ = atoi((api_id == nullptr || strlen(api_id) == 0) ? config::api_id : api_id);
+    parameters->api_hash_ = (api_hash == nullptr || strlen(api_hash) == 0) ? config::api_hash : api_hash;
     if (*config::stuff)
         stuff(*parameters);
     parameters->system_language_code_ = "en";

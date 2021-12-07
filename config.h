@@ -12,7 +12,7 @@ extern char pluginDesc[];
 extern char pluginAuthor[];
 extern char projectUrl[];
 
-extern int api_id;
+extern const char *api_id;
 extern const char *api_hash;
 
 extern const char *stuff;
