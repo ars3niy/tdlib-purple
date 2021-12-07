@@ -133,7 +133,7 @@ static void compare(const downloadFile &actual, const downloadFile &expected)
     COMPARE(synchronous_);
 }
 
-static void compare(const object_ptr<sendMessageOptions> &actual, const object_ptr<sendMessageOptions> &expected)
+static void compare(const object_ptr<messageSendOptions> &actual, const object_ptr<messageSendOptions> &expected)
 {
     ASSERT_EQ(nullptr, actual) << "not supported";
     ASSERT_EQ(nullptr, expected) << "not supported";
