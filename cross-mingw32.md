@@ -7,24 +7,16 @@
 ## tdlib
 
 ```
-sed s/Crypt32/crypt32/ -i tdnet/CMakeLists.txt
-sed 's/Mswsock/mswsock/;s/Normaliz/normaliz/' -i tdutils/CMakeLists.txt
-sed 's/WinSock2.h/winsock2.h/;s/WS2tcpip.h/ws2tcpip.h/;s/MSWSock.h/mswsock.h/;s/Windows.h/windows.h/' -i tdutils/td/utils/common.h
-```
-
-Replace `if(WIN32)` with `if(CMAKE_HOST_WIN32)` for GIT_COMMIT_CMD command.
-
-```
 cd build-linux
 cmake ..
-make tl_generate_common tdmime_auto tl_generate_json
+make prepare_cross_compiling
 cd ../build
 cmake -DCMAKE_SYSTEM_NAME=Windows \
     -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++ \
     -DOPENSSL_FOUND=True \
-    -DOPENSSL_SSL_LIBRARY="$PWD/../../openssl-3.0.0-alpha1/install/usr/local/lib/libssl.a;ws2_32" \
-    -DOPENSSL_CRYPTO_LIBRARY="$PWD/../../openssl-3.0.0-alpha1/install/usr/local/lib/libcrypto.a;ws2_32" \
-    -DOPENSSL_INCLUDE_DIR=$PWD/../../openssl-3.0.0-alpha1/install/usr/local/include \
+    -DOPENSSL_SSL_LIBRARY="$PWD/../../openssl-3.0.0/install/usr/local/lib/libssl.a;ws2_32" \
+    -DOPENSSL_CRYPTO_LIBRARY="$PWD/../../openssl-3.0.0/install/usr/local/lib/libcrypto.a;ws2_32" \
+    -DOPENSSL_INCLUDE_DIR=$PWD/../../openssl-3.0.0/install/usr/local/include \
     -DZLIB_FOUND=1 -DZLIB_LIBRARIES=/usr/i686-w64-mingw32/sys-root/mingw/lib/libz.a \
     -DCMAKE_BUILD_TYPE=Release ..
 make
