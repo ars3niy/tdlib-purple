@@ -111,15 +111,18 @@ static bool activateCall(const td::td_api::call &call, const std::string &buddyN
     voip->SetConfig(config);
 
     std::vector<tgvoip::Endpoint> endpoints;
-    for (const auto &pConnection: state.connections_) {
-        std::vector<char *> tag(pConnection->peer_tag_.length());
-        memmove(tag.data(), pConnection->peer_tag_.c_str(), tag.size());
-        endpoints.push_back(tgvoip::Endpoint(pConnection->id_, pConnection->port_,
-                                             tgvoip::IPv4Address(pConnection->ip_),
-                                             tgvoip::IPv6Address(pConnection->ipv6_),
-                                             tgvoip::Endpoint::UDP_RELAY,
-                                             reinterpret_cast<unsigned char *>(tag.data())));
-    }
+    for (const auto &pServer: state.servers_)
+        if (pServer && pServer->type_ && (pServer->type_->get_id() == td::td_api::callServerTypeTelegramReflector::ID)) {
+            const td::td_api::callServerTypeTelegramReflector &reflectorInfo =
+                static_cast<const td::td_api::callServerTypeTelegramReflector &>(*pServer->type_);
+            std::vector<unsigned char> tag(16);
+            memmove(tag.data(), reflectorInfo.peer_tag_.c_str(), std::min(reflectorInfo.peer_tag_.length(), tag.size()));
+            endpoints.push_back(tgvoip::Endpoint(pServer->id_, pServer->port_,
+                                                tgvoip::IPv4Address(pServer->ip_address_),
+                                                tgvoip::IPv6Address(pServer->ipv6_address_),
+                                                tgvoip::Endpoint::UDP_RELAY,
+                                                tag.data()));
+        }
     voip->SetRemoteEndpoints(endpoints, state.allow_p2p_ && state.protocol_->udp_p2p_,
                              state.protocol_->max_layer_);
 
