@@ -220,6 +220,12 @@ static std::string quoteMessage(const td::td_api::message *message, TdAccountDat
             // TRANSLATOR: In-line placeholder when a sticker is being replied to.
             text = _("[sticker]");
             break;
+        case td::td_api::messageAnimatedEmoji::ID: {
+            const td::td_api::messageAnimatedEmoji &animatedEmoji =
+                static_cast<const td::td_api::messageAnimatedEmoji &>(*message->content_);
+            text = animatedEmoji.emoji_;
+			break;
+        }
         default:
             text = '[' + getUnsupportedMessageDescription(*message->content_) + ']';
             break;
@@ -679,6 +685,12 @@ void showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage,
         case td::td_api::messageCall::ID:
             showCallMessage(chat, messageInfo, static_cast<td::td_api::messageCall &>(*message.content_), account);
             break;
+        case td::td_api::messageAnimatedEmoji::ID: {
+            const td::td_api::messageAnimatedEmoji &animatedEmoji =
+                static_cast<const td::td_api::messageAnimatedEmoji &>(*message.content_);
+            showMessageText(account, chat, messageInfo, animatedEmoji.emoji_.c_str(), NULL);
+			break;
+        }
         default: {
             // TRANSLATOR: In-chat error message, argument will be a Telegram type.
             std::string notice = getUnsupportedMessageDescription(*message.content_);
