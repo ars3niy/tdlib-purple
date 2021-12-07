@@ -443,20 +443,27 @@ void TdAccountData::updateChatPosition(ChatId chatId, td::td_api::object_ptr<td:
     if (position && position->list_ && (it != m_chatInfo.end())) {
         auto listId = position->list_->get_id();
         td::td_api::chat &chat = *it->second.chat;
-        if (position->order_ == 0)
+        if (position->order_ == 0) {
+            purpleDebug("Removing chat {} from list {}", {std::to_string(chatId.value()), std::to_string(listId)});
             chat.positions_.erase(
                 std::remove_if(chat.positions_.begin(), chat.positions_.end(),
                                [listId](const td::td_api::object_ptr<td::td_api::chatPosition> &chatPos) {
                                    return chatPos && (chatPos->list_->get_id() == listId);
                                }),
                 chat.positions_.end());
-        else {
-            auto pPosition = std::find_if(chat.positions_.begin(), chat.positions_.end(),
+        } else {
+            auto pExisting = std::find_if(chat.positions_.begin(), chat.positions_.end(),
                                           [listId](const td::td_api::object_ptr<td::td_api::chatPosition> &chatPos) {
                                               return chatPos && (chatPos->list_->get_id() == listId);
                                           });
-            if (pPosition != chat.positions_.end())
-                *pPosition = std::move(position);
+            if (pExisting != chat.positions_.end()) {
+                purpleDebug("Changing chat {}, list {} order to {}",
+                            {std::to_string(chatId.value()), std::to_string(listId), std::to_string(position->order_)});
+                *pExisting = std::move(position);
+            } else {
+                purpleDebug("Adding chat {} to list {}", {std::to_string(chatId.value()), std::to_string(listId)});
+                chat.positions_.push_back(std::move(position));
+            }
         }
     }
 }
