@@ -37,7 +37,7 @@ protected:
     void TearDown() override;
     void login(std::initializer_list<object_ptr<Object>> extraUpdates = {},
                object_ptr<users> getContactsReply = make_object<users>(),
-               object_ptr<chats> getChatsReply = make_object<chats>(),
+               object_ptr<Object> getChatsReply = getChatsNoChatsResponse(),
                std::initializer_list<std::unique_ptr<PurpleEvent>> postUpdateEvents = {},
                std::initializer_list<object_ptr<td::TlObject>> postUpdateRequestsAndResponses = {},
                std::initializer_list<std::unique_ptr<PurpleEvent>> postChatListEvents = {nullptr});

@@ -102,15 +102,17 @@ static void compare(const setAuthenticationPhoneNumber &actual, const setAuthent
 
 static void compare(const getChats &actual, const getChats &expected)
 {
-    if (expected.limit_ || expected.offset_order_) {
-        COMPARE(chat_list_ != nullptr);
-        if (expected.chat_list_) {
-            COMPARE(chat_list_->get_id());
-        }
-        COMPARE(offset_order_);
-        COMPARE(offset_chat_id_);
-        COMPARE(limit_);
+    COMPARE(chat_list_ != nullptr);
+    if (expected.chat_list_) {
+        COMPARE(chat_list_->get_id());
     }
+    COMPARE(limit_);
+}
+
+static void compare(const loadChats &actual, const loadChats &expected)
+{
+    COMPARE(chat_list_->get_id());
+    COMPARE(limit_);
 }
 
 static void compare(const viewMessages &actual, const viewMessages &expected)
@@ -493,6 +495,7 @@ static void compareRequests(const Function &actual, const Function &expected,
         C(setAuthenticationPhoneNumber)
         case getContacts::ID: break;
         C(getChats)
+        C(loadChats)
         C(viewMessages)
         C(downloadFile)
         case sendMessage::ID:
@@ -631,9 +634,35 @@ object_ptr<chat> makeChat(std::int64_t id_,
     );
 }
 
-object_ptr<updateChatChatList> makeUpdateChatListMain(int64_t chatId)
+object_ptr<updateChatPosition> makeUpdateChatListMain(int64_t chatId)
 {
-    return make_object<updateChatChatList>(chatId, make_object<chatListMain>());
+    return makeUpdateChatList(chatId, make_object<chatListMain>());
+}
+
+object_ptr<updateChatPosition> makeUpdateChatList(int64_t chatId, object_ptr<ChatList> &&chatList)
+{
+    return make_object<updateChatPosition>(
+        chatId,
+        make_object<chatPosition>(std::move(chatList), 1, false, nullptr)
+    );
+}
+
+object_ptr<updateChatPosition> makeUpdateRemoveFromChatList(int64_t chatId, object_ptr<ChatList> &&removeFrom)
+{
+    return make_object<updateChatPosition>(
+        chatId,
+        make_object<chatPosition>(std::move(removeFrom), 0, false, nullptr)
+    );
+}
+
+object_ptr<loadChats> getChatsRequest()
+{
+    return make_object<loadChats>(make_object<chatListMain>(), 200);
+}
+
+object_ptr<Object> getChatsNoChatsResponse()
+{
+    return make_object<error>(404, "No more chats");
 }
 
 object_ptr<message> makeMessage(std::int64_t id_, std::int32_t sender_user_id_, std::int64_t chat_id_,

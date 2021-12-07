@@ -276,7 +276,7 @@ TEST_F(GroupChatTest, ExistingBasicGroupReceiveMessageAtLogin_WithMemberList_Rem
     prpl.discardEvents();
     // Normally there should be pluginInfo().remove_buddy to simulate user removing the buddy by hand.
     // But skip it and just say buddy's private chat is magically removed from chatListMain
-    tgl.update(make_object<updateChatChatList>(chatIds[0], nullptr));
+    tgl.update(makeUpdateRemoveFromChatList(chatIds[0], make_object<chatListMain>()));
 
     prpl.verifyEvents(
         ChatSetTopicEvent(groupChatPurpleName, "basic group", ""),
@@ -659,7 +659,7 @@ TEST_F(GroupChatTest, CreateRemoveBasicGroupInAnotherClient)
                                PURPLE_MESSAGE_SYSTEM, date[1])
     );
 
-    tgl.update(make_object<updateChatChatList>(groupChatId, nullptr));
+    tgl.update(makeUpdateRemoveFromChatList(groupChatId, make_object<chatListMain>()));
     prpl.verifyEvents(RemoveChatEvent(groupChatPurpleName, ""));
 
     // There is a check that fails message sending if we are not a group member
@@ -987,7 +987,7 @@ TEST_F(GroupChatTest, GroupChatWithDeletedUser_WriteToNonContact)
         )
     );
 
-    tgl.update(make_object<updateChatChatList>(chatIds[0], make_object<chatListMain>()));
+    tgl.update(makeUpdateChatList(chatIds[0], make_object<chatListMain>()));
     prpl.verifyEvents(
         AddBuddyEvent(
             purpleUserName(0),
@@ -1297,7 +1297,7 @@ TEST_F(GroupChatTest, Roomlist)
 
     tgl.reply(make_object<users>());
 
-    uint64_t getChatsId = tgl.verifyRequest(getChats());
+    uint64_t getChatsId = tgl.verifyRequest(getChatsRequest());
 
     tgl.update(make_object<updateUser>(makeUser(
         selfId,
@@ -1321,13 +1321,13 @@ TEST_F(GroupChatTest, Roomlist)
         AddChatEvent(groupChatPurpleName, groupChatTitle, account, nullptr, nullptr)
     );
 
-    tgl.reply(getChatsId, make_object<chats>(std::vector<int64_t>(1, groupChatId)));
-    tgl.verifyRequest(getChats());
+    tgl.reply(getChatsId, make_object<ok>()));
+    tgl.verifyRequest(getChatsRequest());
 
     PurpleRoomlist *earlyRoomlist = pluginInfo().roomlist_get_list(connection);
     prpl.verifyEvents(RoomlistInProgressEvent(earlyRoomlist, TRUE));
 
-    tgl.reply(make_object<chats>());
+    tgl.reply(getChatsNoChatsResponse);
 
     prpl.verifyEvents(
         RoomlistAddRoomEvent(superEarlyRoomlist, "id", groupChatPurpleName.c_str()),
@@ -1566,7 +1566,7 @@ TEST_F(GroupChatTest, RejoinAtStartupBeforeUpdateNewChat_ChatListNullFirst)
     // chat-XXXXXXXXXX.
     prpl.verifyEvents(RemoveChatEvent(groupChatPurpleName, ""));
 
-    tgl.update(make_object<updateChatChatList>(groupChatId, make_object<chatListMain>()));
+    tgl.update(makeUpdateChatList(groupChatId, make_object<chatListMain>()));
     // Chat is re-added to buddy list, and now joining
     prpl.verifyEvents(
         AddChatEvent(groupChatPurpleName, groupChatTitle, account, NULL, NULL),

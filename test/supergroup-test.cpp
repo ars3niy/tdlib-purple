@@ -349,7 +349,7 @@ TEST_F(SupergroupTest, LeaveSupergroup)
         make_object<deleteChatHistory>(groupChatId, true, false)
     });
 
-    tgl.update(make_object<updateChatChatList>(groupChatId, nullptr));
+    tgl.update(makeUpdateRemoveFromChatList(groupChatId, make_object<chatListMain>()));
     prpl.verifyEvents(RemoveChatEvent(groupChatPurpleName, ""));
     tgl.update(make_object<updateSupergroup>(make_object<supergroup>(
         groupId, "", 0, make_object<chatMemberStatusBanned>(0), 0,
@@ -500,7 +500,7 @@ TEST_F(SupergroupTest, JoinByPublicLink1)
         groupId, "", 0, make_object<chatMemberStatusMember>(), 2,
         false, false, false, false, false, false, "", false
     )));
-    tgl.update(make_object<updateChatChatList>(groupChatId, make_object<chatListMain>()));
+    tgl.update(makeUpdateChatList(groupChatId, make_object<chatListMain>()));
     prpl.verifyEvents(AddChatEvent(
         groupChatPurpleName, groupChatTitle, account, NULL, NULL
     ));

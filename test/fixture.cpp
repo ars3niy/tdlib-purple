@@ -49,7 +49,7 @@ static bool isObject(const td::TlObject &object)
 }
 
 void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, object_ptr<users> getContactsReply,
-                     object_ptr<chats> getChatsReply,
+                     object_ptr<Object> getChatsReply,
                      std::initializer_list<std::unique_ptr<PurpleEvent>> postUpdateEvents,
                      std::initializer_list<object_ptr<td::TlObject>> postUpdateRequestsAndResponses,
                      std::initializer_list<std::unique_ptr<PurpleEvent>> postChatListEvents)
@@ -127,12 +127,12 @@ void CommTest::login(std::initializer_list<object_ptr<Object>> extraUpdates, obj
 
     tgl.reply(contactRequestId, std::move(getContactsReply));
 
-    tgl.verifyRequest(getChats());
-    bool hasChats = !getChatsReply->chat_ids_.empty();
+    tgl.verifyRequest(getChatsRequest());
+    bool hasChats = getChatsReply->get_id() == td::td_api::ok::ID;
     tgl.reply(std::move(getChatsReply));
     if (hasChats) {
-        tgl.verifyRequest(getChats());
-        tgl.reply(make_object<chats>());
+        tgl.verifyRequest(getChatsRequest());
+        tgl.reply(getChatsNoChatsResponse());
     }
 
     if ((postChatListEvents.size() == 1) && (*postChatListEvents.begin() == nullptr))

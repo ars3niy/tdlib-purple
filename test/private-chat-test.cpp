@@ -910,9 +910,12 @@ TEST_F(PrivateChatTest, DeleteContact)
     tgl.update(std::move(userUpdate1));
     tgl.update(standardUpdateUser(0));
     tgl.update(make_object<updateChatTitle>(chatIds[0], "New Title"));
-    tgl.update(make_object<updateChatChatList>(chatIds[0], make_object<chatListArchive>()));
-    tgl.update(make_object<updateChatChatList>(chatIds[0], nullptr));
+    tgl.update(makeUpdateChatList(chatIds[0], make_object<chatListArchive>()));
+    tgl.update(makeUpdateRemoveFromChatList(groupChatId, make_object<chatListMain>()));
+    tgl.update(makeUpdateRemoveFromChatList(groupChatId, make_object<chatListArchive>()));
 }
+
+TODO: test moving from main to archive or vice versa now that it's not atomic
 
 TEST_F(PrivateChatTest, MessageSendResponseError)
 {

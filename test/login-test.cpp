@@ -66,9 +66,9 @@ TEST_F(LoginTest, ConnectionReadyBeforeAuthReady)
     )));
     tgl.reply(make_object<users>());
 
-    tgl.verifyRequest(getChats());
+    tgl.verifyRequest(getChatsRequest());
     prpl.verifyNoEvents();
-    tgl.reply(make_object<chats>());
+    tgl.reply(getChatsNoChatsResponse());
 
     prpl.verifyEvents(
         AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
@@ -166,9 +166,9 @@ TEST_F(LoginTest, RegisterNewAccount_WithAlias_ConnectionReadyBeforeAuthReady)
     )));
     tgl.reply(make_object<users>());
 
-    tgl.verifyRequest(getChats());
+    tgl.verifyRequest(getChatsRequest());
     prpl.verifyNoEvents();
-    tgl.reply(make_object<chats>());
+    tgl.reply(getChatsNoChatsResponse());
 
     prpl.verifyEvents(
         AccountSetAliasEvent(account, selfFirstName + " " + selfLastName),
@@ -594,11 +594,7 @@ TEST_F(LoginTest, getChatsSequence)
     )));
     tgl.reply(make_object<users>());
 
-    tgl.verifyRequest(getChats(
-        make_object<chatListMain>(),
-        INT64_MAX, 0,
-        200
-    ));
+    tgl.verifyRequest(loadChats(make_object<chatListMain>(), 200));
 
     object_ptr<updateNewChat> chat1 = standardPrivateChat(0, make_object<chatListMain>());
     object_ptr<updateNewChat> chat2 = standardPrivateChat(1, make_object<chatListMain>());
@@ -610,18 +606,21 @@ TEST_F(LoginTest, getChatsSequence)
     tgl.update(std::move(chat1));
     tgl.update(std::move(chat2));
     tgl.update(std::move(chat3));
-    tgl.update(make_object<updateChatOrder>(chatIds[1]+1, 15));
-    tgl.update(make_object<updateChatChatList>(chatIds[0], make_object<chatListArchive>()));
-    std::vector<int64_t> chatList1 = {chatIds[0], chatIds[1], chatIds[1]+1};
-    tgl.reply(make_object<chats>(std::move(chatList1)));
-
-    tgl.verifyRequest(getChats(
-        make_object<chatListMain>(),
-        15, chatIds[1]+1,
-        200
+    tgl.update(make_object<updateChatPosition>(
+        chatIds[1]+1, make_object<chatPosition>(
+            make_object<chatListMain>(), 15, false, nullptr
+        )
     ));
+    tgl.update(make_object<updateChatPosition>(
+        chatIds[0], make_object<chatPosition>(
+            make_object<chatListArchive>(), 10, false, nullptr
+        )
+    ));
+    tgl.reply(make_object<ok>());
+
+    tgl.verifyRequest(getChatsRequest());
     tgl.update(standardPrivateChat(1));
-    tgl.reply(make_object<chats>(std::vector<int64_t>()));
+    tgl.reply(getChatsNoChatsResponse());
 
     // updateUser were missing (not realistic though), so no buddies
     prpl.verifyEvents(
