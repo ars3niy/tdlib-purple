@@ -19,6 +19,11 @@ the conversion can be disabled in account settings, or even at compile time (see
 
 Binary packages for Debian, Fedora, openSUSE and Ubuntu are available at https://download.opensuse.org/repositories/home:/ars3n1y/ .
 
+Package name:
+* Debian, Ubuntu: libpurple-telegram-tdlib
+* Fedora: purple-telegram-tdlib
+* openSUSE: libpurple-plugin-telegram-tdlib
+
 Adding Ubuntu repository (replace NN.NN with the actual version - see available versions at the link above):
 ```
 curl -fsSL https://download.opensuse.org/repositories/home:ars3n1y/xUbuntu_NN.NN/Release.key | sudo apt-key add -
