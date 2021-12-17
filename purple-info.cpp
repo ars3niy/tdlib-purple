@@ -93,7 +93,7 @@ int getChatGroupType(GHashTable *components)
 ChatId getTdlibChatId(const char *chatName)
 {
     if (chatName && !strncmp(chatName, "chat", 4))
-        return stringToChatId(chatName+4);
+        return ChatId::fromString(chatName+4);
 
     return ChatId::invalid;
 }

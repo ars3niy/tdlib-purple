@@ -35,14 +35,14 @@ UserId purpleBuddyNameToUserId(const char *s)
 {
     if (strncmp(s, "id", 2))
         return UserId::invalid;
-    return stringToUserId(s+2);
+    return UserId::fromString(s+2);
 }
 
 SecretChatId purpleBuddyNameToSecretChatId(const char *s)
 {
     if (strncmp(s, "secret", 2))
         return SecretChatId::invalid;
-    return stringToSecretChatId(s+6);
+    return SecretChatId::fromString(s+6);
 }
 
 static bool isPhoneEqual(const std::string &n1, const std::string &n2)

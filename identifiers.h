@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 #include <string>
+#include <limits>
+#include <stdlib.h>
 #include <td/telegram/td_api.h>
 
 template<typename IntType>
@@ -10,6 +12,7 @@ class Identifier {
 protected:
     using IdType = IntType;
     explicit Identifier(IntType value) : m_value(value) {}
+    static IntType convertFromString(const char *s);
 public:
     bool    valid() const { return (m_value != 0); }
     IntType value() const { return m_value; }
@@ -19,6 +22,19 @@ private:
     template<typename Object>
     friend void setId(Object &object, Identifier<IntType> id);
 };
+
+template <typename IntType>
+IntType Identifier<IntType>::convertFromString(const char *s)
+{
+    long long x;
+    static_assert(sizeof(x) >= sizeof(IntType), "long long must hold identifier type");
+	errno = 0;
+    x = strtoll(s, NULL, 10);
+    if (errno || (x < std::numeric_limits<IntType>::min()) || (x > std::numeric_limits<IntType>::max()))
+        return 0;
+
+    return x;
+}
 
 template<typename Object, typename IntType>
 void setId(Object &object, Identifier<IntType> id)
@@ -32,6 +48,7 @@ private: \
     explicit classname(IdType id) : Identifier(id) {} \
 public: \
     classname() : classname(classname::invalid) {} \
+    static classname fromString(const char *s) { return classname(convertFromString(s)); } \
     bool operator==(const classname &other) const { return (value() == other.value()); } \
     bool operator!=(const classname &other) const { return (value() != other.value()); } \
     bool operator<(const classname &other) const  { return (value() < other.value()); } \
@@ -49,7 +66,6 @@ DEFINE_ID_CLASS(UserId, int64_t)
     friend UserId getUserId(const td::td_api::updateUserChatAction &update);
     friend UserId getUserId(const td::td_api::importedContacts &contacts, unsigned index);
     friend UserId getUserId(const td::td_api::users &users, unsigned index);
-    friend UserId stringToUserId(const char *s);
 };
 
 DEFINE_ID_CLASS(ChatId, int64_t)
@@ -60,7 +76,6 @@ DEFINE_ID_CLASS(ChatId, int64_t)
     friend ChatId getChatId(const td::td_api::message &message);
     friend ChatId getChatId(const td::td_api::updateUserChatAction &update);
     friend ChatId getChatId(const td::td_api::updateChatLastMessage &update);
-    friend ChatId stringToChatId(const char *s);
 };
 
 DEFINE_ID_CLASS(BasicGroupId, int64_t)
@@ -78,14 +93,11 @@ DEFINE_ID_CLASS(SupergroupId, int64_t)
 DEFINE_ID_CLASS(SecretChatId, int32_t)
     friend SecretChatId getId(const td::td_api::secretChat &secretChat);
     friend SecretChatId getSecretChatId(const td::td_api::chatTypeSecret &update);
-    friend SecretChatId stringToSecretChatId(const char *s);
 };
 
 DEFINE_ID_CLASS(MessageId, int64_t)
     friend MessageId getId(const td::td_api::message &message);
     friend MessageId getReplyMessageId(const td::td_api::message &message);
-
-    static MessageId fromString(const char *value);
 };
 
 #undef DEFINE_ID_CLASS
@@ -107,7 +119,6 @@ UserId       getUserId(const td::td_api::updateUserStatus &update);
 UserId       getUserId(const td::td_api::updateUserChatAction &update);
 UserId       getUserId(const td::td_api::importedContacts &contacts, unsigned index);
 UserId       getUserId(const td::td_api::users &users, unsigned index);
-UserId       stringToUserId(const char *s);
 
 ChatId       getChatId(const td::td_api::updateChatPosition &update);
 ChatId       getChatId(const td::td_api::updateChatTitle &update);
@@ -115,7 +126,6 @@ ChatId       getChatId(const td::td_api::messageForwardOriginChannel &forwardOri
 ChatId       getChatId(const td::td_api::message &message);
 ChatId       getChatId(const td::td_api::updateUserChatAction &update);
 ChatId       getChatId(const td::td_api::updateChatLastMessage &update);
-ChatId       stringToChatId(const char *s);
 
 BasicGroupId getBasicGroupId(const td::td_api::updateBasicGroupFullInfo &update);
 BasicGroupId getBasicGroupId(const td::td_api::chatTypeBasicGroup &chatType);
@@ -124,7 +134,6 @@ SupergroupId getSupergroupId(const td::td_api::updateSupergroupFullInfo &update)
 SupergroupId getSupergroupId(const td::td_api::chatTypeSupergroup &chatType);
 
 SecretChatId getSecretChatId(const td::td_api::chatTypeSecret &update);
-SecretChatId stringToSecretChatId(const char *s);
 
 MessageId    getReplyMessageId(const td::td_api::message &message);
 

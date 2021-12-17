@@ -95,35 +95,6 @@ UserId getUserId(const td::td_api::users &users, unsigned index)
     return UserId(users.user_ids_[index]);
 }
 
-UserId stringToUserId(const char *s)
-{
-    const char *c = s;
-    if (*c == '-')
-        c++;
-    if ((*c == '\0') || (*c == '0'))
-        return UserId::invalid;
-    for (; *c; c++)
-        if ((c >= s+12) || !isdigit(*c))
-            return UserId::invalid;
-
-    long long x;
-    static_assert(sizeof(x) > 4, "need more than int32 here");
-    x = atoll(s);
-    if ((x < INT32_MIN) || (x > INT32_MAX))
-        return UserId::invalid;
-
-    return UserId(x);
-}
-
-SecretChatId stringToSecretChatId(const char *s)
-{
-    SecretChatId::IdType id;
-    if (sscanf(s, "%" G_GINT32_FORMAT "", &id) == 1)
-        return SecretChatId(id);
-
-    return SecretChatId::invalid;
-}
-
 ChatId getChatId(const td::td_api::updateChatPosition &update)
 {
     return ChatId(update.chat_id_);
@@ -154,14 +125,6 @@ ChatId getChatId(const td::td_api::updateChatLastMessage &update)
     return ChatId(update.chat_id_);
 }
 
-ChatId stringToChatId(const char* s)
-{
-    int64_t id;
-    if (sscanf(s, "%" G_GINT64_FORMAT "", &id) == 1)
-        return ChatId(id);
-    return ChatId::invalid;
-}
-
 BasicGroupId getBasicGroupId(const td::td_api::updateBasicGroupFullInfo &update)
 {
     return BasicGroupId(update.basic_group_id_);
@@ -190,13 +153,4 @@ SecretChatId getSecretChatId(const td::td_api::chatTypeSecret &chatType)
 MessageId getReplyMessageId(const td::td_api::message &message)
 {
     return MessageId(message.reply_to_message_id_);
-}
-
-MessageId MessageId::fromString(const char* value)
-{
-    IdType result;
-    if (sscanf(value, "%" G_GINT64_FORMAT, &result) == 1)
-        return MessageId(result);
-    else
-        return MessageId::invalid;
 }
