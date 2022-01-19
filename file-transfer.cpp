@@ -326,7 +326,7 @@ void downloadFileInline(int32_t fileId, ChatId chatId, TgMessageInfo &message,
     std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId, chatId,
                                                message, fileId, 0, fileDescription, thumbnail.release());
 
-    account.addPendingRequest<DownloadRequest>(requestId, std::move(request));
+    account.addPendingRequest(requestId, std::move(request));
     transceiver.setQueryTimer(requestId,
                               [&transceiver, &account](uint64_t reqId, td::td_api::object_ptr<td::td_api::Object>) {
                                   handleLongInlineDownload(reqId, transceiver, account);
@@ -524,7 +524,7 @@ static void startStandardDownload(PurpleXfer *xfer)
         std::unique_ptr<DownloadRequest> request = std::make_unique<DownloadRequest>(requestId,
                                                         ChatId::invalid,
                                                         messageInfo, fileId, 0, "", nullptr);
-        data->account->addPendingRequest<DownloadRequest>(requestId, std::move(request));
+        data->account->addPendingRequest(requestId, std::move(request));
         // Start immediately, because standardDownloadResponse will call purple_xfer_write_file, which
         // will fail if purple_xfer_start hasn't been called
         purple_xfer_start(xfer, -1, NULL, 0);
