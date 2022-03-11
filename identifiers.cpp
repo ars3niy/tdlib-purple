@@ -45,11 +45,7 @@ UserId getUserId(const td::td_api::chatTypePrivate &privType)
 
 UserId getUserId(const td::td_api::chatMember &member)
 {
-    if (member.member_id_ && (member.member_id_->get_id() == td::td_api::messageSenderUser::ID)) {
-        const td::td_api::messageSenderUser &userInfo = static_cast<const td::td_api::messageSenderUser &>(*member.member_id_);
-        return UserId(userInfo.user_id_);
-    }
-    return UserId::invalid;
+    return getUserId(member.member_id_);
 }
 
 UserId getUserId(const td::td_api::call &call)
@@ -59,10 +55,7 @@ UserId getUserId(const td::td_api::call &call)
 
 UserId getSenderUserId(const td::td_api::message &message)
 {
-    if (message.sender_ && (message.sender_->get_id() == td::td_api::messageSenderUser::ID))
-        return UserId(static_cast<const td::td_api::messageSenderUser &>(*message.sender_).user_id_);
-    else
-        return UserId::invalid;
+    return getUserId(message.sender_id_);
 }
 
 UserId getSenderUserId(const td::td_api::messageForwardOriginUser &forwardOrigin)
@@ -80,9 +73,9 @@ UserId getUserId(const td::td_api::updateUserStatus &update)
     return UserId(update.user_id_);
 }
 
-UserId getUserId(const td::td_api::updateUserChatAction &update)
+UserId getUserId(const td::td_api::updateChatAction &update)
 {
-    return UserId(update.user_id_);
+    return getUserId(update.sender_id_);
 }
 
 UserId getUserId(const td::td_api::importedContacts &contacts, unsigned index)
@@ -93,6 +86,13 @@ UserId getUserId(const td::td_api::importedContacts &contacts, unsigned index)
 UserId getUserId(const td::td_api::users &users, unsigned index)
 {
     return UserId(users.user_ids_[index]);
+}
+
+UserId getUserId(const td::td_api::object_ptr<td::td_api::MessageSender>& sender) {
+    if(sender && (sender->get_id() == td::td_api::messageSenderUser::ID)) {
+        return UserId(static_cast<const td::td_api::messageSenderUser &>(*sender.get()).user_id_);
+    }
+    return UserId::invalid;
 }
 
 ChatId getChatId(const td::td_api::updateChatPosition &update)
@@ -115,7 +115,7 @@ ChatId getChatId(const td::td_api::message &message)
     return ChatId(message.chat_id_);
 }
 
-ChatId getChatId(const td::td_api::updateUserChatAction &update)
+ChatId getChatId(const td::td_api::updateChatAction &update)
 {
     return ChatId(update.chat_id_);
 }

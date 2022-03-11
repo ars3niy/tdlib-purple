@@ -434,7 +434,7 @@ bool isInviteLinkActive(const td::td_api::chatInviteLink &linkInfo)
 {
     return !linkInfo.is_revoked_ &&
         ((linkInfo.member_limit_ == 0) || (linkInfo.member_count_ < linkInfo.member_limit_)) &&
-        ((linkInfo.expire_date_ == 0) || (std::time(NULL) < static_cast<time_t>(linkInfo.expire_date_)));
+        ((linkInfo.expiration_date_ == 0) || (std::time(NULL) < static_cast<time_t>(linkInfo.expiration_date_)));
 }
 
 static std::string lastMessageSetting(ChatId chatId)
