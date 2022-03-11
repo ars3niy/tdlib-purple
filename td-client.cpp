@@ -111,8 +111,8 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
         break;
     }
 
-    case td::td_api::updateUserChatAction::ID: {
-        auto &updateChatAction = static_cast<td::td_api::updateUserChatAction &>(update);
+    case td::td_api::updateChatAction::ID: {
+        auto &updateChatAction = static_cast<td::td_api::updateChatAction &>(update);
         purple_debug_misc(config::pluginId, "Incoming update: chat action %d\n",
             updateChatAction.action_ ? updateChatAction.action_->get_id() : 0);
         handleUserChatAction(updateChatAction);
@@ -1276,7 +1276,7 @@ void PurpleTdClient::addChat(td::td_api::object_ptr<td::td_api::chat> chat)
     updateChat(m_data.getChat(chatId));
 }
 
-void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction &updateChatAction)
+void PurpleTdClient::handleUserChatAction(const td::td_api::updateChatAction &updateChatAction)
 {
     const td::td_api::chat *chat = m_data.getChat(getChatId(updateChatAction));
     if (!chat) {
@@ -1295,19 +1295,18 @@ void PurpleTdClient::handleUserChatAction(const td::td_api::updateUserChatAction
     if (chatUserId != getUserId(updateChatAction)) {
         purpleDebug("Got user action for private chat {} (with user {}) for another user {}", {
             std::to_string(updateChatAction.chat_id_), std::to_string(chatUserId.value()),
-            std::to_string(updateChatAction.user_id_)
+            std::to_string(getUserId(updateChatAction))
         });
     } else if (updateChatAction.action_) {
         if (updateChatAction.action_->get_id() == td::td_api::chatActionCancel::ID) {
-            purpleDebug("User (id {}) stopped chat action", updateChatAction.user_id_);
+            purpleDebug("User (id {}) stopped chat action", getUserId(updateChatAction));
             showUserChatAction(getUserId(updateChatAction), false);
         } else if (updateChatAction.action_->get_id() == td::td_api::chatActionStartPlayingGame::ID) {
-            purpleDebug("User (id %d): treating chatActionStartPlayingGame as cancel",
-                        updateChatAction.user_id_);
+            purpleDebug("User (id %d): treating chatActionStartPlayingGame as cancel", getUserId(updateChatAction));
             showUserChatAction(getUserId(updateChatAction), false);
         } else {
             purpleDebug("User (id {}) started chat action (id {})", {
-                std::to_string(updateChatAction.user_id_), std::to_string(updateChatAction.action_->get_id())
+		std::to_string(getUserId(updateChatAction)), std::to_string(updateChatAction.action_->get_id())
             });
             showUserChatAction(getUserId(updateChatAction), true);
         }

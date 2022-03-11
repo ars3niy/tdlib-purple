@@ -63,9 +63,10 @@ DEFINE_ID_CLASS(UserId, int64_t)
     friend UserId getSenderUserId(const td::td_api::messageForwardOriginUser &forwardOrigin);
     friend UserId getUserId(const td::td_api::secretChat &secretChat);
     friend UserId getUserId(const td::td_api::updateUserStatus &update);
-    friend UserId getUserId(const td::td_api::updateUserChatAction &update);
+    friend UserId getUserId(const td::td_api::updateChatAction &update);
     friend UserId getUserId(const td::td_api::importedContacts &contacts, unsigned index);
     friend UserId getUserId(const td::td_api::users &users, unsigned index);
+    friend UserId getUserId(const td::td_api::object_ptr<td::td_api::MessageSender>& sender);
 };
 
 DEFINE_ID_CLASS(ChatId, int64_t)
@@ -74,7 +75,7 @@ DEFINE_ID_CLASS(ChatId, int64_t)
     friend ChatId getChatId(const td::td_api::updateChatTitle &update);
     friend ChatId getChatId(const td::td_api::messageForwardOriginChannel &forwardOrigin);
     friend ChatId getChatId(const td::td_api::message &message);
-    friend ChatId getChatId(const td::td_api::updateUserChatAction &update);
+    friend ChatId getChatId(const td::td_api::updateChatAction &update);
     friend ChatId getChatId(const td::td_api::updateChatLastMessage &update);
 };
 
@@ -116,15 +117,16 @@ UserId       getSenderUserId(const td::td_api::message &message);
 UserId       getSenderUserId(const td::td_api::messageForwardOriginUser &forwardOrigin);
 UserId       getUserId(const td::td_api::secretChat &secretChat);
 UserId       getUserId(const td::td_api::updateUserStatus &update);
-UserId       getUserId(const td::td_api::updateUserChatAction &update);
+UserId       getUserId(const td::td_api::updateChatAction &update);
 UserId       getUserId(const td::td_api::importedContacts &contacts, unsigned index);
 UserId       getUserId(const td::td_api::users &users, unsigned index);
+UserId 	     getUserId(const td::td_api::object_ptr<td::td_api::MessageSender>& sender);
 
 ChatId       getChatId(const td::td_api::updateChatPosition &update);
 ChatId       getChatId(const td::td_api::updateChatTitle &update);
 ChatId       getChatId(const td::td_api::messageForwardOriginChannel &forwardOrigin);
 ChatId       getChatId(const td::td_api::message &message);
-ChatId       getChatId(const td::td_api::updateUserChatAction &update);
+ChatId       getChatId(const td::td_api::updateChatAction &update);
 ChatId       getChatId(const td::td_api::updateChatLastMessage &update);
 
 BasicGroupId getBasicGroupId(const td::td_api::updateBasicGroupFullInfo &update);
