@@ -1020,6 +1020,11 @@ static void tgprpl_init (PurplePlugin *plugin)
     prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
 #endif
 
+    // TRANSLATOR: Account settings, key (boolean)
+    opt = purple_account_option_bool_new(_("Show self-destructing messages anyway"), AccountOptions::ShowSelfDestruct,
+                                         AccountOptions::ShowSelfDestructDefault);
+    prpl_info.protocol_options = g_list_append(prpl_info.protocol_options, opt);
+
     if (canDisableReadReceipts()) {
         opt = purple_account_option_bool_new ("Send read receipts",
                                               AccountOptions::ReadReceipts,

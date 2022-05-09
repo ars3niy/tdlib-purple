@@ -9,7 +9,7 @@ on: [push, pull_request]
 env:
   # Must be updated manually. Increment 'TD_MARK' to invalidate the cache.
   # Must not contain spaces, minuses, or any special characters.
-  TD_TAG: "v1.6.0"
+  TD_TAG: "v1.8.0"
   TD_MARK: "m1"
 
 jobs:

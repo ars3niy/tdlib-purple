@@ -634,22 +634,37 @@ void showMessage(const td::td_api::chat &chat, IncomingMessage &fullMessage,
     messageInfo.repliedMessage = std::move(fullMessage.repliedMessage);
 
     if (message.ttl_ != 0) {
-        // TRANSLATOR: In-chat warning message
-        const char *text   = _("Received self-destructing message, not displayed due to lack of support");
-        std::string notice = makeNoticeWithSender(chat, messageInfo, text, account.purpleAccount);
-        showMessageText(account, chat, messageInfo, NULL, notice.c_str());
-        return;
+        if (purple_account_get_bool(account.purpleAccount, AccountOptions::ShowSelfDestruct, AccountOptions::ShowSelfDestructDefault)) {
+            // TRANSLATOR: In-chat warning message
+            const char *text   = _("Received self-destructing message, displaying anyway");
+            std::string notice = makeNoticeWithSender(chat, messageInfo, text, account.purpleAccount);
+            showMessageText(account, chat, messageInfo, NULL, notice.c_str());
+        } else {
+            // TRANSLATOR: In-chat warning message
+            const char *text   = _("Received self-destructing message, not displayed due to lack of support");
+            std::string notice = makeNoticeWithSender(chat, messageInfo, text, account.purpleAccount);
+            showMessageText(account, chat, messageInfo, NULL, notice.c_str());
+            return;
+        }
     }
 
     FileInfo fileInfo;
     getFileFromMessage(fullMessage, fileInfo);
     if (fileInfo.secret) {
-        // TRANSLATOR: In-chat warning message
-        std::string notice = formatMessage("Ignoring secret file ({})", fileInfo.description);
-        notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), account.purpleAccount);
-        showMessageText(account, chat, messageInfo, !fileInfo.caption.empty() ? fileInfo.caption.c_str() : nullptr,
-                        notice.c_str());
-        return;
+        if (purple_account_get_bool(account.purpleAccount, AccountOptions::ShowSelfDestruct, AccountOptions::ShowSelfDestructDefault)) {
+            // TRANSLATOR: In-chat warning message
+            std::string notice = formatMessage("Received secret file {}, displaying anyway", fileInfo.description);
+            notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), account.purpleAccount);
+            showMessageText(account, chat, messageInfo, !fileInfo.caption.empty() ? fileInfo.caption.c_str() : nullptr,
+                            notice.c_str());
+        } else {
+            // TRANSLATOR: In-chat warning message
+            std::string notice = formatMessage("Ignoring secret file ({})", fileInfo.description);
+            notice = makeNoticeWithSender(chat, messageInfo, notice.c_str(), account.purpleAccount);
+            showMessageText(account, chat, messageInfo, !fileInfo.caption.empty() ? fileInfo.caption.c_str() : nullptr,
+                            notice.c_str());
+            return;
+        }
     }
 
     switch (message.content_->get_id()) {
