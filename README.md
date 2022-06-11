@@ -74,10 +74,9 @@ cmake -DTd_DIR=/path/to/tdlib/usr/local/lib/cmake/Td ..
 make
 ```
 
-This will build with test API id, which is supposed to be rate limited and may
-occasionally not work. Maybe I will man up and include my API id in the source
-code in the future. For now, it's possible to build with `-DAPI_ID=<api id> -DAPI_HASH=<api hash>`
-to use another API id.
+To build with an alternate default API id (which may occasionally break or be
+rate-limited), the user can specify `-DAPI_ID=<api id> -DAPI_HASH=<api hash>`
+as CMake options at compile time.
 
 To install, copy the .so to libpurple plugins directory, or run `make install`.
 
