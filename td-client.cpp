@@ -89,7 +89,18 @@ void PurpleTdClient::processUpdate(td::td_api::Object &update)
     case td::td_api::updateNewChat::ID: {
         auto &newChat = static_cast<td::td_api::updateNewChat &>(update);
         purple_debug_misc(config::pluginId, "Incoming update: new chat\n");
-        addChat(std::move(newChat.chat_));
+        if (newChat.chat_->type_->get_id() == td::td_api::chatTypePrivate::ID ||
+            newChat.chat_->type_->get_id() == td::td_api::chatTypeSecret::ID  ||
+            m_data.isGroupChatWithMembership(*newChat.chat_.get()))
+            addChat(std::move(newChat.chat_));
+        else {
+            purple_debug_misc(config::pluginId,
+                              "Incoming update: ignorig ID=%d\n",
+                              update.get_id());
+            purple_debug_misc(config::pluginId,
+                              "Not adding a group that we are not a member of");
+        }
+
         break;
     }
 
