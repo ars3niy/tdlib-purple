@@ -1,6 +1,17 @@
 # New libpurple plugin for Telegram
 
-This is a future successor to [telegram-purple](https://github.com/majn/telegram-purple).
+Tdlib-purple attempts to be a future successor to [telegram-purple](https://github.com/majn/telegram-purple).
+
+This particular repository collects all [seemingly-working PRs on ars3ny's original repository](https://github.com/ars3niy/tdlib-purple/pulls).
+
+In particular, it includes:
+- [#163](https://github.com/ars3niy/tdlib-purple/pull/163) (non-member group chats)
+- [#159](https://github.com/ars3niy/tdlib-purple/pull/159) (display self-destruct messages)
+- [#154](https://github.com/ars3niy/tdlib-purple/pull/154) (tdlib 1.8.0)
+- [#133](https://github.com/ars3niy/tdlib-purple/pull/133) (`build_and_install.sh`)
+- [#129](https://github.com/ars3niy/tdlib-purple/pull/129) (configurable API id and hash)
+- NOT [#110](https://github.com/ars3niy/tdlib-purple/pull/110), because I'm not entirely sure yet why it's necessary
+- NOT [#100](https://github.com/ars3niy/tdlib-purple/pull/100), because I'm lazy (feel free to make a PR if you promise me that it really works)
 
 There is a [telegram group](https://t.me/joinchat/BuRiSBO0mMw7Lxy0ufVO5g) (what else?) for discussions and support.
 
