@@ -28,24 +28,28 @@ the conversion can be disabled in account settings, or even at compile time (see
 
 ## Installation
 
-Binary packages for Debian, Fedora, openSUSE and Ubuntu are available at https://download.opensuse.org/repositories/home:/ars3n1y/ .
+You can easily build from source:
+- Make sure you already have installed g++, cmake, git, pkg-config.
+- Install the development packages for purple, webp, and png, using your OS's package manager. On Debian, these are called `libpurple-dev`, `libwebp-dev`, and `libpng-dev`.
+- Run `./build_and_install.sh` which will ask you for your sudo password shortly before actually installing tdlib-purple.
+- Restart pidgin to load the new plugin.
 
-Package name:
-* Debian, Ubuntu: libpurple-telegram-tdlib
-* Fedora: purple-telegram-tdlib
-* openSUSE: libpurple-plugin-telegram-tdlib
-
-Adding Ubuntu repository (replace NN.NN with the actual version - see available versions at the link above):
+The script may fail with the following error:
 ```
-curl -fsSL https://download.opensuse.org/repositories/home:ars3n1y/xUbuntu_NN.NN/Release.key | sudo apt-key add -
-sudo apt-add-repository 'deb http://download.opensuse.org/repositories/home:/ars3n1y/xUbuntu_NN.NN/ /'
+-- Found PkgConfig: /usr/bin/pkg-config (found version "1.8.1") 
+-- Checking for module 'purple'
+--   Package 'purple', required by 'virtual:world', not found
+CMake Error at /usr/share/cmake-3.25/Modules/FindPkgConfig.cmake:607 (message):
+  A required package was not found
+Call Stack (most recent call first):
+  /usr/share/cmake-3.25/Modules/FindPkgConfig.cmake:829 (_pkg_check_modules_internal)
+  CMakeLists.txt:27 (pkg_check_modules)
 ```
+This indicates that pkgconfig is confused and cannot find the installed package-config files. This can have several reasons:
+- Perhaps you forgot to install the development packages, see above.
+- Perhaps your system is actually in the middle of a migration of sorts. This seems to be the case at the time of writing with Debian Testing. In this case, try to build with `PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig/ ./build_and_install.sh`
 
-AUR package for Arch: https://aur.archlinux.org/packages/telegram-tdlib-purple-git/
-
-Windows build is available from https://eion.robbmob.com/tdlib/ (copy libtelegram-tdlib.dll to libpurple plugins directory) or in [releases](https://github.com/ars3niy/tdlib-purple/releases).
-
-Alternatively, build from source (see below).
+You may sometimes need to rebuild the plugin after certain OS updates.
 
 ## Debugging vs. privacy
 
@@ -56,7 +60,10 @@ pidgin -d >&~/pidgin.log
 
 The debug log contains a lot of private information such as names and phone numbers of all contacts, list of all channels you've participated in or text of all sent and received messages. Be mindful of that before posting debug log on the internets. Even just saving debug log to a file can be a questionable idea if there are multiple users on the system (since permissions will be 0644 by default). Such is the nature of debugging instant messaging software.
 
-## Building
+## Building by hand
+
+Note that you will only need to do this in rare circumstances, or if you have special requirements.
+It is often a better idea to instead modify `./build_and_install.sh` to use the flags you like.
 
 Compatible version of TDLib should be prebuilt and installed somewhere (requires C++14). Version requirement can be found in CMakeLists.txt:
 ```
@@ -97,7 +104,7 @@ Building without animated sticker decoding: `-DNoLottie=True`
 
 Building without localization: `-DNoTranslations=True`
 
-Building without voice call support: `-DNoVoip=True`
+Building without voice call support: `-DNoVoip=True` (This is the default for `./build_and_install.sh`)
 
 Building with voice call support: `-Dtgvoip_LIBRARIES="tgvoip;opus;<any other tgvoip dependencies>"`
 
