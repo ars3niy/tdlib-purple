@@ -1,6 +1,6 @@
 # New libpurple plugin for Telegram
 
-Tdlib-purple attempts to be a future successor to [telegram-purple](https://github.com/majn/telegram-purple).
+Tdlib-purple is the successor to [telegram-purple](https://github.com/majn/telegram-purple).
 
 This particular repository collects all [seemingly-working PRs on ars3ny's original repository](https://github.com/ars3niy/tdlib-purple/pulls).
 
@@ -30,8 +30,10 @@ the conversion can be disabled in account settings, or even at compile time (see
 
 You can easily build from source:
 - Make sure you already have installed g++, cmake, git, pkg-config.
-- Install the development packages for purple, webp, and png, using your OS's package manager. On Debian, these are called `libpurple-dev`, `libwebp-dev`, and `libpng-dev`.
-- Run `./build_and_install.sh` which will ask you for your sudo password shortly before actually installing tdlib-purple.
+- Install the development packages for purple, webp, openssl, and png, using your OS's package manager
+-    For Debian systems, like Ubuntu, install these build dependencies like this:
+  `sudo apt install  libpurple-dev libwebp-dev libpng-dev g++ cmake git pkg-config gettext libssl-dev`
+- Run `./build_and_install.sh` to build, it will ask for your sudo password just before installing tdlib-purple systemwide
 - Restart pidgin to load the new plugin.
 
 The script may fail with the following error:
